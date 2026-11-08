@@ -1,0 +1,218 @@
+// Built-in systems: Nintendo (SortOrder 100–199, by release year).
+// Extensions follow ES-DE/Batocera, limited to what the listed emulators actually load.
+// Archives (.zip/.7z) only where the emulator (or RetroArch for cartridge cores) opens them.
+[
+  {
+    "id": "nes",
+    "name": "Nintendo Entertainment System",
+    "shortName": "NES",
+    "manufacturer": "Nintendo",
+    "year": 1983,
+    "category": "Console",
+    "folders": ["nes", "famicom", "fc"],
+    // .fds = Famicom Disk System images (FCEUmm/Nestopia/Mesen, need disksys.rom)
+    "extensions": [".nes", ".unf", ".unif", ".fds", ".zip", ".7z"],
+    "sniffers": ["nes"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Nintendo - Nintendo Entertainment System",
+    "emulators": ["retroarch/fceumm", "retroarch/nestopia", "retroarch/mesen"],
+    "accent": "#E4002B",
+    "bios": [
+      { "file": "disksys.rom", "required": false, "description": "Famicom Disk System BIOS – nur für .fds-Spiele nötig." }
+    ],
+    "sortOrder": 100
+  },
+  {
+    "id": "gb",
+    "name": "Game Boy",
+    "shortName": "GB",
+    "manufacturer": "Nintendo",
+    "year": 1989,
+    "category": "Handheld",
+    "folders": ["gb", "gameboy"],
+    "extensions": [".gb", ".zip", ".7z"],
+    "sniffers": ["gb"],
+    "aspectRatio": 1.1111,
+    "libretroName": "Nintendo - Game Boy",
+    "emulators": ["mgba", "retroarch/gambatte", "retroarch/mgba", "retroarch/sameboy"],
+    "accent": "#8BAC0F",
+    "sortOrder": 105
+  },
+  {
+    "id": "snes",
+    "name": "Super Nintendo Entertainment System",
+    "shortName": "SNES",
+    "manufacturer": "Nintendo",
+    "year": 1990,
+    "category": "Console",
+    "folders": ["snes", "sfc", "superfamicom"],
+    "extensions": [".sfc", ".smc", ".fig", ".swc", ".bs", ".zip", ".7z"],
+    "sniffers": ["snes"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Nintendo - Super Nintendo Entertainment System",
+    "emulators": ["retroarch/snes9x", "retroarch/bsnes"],
+    "accent": "#6E5BD8",
+    "sortOrder": 110
+  },
+  {
+    "id": "virtualboy",
+    "name": "Virtual Boy",
+    "shortName": "VB",
+    "manufacturer": "Nintendo",
+    "year": 1995,
+    "category": "Console",
+    "folders": ["virtualboy", "vb"],
+    "extensions": [".vb", ".vboy", ".zip", ".7z"],
+    "aspectRatio": 1.7143,
+    "libretroName": "Nintendo - Virtual Boy",
+    "emulators": ["retroarch/mednafen_vb"],
+    "accent": "#D0021B",
+    "sortOrder": 115
+  },
+  {
+    "id": "n64",
+    "name": "Nintendo 64",
+    "shortName": "N64",
+    "manufacturer": "Nintendo",
+    "year": 1996,
+    "category": "Console",
+    "folders": ["n64", "nintendo64"],
+    "extensions": [".z64", ".n64", ".v64", ".zip", ".7z"],
+    "sniffers": ["n64"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Nintendo - Nintendo 64",
+    "emulators": ["retroarch/mupen64plus_next", "retroarch/parallel_n64"],
+    "accent": "#009E60",
+    "sortOrder": 120
+  },
+  {
+    "id": "gbc",
+    "name": "Game Boy Color",
+    "shortName": "GBC",
+    "manufacturer": "Nintendo",
+    "year": 1998,
+    "category": "Handheld",
+    "folders": ["gbc", "gameboycolor"],
+    "extensions": [".gbc", ".zip", ".7z"],
+    "sniffers": ["gbc"],
+    "aspectRatio": 1.1111,
+    "libretroName": "Nintendo - Game Boy Color",
+    "emulators": ["mgba", "retroarch/gambatte", "retroarch/mgba", "retroarch/sameboy"],
+    "accent": "#7B2FBE",
+    "sortOrder": 125
+  },
+  {
+    "id": "gba",
+    "name": "Game Boy Advance",
+    "shortName": "GBA",
+    "manufacturer": "Nintendo",
+    "year": 2001,
+    "category": "Handheld",
+    "folders": ["gba", "gameboyadvance"],
+    "extensions": [".gba", ".zip", ".7z"],
+    "sniffers": ["gba"],
+    "aspectRatio": 1.5,
+    "libretroName": "Nintendo - Game Boy Advance",
+    "emulators": ["mgba", "retroarch/mgba", "retroarch/gpsp"],
+    "accent": "#5A3FD9",
+    "bios": [
+      {
+        "file": "gba_bios.bin",
+        "md5": ["a860e8c0b6d573d191e4ec7db1b1e4f6"],
+        "required": false,
+        "description": "Optional – mGBA hat ein eingebautes Ersatz-BIOS; mit Original-BIOS erscheint das Startlogo."
+      }
+    ],
+    "sortOrder": 130
+  },
+  {
+    "id": "gamecube",
+    "name": "Nintendo GameCube",
+    "shortName": "GameCube",
+    "manufacturer": "Nintendo",
+    "year": 2001,
+    "category": "Console",
+    "folders": ["gamecube", "gc", "ngc"],
+    // Dolphin does not open .zip/.7z; .dol/.elf = homebrew executables
+    "extensions": [".iso", ".gcm", ".gcz", ".rvz", ".ciso", ".wia", ".tgc", ".dol", ".elf", ".m3u"],
+    "playlistExtensions": [".m3u"],
+    "sniffers": ["nintendo-disc-gc"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Nintendo - GameCube",
+    "emulators": ["dolphin", "retroarch/dolphin"],
+    "accent": "#524C9A",
+    "sortOrder": 135
+  },
+  {
+    "id": "nds",
+    "name": "Nintendo DS",
+    "shortName": "NDS",
+    "manufacturer": "Nintendo",
+    "year": 2004,
+    "category": "Handheld",
+    "folders": ["nds", "ds"],
+    "extensions": [".nds", ".zip", ".7z"],
+    "sniffers": ["nds"],
+    // two 256x192 screens stacked (the default layout); side-by-side would be 8:3
+    "aspectRatio": 0.6667,
+    "libretroName": "Nintendo - Nintendo DS",
+    "emulators": ["melonds", "desmume", "retroarch/melondsds", "retroarch/desmume"],
+    "accent": "#A7A9AC",
+    "bios": [
+      {
+        "file": "bios7.bin",
+        "md5": ["df692a80a5b1bc90728bc3dfc76cd948"],
+        "required": false,
+        "description": "ARM7-BIOS – optional, melonDS hat ein freies Ersatz-BIOS (FreeBIOS)."
+      },
+      {
+        "file": "bios9.bin",
+        "md5": ["a392174eb3e572fed6447e956bde4b25"],
+        "required": false,
+        "description": "ARM9-BIOS – optional, melonDS hat ein freies Ersatz-BIOS (FreeBIOS)."
+      },
+      {
+        "file": "firmware.bin",
+        "required": false,
+        "description": "DS-Firmware – optional, nötig für das Systemmenü und manche WLAN-Funktionen."
+      }
+    ],
+    "sortOrder": 140
+  },
+  {
+    "id": "wii",
+    "name": "Nintendo Wii",
+    "shortName": "Wii",
+    "manufacturer": "Nintendo",
+    "year": 2006,
+    "category": "Console",
+    "folders": ["wii"],
+    // .wad = WiiWare/Virtual Console channels (Dolphin boots them directly)
+    "extensions": [".iso", ".wbfs", ".rvz", ".gcz", ".ciso", ".wia", ".wad", ".dol", ".elf", ".m3u"],
+    "playlistExtensions": [".m3u"],
+    "sniffers": ["nintendo-disc-wii"],
+    "aspectRatio": 1.7778,
+    "libretroName": "Nintendo - Wii",
+    "emulators": ["dolphin", "retroarch/dolphin"],
+    "accent": "#34BEED",
+    "sortOrder": 145
+  },
+  {
+    "id": "3ds",
+    "name": "Nintendo 3DS",
+    "shortName": "3DS",
+    "manufacturer": "Nintendo",
+    "year": 2011,
+    "category": "Handheld",
+    "folders": ["3ds", "n3ds"],
+    // Azahar only runs decrypted games; .cia is an install package (installed via Azahar's menu), not launched directly
+    "extensions": [".3ds", ".cci", ".cxi", ".3dsx"],
+    "sniffers": ["3ds"],
+    // top 400x240 above bottom 320x240 (stacked)
+    "aspectRatio": 0.8333,
+    "libretroName": "Nintendo - Nintendo 3DS",
+    "emulators": ["azahar"],
+    "accent": "#CE181E",
+    "sortOrder": 150
+  }
+]

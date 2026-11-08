@@ -1,0 +1,36 @@
+// Built-in systems: arcade (800) and PC (900).
+[
+  {
+    "id": "arcade",
+    "name": "Arcade",
+    "shortName": "Arcade",
+    "manufacturer": "Diverse",
+    "category": "Arcade",
+    // Neo Geo MVS/AES is part of arcade: FBNeo and MAME run the same romsets (+ neogeo.zip)
+    "folders": ["arcade", "mame", "fbneo", "fba", "neogeo"],
+    // romsets; the file name (without extension) is the set name ("sf2.zip" → sf2). CHDs live in <set>/ subfolders.
+    "extensions": [".zip", ".7z"],
+    "aspectRatio": 1.3333,
+    "libretroName": "MAME",
+    "emulators": ["retroarch/fbneo", "retroarch/mame", "mame"],
+    "accent": "#FFB000",
+    "bios": [
+      { "file": "neogeo.zip", "required": false, "description": "Neo-Geo-BIOS-Set – nur für Neo-Geo-Spiele nötig (alternativ im Spieleordner)." }
+    ],
+    "sortOrder": 800
+  },
+  {
+    "id": "pc",
+    "name": "PC (Windows)",
+    "shortName": "PC",
+    "manufacturer": "Microsoft",
+    "category": "Pc",
+    "folders": ["pc", "windows"],
+    // .exe = portable game, .lnk/.url = shortcut to an installed game (also steam:// links)
+    "extensions": [".exe", ".lnk", ".url"],
+    "emulators": ["native"],
+    "accent": "#0078D4",
+    "folderGames": true,
+    "sortOrder": 900
+  }
+]

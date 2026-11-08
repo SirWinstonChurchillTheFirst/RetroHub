@@ -1,0 +1,56 @@
+// RetroArch: one exe, many libretro cores (cores/<core>_libretro.dll).
+// {core} = full path of the core dll, {retroarchOverride} = data/config/retroarch/retrohub.cfg (written by the planner/
+// portable recipe: paths, video_fullscreen, input_exit_emulator …), appended on top of retroarch.cfg.
+[
+  {
+    "id": "retroarch",
+    "name": "RetroArch",
+    "kind": "RetroArch",
+    "website": "https://www.retroarch.com/",
+    "license": "GPL-3.0",
+    "exe": ["retroarch.exe"],
+    "args": ["-L", "{core}", "--appendconfig", "{retroarchOverride}", "{fullscreen}", "{rom}"],
+    "fullscreenArgs": ["-f"],
+    // system id → core names in preference order
+    "cores": {
+      "nes": ["fceumm", "nestopia", "mesen"],
+      "snes": ["snes9x", "bsnes"],
+      "n64": ["mupen64plus_next", "parallel_n64"],
+      "gamecube": ["dolphin"],
+      "wii": ["dolphin"],
+      "gb": ["gambatte", "mgba", "sameboy"],
+      "gbc": ["gambatte", "mgba", "sameboy"],
+      "gba": ["mgba", "gpsp"],
+      "nds": ["melondsds", "desmume"],
+      "virtualboy": ["mednafen_vb"],
+      "ps1": ["pcsx_rearmed", "swanstation", "mednafen_psx_hw"],
+      "ps2": ["pcsx2"],
+      "psp": ["ppsspp"],
+      "mastersystem": ["genesis_plus_gx", "picodrive", "gearsystem"],
+      "megadrive": ["genesis_plus_gx", "picodrive"],
+      "gamegear": ["genesis_plus_gx", "gearsystem"],
+      "segacd": ["genesis_plus_gx", "picodrive"],
+      "sega32x": ["picodrive"],
+      "saturn": ["mednafen_saturn", "kronos"],
+      "dreamcast": ["flycast"],
+      "atari2600": ["stella"],
+      "atari7800": ["prosystem"],
+      "lynx": ["handy", "mednafen_lynx"],
+      "pcengine": ["mednafen_pce_fast", "mednafen_pce", "mednafen_supergrafx"],
+      "ngp": ["mednafen_ngp", "race"],
+      "wonderswan": ["mednafen_wswan"],
+      "msx": ["bluemsx", "fmsx"],
+      "arcade": ["fbneo", "mame"],
+    },
+    "portable": "retroarch",
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed", "Embedded"],
+    "embed": {
+      "keepFrame": false,
+      "offUiThread": true,
+      "maskWhileLoading": true
+    },
+    "downloadUrl": "https://www.retroarch.com/?page=platforms",
+    "notes": "Einbetten ist für RetroArch noch nicht getestet – Standard ist Vollbild. Cores werden im Ordner „cores“ neben retroarch.exe gesucht (Online-Updater von RetroArch)."
+  }
+]

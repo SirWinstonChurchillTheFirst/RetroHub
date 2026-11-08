@@ -1,0 +1,100 @@
+// Standalone Qt/Win32 emulators that MonHub embedded successfully (mGBA, melonDS, DeSmuME, Azahar).
+// barTop/barBottom: menu/status bar heights at 100 % scale on Windows, measured in MonHub (GameScreen.KnownBars);
+// only used until the real chrome can be measured.
+[
+  {
+    "id": "mgba",
+    "name": "mGBA",
+    "website": "https://mgba.io/",
+    "license": "MPL-2.0",
+    "exe": ["mGBA.exe"],
+    "systems": ["gb", "gbc", "gba"],
+    "args": ["{fullscreen}", "{rom}"],
+    "fullscreenArgs": ["-f"],
+    "portable": "mgba",
+    "defaultMode": "Embedded",
+    "modes": ["Embedded", "Fullscreen", "Windowed"],
+    // Qt app: keep the frame (pushed outside the clipped host), cross-process calls off the UI thread
+    "embed": {
+      "keepFrame": true,
+      "offUiThread": true,
+      "maskWhileLoading": true,
+      "barTop": 21,
+      "barBottom": 0
+    },
+    "downloadUrl": "https://mgba.io/downloads.html"
+  },
+  {
+    "id": "melonds",
+    "name": "melonDS",
+    "website": "https://melonds.kuribo64.net/",
+    "license": "GPL-3.0",
+    "exe": ["melonDS.exe"],
+    "systems": ["nds"],
+    "args": ["{fullscreen}", "{rom}"],
+    "fullscreenArgs": ["-f"],
+    "portable": "melonds",
+    "defaultMode": "Embedded",
+    "modes": ["Embedded", "Fullscreen", "Windowed"],
+    "embed": {
+      "keepFrame": true,
+      "offUiThread": true,
+      "maskWhileLoading": true,
+      "barTop": 25,
+      "barBottom": 0
+    },
+    "downloadUrl": "https://melonds.kuribo64.net/downloads.php",
+    "notes": "Läuft ohne Original-BIOS (FreeBIOS). Einige verschlüsselte DS-ROMs starten nur mit Original-BIOS – dann DeSmuME verwenden."
+  },
+  {
+    "id": "desmume",
+    "name": "DeSmuME",
+    "website": "https://desmume.org/",
+    "license": "GPL-2.0",
+    // the Windows build ships as e.g. "DeSmuME_0.9.13_x64.exe"
+    "exe": ["DeSmuME*.exe"],
+    "systems": ["nds"],
+    // no fullscreen command-line flag on Windows → only Embedded / Windowed
+    "args": ["{rom}"],
+    "fullscreenArgs": [],
+    "portable": "desmume",
+    "defaultMode": "Embedded",
+    "modes": ["Embedded", "Windowed"],
+    // plain Win32 (DirectDraw) app: strip the frame, must be handled on the UI thread (taken in from another
+    // thread it never draws), nudge after host moves (misses WM_MOVE as a child window)
+    "embed": {
+      "keepFrame": false,
+      "offUiThread": false,
+      "nudgeOnMove": true,
+      "maskWhileLoading": true,
+      "barTop": 29,
+      "barBottom": 0
+    },
+    "downloadUrl": "https://desmume.org/download/",
+    "notes": "DeSmuME hat keinen Kommandozeilenschalter für Vollbild; im Fenster per Alt+Enter umschaltbar."
+  },
+  {
+    "id": "azahar",
+    "name": "Azahar",
+    "website": "https://azahar-emu.org/",
+    "license": "GPL-2.0",
+    "exe": ["azahar.exe"],
+    "systems": ["3ds"],
+    "args": ["{fullscreen}", "{rom}"],
+    "fullscreenArgs": ["-f"],
+    "portable": "azahar",
+    "defaultMode": "Embedded",
+    "modes": ["Embedded", "Fullscreen", "Windowed"],
+    // Qt app; answers WM_NULL long before the game runs → ready once the title shows "<game> | …"
+    "embed": {
+      "keepFrame": true,
+      "offUiThread": true,
+      "maskWhileLoading": true,
+      "readyTitleContains": " | ",
+      "barTop": 33,
+      "barBottom": 29
+    },
+    "downloadUrl": "https://github.com/azahar-emu/azahar/releases",
+    "notes": "Startet nur entschlüsselte 3DS-Spiele. Der Vollbild-Schalter „-f“ stammt von Citra und ist für Azahar noch nicht bestätigt (MonHub hat nur eingebettet gestartet)."
+  }
+]

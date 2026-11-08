@@ -1,0 +1,83 @@
+// Built-in systems: Sony (SortOrder 200–299).
+// Disc systems: ".bin" is deliberately NOT listed – a .bin track belongs to its .cue (and ".bin" also means
+// Mega Drive / Atari cartridges). Playlist formats hide the files they reference.
+[
+  {
+    "id": "ps1",
+    "name": "Sony PlayStation",
+    "shortName": "PS1",
+    "manufacturer": "Sony",
+    "year": 1994,
+    "category": "Console",
+    "folders": ["ps1", "psx", "playstation"],
+    "extensions": [".cue", ".chd", ".pbp", ".m3u", ".ccd", ".iso"],
+    "playlistExtensions": [".m3u", ".cue"],
+    "sniffers": ["iso9660-ps1"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Sony - PlayStation",
+    "emulators": ["duckstation", "retroarch/pcsx_rearmed", "retroarch/swanstation", "retroarch/mednafen_psx_hw"],
+    "accent": "#7A8597",
+    // Any one of these is enough. DuckStation, SwanStation and Beetle PSX need a BIOS; PCSX ReARMed runs without one.
+    "bios": [
+      {
+        "file": "scph5501.bin",
+        "md5": ["490f666e1afb15b7362b406ed1cea246"],
+        "required": false,
+        "description": "PS1-BIOS USA (SCPH-5501) – DuckStation braucht mindestens ein PS1-BIOS, PCSX ReARMed läuft auch ohne."
+      },
+      {
+        "file": "scph5500.bin",
+        "md5": ["8dd7d5296a650fac7319bce665a6a53c"],
+        "required": false,
+        "description": "PS1-BIOS Japan (SCPH-5500)."
+      },
+      {
+        "file": "scph5502.bin",
+        "md5": ["32736f17079d0b2b7024407c39bd3050"],
+        "required": false,
+        "description": "PS1-BIOS Europa (SCPH-5502)."
+      },
+      {
+        "file": "scph1001.bin",
+        "md5": ["924e392ed05558ffdb115408c263dccf"],
+        "required": false,
+        "description": "PS1-BIOS USA (SCPH-1001)."
+      }
+    ],
+    "sortOrder": 200
+  },
+  {
+    "id": "ps2",
+    "name": "Sony PlayStation 2",
+    "shortName": "PS2",
+    "manufacturer": "Sony",
+    "year": 2000,
+    "category": "Console",
+    "folders": ["ps2", "playstation2"],
+    // PCSX2 needs a PS2 BIOS dump (any file name, selected in PCSX2) – therefore not listed here
+    "extensions": [".iso", ".chd", ".cso", ".zso", ".gz"],
+    "sniffers": ["iso9660-ps2"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Sony - PlayStation 2",
+    "emulators": ["pcsx2", "retroarch/pcsx2"],
+    "accent": "#1F3FA8",
+    "sortOrder": 205
+  },
+  {
+    "id": "psp",
+    "name": "Sony PlayStation Portable",
+    "shortName": "PSP",
+    "manufacturer": "Sony",
+    "year": 2004,
+    "category": "Handheld",
+    "folders": ["psp"],
+    "extensions": [".iso", ".cso", ".chd", ".pbp"],
+    "sniffers": ["iso9660-psp"],
+    // 480x272
+    "aspectRatio": 1.7647,
+    "libretroName": "Sony - PlayStation Portable",
+    "emulators": ["ppsspp", "retroarch/ppsspp"],
+    "accent": "#2B2B2B",
+    "sortOrder": 210
+  }
+]
