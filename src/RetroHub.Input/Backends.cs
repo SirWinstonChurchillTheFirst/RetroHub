@@ -39,6 +39,9 @@ internal sealed class SdlBackend : IPadBackend
     public string Name => "SDL3";
     public int Version { get; }
 
+    /// <summary>Currently open pads (diagnostics/tests; input thread only).</summary>
+    internal IReadOnlyList<GamepadInfo> OpenPads => _open.Values.Select(p => p.Info).ToList();
+
     private SdlBackend(int version) => Version = version;
 
     /// <summary>Loads SDL3.dll and initialises the gamepad subsystem; null (and a log entry) when not possible.</summary>

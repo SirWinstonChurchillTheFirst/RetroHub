@@ -31,8 +31,11 @@ public enum UiAction
 /// <summary>Button glyph family to show in the UI.</summary>
 public enum PadStyle { Xbox, PlayStation, Nintendo, Generic }
 
-/// <summary>A connected gamepad. <paramref name="InstanceId"/> is the SDL joystick instance id (SDL3 backend)
-/// or the XInput user slot 0..3 (XInput backend).</summary>
+/// <summary>A connected gamepad. <paramref name="InstanceId"/> identifies the pad for consumers: the SDL joystick
+/// instance id (SDL3 backend) or the XInput user slot 0..3 (XInput backend) at the time it was first announced via
+/// <see cref="GamepadService.Connected"/>. It stays the same across <see cref="GamepadService.Suspend"/>/
+/// <see cref="GamepadService.Resume"/> (SDL itself hands out a new id on every re-open), so the record that was
+/// announced in Connected is the one later reported in <see cref="GamepadService.Disconnected"/> and Pads.</summary>
 public sealed record GamepadInfo(int InstanceId, string Name, PadStyle Style);
 
 /// <summary>Gamepad buttons in SDL3 positional naming. Bit n = SDL_GamepadButton n.</summary>

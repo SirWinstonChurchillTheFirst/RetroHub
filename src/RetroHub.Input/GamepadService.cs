@@ -41,6 +41,7 @@ public sealed class GamepadService : IDisposable
     private const long ResumeGraceMs = 2000;
 
     private readonly GamepadBackendPreference _preference;
+    private readonly Func<IPadBackend?>? _backendFactory; // tests only
     private readonly InputTranslator _translator;
     private readonly object _gate = new();          // serialises Start/Stop/Suspend/Resume/Dispose
     private readonly object _sync = new();          // request/acknowledge handshake with the input thread
@@ -72,6 +73,11 @@ public sealed class GamepadService : IDisposable
         _preference = preference;
         _translator = new InputTranslator(options);
     }
+
+    /// <summary>Tests: uses <paramref name="backendFactory"/> (called on the input thread at Start/Resume) instead of
+    /// SDL3/XInput.</summary>
+    internal GamepadService(Func<IPadBackend?> backendFactory, InputTranslatorOptions? options = null)
+        : this(GamepadBackendPreference.Auto, options) => _backendFactory = backendFactory;
 
     /// <summary>A UI action (raised on the input thread).</summary>
     public event Action<UiAction>? ActionTriggered;
@@ -117,6 +123,17 @@ public sealed class GamepadService : IDisposable
     /// If <see cref="Suspend"/> was called before, the thread starts suspended.</summary>
     public void Start()
     {
+        if (_thread == Thread.CurrentThread)
+        {
+            // from an event handler: the thread is obviously running; only cancel a pending Stop() request.
+            // Taking _gate here could stall a UI-thread caller that holds it while waiting for this very thread.
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            lock (_sync)
+            {
+                if (_stopRequested) { _stopRequested = false; _requestSeq++; }
+            }
+            return;
+        }
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -126,12 +143,11 @@ public sealed class GamepadService : IDisposable
                 lock (_sync) stopping = _stopRequested;
                 if (!stopping && _thread.IsAlive) return; // already running
                 // a stop requested from an event handler (or a crashed thread): finish it first
-                if (_thread != Thread.CurrentThread && _thread.IsAlive && !_thread.Join(TimeSpan.FromSeconds(3)))
+                if (_thread.IsAlive && !_thread.Join(TimeSpan.FromSeconds(3)))
                 {
                     Log.Error("Input: previous input thread is still running; not starting a second one");
                     return;
                 }
-                if (_thread == Thread.CurrentThread) return;
                 _thread = null;
             }
             long seq;
@@ -227,7 +243,6 @@ public sealed class GamepadService : IDisposable
             }
             _suspended = suspended;
             if (_thread == null) return; // applied on Start
-            if (_thread == Thread.CurrentThread) return; // from an event handler: applied on the next loop iteration
             WaitApplied(seq);
             Log.Info(suspended ? "Input: gamepad service suspended" : $"Input: gamepad service resumed (backend {Backend})");
         }
@@ -278,8 +293,10 @@ public sealed class GamepadService : IDisposable
         var pads = new List<PadInput>(8);
         var added = new List<GamepadInfo>();
         var removed = new List<GamepadInfo>();
+        // backend pad id -> the GamepadInfo published to consumers (Pads/Connected/Disconnected). After Resume the
+        // backend re-opens a pad under a new id (SDL never reuses instance ids); the published info stays the same.
         var open = new Dictionary<int, GamepadInfo>();
-        List<GamepadInfo>? resumeMemo = null;   // pads open before Suspend (matched silently after Resume)
+        List<GamepadInfo>? resumeMemo = null;   // published pads open before Suspend (matched silently after Resume)
         long resumeMemoUntil = 0;
         bool everInitialised = false;
         bool initAttempted = false;
@@ -297,7 +314,10 @@ public sealed class GamepadService : IDisposable
 
                 if ((stop || wantSuspended) && backend != null)
                 {
-                    resumeMemo = stop ? null : open.Values.ToList();
+                    // keep memo entries of an earlier Suspend that have not reappeared yet (back-to-back games),
+                    // otherwise a pad lost during the first game would never get its Disconnected event
+                    if (stop) resumeMemo = null;
+                    else (resumeMemo ??= new()).AddRange(open.Values);
                     ShutdownBackend(ref backend, open);
                 }
                 if (stop || wantSuspended)
@@ -320,7 +340,17 @@ public sealed class GamepadService : IDisposable
                 }
 
                 if (backend != null) PollOnce(backend, clock.ElapsedMilliseconds, pads, added, removed, open,
-                    ref resumeMemo, resumeMemoUntil, ref consecutiveErrors);
+                    resumeMemo, ref consecutiveErrors);
+                if (resumeMemo != null && !wantSuspended && !stop && clock.ElapsedMilliseconds >= resumeMemoUntil)
+                {
+                    // pads that did not come back after Resume (also when no backend could be re-initialised)
+                    foreach (var gone in resumeMemo)
+                    {
+                        Log.Info($"Input: controller gone while suspended: {gone.Name}");
+                        Raise(Disconnected, gone);
+                    }
+                    resumeMemo = null;
+                }
 
                 lock (_sync)
                 {
@@ -348,6 +378,7 @@ public sealed class GamepadService : IDisposable
     {
         try
         {
+            if (_backendFactory != null) return _backendFactory();
             if (_preference != GamepadBackendPreference.XInputOnly && !_sdlUnavailable)
             {
                 var sdl = SdlBackend.TryCreate();
@@ -380,11 +411,12 @@ public sealed class GamepadService : IDisposable
         _pads = [];
         _translator.Reset();
         while (_rumble.TryDequeue(out _)) { }
+        _lastActivePad = -1; // backend ids change on re-open; until the next press, rumble targets all pads
     }
 
     private void PollOnce(IPadBackend backend, long now, List<PadInput> pads, List<GamepadInfo> added,
-        List<GamepadInfo> removed, Dictionary<int, GamepadInfo> open, ref List<GamepadInfo>? resumeMemo,
-        long resumeMemoUntil, ref int consecutiveErrors)
+        List<GamepadInfo> removed, Dictionary<int, GamepadInfo> open, List<GamepadInfo>? resumeMemo,
+        ref int consecutiveErrors)
     {
         pads.Clear(); added.Clear(); removed.Clear();
         try
@@ -402,30 +434,29 @@ public sealed class GamepadService : IDisposable
         // hot-plug bookkeeping + events
         if (removed.Count > 0 || added.Count > 0)
         {
-            foreach (var r in removed) open.Remove(r.InstanceId);
-            foreach (var a in added) open[a.InstanceId] = a;
-            _pads = open.Values.ToArray();
+            var gone = new List<GamepadInfo>(removed.Count);
             foreach (var r in removed)
+                if (open.Remove(r.InstanceId, out var published)) gone.Add(published);
+            var fresh = new List<GamepadInfo>(added.Count);
+            foreach (var a in added)
+            {
+                // same pad as before Suspend -> keep the identity the consumers already know, raise nothing
+                var known = resumeMemo != null ? TakeMatch(resumeMemo, a, open) : null;
+                open[a.InstanceId] = known ?? a;
+                if (known == null) fresh.Add(a);
+            }
+            _pads = open.Values.ToArray();
+            foreach (var r in gone)
             {
                 Log.Info($"Input: controller disconnected: {r.Name} ({r.Style})");
                 Raise(Disconnected, r);
             }
-            foreach (var a in added)
+            foreach (var a in fresh)
             {
-                if (resumeMemo != null && TakeMatch(resumeMemo, a)) continue; // same pad as before Suspend
                 Log.Info($"Input: controller connected: {a.Name} ({a.Style}, id {a.InstanceId}, {backend.Name})");
                 if (!_styleFromInput) SetLastUsedStyle(a.Style, fromInput: false);
                 Raise(Connected, a);
             }
-        }
-        if (resumeMemo != null && now >= resumeMemoUntil)
-        {
-            foreach (var gone in resumeMemo)
-            {
-                Log.Info($"Input: controller gone while suspended: {gone.Name}");
-                Raise(Disconnected, gone);
-            }
-            resumeMemo = null;
         }
 
         var actions = _translator.Update(pads, now);
@@ -444,12 +475,15 @@ public sealed class GamepadService : IDisposable
         foreach (var a in actions) Raise(ActionTriggered, a);
     }
 
-    private static bool TakeMatch(List<GamepadInfo> memo, GamepadInfo pad)
+    /// <summary>Finds (and removes) the pre-Suspend entry for a re-opened pad; null when it is a new pad.</summary>
+    private static GamepadInfo? TakeMatch(List<GamepadInfo> memo, GamepadInfo pad, Dictionary<int, GamepadInfo> open)
     {
-        int i = memo.FindIndex(m => m.Name == pad.Name && m.Style == pad.Style);
-        if (i < 0) return false;
+        int i = memo.FindIndex(m => m.Name == pad.Name && m.Style == pad.Style
+                                    && !open.Values.Any(o => o.InstanceId == m.InstanceId));
+        if (i < 0) return null;
+        var known = memo[i];
         memo.RemoveAt(i);
-        return true;
+        return known;
     }
 
     private void SetLastUsedStyle(PadStyle style, bool fromInput)
