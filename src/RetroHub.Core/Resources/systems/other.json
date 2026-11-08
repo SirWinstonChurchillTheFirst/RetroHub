@@ -1,5 +1,5 @@
 // Built-in systems: Atari (400–499), NEC (500–599), SNK (600–699), others (700–799).
-// Neo Geo (AES/MVS) is folded into "arcade" (FBNeo/MAME run the neogeo.zip romsets); see arcade.json.
+// Neo Geo (AES/MVS) is folded into "arcade" (FBNeo/MAME run the neogeo.zip romsets); see arcade-pc.json.
 [
   {
     "id": "atari2600",

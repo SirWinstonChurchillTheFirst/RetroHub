@@ -77,7 +77,7 @@
     "aspectRatio": 1.7647,
     "libretroName": "Sony - PlayStation Portable",
     "emulators": ["ppsspp", "retroarch/ppsspp"],
-    "accent": "#2B2B2B",
+    "accent": "#8C9BB5",
     "sortOrder": 210
   }
 ]

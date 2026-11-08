@@ -17,6 +17,10 @@ internal sealed partial class CatalogBuilder
         "fullscreen", "retroarchOverride",
     };
 
+    private const string FullscreenToken = "{fullscreen}";
+    /// <summary>Upper bound for EmbedProfile bar heights (px at 100 %); real menu/status bars are 20–40 px.</summary>
+    private const int MaxBarHeight = 200;
+
     private readonly bool _strictBuiltIns;
     private readonly List<string> _warnings = [];
     private readonly Dictionary<string, Entry<SystemDef>> _systems = new(StringComparer.OrdinalIgnoreCase);
@@ -142,7 +146,7 @@ internal sealed partial class CatalogBuilder
         var id = NormalizeId(d.Id);
         if (id == null)
         {
-            Warn($"{source}: System mit ungültiger ID „{d.Id}“ wird übersprungen (erlaubt: a–z, 0–9, „-“, „_“, „.“).");
+            Warn($"{source}: System mit ungültiger ID „{d.Id}“ wird übersprungen (erlaubt: a–z, 0–9, „-“, „_“, „.“ – nicht am Ende).");
             return null;
         }
         var ctx = $"{source}: System „{id}“";
@@ -185,6 +189,14 @@ internal sealed partial class CatalogBuilder
             refs.Add(new EmulatorRef(emuId, core).ToString());
         }
 
+        // JsonStringEnumConverter also accepts plain numbers, including undefined ones ("category": 42)
+        var category = d.Category;
+        if (!Enum.IsDefined(category))
+        {
+            Warn($"{ctx}: unbekannte Kategorie „{(int)category}“ – „{SystemCategory.Console}“ wird verwendet.");
+            category = SystemCategory.Console;
+        }
+
         double? aspect = d.AspectRatio;
         if (aspect is { } a && !(a >= 0.1 && a <= 10))
         {
@@ -196,6 +208,7 @@ internal sealed partial class CatalogBuilder
         {
             Id = id,
             Name = string.IsNullOrWhiteSpace(d.Name) ? id : d.Name.Trim(),
+            Category = category,
             ShortName = d.ShortName?.Trim() ?? "",
             Manufacturer = d.Manufacturer?.Trim() ?? "",
             Folders = folders.ToArray(),
@@ -215,10 +228,17 @@ internal sealed partial class CatalogBuilder
         var id = NormalizeId(d.Id);
         if (id == null)
         {
-            Warn($"{source}: Emulator mit ungültiger ID „{d.Id}“ wird übersprungen (erlaubt: a–z, 0–9, „-“, „_“, „.“).");
+            Warn($"{source}: Emulator mit ungültiger ID „{d.Id}“ wird übersprungen (erlaubt: a–z, 0–9, „-“, „_“, „.“ – nicht am Ende).");
             return null;
         }
         var ctx = $"{source}: Emulator „{id}“";
+
+        // the kind decides how the planner starts it – guessing would launch it the wrong way, so skip the entry
+        if (!Enum.IsDefined(d.Kind))
+        {
+            Warn($"{ctx}: unbekannte Art „{(int)d.Kind}“ (erlaubt: {string.Join(", ", Enum.GetNames<EmulatorKind>())}) – der Emulator wird übersprungen.");
+            return null;
+        }
 
         var exe = new List<string>();
         foreach (var raw in d.Exe ?? [])
@@ -265,10 +285,29 @@ internal sealed partial class CatalogBuilder
             foreach (Match m in PlaceholderRegex().Matches(token))
                 if (!KnownPlaceholders.Contains(m.Groups[1].Value))
                     Warn($"{ctx}: unbekannter Platzhalter „{m.Value}“ in den Argumenten.");
+        // "{fullscreen}" only works as a token of its own (it expands to FullscreenArgs or to nothing)
+        foreach (var token in args.Where(t => t != FullscreenToken && t.Contains(FullscreenToken, StringComparison.Ordinal)))
+            Warn($"{ctx}: „{FullscreenToken}“ muss ein eigenes Argument sein, „{token}“ wird nicht ersetzt.");
+        if (fsArgs.Any(t => t.Contains(FullscreenToken, StringComparison.Ordinal)))
+        {
+            Warn($"{ctx}: „{FullscreenToken}“ ist in den Vollbild-Argumenten nicht erlaubt und wird entfernt.");
+            fsArgs = fsArgs.Where(t => !t.Contains(FullscreenToken, StringComparison.Ordinal)).ToArray();
+        }
 
-        var modes = (d.Modes ?? []).Distinct().ToList();
-        if (modes.Count == 0) modes.Add(d.DefaultMode);
+        var modes = new List<LaunchMode>();
+        foreach (var m in d.Modes ?? [])
+        {
+            if (!Enum.IsDefined(m)) { Warn($"{ctx}: unbekannter Startmodus „{(int)m}“ wird ignoriert."); continue; }
+            if (!modes.Contains(m)) modes.Add(m);
+        }
         var defaultMode = d.DefaultMode;
+        if (!Enum.IsDefined(defaultMode))
+        {
+            var fallback = modes.Count > 0 ? modes[0] : LaunchMode.Fullscreen;
+            Warn($"{ctx}: unbekannter Standardmodus „{(int)defaultMode}“ – „{fallback}“ wird verwendet.");
+            defaultMode = fallback;
+        }
+        if (modes.Count == 0) modes.Add(defaultMode);
         if (!modes.Contains(defaultMode))
         {
             Warn($"{ctx}: Standardmodus „{defaultMode}“ ist nicht in den unterstützten Modi; „{modes[0]}“ wird verwendet.");
@@ -280,6 +319,7 @@ internal sealed partial class CatalogBuilder
             Warn($"{ctx}: Modus „Embedded“ ohne Einbettungsprofil – Standardwerte werden verwendet.");
             embed = new EmbedProfile();
         }
+        if (embed != null) embed = NormalizeEmbed(embed, ctx);
 
         return d with
         {
@@ -303,7 +343,7 @@ internal sealed partial class CatalogBuilder
 
     // ------------------------------------------------------------------ helpers
 
-    /// <summary>Lower-case id of [a-z0-9][a-z0-9._-]*, max 64 chars; null if invalid.</summary>
+    /// <summary>Lower-case id of [a-z0-9][a-z0-9._-]*, max 64 chars, not ending in "."; null if invalid.</summary>
     internal static string? NormalizeId(string? raw)
     {
         var s = raw?.Trim().ToLowerInvariant();
@@ -371,6 +411,24 @@ internal sealed partial class CatalogBuilder
         return list.ToArray();
     }
 
+    /// <summary>Bar heights must be sane pixel values (the embedder subtracts them from the host size).</summary>
+    private EmbedProfile NormalizeEmbed(EmbedProfile e, string ctx)
+    {
+        int Clamp(int value, string what)
+        {
+            if (value is >= 0 and <= MaxBarHeight) return value;
+            var fixedValue = Math.Clamp(value, 0, MaxBarHeight);
+            Warn($"{ctx}: Leistenhöhe {what} = {value} ist ungültig (0–{MaxBarHeight}), {fixedValue} wird verwendet.");
+            return fixedValue;
+        }
+        return e with
+        {
+            BarTop = Clamp(e.BarTop, "oben"),
+            BarBottom = Clamp(e.BarBottom, "unten"),
+            ReadyTitleContains = string.IsNullOrEmpty(e.ReadyTitleContains) ? null : e.ReadyTitleContains,
+        };
+    }
+
     private string? NormalizeAccent(string? raw, string ctx)
     {
         if (string.IsNullOrWhiteSpace(raw)) return null;
@@ -397,7 +455,8 @@ internal sealed partial class CatalogBuilder
     private static bool IsPlainName(string s) =>
         AppPaths.IsSafeName(s) && s.IndexOfAny(['/', '\\', ':', '*', '?']) < 0 && s.Trim() == s && !s.EndsWith('.');
 
-    [GeneratedRegex("^[a-z0-9][a-z0-9._-]{0,63}$")]
+    // ids are folder names (games/<id>, saves/<id>, …): no trailing "." – Windows strips it ("gba." = "gba")
+    [GeneratedRegex("^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9_-])?$")]
     private static partial Regex IdRegex();
 
     [GeneratedRegex(@"^\.[a-z0-9_+-]{1,15}$")]

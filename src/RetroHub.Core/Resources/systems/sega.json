@@ -47,7 +47,7 @@
     "aspectRatio": 1.1111,
     "libretroName": "Sega - Game Gear",
     "emulators": ["retroarch/genesis_plus_gx", "retroarch/gearsystem"],
-    "accent": "#1A1A1A",
+    "accent": "#2D9CDB",
     "sortOrder": 310
   },
   {

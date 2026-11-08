@@ -39,12 +39,14 @@ public sealed class Catalog : ICatalog
             .OrderBy(s => s.SortOrder)
             .ThenBy(s => s.Name, StringComparer.InvariantCultureIgnoreCase)
             .ThenBy(s => s.Id, StringComparer.Ordinal)
-            .ToList();
+            .ToList()
+            .AsReadOnly(); // read-only wrappers: callers cannot mutate the shared catalog by casting
         Emulators = emulators
             .OrderBy(e => e.Name, StringComparer.InvariantCultureIgnoreCase)
             .ThenBy(e => e.Id, StringComparer.Ordinal)
-            .ToList();
-        LoadWarnings = warnings;
+            .ToList()
+            .AsReadOnly();
+        LoadWarnings = warnings.AsReadOnly();
 
         _systemsById = Systems.ToDictionary(s => s.Id, StringComparer.OrdinalIgnoreCase);
         _emulatorsById = Emulators.ToDictionary(e => e.Id, StringComparer.OrdinalIgnoreCase);
