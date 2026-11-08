@@ -6,8 +6,17 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <!-- native SDL3.dll only; the bindings are our own [LibraryImport]s -->
+    <!-- native SDL3.dll only; the bindings are our own [LibraryImport]s (Native/Sdl3.cs).
+         Delivery: the package ships runtimes/win-{x64,x86,arm64}/native/SDL3.dll (standard NuGet runtime assets).
+         - RID-specific consumers (RetroHub.App: RuntimeIdentifier=win-x64) get SDL3.dll copied flat next to the exe.
+         - RID-less consumers (the test project) get bin/.../runtimes/win-x64/native/SDL3.dll plus a deps.json entry,
+           which the .NET host uses to resolve "SDL3". Native/NativeLibraryResolver.cs adds an explicit fallback for
+           both layouts in case the deps.json is missing. -->
     <PackageReference Include="SDL3-CS.Windows" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- logging only (RetroHub.Core.Logging.Log) -->
+    <ProjectReference Include="..\RetroHub.Core\RetroHub.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="RetroHub.Core.Tests" />
