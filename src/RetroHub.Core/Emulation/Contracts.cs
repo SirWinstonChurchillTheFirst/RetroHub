@@ -47,6 +47,11 @@ public sealed record LaunchPlan
     public IReadOnlyList<string> Arguments { get; init; } = [];
     public string? WorkingDirectory { get; init; }
     public IReadOnlyDictionary<string, string> Environment { get; init; } = new Dictionary<string, string>();
+    /// <summary>
+    /// Start via the Windows shell (ShellExecute) instead of CreateProcess: .lnk shortcuts and URLs (steam://…).
+    /// Such sessions usually cannot be tracked (the shell hands off to another program) → no playtime, only a launch count.
+    /// </summary>
+    public bool UseShellExecute { get; init; }
     public EmbedProfile? Embed { get; init; }
     public double? AspectRatio { get; init; }
     public IReadOnlyList<LaunchProblem> Problems { get; init; } = [];
