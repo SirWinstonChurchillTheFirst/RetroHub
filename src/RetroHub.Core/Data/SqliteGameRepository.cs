@@ -71,6 +71,9 @@ public sealed class SqliteGameRepository : IGameRepository
         {
             var dir = Path.GetDirectoryName(DatabaseFile);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            // Checked before SQLite touches the file: on a failed open SQLite may delete/replay the -wal next to it,
+            // so a foreign file must be preserved together with its side files first.
+            if (HasForeignHeader(DatabaseFile)) throw new CorruptDatabaseException("file does not start with the SQLite header");
             InitializeAt(fileCs, isFile: true);
             _connectionString = fileCs;
             return;
@@ -87,28 +90,42 @@ public sealed class SqliteGameRepository : IGameRepository
         }
 
         if (corrupt && TryRecover(fileCs)) return;
+        ClearPool(fileCs);
         OpenInMemoryFallback();
     }
 
     private bool TryRecover(string fileCs)
     {
         ClearPool(fileCs);
-        var preserved = SafeFile.PreserveCorrupt(DatabaseFile);
+        string? preserved;
+        try { preserved = SafeFile.PreserveCorrupt(DatabaseFile); }
+        catch (Exception ex) // PreserveCorrupt only catches IOException (e.g. UnauthorizedAccessException escapes)
+        {
+            Log.Error($"Preserving the damaged database '{DatabaseFile}' failed", ex);
+            preserved = null;
+        }
         if (preserved == null)
         {
             Log.Error($"Could not preserve the damaged database '{DatabaseFile}'; leaving it untouched and using a temporary in-memory library");
             return false;
         }
-        // The WAL may hold the newest pages: keep a copy next to the preserved file (best effort).
+        // The WAL / rollback journal may hold the newest pages: they are deleted below, so they must be copied first.
+        // If a copy fails, nothing is deleted (the user's data must never be lost).
         foreach (var suffix in new[] { "-wal", "-journal" })
         {
             var side = DatabaseFile + suffix;
             try { if (File.Exists(side)) File.Copy(side, preserved + suffix, overwrite: true); }
-            catch (Exception ex) { Log.Warn($"Could not preserve '{side}'", ex); }
+            catch (Exception ex)
+            {
+                Log.Error($"Could not preserve '{side}'; leaving the damaged database untouched and using a temporary in-memory library", ex);
+                PreservedCorruptFile = preserved;
+                return false;
+            }
         }
         try
         {
-            foreach (var suffix in new[] { "", "-wal", "-shm", "-journal" })
+            // Side files first: a stale -wal next to a fresh database file would be replayed into it.
+            foreach (var suffix in new[] { "-wal", "-shm", "-journal", "" })
             {
                 var f = DatabaseFile + suffix;
                 if (File.Exists(f)) File.Delete(f);
@@ -174,6 +191,26 @@ public sealed class SqliteGameRepository : IGameRepository
     };
 
     private sealed class CorruptDatabaseException(string message) : Exception(message);
+
+    private static ReadOnlySpan<byte> SqliteMagic => "SQLite format 3\0"u8;
+
+    /// <summary>True when the file exists, is not empty and does not start with the SQLite magic (an empty file is a valid new database).</summary>
+    private static bool HasForeignHeader(string file)
+    {
+        try
+        {
+            if (!File.Exists(file)) return false;
+            using var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            if (fs.Length == 0) return false;
+            Span<byte> head = stackalloc byte[16];
+            var n = fs.ReadAtLeast(head, head.Length, throwOnEndOfStream: false);
+            return n < head.Length || !head.SequenceEqual(SqliteMagic);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false; // unreadable: let SQLite report it (falls back to the in-memory library without deleting anything)
+        }
+    }
 
     /// <summary>
     /// True for UNC paths (\\server\share, \\?\UNC\...) and mapped network drives.
@@ -263,16 +300,15 @@ public sealed class SqliteGameRepository : IGameRepository
         return r is DBNull ? null : r;
     }
 
-    internal static string ToDb(DateTime dt)
+    /// <summary>The UTC instant a value is stored as: Local is converted, Unspecified is taken as UTC.</summary>
+    private static DateTime AsUtc(DateTime dt) => dt.Kind switch
     {
-        var utc = dt.Kind switch
-        {
-            DateTimeKind.Local => dt.ToUniversalTime(),
-            DateTimeKind.Unspecified => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
-            _ => dt,
-        };
-        return utc.ToString(DateFormat, CultureInfo.InvariantCulture);
-    }
+        DateTimeKind.Local => dt.ToUniversalTime(),
+        DateTimeKind.Unspecified => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
+        _ => dt,
+    };
+
+    internal static string ToDb(DateTime dt) => AsUtc(dt).ToString(DateFormat, CultureInfo.InvariantCulture);
 
     private static object ToDb(DateTime? dt) => dt.HasValue ? ToDb(dt.Value) : DBNull.Value;
 
@@ -301,6 +337,22 @@ public sealed class SqliteGameRepository : IGameRepository
         return absolute ? p.Replace('/', '\\') : p.Replace('\\', '/');
     }
 
+    /// <summary>
+    /// Case-insensitive identity of a canonical path (games.path_key). Uses full Unicode upper-casing like Windows file
+    /// name comparison; SQLite's NOCASE only folds ASCII ("É" ≠ "é").
+    /// </summary>
+    internal static string PathKey(string normalizedPath) => normalizedPath.ToUpperInvariant();
+
+    /// <summary>Canonical folder path: like <see cref="NormalizePath"/>, without trailing separators ("E:\Roms\" → "E:\Roms"; "E:\" stays).</summary>
+    internal static string NormalizeFolderPath(string path)
+    {
+        var p = NormalizePath(path);
+        var trimmed = p.TrimEnd('\\', '/');
+        if (trimmed.Length == 0 || trimmed.Length == p.Length) return p;
+        if (trimmed.Length == 2 && trimmed[1] == ':') return trimmed + @"\"; // drive root; "E:" alone would be drive-relative
+        return trimmed;
+    }
+
     private static string EscapeLike(string s) =>
         s.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_");
 
@@ -308,7 +360,7 @@ public sealed class SqliteGameRepository : IGameRepository
 
     private static readonly string[] Columns =
     [
-        "system_id", "path", "title", "title_norm", "sort_title", "sort_key", "search_norm", "kind", "status", "size",
+        "system_id", "path", "path_key", "title", "title_norm", "sort_title", "sort_key", "search_norm", "kind", "status", "size",
         "file_time_utc", "crc32", "serial", "region", "added_utc", "last_played_utc", "play_seconds", "play_count",
         "favorite", "hidden", "emulator_override", "launch_mode_override", "cover_path", "background_path", "logo_path",
         "developer", "publisher", "genre", "year", "players", "description", "extra_args", "folder_id",
@@ -374,7 +426,7 @@ public sealed class SqliteGameRepository : IGameRepository
             SearchText.Normalize(title), SearchText.Normalize(g.SortTitle), SearchText.Normalize(g.Developer), SearchText.Normalize(g.Genre));
         return
         [
-            g.SystemId, path, title, SearchText.Normalize(title), Db(g.SortTitle), sortKey, search, (int)g.Kind, (int)g.Status, g.Size,
+            g.SystemId, path, PathKey(path), title, SearchText.Normalize(title), Db(g.SortTitle), sortKey, search, (int)g.Kind, (int)g.Status, g.Size,
             ToDb(g.FileTimeUtc), Db(g.Crc32), Db(g.Serial), Db(g.Region), ToDb(g.AddedUtc), ToDb(g.LastPlayedUtc), Math.Max(0, g.PlaySeconds),
             Math.Max(0, g.PlayCount), g.Favorite ? 1 : 0, g.Hidden ? 1 : 0, Db(g.EmulatorOverride),
             g.LaunchModeOverride.HasValue ? (int)g.LaunchModeOverride.Value : DBNull.Value, Db(g.CoverPath), Db(g.BackgroundPath),
@@ -392,8 +444,8 @@ public sealed class SqliteGameRepository : IGameRepository
         {
             _byId = Cmd(c, tx, $"SELECT {SelectColumns} FROM games WHERE id = @id;");
             _byId.Parameters.Add("@id", SqliteType.Integer);
-            _byPath = Cmd(c, tx, $"SELECT {SelectColumns} FROM games WHERE path = @path;");
-            _byPath.Parameters.Add("@path", SqliteType.Text);
+            _byPath = Cmd(c, tx, $"SELECT {SelectColumns} FROM games WHERE path_key = @key;");
+            _byPath.Parameters.Add("@key", SqliteType.Text);
             _insert = Cmd(c, tx, InsertSql);
             _update = Cmd(c, tx, UpdateSql);
             for (var i = 0; i < Columns.Length; i++)
@@ -426,7 +478,7 @@ public sealed class SqliteGameRepository : IGameRepository
             }
             if (existing == null)
             {
-                _byPath.Parameters["@path"].Value = path;
+                _byPath.Parameters["@key"].Value = PathKey(path);
                 existing = ReadOne(_byPath);
             }
 
@@ -501,7 +553,8 @@ public sealed class SqliteGameRepository : IGameRepository
     {
         m.PlaySeconds = Math.Max(old.PlaySeconds, m.PlaySeconds);
         m.PlayCount = Math.Max(old.PlayCount, m.PlayCount);
-        if (old.LastPlayedUtc.HasValue && (!m.LastPlayedUtc.HasValue || m.LastPlayedUtc.Value.ToUniversalTime() < old.LastPlayedUtc.Value))
+        // Compare the way the values are stored (ToDb treats Unspecified as UTC; ToUniversalTime would treat it as local).
+        if (old.LastPlayedUtc.HasValue && (!m.LastPlayedUtc.HasValue || AsUtc(m.LastPlayedUtc.Value) < AsUtc(old.LastPlayedUtc.Value)))
             m.LastPlayedUtc = old.LastPlayedUtc;
     }
 
@@ -582,8 +635,8 @@ public sealed class SqliteGameRepository : IGameRepository
     {
         if (string.IsNullOrWhiteSpace(portablePath)) return null;
         using var c = Connect();
-        using var cmd = Cmd(c, null, $"SELECT {SelectColumns} FROM games WHERE path = @path;");
-        cmd.Parameters.AddWithValue("@path", NormalizePath(portablePath));
+        using var cmd = Cmd(c, null, $"SELECT {SelectColumns} FROM games WHERE path_key = @key;");
+        cmd.Parameters.AddWithValue("@key", PathKey(NormalizePath(portablePath)));
         using var r = cmd.ExecuteReader();
         return r.Read() ? ReadGame(r) : null;
     }
@@ -767,7 +820,7 @@ public sealed class SqliteGameRepository : IGameRepository
     public long UpsertFolder(LibraryFolder folder)
     {
         ArgumentNullException.ThrowIfNull(folder);
-        var path = NormalizePath(folder.Path);
+        var path = NormalizeFolderPath(folder.Path);
         return Write((c, tx) =>
         {
             long? id = null;
@@ -821,7 +874,7 @@ public sealed class SqliteGameRepository : IGameRepository
     /// </summary>
     public long EnsureBuiltInFolder(string portableGamesPath)
     {
-        var path = NormalizePath(portableGamesPath);
+        var path = NormalizeFolderPath(portableGamesPath);
         long resultId = 0;
         Write((c, tx) =>
         {

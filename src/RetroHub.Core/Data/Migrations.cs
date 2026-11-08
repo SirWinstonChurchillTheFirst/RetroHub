@@ -31,7 +31,11 @@ internal static class Migrations
         foreach (var m in All)
         {
             if (m.Version <= current) continue;
-            using var tx = c.BeginTransaction();
+            // BEGIN IMMEDIATE takes the write lock first; then re-read the version inside the transaction, because
+            // another connection/process opening the same file at the same moment may have migrated meanwhile.
+            using var tx = c.BeginTransaction(deferred: false);
+            current = GetUserVersion(c, tx);
+            if (m.Version <= current) { tx.Commit(); continue; }
             m.Apply(c, tx);
             Exec(c, tx, $"PRAGMA user_version = {m.Version};");
             tx.Commit();
@@ -41,9 +45,10 @@ internal static class Migrations
         return current;
     }
 
-    public static int GetUserVersion(SqliteConnection c)
+    public static int GetUserVersion(SqliteConnection c, SqliteTransaction? tx = null)
     {
         using var cmd = c.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText = "PRAGMA user_version;";
         return Convert.ToInt32(cmd.ExecuteScalar());
     }
@@ -59,6 +64,9 @@ internal static class Migrations
     // Dates are ISO-8601 UTC text with 100 ns precision ("yyyy-MM-ddTHH:mm:ss.fffffffZ"): fixed width, so text
     // comparison/ORDER BY/MAX are chronological, and file times round-trip exactly (scanner change detection).
     // Enums are stored as INTEGER. Booleans as 0/1.
+    // games.path_key = canonical path upper-cased with invariant (full Unicode) case mapping, like Windows compares
+    // file names. COLLATE NOCASE only folds ASCII, so "Pokémon.gba" and "POKÉMON.GBA" would otherwise be two rows.
+    // (Changed in V1 before the first release; no database with the older V1 layout exists.)
     private const string V1 = """
         CREATE TABLE folders (
             id             INTEGER PRIMARY KEY,
@@ -75,6 +83,7 @@ internal static class Migrations
             id                    INTEGER PRIMARY KEY,
             system_id             TEXT    NOT NULL,
             path                  TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+            path_key              TEXT    NOT NULL UNIQUE,
             title                 TEXT    NOT NULL,
             title_norm            TEXT    NOT NULL DEFAULT '',
             sort_title            TEXT,
