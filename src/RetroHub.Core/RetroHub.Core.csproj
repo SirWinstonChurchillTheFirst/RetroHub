@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- RetroHub.Core: everything that is not UI — paths, config, catalog (systems/emulators/plugins),
+       library database, scanner, emulator management, process/session control, playtime. -->
+  <PropertyGroup>
+    <RootNamespace>RetroHub.Core</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- built-in system/emulator definitions + language files, shipped as app/resources/** -->
+    <None Include="Resources\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="resources\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="RetroHub.Core.Tests" />
+  </ItemGroup>
+</Project>

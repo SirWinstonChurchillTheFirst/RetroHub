@@ -1,0 +1,23 @@
+# build output
+bin/
+obj/
+dist/
+*.user
+.vs/
+.idea/
+_downloads/
+
+# portable user data (never in git: ROMs, emulators, BIOS, saves …)
+/games/
+/emulators/
+/bios/
+/saves/
+/savestates/
+/screenshots/
+/artwork/
+/data/
+/backups/
+/themes/
+/plugins/
+/app/
+/RetroHub.exe

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- RetroHub.Input: gamepad input for the launcher UI (SDL3, PlayStation/Xbox/generic pads) with an XInput
+       fallback, translated into abstract UI actions; plus the in-game exit-combo watcher. No UI dependency. -->
+  <PropertyGroup>
+    <RootNamespace>RetroHub.Input</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- native SDL3.dll only; the bindings are our own [LibraryImport]s -->
+    <PackageReference Include="SDL3-CS.Windows" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="RetroHub.Core.Tests" />
+  </ItemGroup>
+</Project>

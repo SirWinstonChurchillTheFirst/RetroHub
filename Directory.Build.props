@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Version>0.1.0</Version>
+    <Company>RetroHub</Company>
+    <Product>RetroHub</Product>
+    <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
+    <!-- Windows-only P/Invoke code is guarded by OperatingSystem.IsWindows() -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+</Project>

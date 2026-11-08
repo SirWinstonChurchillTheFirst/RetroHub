@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RetroHub.App/RetroHub.App.csproj" />
+    <Project Path="src/RetroHub.Core/RetroHub.Core.csproj" />
+    <Project Path="src/RetroHub.Input/RetroHub.Input.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RetroHub.Core.Tests/RetroHub.Core.Tests.csproj" />
+  </Folder>
+</Solution>
