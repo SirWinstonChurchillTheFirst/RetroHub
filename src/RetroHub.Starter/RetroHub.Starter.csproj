@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- RetroHub.exe in the portable root: a tiny NativeAOT launcher that starts app\RetroHub.App.exe,
+       so the root folder stays clean (only RetroHub.exe + data folders). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>RetroHub</AssemblyName>
+    <RootNamespace>RetroHub.Starter</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <StackTraceSupport>false</StackTraceSupport>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ApplicationIcon Condition="Exists('..\RetroHub.App\Assets\retrohub.ico')">..\RetroHub.App\Assets\retrohub.ico</ApplicationIcon>
+  </PropertyGroup>
+</Project>

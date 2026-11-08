@@ -3,6 +3,7 @@
     <Project Path="src/RetroHub.App/RetroHub.App.csproj" />
     <Project Path="src/RetroHub.Core/RetroHub.Core.csproj" />
     <Project Path="src/RetroHub.Input/RetroHub.Input.csproj" />
+    <Project Path="src/RetroHub.Starter/RetroHub.Starter.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/RetroHub.Core.Tests/RetroHub.Core.Tests.csproj" />

@@ -1,0 +1,23 @@
+RetroHub – Retro-Gaming-Launcher (portabel)
+==========================================
+
+Starten:  RetroHub.exe doppelklicken. Es ist keine Installation nötig.
+          Alle Daten bleiben in diesem Ordner – du kannst ihn auf eine andere Platte oder einen USB-Stick kopieren.
+
+Beim ersten Start legt RetroHub diese Ordner an:
+
+  games\<system>\       deine Spiele, z. B. games\gba\, games\snes\, games\ps1\, games\pc\
+  emulators\<name>\     Emulatoren, z. B. emulators\retroarch\, emulators\dolphin\, emulators\pcsx2\
+  bios\                 BIOS-Dateien (werden NICHT mitgeliefert – nur eigene, legal erstellte Dumps)
+  saves\  savestates\  screenshots\   Spielstände, Savestates, Screenshots
+  artwork\covers\<system>\            Cover (Dateiname wie die ROM, .png/.jpg)
+  data\                 Datenbank, Einstellungen, Cache, Logs (data\logs\ bei Problemen)
+  plugins\              eigene System- und Emulator-Definitionen (JSON)
+  backups\              Sicherungen
+
+RetroHub lädt keine Spiele, ROMs oder BIOS-Dateien herunter.
+Emulatoren lädst du von den offiziellen Seiten (Links auf der Seite "Emulatoren") und entpackst sie in emulators\<name>\.
+
+Bedienung: Maus, Tastatur oder Controller (Xbox, PlayStation, generische Gamepads).
+  A / Kreuz = Starten · B / Kreis = Zurück · X = Favorit · Y = Suche · Start = Menü
+  Während eines Spiels: Select + Start gedrückt halten = zurück zu RetroHub.

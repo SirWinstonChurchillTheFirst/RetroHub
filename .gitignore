@@ -21,3 +21,5 @@ _downloads/
 /plugins/
 /app/
 /RetroHub.exe
+build/obj/
+artifacts/
