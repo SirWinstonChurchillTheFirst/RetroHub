@@ -189,18 +189,18 @@ public sealed class ReviewRegressionTests : IDisposable
     // ───────────────────────── scheduling ─────────────────────────
 
     /// <summary>Delegating catalog that blocks the scan thread when the walk reaches a given folder name.</summary>
-    private sealed class BlockingCatalog(Catalog.ICatalog inner, string blockOn) : Catalog.ICatalog
+    private sealed class BlockingCatalog(global::RetroHub.Core.Catalog.ICatalog inner, string blockOn) : global::RetroHub.Core.Catalog.ICatalog
     {
         public readonly ManualResetEventSlim Reached = new(), Release = new();
         private int _once = 1;
-        public IReadOnlyList<Catalog.SystemDef> Systems => inner.Systems;
-        public IReadOnlyList<Catalog.EmulatorDef> Emulators => inner.Emulators;
+        public IReadOnlyList<global::RetroHub.Core.Catalog.SystemDef> Systems => inner.Systems;
+        public IReadOnlyList<global::RetroHub.Core.Catalog.EmulatorDef> Emulators => inner.Emulators;
         public IReadOnlyList<string> LoadWarnings => inner.LoadWarnings;
-        public Catalog.SystemDef? GetSystem(string id) => inner.GetSystem(id);
-        public Catalog.EmulatorDef? GetEmulator(string id) => inner.GetEmulator(id);
-        public IReadOnlyList<Catalog.SystemDef> SystemsForExtension(string extension) => inner.SystemsForExtension(extension);
+        public global::RetroHub.Core.Catalog.SystemDef? GetSystem(string id) => inner.GetSystem(id);
+        public global::RetroHub.Core.Catalog.EmulatorDef? GetEmulator(string id) => inner.GetEmulator(id);
+        public IReadOnlyList<global::RetroHub.Core.Catalog.SystemDef> SystemsForExtension(string extension) => inner.SystemsForExtension(extension);
 
-        public Catalog.SystemDef? SystemForFolder(string folderName)
+        public global::RetroHub.Core.Catalog.SystemDef? SystemForFolder(string folderName)
         {
             if (folderName.Equals(blockOn, StringComparison.OrdinalIgnoreCase) && Interlocked.Exchange(ref _once, 0) == 1)
             {
