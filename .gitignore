@@ -24,3 +24,5 @@ _downloads/
 build/obj/
 artifacts/
 .playwright-mcp/
+
+.worktrees/
