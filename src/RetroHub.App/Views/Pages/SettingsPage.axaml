@@ -1,0 +1,271 @@
+<p:PageBase xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:p="using:RetroHub.App.Views.Pages"
+            xmlns:vm="using:RetroHub.App.ViewModels"
+            xmlns:c="using:RetroHub.App.Controls"
+            xmlns:l="using:RetroHub.App.Localization"
+            x:Class="RetroHub.App.Views.Pages.SettingsPage"
+            x:DataType="vm:SettingsViewModel">
+  <p:PageBase.Styles>
+    <Style Selector="Grid.row">
+      <Setter Property="Margin" Value="0,4" />
+      <Setter Property="MinHeight" Value="52" />
+    </Style>
+    <Style Selector="TextBlock.rowTitle">
+      <Setter Property="FontSize" Value="14.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.rowHint">
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+    <Style Selector="ToggleSwitch">
+      <Setter Property="OnContent" Value="" />
+      <Setter Property="OffContent" Value="" />
+      <Setter Property="MinWidth" Value="0" />
+    </Style>
+    <!-- round accent swatches: the focus ring follows the circle -->
+    <Style Selector="Button.swatch /template/ Border#PART_Ring">
+      <Setter Property="CornerRadius" Value="24" />
+    </Style>
+  </p:PageBase.Styles>
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="40,4,40,40" MaxWidth="980" HorizontalAlignment="Left" Spacing="22">
+      <StackPanel Spacing="2">
+        <TextBlock Text="{l:T nav.settings}" Classes="title" />
+        <TextBlock Text="{l:T settings.intro}" Classes="meta" />
+      </StackPanel>
+
+      <!-- appearance -->
+      <Border Classes="glass" Padding="28,24">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{l:T settings.appearance}" Classes="h2" Margin="0,0,0,6" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.accent}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.accent.hint}" Classes="rowHint" />
+            </StackPanel>
+            <ItemsControl Grid.Column="1" Name="AccentList" ItemsSource="{Binding Accents}" VerticalAlignment="Center" ClipToBounds="False">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="10" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:AccentOption">
+                  <Button Theme="{StaticResource RhIconButton}" Classes="swatch" Width="40" Height="40" CornerRadius="20" Padding="3" ToolTip.Tip="{Binding Name}"
+                          Classes.selected="{Binding IsSelected}" Background="Transparent" BorderThickness="0"
+                          HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                          Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectAccentCommand}" CommandParameter="{Binding}">
+                    <Panel>
+                      <Ellipse Fill="{Binding Swatch}" />
+                      <c:RhIcon Data="{StaticResource Icon.Check}" Width="16" Height="16" Foreground="White" IsVisible="{Binding IsSelected}" StrokeThickness="2.6" />
+                    </Panel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.motion}" Classes="rowTitle" />
+              <TextBlock Text="{Binding MotionHint}" Classes="rowHint" />
+            </StackPanel>
+            <Border Grid.Column="1" Classes="chip" Padding="4" CornerRadius="15" VerticalAlignment="Center">
+              <ItemsControl ItemsSource="{Binding MotionOptions}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="2" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ChoiceOption">
+                    <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}" Content="{Binding Label}" BorderThickness="0"
+                            Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectMotionCommand}" CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.sidebar}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.sidebar.hint}" Classes="rowHint" />
+            </StackPanel>
+            <Border Grid.Column="1" Classes="chip" Padding="4" CornerRadius="15" VerticalAlignment="Center">
+              <ItemsControl ItemsSource="{Binding SidebarOptions}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="2" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ChoiceOption">
+                    <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}" Content="{Binding Label}" BorderThickness="0"
+                            Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectSidebarCommand}" CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.language}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.language.hint}" Classes="rowHint" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}" Width="220" VerticalAlignment="Center">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChoiceOption">
+                  <TextBlock Text="{Binding Label}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.fullscreen}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.fullscreen.hint}" Classes="rowHint" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartFullscreen}" VerticalAlignment="Center" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.hints}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.hints.hint}" Classes="rowHint" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowHints}" VerticalAlignment="Center" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- controller -->
+      <Border Classes="glass" Padding="28,24">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+            <TextBlock Text="{l:T settings.controller}" Classes="h2" />
+            <Border Grid.Column="1" Classes="chip">
+              <TextBlock Text="{Binding ControllerStatus}" />
+            </Border>
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.controller.enabled}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.controller.enabled.hint}" Classes="rowHint" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ControllerEnabled}" VerticalAlignment="Center" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.glyphs}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.glyphs.hint}" Classes="rowHint" />
+            </StackPanel>
+            <Border Grid.Column="1" Classes="chip" Padding="4" CornerRadius="15" VerticalAlignment="Center">
+              <ItemsControl ItemsSource="{Binding GlyphOptions}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="2" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ChoiceOption">
+                    <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}" Content="{Binding Label}" BorderThickness="0"
+                            Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectGlyphsCommand}" CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.exitCombo}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.exitCombo.hint}" Classes="rowHint" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+              <Slider Width="200" Minimum="0" Maximum="3" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding ExitComboSeconds}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding ExitComboText}" Width="64" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- library -->
+      <Border Classes="glass" Padding="28,24">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{l:T settings.library}" Classes="h2" Margin="0,0,0,6" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.scanOnStartup}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.scanOnStartup.hint}" Classes="rowHint" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ScanOnStartup}" VerticalAlignment="Center" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.watchFolders}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.watchFolders.hint}" Classes="rowHint" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding WatchFolders}" VerticalAlignment="Center" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.hashes}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.hashes.hint}" Classes="rowHint" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ComputeHashes}" VerticalAlignment="Center" />
+          </Grid>
+          <Border Classes="divider" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+              <TextBlock Text="{l:T settings.onlineCovers}" Classes="rowTitle" />
+              <TextBlock Text="{l:T settings.onlineCovers.hint}" Classes="rowHint" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding OnlineCovers}" VerticalAlignment="Center" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- folders -->
+      <Border Classes="glass" Padding="28,24">
+        <StackPanel Spacing="8">
+          <TextBlock Text="{l:T settings.paths}" Classes="h2" />
+          <TextBlock Text="{l:T settings.paths.hint}" Classes="rowHint" Margin="0,0,0,8" />
+          <ItemsControl ItemsSource="{Binding Paths}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="2" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PathEntry">
+                <Grid ColumnDefinitions="180,*,Auto" MinHeight="46">
+                  <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding Display}" Classes="mono" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
+                  <Button Grid.Column="2" Theme="{StaticResource RhGhostButton}"
+                          Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).OpenPathCommand}" CommandParameter="{Binding}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <c:RhIcon Data="{StaticResource Icon.Folder}" Width="16" Height="16" />
+                      <TextBlock Text="{l:T settings.openFolder}" VerticalAlignment="Center" FontSize="13" />
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</p:PageBase>

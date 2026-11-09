@@ -1,0 +1,287 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:RetroHub.App.ViewModels"
+        xmlns:c="using:RetroHub.App.Controls"
+        xmlns:v="using:RetroHub.App.Views"
+        xmlns:l="using:RetroHub.App.Localization"
+        x:Class="RetroHub.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="RetroHub"
+        Width="1600" Height="900" MinWidth="960" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        WindowDecorations="BorderOnly"
+        ExtendClientAreaTitleBarHeightHint="40">
+  <Window.Resources>
+    <v:IconKeyConverter x:Key="IconKey" />
+  </Window.Resources>
+  <Window.Styles>
+    <!-- collapsed sidebar: icons only -->
+    <Style Selector="Border#Sidebar">
+      <Setter Property="Width" Value="248" />
+    </Style>
+    <Style Selector="Border#Sidebar.collapsed">
+      <Setter Property="Width" Value="84" />
+    </Style>
+    <Style Selector="Border#Sidebar.collapsed :is(Control).expandedOnly">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border#Sidebar.collapsed Button.navitem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border#Sidebar.collapsed StackPanel#Brand">
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </Window.Styles>
+
+  <Panel Name="Root">
+    <!-- static ambient background (pre-computed gradients, no live blur) -->
+    <Border Background="{DynamicResource RhAmbientBrushA}" IsHitTestVisible="False" />
+    <Border Background="{DynamicResource RhAmbientBrushB}" IsHitTestVisible="False" />
+    <!-- page ambience (e.g. the platform accent on system/game pages) -->
+    <Border Background="{Binding CurrentPage.Ambient}" IsHitTestVisible="False" />
+
+    <Grid Name="Shell" ColumnDefinitions="Auto,*">
+      <!-- ============ Sidebar ============ -->
+      <Border Name="Sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}" Background="{DynamicResource RhSidebarBrush}"
+              BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="0,0,1,0">
+        <DockPanel>
+          <Border DockPanel.Dock="Top" Height="104" Background="Transparent" Name="BrandBar">
+            <StackPanel Name="Brand" Orientation="Horizontal" Spacing="12" Margin="26,0,0,0" VerticalAlignment="Center">
+              <Border Width="38" Height="38" CornerRadius="12" Background="{DynamicResource RhAccentGradientDiagBrush}" BoxShadow="{DynamicResource RhButtonGlow}">
+                <c:RhIcon Data="{StaticResource Icon.Play}" Filled="True" Width="17" Height="17" Foreground="White" Margin="2,0,0,0" />
+              </Border>
+              <StackPanel Classes="expandedOnly" VerticalAlignment="Center" Spacing="0">
+                <TextBlock Text="RetroHub" FontSize="18" FontWeight="Bold" LetterSpacing="-0.3" />
+                <TextBlock Text="{l:T shell.tagline, Upper=True}" Classes="label" FontSize="10" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+          <StackPanel DockPanel.Dock="Bottom" Margin="18,0,18,18" Spacing="10">
+            <Panel Classes="expandedOnly" HorizontalAlignment="Left">
+              <Border Classes="chip warn" IsVisible="{Binding IsDemo}" ToolTip.Tip="{l:T shell.demo.tip}">
+                <TextBlock Text="{Binding DemoText}" />
+              </Border>
+            </Panel>
+            <Button Name="CollapseButton" Theme="{StaticResource RhNavItem}" Classes="navitem" Command="{Binding ToggleSidebarCommand}" ToolTip.Tip="{l:T shell.toggleSidebar}">
+              <StackPanel Orientation="Horizontal" Spacing="14">
+                <c:RhIcon Data="{StaticResource Icon.Sidebar}" Width="20" Height="20" />
+                <TextBlock Classes="expandedOnly" Text="{l:T shell.collapse}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+          <ItemsControl Name="NavList" ItemsSource="{Binding NavItems}" Margin="18,4,18,0">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="4" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:NavItemViewModel">
+                <Button Theme="{StaticResource RhNavItem}" Classes="navitem" Classes.selected="{Binding IsSelected}"
+                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).NavigateCommand}" CommandParameter="{Binding}"
+                        ToolTip.Tip="{Binding Label}">
+                  <StackPanel Orientation="Horizontal" Spacing="14">
+                    <c:RhIcon Data="{Binding IconKey, Converter={StaticResource IconKey}}" Width="20" Height="20" />
+                    <TextBlock Classes="expandedOnly" Text="{Binding Label}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </Border>
+
+      <!-- ============ Main column ============ -->
+      <Grid Grid.Column="1" RowDefinitions="64,*,Auto">
+        <!-- top bar (drag area; caption buttons sit above it on the right) -->
+        <Grid Name="TopBar" ColumnDefinitions="Auto,*,Auto" Background="Transparent" Margin="28,0,170,0">
+          <Button Name="BackButton" Theme="{StaticResource RhGhostButton}" Command="{Binding BackCommand}" IsVisible="{Binding CanGoBack}"
+                  VerticalAlignment="Center" Margin="0,8,0,0" Padding="10,0,14,0">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <c:RhIcon Data="{StaticResource Icon.ChevronLeft}" Width="18" Height="18" />
+              <TextBlock Text="{l:T common.back}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center" Margin="0,8,0,0">
+            <Border Classes="chip" Padding="10,5" ToolTip.Tip="{Binding ControllerName}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <c:RhIcon Data="{StaticResource Icon.Gamepad}" Width="16" Height="16" Foreground="{DynamicResource RhText3Brush}" IsVisible="{Binding !ControllerConnected}" />
+                <c:RhIcon Data="{StaticResource Icon.Gamepad}" Width="16" Height="16" Foreground="{DynamicResource RhSuccessBrush}" IsVisible="{Binding ControllerConnected}" />
+                <TextBlock Text="{Binding ControllerName}" MaxWidth="160" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Border>
+            <TextBlock Text="{Binding Clock}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource RhText1Brush}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Grid>
+
+        <c:PageHost Name="Pages" Grid.Row="1" />
+
+        <!-- controller hint bar -->
+        <Border Name="HintBar" Grid.Row="2" Height="52" IsVisible="{Binding ShowHints}" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="0,1,0,0"
+                Background="#660B0A1A">
+          <Grid ColumnDefinitions="*,Auto" Margin="40,0,32,0">
+            <TextBlock Text="{Binding StatusText}" Classes="meta" VerticalAlignment="Center" />
+            <ItemsControl Grid.Column="1" ItemsSource="{Binding Hints}" VerticalAlignment="Center">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="22" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:HintItem">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <c:ButtonGlyph Action="{Binding Action}" Glyphs="{Binding $parent[Window].((vm:MainViewModel)DataContext).Glyphs}" VerticalAlignment="Center" />
+                    <TextBlock Classes="hint" Text="{Binding Label}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <!-- ============ Toasts ============ -->
+    <ItemsControl Name="ToastHost" ItemsSource="{Binding Toasts.Items}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,28,72" Width="380">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel Spacing="10" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:ToastViewModel">
+          <Border CornerRadius="16" Background="#F21B1A35" BorderBrush="{DynamicResource RhLineStrongBrush}" BorderThickness="1" Padding="14,12"
+                  BoxShadow="{DynamicResource RhPanelShadow}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Border Width="30" Height="30" CornerRadius="10" VerticalAlignment="Top" Background="{DynamicResource RhAccentSoftBrush}">
+                <Panel>
+                  <c:RhIcon Data="{StaticResource Icon.Info}" Width="16" Height="16" Foreground="{DynamicResource RhAccentTextBrush}" IsVisible="{Binding IsInfo}" />
+                  <c:RhIcon Data="{StaticResource Icon.Check}" Width="16" Height="16" Foreground="{DynamicResource RhSuccessBrush}" IsVisible="{Binding IsSuccess}" />
+                  <c:RhIcon Data="{StaticResource Icon.Alert}" Width="16" Height="16" Foreground="{DynamicResource RhWarningBrush}" IsVisible="{Binding IsWarning}" />
+                  <c:RhIcon Data="{StaticResource Icon.Alert}" Width="16" Height="16" Foreground="{DynamicResource RhDangerBrush}" IsVisible="{Binding IsError}" />
+                </Panel>
+              </Border>
+              <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="{Binding Text}" FontSize="13.5" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Detail}" IsVisible="{Binding HasDetail}" Classes="meta" FontSize="12.5" TextWrapping="Wrap" />
+              </StackPanel>
+              <Button Grid.Column="2" Theme="{StaticResource RhGhostButton}" Width="28" Height="28" MinHeight="0" Padding="0" Focusable="False" VerticalAlignment="Top"
+                      Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).Toasts.DismissCommand}" CommandParameter="{Binding}">
+                <c:RhIcon Data="{StaticResource Icon.Close}" Width="14" Height="14" />
+              </Button>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- ============ Launch overlay ("Spiel wird gestartet" + running state) ============ -->
+    <!-- modal: Tab cycles inside the overlay and never reaches the shell behind it -->
+    <Panel Name="LaunchOverlay" IsVisible="{Binding Launch.IsActive}" KeyboardNavigation.TabNavigation="Cycle">
+      <Border Background="#F20B0A1A" />
+      <Border Background="{Binding Launch.Game.AccentBrush}" Opacity="0.10" />
+      <Border Background="{DynamicResource RhAmbientBrushA}" />
+      <!-- starting -->
+      <StackPanel IsVisible="{Binding Launch.IsStarting}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
+        <Border Width="200" Height="280" CornerRadius="20" ClipToBounds="True" HorizontalAlignment="Center" BoxShadow="{DynamicResource RhFocusGlow}">
+          <c:CoverArt Source="{Binding Launch.Game.CoverPath}" Title="{Binding Launch.Game.Title}" Badge="{Binding Launch.Game.SystemShort}"
+                      Accent="{Binding Launch.Game.Accent}" ShowTitle="True" />
+        </Border>
+        <TextBlock Text="{l:T launch.starting, Upper=True}" Classes="label accent" HorizontalAlignment="Center" Margin="0,36,0,8" />
+        <TextBlock Text="{Binding Launch.Game.Title}" Classes="title" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="720" TextWrapping="Wrap" />
+        <TextBlock HorizontalAlignment="Center" Classes="meta" Margin="0,8,0,0">
+          <Run Text="{Binding Launch.EmulatorName}" /><Run Text="  ·  " /><Run Text="{Binding Launch.ModeText}" />
+        </TextBlock>
+        <ProgressBar IsIndeterminate="True" Width="220" Margin="0,28,0,0" HorizontalAlignment="Center" />
+      </StackPanel>
+      <!-- running -->
+      <Grid IsVisible="{Binding Launch.IsRunning}" RowDefinitions="Auto,*,Auto" Margin="48,72,48,40">
+        <StackPanel HorizontalAlignment="Center" Spacing="6">
+          <TextBlock Text="{l:T launch.running, Upper=True}" Classes="label accent" HorizontalAlignment="Center" />
+          <TextBlock Text="{Binding Launch.Game.Title}" Classes="title" HorizontalAlignment="Center" TextAlignment="Center" />
+          <TextBlock HorizontalAlignment="Center" Classes="meta">
+            <Run Text="{Binding Launch.EmulatorName}" /><Run Text="  ·  " /><Run Text="{Binding Launch.ModeText}" /><Run Text="  ·  " /><Run Text="{Binding Launch.ElapsedText}" />
+          </TextBlock>
+        </StackPanel>
+        <!-- embedded mode: the emulator window will be re-parented here (placeholder for now) -->
+        <c:GameScreenHost Name="GameScreen" Grid.Row="1" Margin="0,28" IsVisible="{Binding Launch.IsEmbedded}"
+                          GameTitle="{l:T launch.embedPlaceholder.title}" Detail="{l:T launch.embedPlaceholder.detail}" />
+        <StackPanel Grid.Row="1" IsVisible="{Binding !Launch.IsEmbedded}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+          <c:RhIcon Data="{StaticResource Icon.Fullscreen}" Width="44" Height="44" Foreground="{DynamicResource RhText3Brush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{l:T launch.externalHint}" Classes="body" TextAlignment="Center" MaxWidth="460" />
+        </StackPanel>
+        <Button Name="StopButton" Grid.Row="2" Theme="{StaticResource RhDangerButton}" HorizontalAlignment="Center" Command="{Binding Launch.StopCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <c:RhIcon Data="{StaticResource Icon.Stop}" Width="16" Height="16" />
+            <TextBlock Text="{l:T launch.stop}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Panel>
+
+    <!-- ============ Dialog overlay ============ -->
+    <Panel Name="DialogOverlay" IsVisible="{Binding Dialogs.IsOpen}">
+      <Border Background="{DynamicResource RhOverlayScrimBrush}" />
+      <Border Name="DialogPanel" KeyboardNavigation.TabNavigation="Cycle" Classes="glass" Background="#F5181733" Width="540" HorizontalAlignment="Center" VerticalAlignment="Center"
+              Padding="32,28" BoxShadow="{DynamicResource RhPanelShadow}" DataContext="{Binding Dialogs.Current}" x:DataType="vm:DialogViewModel">
+        <StackPanel Spacing="14">
+          <TextBlock Text="{Binding Title}" Classes="h2" FontSize="21" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding Message}" Classes="body" IsVisible="{Binding HasMessage}" />
+          <ItemsControl ItemsSource="{Binding Details}" IsVisible="{Binding HasDetails}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="8" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:DialogDetail">
+                <Border CornerRadius="12" Padding="12,10" Background="#0DFFFFFF" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <Panel VerticalAlignment="Top" Margin="0,1,0,0">
+                      <c:RhIcon Data="{StaticResource Icon.Alert}" Width="17" Height="17" Foreground="{DynamicResource RhDangerBrush}" IsVisible="{Binding IsBlocking}" />
+                      <c:RhIcon Data="{StaticResource Icon.Info}" Width="17" Height="17" Foreground="{DynamicResource RhWarningBrush}" IsVisible="{Binding !IsBlocking}" />
+                    </Panel>
+                    <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding Text}" FontSize="13.5" Foreground="{DynamicResource RhText1Brush}" TextWrapping="Wrap" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <ItemsControl Name="DialogButtons" ItemsSource="{Binding Buttons}" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="10" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:DialogButton">
+                <Panel>
+                  <Button Theme="{StaticResource RhPrimaryButton}" IsVisible="{Binding IsPrimary}" Content="{Binding Label}" MinWidth="120" MinHeight="44"
+                          Command="{Binding $parent[Border].((vm:DialogViewModel)DataContext).ChooseCommand}" CommandParameter="{Binding}" />
+                  <Button IsVisible="{Binding !IsPrimary}" Content="{Binding Label}" MinWidth="110"
+                          Command="{Binding $parent[Border].((vm:DialogViewModel)DataContext).ChooseCommand}" CommandParameter="{Binding}" />
+                </Panel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </Panel>
+
+    <!-- ============ Caption buttons (OS frame kept: snap, shadow, resize) ============ -->
+    <StackPanel Name="CaptionButtons" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+      <Button Name="MinimizeButton" Theme="{StaticResource RhCaptionButton}" Tag="{StaticResource Glyph.Minimize}" ToolTip.Tip="{l:T window.minimize}" />
+      <Button Name="MaximizeButton" Theme="{StaticResource RhCaptionButton}" Tag="{StaticResource Glyph.Maximize}" ToolTip.Tip="{l:T window.maximize}" />
+      <Button Name="CloseButton" Theme="{StaticResource RhCaptionClose}" Tag="{StaticResource Glyph.Close}" ToolTip.Tip="{l:T window.close}" />
+    </StackPanel>
+  </Panel>
+</Window>

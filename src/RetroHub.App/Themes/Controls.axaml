@@ -1,0 +1,566 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:RetroHub.App.Controls"
+                    xmlns:vm="using:RetroHub.App.ViewModels"
+                    xmlns:l="using:RetroHub.App.Localization">
+  <!--
+    RetroHub control themes. State-dependent values live in "^:state /template/ Part" styles (never as template attributes),
+    so the global motion styles (Styles.axaml) can switch transitions off. No effects (blur/drop shadow) on anything that
+    animates except the single focused element's BoxShadow.
+  -->
+
+  <!-- ================= Buttons ================= -->
+  <ControlTheme x:Key="RhButton" TargetType="Button">
+    <!-- Avalonia 12 clips buttons to their bounds by default: the focus ring sits outside them -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{DynamicResource RhGlassFaintBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RhLineStrongBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusTile}" />
+    <Setter Property="Padding" Value="18,0" />
+    <Setter Property="MinHeight" Value="44" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="scale(1)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Ring" Margin="-4" CornerRadius="20" BorderThickness="2" BorderBrush="{DynamicResource RhFocusRingBrush}" Opacity="0" IsHitTestVisible="False" />
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ Border#PART_Ring">
+      <Setter Property="Transitions">
+        <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut" /></Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RhHoverBrush}" />
+      <Setter Property="BorderBrush" Value="#3DFFFFFF" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="RenderTransform" Value="scale(0.97)" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Ring">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.42" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="{x:Type Button}" TargetType="Button" BasedOn="{StaticResource RhButton}" />
+
+  <ControlTheme x:Key="RhPrimaryButton" TargetType="Button" BasedOn="{StaticResource RhButton}">
+    <Setter Property="Background" Value="{DynamicResource RhAccentGradientBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource RhTextOnAccentBrush}" />
+    <Setter Property="BorderBrush" Value="#33FFFFFF" />
+    <Setter Property="Padding" Value="24,0" />
+    <Setter Property="MinHeight" Value="48" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Glow" CornerRadius="{TemplateBinding CornerRadius}" Background="{TemplateBinding Background}" BoxShadow="{DynamicResource RhButtonGlow}" Opacity="0.85" IsHitTestVisible="False" />
+          <Border Name="PART_Ring" Margin="-4" CornerRadius="20" BorderThickness="2" BorderBrush="#E6FFFFFF" Opacity="0" IsHitTestVisible="False" />
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          <Border Name="PART_Sheen" CornerRadius="{TemplateBinding CornerRadius}" IsHitTestVisible="False" Opacity="0">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                <GradientStop Offset="0" Color="#33FFFFFF" />
+                <GradientStop Offset="1" Color="#00FFFFFF" />
+              </LinearGradientBrush>
+            </Border.Background>
+          </Border>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ Border#PART_Sheen">
+      <Setter Property="Transitions">
+        <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.16" /></Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RhAccentGradientBrush}" />
+      <Setter Property="BorderBrush" Value="#55FFFFFF" />
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Sheen">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible">
+      <Setter Property="RenderTransform" Value="scale(1.03)" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Sheen">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:disabled /template/ Border#PART_Glow">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="RhGhostButton" TargetType="Button" BasedOn="{StaticResource RhButton}">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusChip}" />
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RhHoverBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="RhIconButton" TargetType="Button" BasedOn="{StaticResource RhButton}">
+    <Setter Property="Width" Value="44" />
+    <Setter Property="Height" Value="44" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="14" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="RhDangerButton" TargetType="Button" BasedOn="{StaticResource RhButton}">
+    <Setter Property="Background" Value="{DynamicResource RhDangerSoftBrush}" />
+    <Setter Property="BorderBrush" Value="#55FF5C72" />
+    <Setter Property="Foreground" Value="#FFD5DB" />
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#38FF5C72" />
+      <Setter Property="BorderBrush" Value="#88FF5C72" />
+    </Style>
+  </ControlTheme>
+
+  <!-- chip filters + segmented options (class "selected" = active) -->
+  <ControlTheme x:Key="RhChip" TargetType="Button" BasedOn="{StaticResource RhButton}">
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Padding" Value="14,0" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusChip}" />
+    <Setter Property="Background" Value="{DynamicResource RhGlassFaintBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RhLineBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^.selected">
+      <Setter Property="Foreground" Value="{DynamicResource RhTextOnAccentBrush}" />
+    </Style>
+    <Style Selector="^.selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RhAccentGradientBrush}" />
+      <Setter Property="BorderBrush" Value="#40FFFFFF" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Ring">
+      <Setter Property="CornerRadius" Value="16" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ================= Sidebar navigation ================= -->
+  <ControlTheme x:Key="RhNavItem" TargetType="Button">
+    <!-- Avalonia 12 clips buttons to their bounds by default: the focus ring sits outside them -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    <Setter Property="Height" Value="48" />
+    <Setter Property="Padding" Value="15,0" />
+    <Setter Property="FontSize" Value="14.5" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Bg" CornerRadius="14" Background="{TemplateBinding Background}" />
+          <Border Name="PART_Indicator" Width="3" Height="20" CornerRadius="2" HorizontalAlignment="Left" Margin="-10,0,0,0"
+                  Background="{DynamicResource RhAccentGradientDiagBrush}" Opacity="0" />
+          <ContentPresenter Name="PART_ContentPresenter" Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          <Border Name="PART_Ring" Margin="-3" CornerRadius="17" BorderThickness="2" BorderBrush="{DynamicResource RhFocusRingBrush}" Opacity="0" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ Border#PART_Bg">
+      <Setter Property="Transitions">
+        <Transitions><BrushTransition Property="Background" Duration="0:0:0.16" /></Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhHoverBrush}" />
+    </Style>
+    <Style Selector="^.selected">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^.selected /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhAccentSoftBrush}" />
+    </Style>
+    <Style Selector="^.selected /template/ Border#PART_Indicator">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Ring">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ================= Caption buttons (own min/max/close, OS frame kept) ================= -->
+  <ControlTheme x:Key="RhCaptionButton" TargetType="Button">
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg" Background="{TemplateBinding Background}">
+          <Path Data="{TemplateBinding Tag}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1" Width="10" Height="10"
+                Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhHoverBrush}" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^:pressed /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhPressedBrush}" />
+    </Style>
+  </ControlTheme>
+  <ControlTheme x:Key="RhCaptionClose" TargetType="Button" BasedOn="{StaticResource RhCaptionButton}">
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhCloseHoverBrush}" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ================= Game tile ================= -->
+  <ControlTheme x:Key="{x:Type c:GameTile}" TargetType="c:GameTile">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="RenderTransformOrigin" Value="50%,40%" />
+    <Setter Property="RenderTransform" Value="scale(1)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate x:DataType="vm:GameItemViewModel">
+        <Grid RowDefinitions="*,Auto" Background="Transparent">
+          <Panel Name="PART_CoverArea">
+            <Border Name="PART_Glow" CornerRadius="16" Background="{DynamicResource RhBaseBrush}" BoxShadow="{DynamicResource RhFocusGlow}" Opacity="0" />
+            <Border Name="PART_Cover" CornerRadius="16" ClipToBounds="True" Background="{DynamicResource RhSurfaceHiBrush}">
+              <c:CoverArt Source="{Binding CoverPath}" Title="{Binding Title}" Badge="{Binding SystemShort}" Accent="{Binding Accent}"
+                          ShowTitle="{Binding !$parent[c:GameTile].ShowCaption}" />
+            </Border>
+            <Border Name="PART_Dim" CornerRadius="16" Background="#2E0B0A1A" IsHitTestVisible="False" />
+            <Border Name="PART_Hairline" CornerRadius="16" BorderThickness="1" BorderBrush="#1FFFFFFF" IsHitTestVisible="False" />
+            <Border Name="PART_Ring" Margin="-5" CornerRadius="21" BorderThickness="2.5" BorderBrush="{DynamicResource RhFocusRingBrush}" Opacity="0" IsHitTestVisible="False" />
+            <Border Name="PART_Fav" IsVisible="{Binding IsFavorite}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"
+                    Width="28" Height="28" CornerRadius="14" Background="#990B0A1A" BorderBrush="#33FFFFFF" BorderThickness="1">
+              <c:RhIcon Data="{DynamicResource Icon.Star}" Filled="True" Width="14" Height="14" Foreground="{DynamicResource RhFavoriteBrush}" />
+            </Border>
+            <Border Name="PART_Missing" IsVisible="{Binding IsMissing}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8"
+                    Padding="8,3" CornerRadius="8" Background="#CC3A1020" BorderBrush="#66FF5C72" BorderThickness="1">
+              <TextBlock Text="{l:T tile.missing}" FontSize="11" FontWeight="SemiBold" Foreground="#FFD5DB" />
+            </Border>
+          </Panel>
+          <StackPanel Grid.Row="1" Margin="2,12,2,0" Spacing="1" IsVisible="{TemplateBinding ShowCaption}">
+            <TextBlock Name="PART_Title" Text="{Binding Title}" FontSize="13.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource RhText1Brush}" />
+            <TextBlock Text="{Binding MetaText}" FontSize="12" FontWeight="Medium" Foreground="{DynamicResource RhText3Brush}" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ Border#PART_Ring, ^ /template/ Border#PART_Glow, ^ /template/ Border#PART_Dim">
+      <Setter Property="Transitions">
+        <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut" /></Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="RenderTransform" Value="scale(1.03)" />
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Dim">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Ring">
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+    <Style Selector="^:focus-visible">
+      <Setter Property="RenderTransform" Value="scale(1.06)" />
+      <Setter Property="ZIndex" Value="2" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Ring, ^:focus-visible /template/ Border#PART_Glow">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Dim">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ TextBlock#PART_Title">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="RenderTransform" Value="scale(0.98)" />
+    </Style>
+  </ControlTheme>
+
+  <!-- list-view row (same GameTile class, so clicks/favourites work identically) -->
+  <ControlTheme x:Key="RhGameRow" TargetType="c:GameTile">
+    <!-- Avalonia 12 clips buttons to their bounds by default: the focus ring sits outside them -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Height" Value="68" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <ControlTemplate x:DataType="vm:GameItemViewModel">
+        <Panel>
+          <Border Name="PART_Bg" CornerRadius="16" Background="{TemplateBinding Background}" BorderThickness="1" BorderBrush="Transparent" />
+          <Grid ColumnDefinitions="44,*,190,150,130,28" Margin="10,0,16,0">
+            <Border Width="44" Height="52" CornerRadius="10" ClipToBounds="True" VerticalAlignment="Center">
+              <c:CoverArt Source="{Binding CoverPath}" Title="{Binding Title}" Accent="{Binding Accent}" ShowBadge="False" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="16,0,12,0" VerticalAlignment="Center" Spacing="1">
+              <TextBlock Text="{Binding Title}" FontSize="14.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding Game.Developer}" FontSize="12" Foreground="{DynamicResource RhText3Brush}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <TextBlock Grid.Column="2" Text="{Binding SystemName}" FontSize="13" Foreground="{DynamicResource RhText2Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+            <TextBlock Grid.Column="3" Text="{Binding LastPlayedText}" FontSize="13" Foreground="{DynamicResource RhText2Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="4" Text="{Binding PlayTimeText}" FontSize="13" Foreground="{DynamicResource RhText2Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <c:RhIcon Grid.Column="5" Data="{DynamicResource Icon.Star}" Filled="True" Width="16" Height="16" IsVisible="{Binding IsFavorite}"
+                      Foreground="{DynamicResource RhFavoriteBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+          </Grid>
+          <Border Name="PART_Ring" Margin="-2" CornerRadius="18" BorderThickness="2" BorderBrush="{DynamicResource RhFocusRingBrush}" Opacity="0" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhHoverBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhAccentFaintBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Ring">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ================= Platform card ================= -->
+  <ControlTheme x:Key="{x:Type c:SystemCard}" TargetType="c:SystemCard">
+    <!-- Avalonia 12 clips buttons to their bounds by default: the focus ring sits outside them -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="scale(1)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate x:DataType="vm:SystemItemViewModel">
+        <Panel>
+          <Border Name="PART_Glow" CornerRadius="20" Background="{DynamicResource RhBaseBrush}" BoxShadow="{DynamicResource RhFocusGlow}" Opacity="0" />
+          <Border Name="PART_Card" CornerRadius="20" ClipToBounds="True" Background="{Binding CardBrush}">
+            <Panel>
+              <Border Background="{Binding GlowBrush}" />
+              <TextBlock Text="{Binding ShortName}" FontSize="92" FontWeight="Bold" Foreground="#0DFFFFFF" LetterSpacing="-3"
+                         HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-6,-34" />
+              <Grid RowDefinitions="Auto,*,Auto" Margin="20,18,20,18">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <Border Width="36" Height="36" CornerRadius="11" Background="#26FFFFFF" BorderBrush="#26FFFFFF" BorderThickness="1">
+                    <Panel>
+                      <c:RhIcon Data="{DynamicResource Icon.Gamepad}" Width="19" Height="19" Foreground="White" IsVisible="{Binding !IsHandheld}" />
+                      <c:RhIcon Data="{DynamicResource Icon.Handheld}" Width="19" Height="19" Foreground="White" IsVisible="{Binding IsHandheld}" />
+                    </Panel>
+                  </Border>
+                  <Border Grid.Column="2" Padding="10,4" CornerRadius="10" Background="#330B0A1A" BorderBrush="#22FFFFFF" BorderThickness="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CountText}" FontSize="12" FontWeight="SemiBold" Foreground="#E6FFFFFF" />
+                  </Border>
+                </Grid>
+                <StackPanel Grid.Row="2" Spacing="2">
+                  <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" Foreground="White" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" LineHeight="21" />
+                  <TextBlock Text="{Binding SubTitle}" FontSize="12.5" FontWeight="Medium" Foreground="#B3FFFFFF" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </Grid>
+            </Panel>
+          </Border>
+          <Border CornerRadius="20" BorderThickness="1" BorderBrush="#24FFFFFF" IsHitTestVisible="False" />
+          <Border Name="PART_Ring" Margin="-5" CornerRadius="25" BorderThickness="2.5" BorderBrush="{DynamicResource RhFocusRingBrush}" Opacity="0" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ Border#PART_Ring, ^ /template/ Border#PART_Glow">
+      <Setter Property="Transitions">
+        <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut" /></Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="RenderTransform" Value="scale(1.02)" />
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Ring">
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+    <Style Selector="^:focus-visible">
+      <Setter Property="RenderTransform" Value="scale(1.04)" />
+      <Setter Property="ZIndex" Value="2" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Ring, ^:focus-visible /template/ Border#PART_Glow">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="RenderTransform" Value="scale(0.98)" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ================= Stat tile ================= -->
+  <ControlTheme x:Key="{x:Type c:StatTile}" TargetType="c:StatTile">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border CornerRadius="20" Background="{DynamicResource RhGlassBrush}" BorderBrush="{DynamicResource RhGlassBorderBrush}" BorderThickness="1" Padding="18,16">
+          <Grid ColumnDefinitions="Auto,*">
+            <Border Width="44" Height="44" CornerRadius="14" Background="{DynamicResource RhAccentSoftBrush}" VerticalAlignment="Center">
+              <c:RhIcon Data="{TemplateBinding Icon}" Width="21" Height="21" Foreground="{DynamicResource RhAccentTextBrush}" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Spacing="0">
+              <TextBlock Text="{TemplateBinding Value}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource RhText1Brush}" />
+              <TextBlock Text="{TemplateBinding Label}" FontSize="12.5" FontWeight="Medium" Foreground="{DynamicResource RhText3Brush}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </Grid>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- toggle chip (e.g. "Favoriten" filter) -->
+  <ControlTheme x:Key="RhToggleChip" TargetType="ToggleButton">
+    <!-- Avalonia 12 clips buttons to their bounds by default: the focus ring sits outside them -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="MinHeight" Value="44" />
+    <Setter Property="Padding" Value="16,0" />
+    <Setter Property="FontSize" Value="13.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusTile}" />
+    <Setter Property="Background" Value="{DynamicResource RhGlassFaintBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RhLineStrongBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Ring" Margin="-4" CornerRadius="20" BorderThickness="2" BorderBrush="{DynamicResource RhFocusRingBrush}" Opacity="0" IsHitTestVisible="False" />
+          <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}"
+                            Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RhHoverBrush}" />
+    </Style>
+    <Style Selector="^:checked">
+      <Setter Property="Foreground" Value="{DynamicResource RhFavoriteBrush}" />
+    </Style>
+    <Style Selector="^:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#1FFFC94D" />
+      <Setter Property="BorderBrush" Value="#66FFC94D" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Ring">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ================= Shelf (dashboard row) ================= -->
+  <ControlTheme x:Key="{x:Type c:Shelf}" TargetType="c:Shelf">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid RowDefinitions="Auto,Auto">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+              <TextBlock Text="{TemplateBinding Header}" Classes="h2" VerticalAlignment="Center" />
+              <TextBlock Text="{TemplateBinding SubHeader}" Classes="meta" VerticalAlignment="Center" Margin="0,2,0,0" />
+            </StackPanel>
+            <Button Grid.Column="1" Theme="{StaticResource RhGhostButton}" Command="{TemplateBinding ActionCommand}"
+                    IsVisible="{TemplateBinding ActionLabel, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="{TemplateBinding ActionLabel}" VerticalAlignment="Center" FontSize="13" />
+                <c:RhIcon Data="{DynamicResource Icon.ChevronRight}" Width="16" Height="16" />
+              </StackPanel>
+            </Button>
+          </Grid>
+          <ScrollViewer Grid.Row="1" Margin="-14,0,-14,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{TemplateBinding ItemsSource}" ItemTemplate="{TemplateBinding ItemTemplate}" Margin="14,14,14,16">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="{Binding $parent[c:Shelf].ItemSpacing}" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+</ResourceDictionary>

@@ -1,0 +1,163 @@
+<p:PageBase xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:p="using:RetroHub.App.Views.Pages"
+            xmlns:vm="using:RetroHub.App.ViewModels"
+            xmlns:c="using:RetroHub.App.Controls"
+            xmlns:l="using:RetroHub.App.Localization"
+            xmlns:lib="using:RetroHub.Core.Library"
+            x:Class="RetroHub.App.Views.Pages.ImportsPage"
+            x:DataType="vm:ImportsViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="40,4,40,40" Spacing="0">
+      <TextBlock Text="{l:T nav.imports}" Classes="title" />
+      <TextBlock Text="{l:T imports.intro}" Classes="body" MaxWidth="860" HorizontalAlignment="Left" Margin="0,8,0,24" />
+
+      <Grid ColumnDefinitions="*,24,*">
+        <!-- library folders -->
+        <Border Classes="glass" Padding="24,22" VerticalAlignment="Top">
+          <StackPanel Spacing="16">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="2">
+                <TextBlock Text="{l:T imports.folders}" Classes="h2" />
+                <TextBlock Text="{l:T imports.folders.hint}" Classes="meta" TextWrapping="Wrap" />
+              </StackPanel>
+              <Button Grid.Column="1" Command="{Binding AddFolderCommand}" VerticalAlignment="Top">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <c:RhIcon Data="{StaticResource Icon.Plus}" Width="16" Height="16" />
+                  <TextBlock Text="{l:T imports.addFolder}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding Folders}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Spacing="10" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FolderItemViewModel">
+                  <Border CornerRadius="16" Padding="16,14" Background="#0AFFFFFF" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource RhAccentSoftBrush}" VerticalAlignment="Top">
+                        <c:RhIcon Data="{StaticResource Icon.Folder}" Width="19" Height="19" Foreground="{DynamicResource RhAccentTextBrush}" />
+                      </Border>
+                      <StackPanel Grid.Column="1" Margin="14,0,12,0" Spacing="3">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="{Binding PathText}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                          <Border Classes="chip" Padding="7,1" CornerRadius="7" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding BadgeText}" FontSize="10.5" />
+                          </Border>
+                        </StackPanel>
+                        <TextBlock Classes="meta" FontSize="12" TextWrapping="Wrap">
+                          <Run Text="{Binding SystemText}" /><Run Text=" · " /><Run Text="{Binding OptionsText}" /><Run Text=" · " /><Run Text="{Binding ScanText}" />
+                        </TextBlock>
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Button Theme="{StaticResource RhIconButton}" Width="38" Height="38" ToolTip.Tip="{l:T imports.openFolder}"
+                                Command="{Binding $parent[p:PageBase].((vm:ImportsViewModel)DataContext).OpenFolderCommand}" CommandParameter="{Binding}">
+                          <c:RhIcon Data="{StaticResource Icon.External}" Width="16" Height="16" />
+                        </Button>
+                        <ToggleSwitch IsChecked="{Binding IsEnabled, Mode=OneWay}" IsVisible="{Binding CanRemove}" OnContent="" OffContent="" MinWidth="0"
+                                      Command="{Binding $parent[p:PageBase].((vm:ImportsViewModel)DataContext).ToggleFolderCommand}" CommandParameter="{Binding}"
+                                      ToolTip.Tip="{l:T imports.toggleFolder}" />
+                        <Button Theme="{StaticResource RhIconButton}" Width="38" Height="38" IsVisible="{Binding CanRemove}" ToolTip.Tip="{l:T imports.removeFolder}"
+                                Command="{Binding $parent[p:PageBase].((vm:ImportsViewModel)DataContext).RemoveFolderCommand}" CommandParameter="{Binding}">
+                          <c:RhIcon Data="{StaticResource Icon.Close}" Width="15" Height="15" />
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- scan -->
+        <StackPanel Grid.Column="2" Spacing="18">
+          <Border Classes="glass" Padding="24,22">
+            <StackPanel Spacing="14">
+              <TextBlock Text="{l:T imports.scan}" Classes="h2" />
+              <TextBlock Text="{l:T imports.scan.hint}" Classes="body" />
+              <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                <Button Name="ScanButton" Theme="{StaticResource RhPrimaryButton}" Command="{Binding ScanCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <c:RhIcon Data="{StaticResource Icon.Refresh}" Width="17" Height="17" Foreground="White" />
+                    <TextBlock Text="{l:T imports.scanNow}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+                <Button Command="{Binding CancelScanCommand}" IsVisible="{Binding IsScanning}" Content="{l:T common.cancel}" MinHeight="48" />
+              </StackPanel>
+              <StackPanel Spacing="8" IsVisible="{Binding IsScanning}">
+                <ProgressBar Value="{Binding Progress}" IsIndeterminate="{Binding IsIndeterminate}" Maximum="100" />
+                <TextBlock Text="{Binding ProgressText}" FontSize="13" FontWeight="Medium" />
+                <TextBlock Text="{Binding CurrentFile}" Classes="mono" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- last report -->
+          <Border Classes="glass" Padding="24,22" IsVisible="{Binding HasReport}">
+            <StackPanel Spacing="16">
+              <StackPanel Spacing="2">
+                <TextBlock Text="{l:T imports.lastReport}" Classes="h2" />
+                <TextBlock Text="{Binding ReportTitle}" Classes="meta" />
+              </StackPanel>
+              <Grid ColumnDefinitions="*,10,*,10,*,10,*">
+                <Border Classes="card" Padding="14,12">
+                  <StackPanel><TextBlock Text="{Binding Report.Added}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.added}" Classes="meta" FontSize="12" /></StackPanel>
+                </Border>
+                <Border Grid.Column="2" Classes="card" Padding="14,12">
+                  <StackPanel><TextBlock Text="{Binding Report.Updated}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.updated}" Classes="meta" FontSize="12" /></StackPanel>
+                </Border>
+                <Border Grid.Column="4" Classes="card" Padding="14,12">
+                  <StackPanel><TextBlock Text="{Binding Report.Unchanged}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.unchanged}" Classes="meta" FontSize="12" /></StackPanel>
+                </Border>
+                <Border Grid.Column="6" Classes="card" Padding="14,12">
+                  <StackPanel><TextBlock Text="{Binding Report.Missing}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.missing}" Classes="meta" FontSize="12" /></StackPanel>
+                </Border>
+              </Grid>
+              <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ReportClean}">
+                <c:RhIcon Data="{StaticResource Icon.Check}" Width="16" Height="16" Foreground="{DynamicResource RhSuccessBrush}" />
+                <TextBlock Text="{l:T imports.clean}" FontSize="13" Foreground="#8FF0C8" />
+              </StackPanel>
+              <ItemsControl ItemsSource="{Binding Issues}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Spacing="14" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:IssueGroup">
+                    <StackPanel Spacing="6">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding Title}" Classes="h3" FontSize="14" />
+                        <Border Classes="chip" Padding="7,1" CornerRadius="7">
+                          <TextBlock Text="{Binding Total}" FontSize="11" />
+                        </Border>
+                      </StackPanel>
+                      <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="lib:ScanIssue">
+                            <Grid ColumnDefinitions="Auto,*" Margin="0,3">
+                              <Ellipse Width="5" Height="5" Fill="{DynamicResource RhText3Brush}" VerticalAlignment="Top" Margin="2,8,10,0" />
+                              <StackPanel Grid.Column="1">
+                                <TextBlock Text="{Binding Path}" Classes="mono" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Reason}" Classes="meta" FontSize="12" TextWrapping="Wrap" />
+                              </StackPanel>
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Text="{Binding MoreText}" IsVisible="{Binding HasMore}" Classes="meta" FontSize="12" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
+</p:PageBase>

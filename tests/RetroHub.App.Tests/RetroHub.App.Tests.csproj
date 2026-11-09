@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Headless UI tests for RetroHub.App (Avalonia.Headless + Skia rendering) incl. screenshot generation. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>RetroHub.App.Tests</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <!-- Avalonia.Headless.XUnit 12.1.5 is built against xunit.v3 3.2 and fails at discovery with xunit.v3 4.0.2
+       (MissingMethodException in AvaloniaFactDiscoverer), so the tests use HeadlessUnitTestSession directly (UiTest.Run). -->
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\RetroHub.App\RetroHub.App.csproj" />
+  </ItemGroup>
+</Project>

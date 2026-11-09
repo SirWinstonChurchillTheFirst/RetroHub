@@ -1,0 +1,67 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Maps the Nova tokens onto the Fluent theme's resource keys, so stock controls (TextBox, ComboBox, ToggleSwitch,
+    Slider, scroll bars, popups) fit in. Unknown keys are harmless. Accent-dependent Fluent keys (SystemAccentColor*)
+    are set at runtime by ThemeManager.
+  -->
+  <!-- text fields -->
+  <SolidColorBrush x:Key="TextControlForeground" Color="#F3F4FA" />
+  <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#F3F4FA" />
+  <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#F3F4FA" />
+  <SolidColorBrush x:Key="TextControlBackground" Color="#0CFFFFFF" />
+  <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#12FFFFFF" />
+  <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#E6151430" />
+  <SolidColorBrush x:Key="TextControlBorderBrush" Color="#1FFFFFFF" />
+  <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#33FFFFFF" />
+  <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#9C8BFF" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#80849E" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#9599B3" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#80849E" />
+  <SolidColorBrush x:Key="TextControlButtonForeground" Color="#B9BCD3" />
+  <SolidColorBrush x:Key="TextControlButtonForegroundPointerOver" Color="#F3F4FA" />
+  <Thickness x:Key="TextControlBorderThemeThickness">1</Thickness>
+  <Thickness x:Key="TextControlBorderThemeThicknessFocused">1.5</Thickness>
+
+  <!-- combo boxes + drop-downs -->
+  <SolidColorBrush x:Key="ComboBoxBackground" Color="#0CFFFFFF" />
+  <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#14FFFFFF" />
+  <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#0AFFFFFF" />
+  <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#14FFFFFF" />
+  <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#1FFFFFFF" />
+  <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#33FFFFFF" />
+  <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#33FFFFFF" />
+  <SolidColorBrush x:Key="ComboBoxForeground" Color="#F3F4FA" />
+  <SolidColorBrush x:Key="ComboBoxDropDownGlyphForeground" Color="#B9BCD3" />
+  <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#F2181733" />
+  <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#26FFFFFF" />
+  <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="#14FFFFFF" />
+  <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#2E7B61FF" />
+  <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#3D7B61FF" />
+  <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="#FFFFFF" />
+  <CornerRadius x:Key="OverlayCornerRadius">14</CornerRadius>
+  <CornerRadius x:Key="ControlCornerRadius">10</CornerRadius>
+
+  <!-- toggles -->
+  <SolidColorBrush x:Key="ToggleSwitchFillOff" Color="#0FFFFFFF" />
+  <SolidColorBrush x:Key="ToggleSwitchFillOffPointerOver" Color="#1AFFFFFF" />
+  <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="#4DFFFFFF" />
+  <SolidColorBrush x:Key="ToggleSwitchStrokeOffPointerOver" Color="#80FFFFFF" />
+  <SolidColorBrush x:Key="ToggleSwitchKnobFillOff" Color="#B9BCD3" />
+  <SolidColorBrush x:Key="ToggleSwitchKnobFillOffPointerOver" Color="#F3F4FA" />
+  <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="ToggleSwitchContentForeground" Color="#F3F4FA" />
+
+  <!-- slider -->
+  <SolidColorBrush x:Key="SliderTrackFill" Color="#1FFFFFFF" />
+  <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="#2BFFFFFF" />
+  <SolidColorBrush x:Key="SliderThumbBackground" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#FFFFFF" />
+
+  <!-- popups / tooltips -->
+  <SolidColorBrush x:Key="ToolTipBackground" Color="#F21E1C3A" />
+  <SolidColorBrush x:Key="ToolTipForeground" Color="#F3F4FA" />
+  <SolidColorBrush x:Key="ToolTipBorderBrush" Color="#26FFFFFF" />
+</ResourceDictionary>
