@@ -34,6 +34,8 @@ public sealed partial class GameItemViewModel : ObservableObject
     [ObservableProperty] public partial string YearText { get; private set; } = "";
     /// <summary>Full path of the cover image, or null (placeholder art is generated then).</summary>
     [ObservableProperty] public partial string? CoverPath { get; private set; }
+    /// <summary>A cover image is referenced; without one the box is a spine placeholder that carries its own title.</summary>
+    [ObservableProperty] public partial bool HasCover { get; private set; }
     [ObservableProperty] public partial bool IsFavorite { get; private set; }
     [ObservableProperty] public partial bool IsMissing { get; private set; }
     [ObservableProperty] public partial string PlayTimeText { get; private set; } = "";
@@ -58,6 +60,7 @@ public sealed partial class GameItemViewModel : ObservableObject
         SystemColorBrush = look.ColorBrush;
         YearText = game.Year is { } year ? year.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
         CoverPath = string.IsNullOrEmpty(game.CoverPath) ? null : _services.Paths.FromPortable(game.CoverPath);
+        HasCover = CoverPath != null;
         IsFavorite = game.Favorite;
         IsMissing = game.Status == GameStatus.Missing;
         HasPlayed = game.LastPlayedUtc != null;

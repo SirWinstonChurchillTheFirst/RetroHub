@@ -229,6 +229,9 @@ public class DesignPreviewTests
         var outDir = Path.Combine(DesignDir!, "shots", Milestone);
         Directory.CreateDirectory(outDir);
         if (root == null) root = variant == "preview" ? PreviewRoot() : variant == "nocovers" ? NoCoversRoot() : null;
+        // RETROHUB_DESIGN_ONLY="1920x1080;1100x700" restricts the sizes (quick iterations)
+        var only = Environment.GetEnvironmentVariable("RETROHUB_DESIGN_ONLY");
+        if (!string.IsNullOrEmpty(only)) sizes = sizes.Where(s => only.Split(';').Contains($"{s.W}x{s.H}")).ToArray();
         foreach (var (w, h) in sizes)
         {
             var ctx = root == null

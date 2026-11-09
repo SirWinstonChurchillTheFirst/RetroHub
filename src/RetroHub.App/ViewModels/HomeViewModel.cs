@@ -83,9 +83,10 @@ public sealed partial class HomeViewModel : PageViewModel
         // TV light of the game to continue, above the stage board; the glow sits at its box (right)
         if (Continue != previous || Backdrop.Kind != BackdropKind.TvLight)
             Backdrop = Continue != null
-                ? new BackdropSpec(BackdropKind.TvLight, Continue.CoverPath, Continue.SystemId, Continue.Accent, Continue.Id, StageShare: 0.55, GlowX: 0.78, GlowY: 0.32)
+                ? new BackdropSpec(BackdropKind.TvLight, Continue.CoverPath, Continue.SystemId, Continue.Accent, Continue.Id, StageShare: 0.55, GlowX: 0.80, GlowY: 0.33, GhostX: 0.80)
                 : new BackdropSpec(BackdropKind.TvLight, StageShare: 0.55);
-        ContinueMeta = Continue == null ? "" : Loc.T("home.continueMeta", Continue.SystemName, Continue.LastPlayedText, Continue.PlayTimeText);
+        ContinueMeta = Continue == null ? "" : BuildContinueMeta(Continue.SystemName, Continue.LastPlayedText, Continue.PlayTimeText);
+        Location = Continue == null ? null : Loc.T("home.location"); // "Start › Weiterspielen"
         // Lists are only replaced when their content changed: a new list rebuilds the shelf, which drops the keyboard /
         // controller focus of its tiles (refreshes happen often, e.g. while a scan runs). The items are shared
         // instances (GameItemCache), so unchanged shelves still show updated favourites/play times.
@@ -109,6 +110,10 @@ public sealed partial class HomeViewModel : PageViewModel
         Platforms = SystemItemViewModel.Reconcile(Platforms, platforms, stats);
         IsLoaded = true;
     }
+
+    /// <summary>"Game Boy Advance. 46 Std. gespielt, zuletzt heute." – every sentence starts upper case ("Unter 1 Min.").</summary>
+    internal static string BuildContinueMeta(string systemName, string lastPlayed, string playTime) =>
+        Loc.T("home.continueMeta", systemName, lastPlayed, Fmt.SentenceStart(playTime));
 
     private static IReadOnlyList<GameItemViewModel> Keep(IReadOnlyList<GameItemViewModel> current, IReadOnlyList<GameItemViewModel> fresh) =>
         current.Count == fresh.Count && current.SequenceEqual(fresh) ? current : fresh;

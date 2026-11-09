@@ -21,8 +21,27 @@ public sealed record ModeOption(LaunchMode? Mode, string Label, string Hint)
     public override string ToString() => Label;
 }
 
-/// <summary>A launch problem as shown on the detail page.</summary>
-public sealed record ProblemItem(string Text, bool IsBlocking);
+/// <summary>
+/// A launch problem as shown on the detail page: one sentence (the planner's first sentence); a download link in the
+/// message moves behind a "Website" action instead of standing in the text.
+/// </summary>
+public sealed record ProblemItem(string Text, bool IsBlocking, string? Url = null)
+{
+    public bool HasUrl => !string.IsNullOrEmpty(Url);
+
+    private static readonly System.Text.RegularExpressions.Regex UrlPattern = new(@"https?://\S+", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>"RetroArch ist nicht installiert. Entpacke … Download: https://…" → ("RetroArch ist nicht installiert.", url).</summary>
+    public static ProblemItem From(string message, bool blocking)
+    {
+        var url = UrlPattern.Match(message) is { Success: true } m ? m.Value.TrimEnd('.', ')', ',') : null;
+        var text = message.Replace("\r", "").Split('\n')[0].Trim();
+        var end = text.IndexOf(". ", StringComparison.Ordinal);
+        if (end > 0) text = text[..(end + 1)];
+        if (url != null) text = text.Replace(url, "").Replace("Download:", "").Trim();
+        return new ProblemItem(text, blocking, url);
+    }
+}
 
 /// <summary>A label/value pair in the metadata list.</summary>
 public sealed record FactItem(string Label, string Value)
@@ -56,6 +75,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
     [ObservableProperty] public partial string Added { get; private set; } = "";
     [ObservableProperty] public partial string FilePath { get; private set; } = "";
     [ObservableProperty] public partial string FileInfo { get; private set; } = "";
+    [ObservableProperty] public partial string FileName { get; private set; } = "";
 
     [ObservableProperty] public partial IReadOnlyList<EmulatorOption> Emulators { get; private set; } = [];
     [ObservableProperty] public partial EmulatorOption? SelectedEmulator { get; set; }
@@ -109,6 +129,11 @@ public sealed partial class GameDetailViewModel : PageViewModel
     /// <summary>"46 Std. in 41 Sitzungen gespielt, zuletzt heute." / "Noch nie gespielt. Seit … in der Sammlung."</summary>
     [ObservableProperty] public partial string PlaySentence { get; private set; } = "";
 
+    /// <summary>
+    /// "Rollenspiel von Game Freak, 2004. Ein Spieler. Europa." (DESIGN 3.2): missing parts drop out with their
+    /// punctuation; region tags become words ("EUR" → "Europa"); a language ("Englisch") is only mentioned beside genre,
+    /// developer or year – never as the only fact. Nothing known: the system name ("Game Boy Advance.").
+    /// </summary>
     internal static string BuildMetaSentence(Core.Library.Game g, string systemName)
     {
         var first = !string.IsNullOrEmpty(g.Genre) && !string.IsNullOrEmpty(g.Developer) ? Loc.T("detail.meta.by", g.Genre!, g.Developer!)
@@ -116,11 +141,23 @@ public sealed partial class GameDetailViewModel : PageViewModel
             : g.Genre ?? "";
         if (g.Year is { } y) first = first.Length > 0 ? $"{first}, {y}" : y.ToString();
         var parts = new List<string>();
-        if (first.Length > 0) parts.Add(first + ".");
-        if (g.Players is { } p) parts.Add((p == 1 ? Loc.T("detail.onePlayer") : Loc.T("detail.manyPlayers", p)) + ".");
-        if (!string.IsNullOrEmpty(g.Region)) parts.Add(g.Region!.TrimEnd('.') + ".");
+        if (first.Length > 0) parts.Add(Fmt.SentenceStart(first) + ".");
+        if (g.Players is { } p) parts.Add((p == 1 ? Loc.T("detail.onePlayerSentence") : Loc.T("detail.manyPlayers", p)) + ".");
+        if (!string.IsNullOrWhiteSpace(g.Region))
+        {
+            if (Fmt.RegionWord(g.Region) is { } region) parts.Add(region + ".");
+            else if (first.Length > 0) parts.Add(Fmt.SentenceStart(g.Region!.Trim().TrimEnd('.')) + ".");
+        }
         return parts.Count > 0 ? string.Join(" ", parts) : systemName + ".";
     }
+
+    /// <summary>"46 Std. in 41 Sitzungen gespielt, zuletzt heute." – the play time starts the sentence ("Unter 1 Min. …").</summary>
+    internal static string BuildPlaySentence(Core.Library.Game g) =>
+        g.PlayCount == 0 || g.LastPlayedUtc == null
+            ? Loc.T("detail.sentence.never", Fmt.Date(g.AddedUtc))
+            : g.PlayCount == 1
+                ? Loc.T("detail.sentence.once", Fmt.SentenceStart(Fmt.PlayTime(g.PlaySeconds)), Fmt.LastPlayed(g.LastPlayedUtc))
+                : Loc.T("detail.sentence.played", Fmt.SentenceStart(Fmt.PlayTime(g.PlaySeconds)), g.PlayCount, Fmt.LastPlayed(g.LastPlayedUtc));
 
     public async Task LoadAsync(long gameId)
     {
@@ -151,7 +188,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
             Title = g.DisplayTitle;
             Location = g.DisplayTitle;
             // TV light of the game above the stage board; the glow sits at the box (left)
-            Backdrop = new BackdropSpec(BackdropKind.TvLight, Game.CoverPath, g.SystemId, Game.Accent, g.Id, StageShare: 0.63, GlowX: 0.2, GlowY: 0.36);
+            Backdrop = new BackdropSpec(BackdropKind.TvLight, Game.CoverPath, g.SystemId, Game.Accent, g.Id, StageShare: 0.63, GlowX: 0.16, GlowY: 0.38, GhostX: 0.82);
             Description = string.IsNullOrWhiteSpace(g.Description) ? Loc.T("detail.noDescription") : g.Description!;
             HasDescription = !string.IsNullOrWhiteSpace(g.Description);
             var facts = new List<FactItem>();
@@ -163,18 +200,15 @@ public sealed partial class GameDetailViewModel : PageViewModel
             if (!string.IsNullOrEmpty(g.Region)) facts.Add(new FactItem(Loc.T("detail.region"), g.Region!));
             Facts = facts;
             MetaSentence = BuildMetaSentence(g, Game.SystemName);
-            PlaySentence = g.PlayCount == 0 || g.LastPlayedUtc == null
-                ? Loc.T("detail.sentence.never", Fmt.Date(g.AddedUtc))
-                : g.PlayCount == 1
-                    ? Loc.T("detail.sentence.once", Fmt.PlayTime(g.PlaySeconds), Fmt.LastPlayed(g.LastPlayedUtc))
-                    : Loc.T("detail.sentence.played", Fmt.PlayTime(g.PlaySeconds), g.PlayCount, Fmt.LastPlayed(g.LastPlayedUtc));
+            PlaySentence = BuildPlaySentence(g);
             PlayTime = Fmt.PlayTime(g.PlaySeconds);
             LastPlayed = Fmt.LastPlayed(g.LastPlayedUtc);
             PlayCount = g.PlayCount == 0 ? Loc.T("detail.neverStarted") : g.PlayCount == 1 ? Loc.T("detail.startedOnce") : Loc.T("detail.startedTimes", g.PlayCount);
             Added = Fmt.Date(g.AddedUtc);
             FilePath = g.Path;
             HasCover = !string.IsNullOrEmpty(g.CoverPath);
-            FileInfo = string.Join(" · ", new[] { Fmt.Size(g.Size), g.Crc32 != null ? "CRC32 " + g.Crc32 : null, g.Serial }.Where(x => !string.IsNullOrEmpty(x)));
+            FileName = Path.GetFileName(g.Path);
+            FileInfo = Fmt.Size(g.Size); // name and size only; path and CRC belong in the file info overlay
 
             // emulator choices: "Automatisch" (system default order) + every configured choice with its install state
             var options = new List<EmulatorOption>
@@ -213,12 +247,15 @@ public sealed partial class GameDetailViewModel : PageViewModel
 
     private void ApplyPlan(LaunchPlan plan)
     {
-        Problems = plan.Problems.OrderByDescending(p => p.Blocking).Select(p => new ProblemItem(p.Message, p.Blocking)).ToList();
+        Problems = plan.Problems.OrderByDescending(p => p.Blocking).Select(p => ProblemItem.From(p.Message, p.Blocking)).ToList();
         HasProblems = Problems.Count > 0;
         CanPlay = plan.CanLaunch;
+        // a sentence, no "A · B" chain: "Startet mit RetroArch (snes9x) im Vollbild."
         PlanSummary = plan.Emulator != null
-            ? Loc.T("detail.planSummary", plan.Emulator.Def.Name + (plan.Core != null ? $" ({plan.Core})" : ""), Fmt.Mode(plan.Mode))
+            ? Loc.T("detail.planSummary", plan.Emulator.Def.Name + (plan.Core != null ? $" ({plan.Core})" : ""), Fmt.ModePhrase(plan.Mode))
             : Loc.T("detail.planNoEmulator");
+        ShowSolution = !CanPlay && Game != null;
+        SolutionText = Game?.IsMissing == true ? Loc.T("detail.solution.file") : Loc.T("detail.solution.emulator");
         PlayCommand.NotifyCanExecuteChanged();
     }
 
@@ -259,6 +296,33 @@ public sealed partial class GameDetailViewModel : PageViewModel
             ApplyPlan(plan);
         }
         finally { _loading = false; }
+    }
+
+    /// <summary>"Spielen" is not possible: the primary plate becomes the solution button (DESIGN 7.3).</summary>
+    [ObservableProperty] public partial bool ShowSolution { get; private set; }
+    [ObservableProperty] public partial string SolutionText { get; private set; } = "";
+
+    /// <summary>The way out: the emulators of this system (or the imports when the file is missing).</summary>
+    [RelayCommand]
+    private void Solve()
+    {
+        if (Game == null) return;
+        if (Game.IsMissing) Ctx.Navigator.Navigate(PageKey.Imports);
+        else Ctx.Navigator.Navigate(PageKey.Emulators, Game.SystemId);
+    }
+
+    [RelayCommand]
+    private void OpenWebsite(ProblemItem? problem)
+    {
+        if (problem?.Url != null && !ShellOpen.Url(problem.Url)) Ctx.Toasts.Show(Loc.T("common.openFailed"), ToastKind.Error);
+    }
+
+    /// <summary>"Mehr › Ordner öffnen": the folder of the game file.</summary>
+    [RelayCommand]
+    private void OpenGameFolder()
+    {
+        var folder = string.IsNullOrEmpty(FilePath) ? null : Path.GetDirectoryName(FilePath);
+        if (folder != null && !ShellOpen.Folder(folder)) Ctx.Toasts.Show(Loc.T("common.folderMissing", folder), ToastKind.Warning);
     }
 
     private bool CanPlayGame() => CanPlay && Game != null;

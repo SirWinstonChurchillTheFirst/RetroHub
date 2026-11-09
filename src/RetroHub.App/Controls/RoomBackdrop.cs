@@ -38,7 +38,7 @@ public sealed class RoomBackdrop : Panel
     private static readonly Color RoomDeep = Color.Parse("#0A0908");
 
     private readonly Border _ground;          // room or the system wall (flat tone, interpolates)
-    private readonly SystemWall _wall;        // two-tone wall when a game has no picture
+    private readonly MotifGhost _ghost;       // motif outline at 7 % when a game has no picture (on the flat wall tone)
     private readonly Image _a;
     private readonly Image _b;
     private readonly TextureFill _grain;
@@ -57,7 +57,7 @@ public sealed class RoomBackdrop : Panel
     {
         IsHitTestVisible = false;
         _ground = new Border { Background = new SolidColorBrush(Room) };
-        _wall = new SystemWall { MotifShare = 0, BandHeight = 0, IsVisible = false };
+        _ghost = new MotifGhost { IsVisible = false };
         _a = MakeImage();
         _b = MakeImage();
         _grain = new TextureFill { Texture = Texture.Grain, Strength = 0.025 };
@@ -69,7 +69,7 @@ public sealed class RoomBackdrop : Panel
         };
         _glow = new Border { Background = _glowBrush };
         Children.Add(_ground);
-        Children.Add(_wall);
+        Children.Add(_ghost);
         Children.Add(_a);
         Children.Add(_b);
         Children.Add(_grain);
@@ -196,8 +196,9 @@ public sealed class RoomBackdrop : Panel
                 }
                 else if (look != null)
                 {
-                    // no picture: the system's two-tone wall (motif outline follows with the final motifs, M5)
-                    SetGround(Room, look);
+                    // no picture: the system's wall as ONE flat tone (a 38/62 split across the window reads as a
+                    // rendering seam) plus the motif outline at 7 % standing bottom right on the stage board
+                    SetGround(look.Wall, look);
                     FadeTo(null);
                     SetGlow(look.Light, 0.10);
                     ThemeManager.SetBoardLight(ThemeManager.BoardLightFor(look.Light, 0.35));
@@ -220,12 +221,8 @@ public sealed class RoomBackdrop : Panel
     {
         if (_ground.Background is SolidColorBrush b) b.Color = colour;
         else _ground.Background = new SolidColorBrush(colour);
-        _wall.IsVisible = look != null;
-        if (look != null)
-        {
-            _wall.SystemId = look.Id;
-            _wall.Accent = look.Color;
-        }
+        _ghost.IsVisible = look != null;
+        _ghost.Look = look;
     }
 
     private void FadeTo(Bitmap? bitmap)
@@ -267,6 +264,13 @@ public sealed class RoomBackdrop : Panel
         _glowBrush.GradientOrigin = _glowBrush.Center;
         _glowBrush.RadiusX = new RelativeScalar(r, RelativeUnit.Absolute);
         _glowBrush.RadiusY = new RelativeScalar(r, RelativeUnit.Absolute);
+        // the motif outline stands on the stage board, right, 80 % of the stage height
+        var size = Math.Round(stage * 0.8);
+        _ghost.Width = size;
+        _ghost.Height = size;
+        _ghost.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+        _ghost.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+        _ghost.Margin = new Thickness(Math.Max(0, w * _target.GhostX - size / 2), Math.Max(0, stage - size), 0, 0);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -327,11 +331,21 @@ public sealed class RoomBackdrop : Panel
         GradientStops = { new GradientStop(a, 0), new GradientStop(b, 1) },
     };
 
-    /// <summary>(a) horizontal room 94 % → 52 %, (b) vertical clear until 60 % of the stage → room at the board,
+    /// <summary>(a) horizontal room 94 % at the left → 52 % from 60 % of the width on, (b) vertical clear until 60 % of the stage → room at the board,
     /// room below, (c) vignette in room-deep, (d) head scrim room-deep 70 % → 0 over 160 px.</summary>
     private static void DrawScrims(DrawingContext ctx, double w, double h, double stage)
     {
-        ctx.FillRectangle(Linear(ColorUtil.WithAlpha(Room, 0xF0), ColorUtil.WithAlpha(Room, 0x85), 0, 0, 1, 0), new Rect(0, 0, w, stage));
+        ctx.FillRectangle(new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(ColorUtil.WithAlpha(Room, 0xF0), 0),
+                new GradientStop(ColorUtil.WithAlpha(Room, 0x85), 0.6),
+                new GradientStop(ColorUtil.WithAlpha(Room, 0x85), 1),
+            },
+        }, new Rect(0, 0, w, stage));
         var fadeTop = stage * 0.6;
         ctx.FillRectangle(Linear(ColorUtil.WithAlpha(Room, 0), Room, 0, 0, 0, 1), new Rect(0, fadeTop, w, Math.Max(1, stage - fadeTop)));
         ctx.FillRectangle(RoomBrush, new Rect(0, stage, w, Math.Max(0, h - stage)));
@@ -507,5 +521,25 @@ public sealed class RoomBackdrop : Panel
                     }
                     px[(y * w + x) * 4 + c] = sum / n;
                 }
+    }
+}
+
+/// <summary>The motif of a system as a 1.5 px outline in its light at 7 % (TV light without a picture, DESIGN 2.5.9).</summary>
+internal sealed class MotifGhost : Control
+{
+    private SystemLook? _look;
+
+    public MotifGhost() { IsHitTestVisible = false; }
+
+    public SystemLook? Look
+    {
+        get => _look;
+        set { if (_look == value) return; _look = value; InvalidateVisual(); }
+    }
+
+    public override void Render(DrawingContext context)
+    {
+        if (_look == null || Bounds.Width <= 0) return;
+        MotifCatalog.DrawOutline(context, _look, new Rect(Bounds.Size), 0.07, 1.5);
     }
 }

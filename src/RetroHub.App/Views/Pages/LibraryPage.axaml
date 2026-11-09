@@ -7,8 +7,8 @@
             x:Class="RetroHub.App.Views.Pages.LibraryPage"
             x:DataType="vm:LibraryViewModel">
   <!--
-    Library (M1 foundation state): no picture background, no headline – the count lives in the footer. A ticker row
-    (system filter) with the tools on the right, then the shelf grid (boxes on 10 px shelf edges, one focus layer).
+    Library (M1.5): no picture background, no headline – the count and the position live in the footer. A ticker row
+    (system filter) with icon tools on the right, then the shelf grid (boxes on 10 px shelf edges, one focus layer).
     The shelf mirror, the wall banner and the preview list follow in M3 (DESIGN 7.2).
   -->
   <p:PageBase.Resources>
@@ -20,59 +20,91 @@
     </DataTemplate>
   </p:PageBase.Resources>
 
+  <p:PageBase.Styles>
+    <!-- narrow: the tools are icons only -->
+    <Style Selector="StackPanel#Tools.compact TextBlock#SortLabel, StackPanel#Tools.compact TextBlock#FavLabel">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </p:PageBase.Styles>
+
   <Grid RowDefinitions="64,*">
-    <!-- ticker (system filter) + tools -->
+    <!-- ticker (system filter) + tools. Search is an icon that slides a 360 px field out over the ticker; below
+         1500 px logical width the tools are icons only (class "compact" on Tools, set in code-behind). -->
     <Grid ColumnDefinitions="*,Auto" Margin="{DynamicResource RhPageInsetX}">
-      <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" VerticalAlignment="Center" Margin="-10,0,24,0">
-        <ItemsControl ItemsSource="{Binding Chips}">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-              <StackPanel Orientation="Horizontal" Spacing="12" />
-            </ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:FilterChip">
-              <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}"
-                      Command="{Binding $parent[p:PageBase].((vm:LibraryViewModel)DataContext).SelectChipCommand}" CommandParameter="{Binding}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="17" LetterSpacing="0.6" VerticalAlignment="Center" />
-                  <TextBlock Text="{Binding Count}" Classes="number" FontSize="15" Opacity="0.7" VerticalAlignment="Center" />
-                </StackPanel>
+      <Panel Margin="-10,0,24,0" VerticalAlignment="Center">
+        <ScrollViewer Name="TickerScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+          <ItemsControl Name="Ticker" ItemsSource="{Binding Chips}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="12" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:FilterChip">
+                <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}"
+                        Command="{Binding $parent[p:PageBase].((vm:LibraryViewModel)DataContext).SelectChipCommand}" CommandParameter="{Binding}">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="17" LetterSpacing="0.6" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Count}" Classes="number" FontSize="15" Opacity="0.7" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+        <!-- 48 px room fades at the ticker edges (overlays, no OpacityMask) -->
+        <Border Name="FadeLeft" Width="48" HorizontalAlignment="Left" IsHitTestVisible="False" IsVisible="False">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+              <GradientStop Offset="0" Color="#FF14120F" />
+              <GradientStop Offset="1" Color="#0014120F" />
+            </LinearGradientBrush>
+          </Border.Background>
+        </Border>
+        <Border Name="FadeRight" Width="48" HorizontalAlignment="Right" IsHitTestVisible="False" IsVisible="False">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+              <GradientStop Offset="0" Color="#0014120F" />
+              <GradientStop Offset="1" Color="#FF14120F" />
+            </LinearGradientBrush>
+          </Border.Background>
+        </Border>
+        <!-- the search field, slid out over the ticker -->
+        <Border Name="SearchPanel" Width="360" HorizontalAlignment="Right" Background="{DynamicResource RhBaseBrush}" Padding="12,0,0,0" IsVisible="False">
+          <TextBox Name="Search" Classes="search" Text="{Binding SearchText}" PlaceholderText="{l:T library.searchPlaceholder}">
+            <TextBox.InnerRightContent>
+              <Button Theme="{StaticResource RhGhostButton}" Width="32" Height="32" MinHeight="0" Padding="0" Margin="0,0,6,0" Focusable="False"
+                      Command="{Binding ClearSearchCommand}" IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <c:RhIcon Data="{StaticResource Icon.Close}" Width="16" Height="16" />
               </Button>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </ScrollViewer>
-      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-        <TextBox Name="Search" Classes="search" Width="320" Text="{Binding SearchText}" PlaceholderText="{l:T library.searchPlaceholder}">
-          <TextBox.InnerRightContent>
-            <Button Theme="{StaticResource RhGhostButton}" Width="32" Height="32" MinHeight="0" Padding="0" Margin="0,0,6,0" Focusable="False"
-                    Command="{Binding ClearSearchCommand}" IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-              <c:RhIcon Data="{StaticResource Icon.Close}" Width="16" Height="16" />
-            </Button>
-          </TextBox.InnerRightContent>
-        </TextBox>
-        <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}" Width="210" ToolTip.Tip="{l:T library.sort}">
-          <ComboBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:SortOption">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <c:RhIcon Data="{StaticResource Icon.Sort}" Width="18" Height="18" />
-                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-              </StackPanel>
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-        <ToggleButton Name="FavToggle" IsChecked="{Binding FavoritesOnly}" Theme="{StaticResource RhToggleChip}" ToolTip.Tip="{l:T library.favoritesOnly}">
+            </TextBox.InnerRightContent>
+          </TextBox>
+        </Border>
+      </Panel>
+      <StackPanel Name="Tools" Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+        <Button Name="SearchToggle" Theme="{StaticResource RhGhostButton}" Height="44" MinHeight="44" Width="44" Padding="0"
+                ToolTip.Tip="{l:T hint.search}" AutomationProperties.Name="{l:T hint.search}">
+          <c:RhIcon Data="{StaticResource Icon.Search}" Width="22" Height="22" />
+        </Button>
+        <Button Name="SortButton" Theme="{StaticResource RhGhostButton}" Height="44" MinHeight="44" Padding="11,0" ToolTip.Tip="{l:T library.sort}"
+                AutomationProperties.Name="{l:T library.sort}">
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <c:RhIcon Data="{StaticResource Icon.Star}" Width="20" Height="20" />
-            <TextBlock Text="{l:T library.favorites}" VerticalAlignment="Center" />
+            <c:RhIcon Data="{StaticResource Icon.Sort}" Width="22" Height="22" />
+            <TextBlock Name="SortLabel" Text="{Binding SelectedSort.Label}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <ToggleButton Name="FavToggle" IsChecked="{Binding FavoritesOnly}" Theme="{StaticResource RhToggleChip}" ToolTip.Tip="{l:T library.favoritesOnly}"
+                      Height="44" Padding="11,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:RhIcon Data="{StaticResource Icon.Star}" Width="22" Height="22" />
+            <TextBlock Name="FavLabel" Text="{l:T library.favorites}" VerticalAlignment="Center" />
           </StackPanel>
         </ToggleButton>
-        <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsGridView}" Command="{Binding ShowGridCommand}" Width="44" Padding="0"
+        <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsGridView}" Command="{Binding ShowGridCommand}" Width="44" Height="44" Padding="0"
                 ToolTip.Tip="{l:T library.gridView}">
           <c:RhIcon Data="{StaticResource Icon.Grid}" Width="22" Height="22" />
         </Button>
-        <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsListView}" Command="{Binding ShowListCommand}" Width="44" Padding="0"
+        <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsListView}" Command="{Binding ShowListCommand}" Width="44" Height="44" Padding="0"
                 ToolTip.Tip="{l:T library.listView}">
           <c:RhIcon Data="{StaticResource Icon.List}" Width="22" Height="22" />
         </Button>

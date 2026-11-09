@@ -9,7 +9,8 @@ namespace RetroHub.App.Controls;
 
 /// <summary>
 /// A shelf board with boxes ("Brett", DESIGN 7.1): the boxes stand on a 24 px board, a paper label
-/// (<see cref="Header"/>) hangs at the left of the board front instead of a heading. Focus visuals come from one
+/// (<see cref="Header"/>) hangs at the left of the board front instead of a heading; the action ("Alle anzeigen") is a
+/// spine standing at the end of the board, never a text link. Focus visuals come from one
 /// <see cref="FocusLayer"/> in the scroll content. Small item counts (≤ ~16), so no virtualization is needed.
 /// </summary>
 public class Shelf : TemplatedControl
@@ -24,6 +25,14 @@ public class Shelf : TemplatedControl
     /// <summary>Inset of the boxes inside the board (the board itself runs over the full width).</summary>
     public static readonly StyledProperty<Thickness> ItemsMarginProperty = AvaloniaProperty.Register<Shelf, Thickness>(nameof(ItemsMargin));
     public static readonly StyledProperty<Thickness> LabelMarginProperty = AvaloniaProperty.Register<Shelf, Thickness>(nameof(LabelMargin));
+    /// <summary>Height of the boxes on this board (the "Alle anzeigen" spine matches it).</summary>
+    public static readonly StyledProperty<double> ItemHeightProperty = AvaloniaProperty.Register<Shelf, double>(nameof(ItemHeight), 200);
+    /// <summary>Free space above the boxes.</summary>
+    public static readonly StyledProperty<double> TopGapProperty = AvaloniaProperty.Register<Shelf, double>(nameof(TopGap), 48);
+
+    /// <summary>TopGap → the host margin (template binding helper).</summary>
+    public static readonly Avalonia.Data.Converters.IValueConverter TopMargin =
+        new Avalonia.Data.Converters.FuncValueConverter<double, Thickness>(v => new Thickness(0, v, 0, 0));
 
     public string? Header { get => GetValue(HeaderProperty); set => SetValue(HeaderProperty, value); }
     public string? SubHeader { get => GetValue(SubHeaderProperty); set => SetValue(SubHeaderProperty, value); }
@@ -34,6 +43,8 @@ public class Shelf : TemplatedControl
     public double ItemSpacing { get => GetValue(ItemSpacingProperty); set => SetValue(ItemSpacingProperty, value); }
     public Thickness ItemsMargin { get => GetValue(ItemsMarginProperty); set => SetValue(ItemsMarginProperty, value); }
     public Thickness LabelMargin { get => GetValue(LabelMarginProperty); set => SetValue(LabelMarginProperty, value); }
+    public double ItemHeight { get => GetValue(ItemHeightProperty); set => SetValue(ItemHeightProperty, value); }
+    public double TopGap { get => GetValue(TopGapProperty); set => SetValue(TopGapProperty, value); }
 
     /// <summary>The focus visuals of this shelf (null until the template is applied).</summary>
     public FocusLayer? FocusVisuals { get; private set; }

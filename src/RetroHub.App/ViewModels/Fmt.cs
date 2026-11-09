@@ -63,6 +63,14 @@ public static class Fmt
         _ => Loc.T("mode.windowed"),
     };
 
+    /// <summary>The mode inside a sentence: "Startet mit mGBA im Vollbild."</summary>
+    public static string ModePhrase(LaunchMode mode) => mode switch
+    {
+        LaunchMode.Embedded => Loc.T("mode.embedded.phrase"),
+        LaunchMode.Fullscreen => Loc.T("mode.fullscreen.phrase"),
+        _ => Loc.T("mode.windowed.phrase"),
+    };
+
     public static string ModeHint(LaunchMode mode) => mode switch
     {
         LaunchMode.Embedded => Loc.T("mode.embedded.hint"),
@@ -78,6 +86,31 @@ public static class Fmt
         SystemCategory.Pc => Loc.T("category.pc"),
         _ => Loc.T("category.console"),
     };
+
+    /// <summary>The first letter in upper case – for a part that starts a sentence ("unter 1 Min." → "Unter 1 Min.").</summary>
+    public static string SentenceStart(string text) =>
+        string.IsNullOrEmpty(text) || !char.IsLower(text[0]) ? text : char.ToUpper(text[0], Loc.Culture) + text[1..];
+
+    /// <summary>
+    /// A region tag as a word for the meta sentence ("EUR" → "Europa"); null when the value is not a region (then it
+    /// is a language like "Englisch" or "Deutsch, PAL", which the sentence only mentions beside other facts).
+    /// </summary>
+    public static string? RegionWord(string? region)
+    {
+        if (string.IsNullOrWhiteSpace(region)) return null;
+        var key = region.Trim().TrimEnd('.').ToUpperInvariant();
+        return key switch
+        {
+            "EUR" or "EU" or "EUROPE" or "EUROPA" or "PAL" => Loc.T("region.europe"),
+            "USA" or "US" or "NTSC-U" or "NA" or "NORTH AMERICA" => Loc.T("region.usa"),
+            "JPN" or "JP" or "JAP" or "JAPAN" or "NTSC-J" => Loc.T("region.japan"),
+            "GER" or "DE" or "GERMANY" or "DEUTSCHLAND" => Loc.T("region.germany"),
+            "WORLD" or "WLD" or "WELT" => Loc.T("region.world"),
+            "USA, EUROPE" or "USA, EUR" or "EUR, USA" => Loc.T("region.usaEurope"),
+            "KOR" or "KOREA" => Loc.T("region.korea"),
+            _ => null,
+        };
+    }
 
     /// <summary>Up to two initials of a title ("The Legend of Zelda" → "LZ", "Tetris" → "TE").</summary>
     public static string Initials(string title)

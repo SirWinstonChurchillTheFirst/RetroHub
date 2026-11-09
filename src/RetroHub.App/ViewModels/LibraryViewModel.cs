@@ -156,7 +156,8 @@ public sealed partial class LibraryViewModel : PageViewModel
         UpdateChips(result.Stats);
         var total = result.Stats.GameCount;
         CountText = Items.Count == total ? Loc.T("library.count", total) : Loc.T("library.countFiltered", Items.Count, total);
-        Location = CountText; // the collection count lives in the footer's location sentence (DESIGN 7.0)
+        _total = total;
+        UpdateLocation(); // the collection count lives in the footer's location sentence (DESIGN 7.0)
         IsEmpty = Items.Count == 0;
         EmptyText = total == 0 ? Loc.T("library.emptyLibrary") : Loc.T("library.noMatches");
         IsLoaded = true;
@@ -189,6 +190,29 @@ public sealed partial class LibraryViewModel : PageViewModel
         SelectedSystemId = chip?.SystemId;
         foreach (var c in Chips) c.IsSelected = c.SystemId == SelectedSystemId;
         _ = LoadAsync();
+    }
+
+    private int _total;
+
+    /// <summary>Index of the focused game in <see cref="Items"/> (set by the view; −1 = none yet).</summary>
+    [ObservableProperty] public partial int FocusIndex { get; set; } = -1;
+
+    partial void OnFocusIndexChanged(int value) => UpdateLocation();
+
+    /// <summary>"Alle Spiele, 12 von 66" / "Game Boy Advance, 3 von 7" / "Favoriten, 1 von 11" (DESIGN 7.0).</summary>
+    private void UpdateLocation()
+    {
+        var n = Items.Count;
+        if (n == 0)
+        {
+            Location = Loc.T("library.location.none");
+            return;
+        }
+        var pos = Math.Clamp(FocusIndex + 1, 1, n);
+        var system = SelectedSystemId != null ? Ctx.Services.Catalog.GetSystem(SelectedSystemId)?.Name : null;
+        var scope = !string.IsNullOrWhiteSpace(SearchText) ? Loc.T("library.location.search", SearchText.Trim())
+            : system ?? (FavoritesOnly ? Loc.T("library.location.favorites") : null);
+        Location = scope == null && n == _total ? Loc.T("library.location.all", pos, n) : Loc.T("library.location.scope", scope ?? Loc.T("library.all"), pos, n);
     }
 
     [RelayCommand] private void ShowGrid() => IsListView = false;

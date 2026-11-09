@@ -23,6 +23,8 @@ public sealed class FocusLayer
     public const double Lift = 1.06;
 
     private readonly Panel _host;
+    private readonly Control _watched;
+    private ScrollViewer? _viewport;
     private readonly List<Visual> _raised = new();
     private GameTile? _tile;
     private Rect _target;
@@ -31,13 +33,30 @@ public sealed class FocusLayer
     public FocusLayer(Panel host, Control watched)
     {
         _host = host;
+        _watched = watched;
         Back = new BackLayer(this);
         Front = new FrontLayer(this);
         watched.AddHandler(InputElement.GotFocusEvent, OnGotFocus, RoutingStrategies.Bubble, handledEventsToo: true);
         watched.AddHandler(InputElement.LostFocusEvent, OnLostFocus, RoutingStrategies.Bubble, handledEventsToo: true);
         host.LayoutUpdated += (_, _) => { if (_tile != null) Reposition(); };
-        host.AttachedToVisualTree += (_, _) => NavRepeatTracker.AnyChanged += OnRepeatChanged;
-        host.DetachedFromVisualTree += (_, _) => NavRepeatTracker.AnyChanged -= OnRepeatChanged;
+        host.AttachedToVisualTree += (_, _) =>
+        {
+            NavRepeatTracker.AnyChanged += OnRepeatChanged;
+            // the cone is clipped to the visible viewport: re-render it when the content scrolls
+            _viewport = host.FindAncestorOfType<ScrollViewer>();
+            if (_viewport != null) _viewport.ScrollChanged += OnViewportScrolled;
+        };
+        host.DetachedFromVisualTree += (_, _) =>
+        {
+            NavRepeatTracker.AnyChanged -= OnRepeatChanged;
+            if (_viewport != null) _viewport.ScrollChanged -= OnViewportScrolled;
+            _viewport = null;
+        };
+    }
+
+    private void OnViewportScrolled(object? sender, ScrollChangedEventArgs e)
+    {
+        if (_visible) Back.InvalidateVisual();
     }
 
     private void OnRepeatChanged(bool active)
@@ -190,7 +209,17 @@ public sealed class FocusLayer
     {
         if (!_visible || NavRepeatTracker.Current?.IsActive == true) return; // no cone while a direction is held
         var t = _target;
-        var top = t.Top - 120;
+        // the cone never paints over the header above the boxes (poster title, ticker): it starts at most 24 px above
+        // the rows and is clipped to the scroll viewport
+        var limit = _watched.TranslatePoint(new Point(0, 0), Back) is { } w ? w.Y - 24 : double.NegativeInfinity;
+        Rect? clip = null;
+        if (_viewport != null && _viewport.TranslatePoint(new Point(0, 0), Back) is { } v)
+        {
+            clip = new Rect(v, _viewport.Bounds.Size);
+            limit = Math.Max(limit, v.Y);
+        }
+        var top = Math.Max(t.Top - 120, limit);
+        if (top >= t.Bottom) return;
         var geo = new StreamGeometry();
         using (var g = geo.Open())
         {
@@ -200,7 +229,8 @@ public sealed class FocusLayer
             g.LineTo(new Point(t.Center.X - t.Width * 0.65, t.Bottom));
             g.EndFigure(true);
         }
-        ctx.DrawGeometry(ConeBrush(LightColor), null, geo);
+        using (clip is { } c ? ctx.PushClip(c) : default(DrawingContext.PushedState?))
+            ctx.DrawGeometry(ConeBrush(LightColor), null, geo);
     }
 
     private void RenderFront(DrawingContext ctx)

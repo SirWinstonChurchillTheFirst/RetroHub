@@ -4,13 +4,30 @@ using Avalonia.Media;
 namespace RetroHub.App.Theming;
 
 /// <summary>
-/// Category motifs (DESIGN 6.2) on a 120×120 grid, standing on y = 120. Preliminary shapes (M1/M2); the final
-/// drawings and the outsider test follow in M5. Geometries are parsed once and shared.
+/// Category motifs (DESIGN 6.2) on a 120×120 grid, standing on y = 120. Each motif is a short list of flat parts
+/// painted in the system's colours: the body (Zweitfarbe, lifted when it would vanish on a dark wall), the colour
+/// parts (Farbe), cut-outs in the wall tone (labels, screens, grooves) and a few light lines. Categories, never
+/// products. Geometries are parsed once and shared; final drawings and the outsider test follow in M5.
 /// </summary>
 public static class MotifCatalog
 {
-    /// <summary>Body (filled in the system's "Zweitfarbe" or "Farbe") and detail (label/screen) of a motif.</summary>
-    public sealed record Shape(Geometry Body, Geometry? Detail, bool BodyInColor);
+    /// <summary>How a part is painted.</summary>
+    public enum Paint
+    {
+        /// <summary>"Farbe".</summary>
+        Color,
+        /// <summary>"Zweitfarbe" – lifted toward paper when it has too little contrast to the wall (black housings).</summary>
+        Body,
+        /// <summary>Cut-out in the ground tone (screens, label insets, grooves, slots).</summary>
+        Cut,
+        /// <summary>"Licht" (one groove of the tower, the lines of the twin lens).</summary>
+        Light,
+    }
+
+    /// <summary>One flat part; <paramref name="Stroke"/> &gt; 0 = drawn as a line of that width instead of filled.</summary>
+    public sealed record Part(Geometry Geometry, Paint Paint, double Stroke = 0);
+
+    public sealed record Shape(IReadOnlyList<Part> Parts);
 
     private static readonly Dictionary<Motif, Shape> Cache = new();
 
@@ -19,21 +36,34 @@ public static class MotifCatalog
         lock (Cache)
         {
             if (Cache.TryGetValue(motif, out var s)) return s;
-            s = Create(motif);
+            s = new Shape(Create(motif));
             Cache[motif] = s;
             return s;
         }
     }
 
     private static Geometry P(string data) => Geometry.Parse(data);
+    private static Part C(string d) => new(P(d), Paint.Color);
+    private static Part B(string d) => new(P(d), Paint.Body);
+    private static Part X(string d) => new(P(d), Paint.Cut);
 
     private static Geometry Disc(double cx, double cy, double r, double hole)
     {
         var g = new GeometryGroup { FillRule = FillRule.EvenOdd };
         g.Children.Add(new EllipseGeometry(new Rect(cx - r, cy - r, 2 * r, 2 * r)));
-        g.Children.Add(new EllipseGeometry(new Rect(cx - hole, cy - hole, 2 * hole, 2 * hole)));
+        if (hole > 0) g.Children.Add(new EllipseGeometry(new Rect(cx - hole, cy - hole, 2 * hole, 2 * hole)));
         return g;
     }
+
+    /// <summary>Concentric hard bands (even-odd: r0 filled to r1, r2 filled to r3, …).</summary>
+    private static Geometry Rings(double cx, double cy, params double[] radii)
+    {
+        var g = new GeometryGroup { FillRule = FillRule.EvenOdd };
+        foreach (var r in radii) g.Children.Add(new EllipseGeometry(new Rect(cx - r, cy - r, 2 * r, 2 * r)));
+        return g;
+    }
+
+    private static Geometry Dot(double cx, double cy, double r) => new EllipseGeometry(new Rect(cx - r, cy - r, 2 * r, 2 * r));
 
     private static Geometry Group(params Geometry[] parts)
     {
@@ -42,32 +72,158 @@ public static class MotifCatalog
         return g;
     }
 
-    private static Shape Create(Motif motif) => motif switch
+    /// <summary>A d-pad cross centred at (cx, cy), arm length a, thickness t.</summary>
+    private static string Cross(double cx, double cy, double a, double t) => FormattableString.Invariant(
+        $"M{cx - t / 2},{cy - a} H{cx + t / 2} V{cy - t / 2} H{cx + a} V{cy + t / 2} H{cx + t / 2} V{cy + a} H{cx - t / 2} V{cy + t / 2} H{cx - a} V{cy - t / 2} H{cx - t / 2} Z");
+
+    private static Part[] Create(Motif motif) => motif switch
     {
-        Motif.Cart8 => new(P("M14,10 H106 V120 H14 Z"), P("M24,46 H96 V112 H24 Z"), false),
-        Motif.Cart16 => new(P("M18,22 Q18,8 32,8 H88 Q102,8 102,22 V120 H18 Z"), P("M30,34 H90 V100 H30 Z"), false),
-        Motif.Cart64 => new(P("M14,30 L26,10 H94 L106,30 V120 H14 Z"), P("M28,38 H92 V104 H28 Z"), false),
-        Motif.CartStack => new(P("M30,20 Q30,8 42,8 H78 Q90,8 90,20 V42 H30 Z M18,62 Q18,50 30,50 H90 Q102,50 102,62 V120 H18 Z"),
-            P("M40,66 H80 V108 H40 Z"), false),
-        Motif.Card => new(P("M20,60 H100 V120 H20 Z"), P("M30,108 H34 V114 H30 Z M42,108 H46 V114 H42 Z M54,108 H58 V114 H54 Z M66,108 H70 V114 H66 Z M78,108 H82 V114 H78 Z"), false),
+        // module: grooves on top, a label inset in colour
+        Motif.Cart8 =>
+        [
+            B("M14,10 H106 V120 H14 Z"),
+            X("M24,17 H96 V19 H24 Z M24,24 H96 V26 H24 Z M24,31 H96 V33 H24 Z"),
+            C("M24,46 H96 V112 H24 Z"),
+        ],
+        Motif.Cart16 =>
+        [
+            B("M18,22 Q18,8 32,8 H88 Q102,8 102,22 V120 H18 Z"),
+            X("M30,16 H90 V18 H30 Z M30,22 H90 V24 H30 Z"),
+            C("M30,34 H90 V100 H30 Z"),
+            X("M18,107 H102 V109 H18 Z"),
+        ],
+        Motif.Cart64 =>
+        [
+            B("M14,30 L26,10 H94 L106,30 V120 H14 Z"),
+            X("M32,20 H88 V22 H32 Z"),
+            C("M28,38 H92 V104 H28 Z"),
+        ],
+        // two modules: the upper one at 80 % width, 8 px joint
+        Motif.CartStack =>
+        [
+            B("M30,20 Q30,8 42,8 H78 Q90,8 90,20 V42 H30 Z M18,62 Q18,50 30,50 H90 Q102,50 102,62 V120 H18 Z"),
+            C("M40,16 H80 V36 H40 Z M32,64 H88 V108 H32 Z"),
+        ],
+        Motif.Card =>
+        [
+            B("M20,60 H100 V120 H20 Z"),
+            C("M30,68 H90 V100 H30 Z"),
+            X("M30,108 H34 V116 H30 Z M40,108 H44 V116 H40 Z M50,108 H54 V116 H50 Z M60,108 H64 V116 H60 Z M70,108 H74 V116 H70 Z M80,108 H84 V116 H80 Z"),
+        ],
         Motif.HandheldTall or Motif.HandheldTallDouble =>
-            new(P("M30,4 H90 L98,12 V120 H22 V12 Z"), P("M34,16 H86 V62 H34 Z"), true),
-        Motif.HandheldWide => new(P("M14,40 H106 L114,48 V112 L106,120 H14 L6,112 V48 Z"), P("M38,52 H82 V100 H38 Z"), true),
-        Motif.HandheldBroad => new(P("M12,64 H108 L116,72 V112 L108,120 H12 L4,112 V72 Z"), P("M36,72 H84 V112 H36 Z"), true),
-        Motif.Clamshell => new(P("M18,10 H102 V56 H18 Z M18,64 H102 V120 H18 Z M14,58 H106 V62 H14 Z"), P("M28,18 H92 V50 H28 Z"), true),
-        Motif.Disc or Motif.DiscTrack or Motif.DiscBands or Motif.DiscHalftone => new(Disc(60, 68, 52, 9), null, true),
-        Motif.MiniDisc => new(Disc(60, 82, 38, 13), null, true),
-        Motif.Tray => new(Group(Disc(60, 70, 40, 7), P("M8,86 H112 V120 H8 Z")), P("M48,100 H72 V104 H48 Z"), true),
-        Motif.Stand => new(Group(Disc(60, 36, 28, 6), P("M44,30 H76 V120 H44 Z")), P("M50,30 H70 V34 H50 Z"), true),
-        Motif.Tablet => new(P("M24,30 H96 V104 H24 Z"), P("M34,40 H86 V94 H34 Z"), true),
-        Motif.Dock => new(P("M10,68 H34 V96 H86 V68 H110 V120 H10 Z M26,18 H94 V96 H26 Z"), P("M32,24 H88 V80 H32 Z"), true),
-        Motif.TwinLens => new(P("M14,40 H106 V84 H14 Z M36,112 H84 V120 H36 Z M56,84 H64 V112 H56 Z"), null, true),
-        Motif.ControlPanel => new(Group(P("M8,72 H112 L104,120 H16 Z M37,44 H43 V72 H37 Z"), new EllipseGeometry(new Rect(31, 29, 18, 18))), null, true),
-        Motif.Stick => new(Group(P("M24,92 H96 V120 H24 Z M57,40 H63 V92 H57 Z"), new EllipseGeometry(new Rect(50, 26, 20, 20))), null, true),
-        Motif.Floppy => new(P("M14,8 H96 L110,22 V120 H14 Z"), P("M28,64 H96 V120 H28 Z"), false),
-        Motif.KeyBlock => new(KeyBlock(), null, true),
-        Motif.Tower => new(P("M30,6 H90 V120 H30 Z"), P("M38,20 H82 V22 H38 Z M38,36 H82 V38 H38 Z M38,52 H82 V54 H38 Z M38,68 H82 V70 H38 Z M38,84 H82 V86 H38 Z M38,100 H82 V102 H38 Z"), false),
-        _ => new(P("M14,10 H106 V120 H14 Z"), null, false),
+        [
+            C("M30,4 H90 L98,12 V120 H22 V12 Z"),
+            X("M34,16 H86 V62 H34 Z"),
+            X(Cross(42, 86, 10, 6)),
+            new(Group(Dot(74, 92, 4.5), Dot(86, 82, 4.5)), Paint.Cut),
+        ],
+        Motif.HandheldWide =>
+        [
+            C("M14,40 H106 L114,48 V112 L106,120 H14 L6,112 V48 Z"),
+            X("M38,52 H82 V100 H38 Z"),
+            X(Cross(22, 76, 8, 5)),
+            new(Group(Dot(96, 70, 4), Dot(96, 84, 4)), Paint.Cut),
+        ],
+        Motif.HandheldBroad =>
+        [
+            C("M12,64 H108 L116,72 V112 L108,120 H12 L4,112 V72 Z"),
+            X("M34,72 H86 V112 H34 Z"),
+            X(Cross(19, 92, 7, 4)),
+            new(Group(Dot(101, 86, 3.5), Dot(101, 98, 3.5)), Paint.Cut),
+        ],
+        // clamshell: two halves, a hinge in the body tone, two screens cut out
+        Motif.Clamshell =>
+        [
+            C("M18,10 H102 V56 H18 Z M18,64 H102 V120 H18 Z"),
+            B("M14,57 H106 V63 H14 Z"),
+            X("M30,18 H90 V50 H30 Z M38,72 H82 V112 H38 Z"),
+        ],
+        Motif.Disc => [new(Disc(60, 68, 52, 9), Paint.Color)],
+        Motif.DiscTrack =>
+        [
+            new(Disc(60, 68, 52, 9), Paint.Color),
+            new(P("M60,28 A40,40 0 0 1 98,55 M60,38 A30,30 0 0 1 88,58"), Paint.Cut, 2),
+        ],
+        Motif.DiscBands =>
+        [
+            new(Disc(60, 68, 52, 9), Paint.Color),
+            new(Rings(60, 68, 44, 40, 29, 26), Paint.Body),
+        ],
+        Motif.DiscHalftone =>
+        [
+            new(Disc(60, 68, 52, 9), Paint.Color),
+            new(Group(Dot(78, 50, 1.2), Dot(84, 64, 1.8), Dot(80, 80, 2.2), Dot(92, 52, 2.4), Dot(96, 70, 2.8), Dot(92, 88, 3)), Paint.Body),
+        ],
+        Motif.MiniDisc =>
+        [
+            new(Disc(60, 82, 38, 13), Paint.Color),
+            new(P("M30,44 H90 A10,10 0 0 1 100,54 V110 A10,10 0 0 1 90,120 H30 A10,10 0 0 1 20,110 V54 A10,10 0 0 1 30,44 Z"), Paint.Body, 2.5),
+        ],
+        // disc on a drawer: the drawer front stands clearly in front of the disc
+        Motif.Tray =>
+        [
+            new(Disc(60, 62, 40, 7), Paint.Color),
+            B("M8,86 H112 V120 H8 Z"),
+            X("M44,100 H76 V105 H44 Z"),
+        ],
+        // slot console: an upright body with a disc half inserted at the top (not a lollipop)
+        Motif.Stand =>
+        [
+            new(Disc(60, 44, 26, 5), Paint.Color),
+            B("M40,44 H80 V120 H40 Z"),
+            X("M46,44 H74 V48 H46 Z"),
+            new(Dot(60, 108, 3), Paint.Color),
+        ],
+        // tablet with grips on a stand: plate, cut screen, two dots outside the screen, foot on y 120
+        Motif.Tablet =>
+        [
+            B("M52,100 H68 V112 H52 Z M34,112 H86 V120 H34 Z"),
+            C("M10,30 H110 V100 H10 Z"),
+            X("M30,38 H90 V92 H30 Z"),
+            new(Group(Dot(20, 54, 4.5), Dot(100, 54, 4.5)), Paint.Body),
+        ],
+        // a plate half sunk into a U-shaped dock; no detachable side parts
+        Motif.Dock =>
+        [
+            B("M26,18 H94 V96 H26 Z"),
+            X("M32,24 H88 V80 H32 Z"),
+            C("M10,68 H34 V96 H86 V68 H110 V120 H10 Z"),
+        ],
+        Motif.TwinLens =>
+        [
+            new(P("M14,40 H106 V84 H14 Z M60,84 V112 M36,113 H84"), Paint.Light, 2),
+            new(Group(Dot(40, 62, 13), Dot(80, 62, 13)), Paint.Light, 2),
+            B("M36,112 H84 V120 H36 Z"),
+        ],
+        Motif.ControlPanel =>
+        [
+            C("M8,72 H112 L104,120 H16 Z"),
+            B("M37,44 H43 V72 H37 Z"),
+            new(Dot(40, 38, 9), Paint.Color),
+            new(Group(Dot(66, 84, 5), Dot(80, 84, 5), Dot(94, 84, 5), Dot(66, 100, 5), Dot(80, 100, 5), Dot(94, 100, 5)), Paint.Cut),
+        ],
+        Motif.Stick =>
+        [
+            B("M24,92 H96 V120 H24 Z"),
+            B("M57,40 H63 V92 H57 Z"),
+            new(Group(Dot(60, 36, 10), Dot(36, 102, 6)), Paint.Color),
+        ],
+        Motif.Floppy =>
+        [
+            C("M14,8 H96 L110,22 V120 H14 Z"),
+            X("M36,8 H84 V42 H36 Z"),
+            new(P("M66,14 H76 V36 H66 Z"), Paint.Color),
+            B("M28,64 H96 V120 H28 Z"),
+        ],
+        Motif.KeyBlock => [B("M4,52 H116 V120 H4 Z"), new(KeyBlock(), Paint.Color)],
+        // tower: body lifted from the black wall, seven grooves, one in light
+        Motif.Tower =>
+        [
+            B("M30,6 H90 V120 H30 Z"),
+            X("M38,20 H82 V22 H38 Z M38,34 H82 V36 H38 Z M38,48 H82 V50 H38 Z M38,76 H82 V78 H38 Z M38,90 H82 V92 H38 Z M38,104 H82 V106 H38 Z"),
+            new(P("M38,62 H82 V64 H38 Z"), Paint.Light),
+        ],
+        _ => [B("M14,10 H106 V120 H14 Z")],
     };
 
     private static Geometry KeyBlock()
@@ -76,27 +232,71 @@ public static class MotifCatalog
         for (var row = 0; row < 3; row++)
             for (var col = 0; col < 5; col++)
             {
-                double x = 12 + col * 20, y = 62 + row * 20;
-                g.Children.Add(P($"M{x + 3},{y} H{x + 11} L{x + 14},{y + 3} V{y + 11} L{x + 11},{y + 14} H{x + 3} L{x},{y + 11} V{y + 3} Z"));
+                double x = 10 + col * 21, y = 60 + row * 20;
+                g.Children.Add(P(FormattableString.Invariant($"M{x + 3},{y} H{x + 11} L{x + 14},{y + 3} V{y + 11} L{x + 11},{y + 14} H{x + 3} L{x},{y + 11} V{y + 3} Z")));
             }
         return g;
     }
 
-    /// <summary>Draws the motif of <paramref name="look"/> standing on the bottom edge of <paramref name="box"/> (a square area).</summary>
-    public static void Draw(DrawingContext ctx, SystemLook look, Rect box, double opacity = 1, bool silhouette = false)
+    private static readonly Dictionary<uint, IImmutableSolidColorBrush> BodyBrushes = new();
+
+    /// <summary>
+    /// The body tone of <paramref name="look"/>: the "Zweitfarbe", lifted toward paper when it would vanish on the wall
+    /// (contrast &lt; 1.6, e.g. the near-black housings of Master System, Mega Drive, PS2).
+    /// </summary>
+    public static IBrush BodyBrush(SystemLook look)
+    {
+        if (ColorUtil.Contrast(look.Second, look.Wall) >= 1.6) return look.SecondBrush;
+        var key = look.WallHi.ToUInt32();
+        lock (BodyBrushes)
+        {
+            if (!BodyBrushes.TryGetValue(key, out var b))
+                BodyBrushes[key] = b = new ImmutableSolidColorBrush(ColorUtil.Mix(look.WallHi, SystemPalette.Paper, 0.16));
+            return b;
+        }
+    }
+
+    /// <summary>
+    /// Draws the motif of <paramref name="look"/> standing on the bottom edge of <paramref name="box"/> (a square area).
+    /// <paramref name="silhouette"/> = one colour (placeholders): every part in "Farbe", cut-outs in
+    /// <paramref name="cutout"/> (the ground tone), composited at <paramref name="opacity"/> as one layer.
+    /// </summary>
+    public static void Draw(DrawingContext ctx, SystemLook look, Rect box, double opacity = 1, bool silhouette = false,
+        IBrush? cutout = null, bool alignRight = false)
     {
         var shape = Get(look.Motif);
         var scale = Math.Min(box.Width, box.Height) / 120.0;
+        var x = alignRight ? box.Right - 120 * scale : box.X + (box.Width - 120 * scale) / 2;
+        var ground = cutout ?? look.WallBrush;
+        var body = silhouette ? look.ColorBrush : BodyBrush(look);
+        using (ctx.PushOpacity(opacity))
+        using (ctx.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(x, box.Bottom - 120 * scale)))
+        {
+            foreach (var part in shape.Parts)
+            {
+                var brush = part.Paint switch
+                {
+                    Paint.Color => look.ColorBrush,
+                    Paint.Body => body,
+                    Paint.Light => silhouette ? look.ColorBrush : look.LightBrush,
+                    _ => ground,
+                };
+                if (part.Stroke > 0)
+                    ctx.DrawGeometry(null, new Pen(brush, part.Stroke, lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter), part.Geometry);
+                else ctx.DrawGeometry(brush, null, part.Geometry);
+            }
+        }
+    }
+
+    /// <summary>The motif as an outline only (every part stroked in the system's light): the "Kein Bild" ghost.</summary>
+    public static void DrawOutline(DrawingContext ctx, SystemLook look, Rect box, double opacity, double thickness)
+    {
+        var shape = Get(look.Motif);
+        var scale = Math.Min(box.Width, box.Height) / 120.0;
+        var pen = new Pen(look.LightBrush, thickness / scale, lineJoin: PenLineJoin.Miter);
         using (ctx.PushOpacity(opacity))
         using (ctx.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(box.X + (box.Width - 120 * scale) / 2, box.Bottom - 120 * scale)))
-        {
-            if (silhouette)
-            {
-                ctx.DrawGeometry(look.ColorBrush, null, shape.Body);
-                return;
-            }
-            ctx.DrawGeometry(shape.BodyInColor ? look.ColorBrush : look.SecondBrush, null, shape.Body);
-            if (shape.Detail != null) ctx.DrawGeometry(shape.BodyInColor ? look.WallBrush : look.ColorBrush, null, shape.Detail);
-        }
+            foreach (var part in shape.Parts)
+                ctx.DrawGeometry(null, pen, part.Geometry);
     }
 }

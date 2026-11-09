@@ -32,6 +32,13 @@
     <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
   </Style>
 
+  <!-- a measured title that fits no size shows its fallback (system code) in the spine role (Controls/FitText) -->
+  <Style Selector="TextBlock.fit-fallback">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontSpine}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="LetterSpacing" Value="0.6" />
+  </Style>
+
   <!-- ===== Etikett / Button / Überschriften (Werkbank, Dialoge) ===== -->
   <Style Selector="TextBlock.h2">
     <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
@@ -137,6 +144,7 @@
   </Style>
   <Style Selector="TextBlock.mono">
     <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+    <Setter Property="FontWeight" Value="Normal" />
     <Setter Property="FontSize" Value="15" />
     <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
   </Style>

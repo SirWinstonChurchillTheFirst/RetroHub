@@ -6,25 +6,26 @@
             xmlns:l="using:RetroHub.App.Localization"
             x:Class="RetroHub.App.Views.Pages.SystemsPage"
             x:DataType="vm:SystemsViewModel">
-  <!-- Konsolen (M1 foundation state): one painted wall per system. The spine shelf with the turning front follows in M5 (DESIGN 7.4). -->
+  <!--
+    Konsolen (M1.5): the painted walls stand on boards (ShelfGridPanel: 8 px between walls, 48 px between rows),
+    no KPI heading – the count is in the footer. The spine shelf with the turning front follows in M5 (DESIGN 7.4).
+  -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="{DynamicResource RhPageInset}" Spacing="8">
-      <TextBlock c:Sentence.Text="{Binding SummaryText}" Classes="read" Margin="0,0,0,16" />
-      <!-- columns follow the page width (code-behind), walls stretch to fill the row -->
-      <ItemsControl Name="Cards" ItemsSource="{Binding Systems}" ClipToBounds="False">
+      <ItemsControl Name="Cards" ItemsSource="{Binding Systems}" ClipToBounds="False" Margin="0,24,0,0">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <UniformGrid Columns="4" ColumnSpacing="24" RowSpacing="32" />
+            <c:ShelfGridPanel MinItemWidth="268" ItemHeight="240" ColumnSpacing="8" RowGap="48" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:SystemItemViewModel">
-            <c:SystemCard Height="200" />
+            <c:SystemCard />
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
 
-      <StackPanel IsVisible="{Binding HasEmptySystems}" Spacing="12" Margin="0,40,0,0">
+      <StackPanel IsVisible="{Binding HasEmptySystems}" Spacing="12" Margin="0,56,0,0">
         <c:ShelfLabel Text="{l:T systems.withoutGames}" />
         <TextBlock Text="{l:T systems.withoutGames.hint}" Classes="read" MaxWidth="760" HorizontalAlignment="Left" />
         <ItemsControl ItemsSource="{Binding EmptySystems}" Margin="0,6,0,0">

@@ -119,6 +119,20 @@
   <Style Selector="ScrollViewer">
     <Setter Property="AllowAutoHide" Value="True" />
   </Style>
+  <!-- scroll bars: a 2 px edge-coloured thumb without a track, visible only while scrolling (class "scrolling", set by
+       the shell for 900 ms after each scroll) or under the mouse -->
+  <Style Selector="ScrollViewer /template/ ScrollBar">
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.14" /></Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ScrollViewer.scrolling /template/ ScrollBar, ScrollViewer /template/ ScrollBar:pointerover">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="ScrollBar /template/ Thumb">
+    <Setter Property="Background" Value="{DynamicResource RhLineBrush}" />
+  </Style>
 
   <!-- ===== Motion levels (classes on the shell root) ===== -->
   <Style Selector=".motion-off Button, .motion-off ToggleButton, .motion-off c|GameTile, .motion-off c|SystemCard">

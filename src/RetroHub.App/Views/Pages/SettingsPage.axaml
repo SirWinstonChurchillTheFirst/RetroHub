@@ -16,8 +16,12 @@
       <Setter Property="FontWeight" Value="Medium" />
       <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     </Style>
+    <!-- descriptions = the meta class: Atkinson 15/20 in Text 3 -->
     <Style Selector="TextBlock.rowHint">
+      <Setter Property="FontFamily" Value="{DynamicResource RhFontRead}" />
+      <Setter Property="FontWeight" Value="Normal" />
       <Setter Property="FontSize" Value="15" />
+      <Setter Property="LineHeight" Value="20" />
       <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="Margin" Value="0,2,0,0" />
@@ -128,12 +132,11 @@
       <!-- controller -->
       <Border Padding="0,8">
         <StackPanel Spacing="10">
-          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+          <!-- the state is a meta line under the label (no floating chip) -->
+          <StackPanel Spacing="6" Margin="0,0,0,6">
             <c:ShelfLabel Text="{l:T settings.controller}" />
-            <Border Grid.Column="1" Classes="chip">
-              <TextBlock Text="{Binding ControllerStatus}" />
-            </Border>
-          </Grid>
+            <TextBlock Text="{Binding ControllerStatus}" Classes="meta" />
+          </StackPanel>
           <Grid Classes="row" ColumnDefinitions="*,Auto">
             <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
               <TextBlock Text="{l:T settings.controller.enabled}" Classes="rowTitle" />

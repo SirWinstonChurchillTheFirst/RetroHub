@@ -9,7 +9,7 @@
   <!-- Systemseite (M1 foundation state): the page ground is the system's wall (RoomBackdrop); banner and motif follow in M5 (DESIGN 7.5). -->
   <p:PageBase.Resources>
     <DataTemplate x:Key="GridTile" x:DataType="vm:GameItemViewModel">
-      <c:GameTile />
+      <c:GameTile Classes="in-system" />
     </DataTemplate>
   </p:PageBase.Resources>
   <Panel>

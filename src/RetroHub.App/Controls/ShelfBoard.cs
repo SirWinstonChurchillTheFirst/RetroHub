@@ -35,7 +35,22 @@ public sealed class ShelfBoard : Control
         VerticalAlignmentProperty.OverrideDefaultValue<ShelfBoard>(VerticalAlignment.Top);
     }
 
-    public override void Render(DrawingContext context) => Draw(context, new Rect(Bounds.Size));
+    /// <summary>Objects standing on this board: each casts the 10 px contact shadow on the front (covers by their ArtRect).</summary>
+    public IReadOnlyList<Control> Casters { get; set; } = [];
+
+    public override void Render(DrawingContext context)
+    {
+        var r = new Rect(Bounds.Size);
+        Draw(context, r);
+        foreach (var c in Casters)
+        {
+            if (!c.IsEffectivelyVisible) continue;
+            var span = c is CoverArt art ? art.ArtRect : new Rect(c.Bounds.Size);
+            if (span.Width <= 0) continue;
+            if (c.TranslatePoint(span.TopLeft, this) is not { } p) continue;
+            context.FillRectangle(ContactBrush, new Rect(p.X, 1, span.Width, Math.Min(10, r.Height - 1)));
+        }
+    }
 
     /// <summary>Draws a board front into <paramref name="r"/> (shadow below it).</summary>
     public static void Draw(DrawingContext context, Rect r)

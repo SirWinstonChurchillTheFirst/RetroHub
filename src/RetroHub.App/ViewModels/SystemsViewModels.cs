@@ -52,6 +52,8 @@ public sealed partial class SystemsViewModel : PageViewModel
         Systems = SystemItemViewModel.Reconcile(Systems, ordered.Where(s => stats.GamesPerSystem.GetValueOrDefault(s.Id) > 0).ToList(), stats);
         EmptySystems = SystemItemViewModel.Reconcile(EmptySystems, ordered.Where(s => stats.GamesPerSystem.GetValueOrDefault(s.Id) == 0).ToList(), stats);
         SummaryText = Loc.T("systems.summary", Systems.Count, stats.GameCount);
+        // no KPI heading: the count lives in the footer's location sentence ("Konsolen › 12 Fächer mit 60 Spielen")
+        Location = Loc.T("systems.location", Systems.Count, stats.GameCount);
     }
 
     [RelayCommand]

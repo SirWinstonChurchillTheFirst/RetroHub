@@ -63,6 +63,8 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, (_, e) => _repeat.OnKeyUp(e.Key), RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerPressedEvent, (_, _) => _pointerMode = true, RoutingStrategies.Tunnel, handledEventsToo: true);
+        // scroll bars show only while scrolling (Styles.axaml: ScrollViewer.scrolling)
+        AddHandler(ScrollViewer.ScrollChangedEvent, OnAnyScroll, RoutingStrategies.Bubble, handledEventsToo: true);
         SizeChanged += (_, e) =>
         {
             vm.WindowWidth = e.NewSize.Width;
@@ -132,6 +134,27 @@ public partial class MainWindow : Window
         };
         // the shell must not wait for Opened in headless tests (no Opened without a platform window): navigate now
         if (vm.CurrentPage == null) vm.Navigator.Navigate(PageKey.Home);
+    }
+
+    private readonly Dictionary<ScrollViewer, DispatcherTimer> _scrollTimers = new();
+
+    private void OnAnyScroll(object? sender, ScrollChangedEventArgs e)
+    {
+        if (e.Source is not ScrollViewer sv || e.OffsetDelta == default) return;
+        sv.Classes.Set("scrolling", true);
+        if (!_scrollTimers.TryGetValue(sv, out var timer))
+        {
+            timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                sv.Classes.Set("scrolling", false);
+                _scrollTimers.Remove(sv);
+            };
+            _scrollTimers[sv] = timer;
+        }
+        timer.Stop();
+        timer.Start();
     }
 
     public MainViewModel ViewModel => _vm;

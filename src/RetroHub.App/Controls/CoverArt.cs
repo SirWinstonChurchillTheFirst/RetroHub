@@ -27,7 +27,8 @@ public sealed class CoverArt : Control
     public static readonly StyledProperty<string?> SystemIdProperty = AvaloniaProperty.Register<CoverArt, string?>(nameof(SystemId));
     /// <summary>Catalog accent: only used for systems without a palette entry (<see cref="SystemPalette.From"/>).</summary>
     public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<CoverArt, Color>(nameof(Accent), Color.Parse("#948A7A"));
-    /// <summary>Legacy (v0): the spine placeholder always carries its title now.</summary>
+    /// <summary>False = stage variant (Start, Detail): no title in the placeholder (the poster title stands beside it),
+    /// motif at 60 % and the code in Rücken 28.</summary>
     public static readonly StyledProperty<bool> ShowTitleProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(ShowTitle), true);
     /// <summary>Legacy (v0): badge pills are gone (DESIGN 10.2).</summary>
     public static readonly StyledProperty<bool> ShowBadgeProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(ShowBadge), true);
@@ -55,7 +56,8 @@ public sealed class CoverArt : Control
 
     static CoverArt()
     {
-        AffectsRender<CoverArt>(TitleProperty, BadgeProperty, AccentProperty, SystemIdProperty, FillProperty, IsFavoriteProperty, IsMissingProperty);
+        AffectsRender<CoverArt>(TitleProperty, BadgeProperty, AccentProperty, SystemIdProperty, FillProperty, IsFavoriteProperty, IsMissingProperty,
+            ShowTitleProperty);
         ClipToBoundsProperty.OverrideDefaultValue<CoverArt>(true);
     }
 
@@ -98,8 +100,8 @@ public sealed class CoverArt : Control
         }
         else if (change.Property == FillProperty) UpdateArtRect();
         if (change.Property == TitleProperty || change.Property == BadgeProperty || change.Property == SystemIdProperty
-            || change.Property == BoundsProperty || change.Property == SourceProperty)
-            _titleText = null; // rebuilt lazily on the next placeholder layout (see EnsureText)
+            || change.Property == BoundsProperty || change.Property == SourceProperty || change.Property == ShowTitleProperty)
+            _textKey = default; // rebuilt lazily on the next placeholder layout (see EnsureText)
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -236,9 +238,10 @@ public sealed class CoverArt : Control
         if (art.Width < 60) return;
         if (IsFavorite)
         {
-            // on a placeholder the marker sits right of the spine band, so the system code stays readable
-            var left = _bitmap == null && !Fill ? Math.Max(6, Math.Round(art.Width * 0.16)) + 6 : 6;
-            var box = new Rect(art.X + left, art.Y + 6, 26, 26);
+            // on a placeholder the marker sits bottom left beside the spine band (the title owns the top left)
+            var placeholder = _bitmap == null && !Fill;
+            var left = placeholder ? Math.Max(6, Math.Round(art.Width * 0.16)) + 6 : 6;
+            var box = placeholder ? new Rect(art.X + left, art.Bottom - 32, 26, 26) : new Rect(art.X + left, art.Y + 6, 26, 26);
             ctx.DrawRectangle(MarkerGround, null, new RoundedRect(box, 2));
             using (ctx.PushTransform(Matrix.CreateScale(0.75, 0.75) * Matrix.CreateTranslation(box.X + 4, box.Y + 4)))
                 ctx.DrawGeometry(FavoriteBrush, null, StarGeometry);
@@ -252,17 +255,25 @@ public sealed class CoverArt : Control
         }
     }
 
+    /// <summary>Tiles narrower than this get one wall tone (a 38/62 split inside a small box reads as a grey card).</summary>
+    public const double SplitMinWidth = 200;
+
+    /// <summary>Title size of the placeholder (Archivo Expanded): fixed per tile width, never shrunk per title.</summary>
+    public static double PlaceholderTitleSize(double width) => Math.Clamp(Math.Round(width * 0.115), 18, 24);
+
     private void DrawPlaceholder(DrawingContext ctx, Rect r)
     {
         var look = SystemPalette.Get(SystemId, Accent);
         EnsureText(r, look);
         var w = r.Width;
+        var stage = !ShowTitle;
         using (ctx.PushClip(new RoundedRect(r, 2)))
         {
-            // ground: two tones like the wall, texture 8 % (shared brush, offset per title so neighbours differ)
-            var split = Math.Round(r.Height * 0.38);
-            ctx.FillRectangle(look.WallHiBrush, new Rect(r.X, r.Y, w, split));
-            ctx.FillRectangle(look.WallBrush, new Rect(r.X, r.Y + split, w, r.Height - split));
+            // ground: one tone in small tiles, the wall's 38/62 split from 200 px; texture 8 % (shared brush, offset
+            // per title so neighbours differ)
+            var split = w >= SplitMinWidth ? Math.Round(r.Height * 0.38) : 0;
+            if (split > 0) ctx.FillRectangle(look.WallHiBrush, new Rect(r.X, r.Y, w, split));
+            ctx.FillRectangle(split > 0 ? look.WallBrush : look.WallHiBrush, new Rect(r.X, r.Y + split, w, r.Height - split));
             if (TextureBrushes.Get(look.Texture) is { } tex)
             {
                 var hash = Hash(Title ?? "");
@@ -272,9 +283,11 @@ public sealed class CoverArt : Control
                 using (ctx.PushTransform(Matrix.CreateTranslation(r.X - ox, r.Y - oy)))
                     ctx.FillRectangle(tex.Brush, new Rect(ox, oy, w, r.Height));
             }
-            // motif silhouette: colour 18 %, 45 % of the height, bottom right
-            var motif = r.Height * 0.45;
-            MotifCatalog.Draw(ctx, look, new Rect(r.Right - motif - w * 0.04, r.Bottom - motif, motif, motif), 0.18, silhouette: true);
+            // the motif (real category shape, details cut out in the ground tone) in colour at 18 %, standing flush
+            // bottom right: 45 % of the height in the shelf, 60 % on the stages (no title there)
+            var motif = Math.Round(r.Height * (stage ? 0.60 : 0.45));
+            MotifCatalog.Draw(ctx, look, new Rect(r.Right - motif, r.Bottom - motif, motif, motif), 0.18, silhouette: true,
+                cutout: split > 0 ? look.WallBrush : look.WallHiBrush, alignRight: true);
             // spine band: 16 % of the width, full colour, code −90°
             var band = Math.Max(6, Math.Round(w * 0.16));
             ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, band, r.Height));
@@ -286,38 +299,47 @@ public sealed class CoverArt : Control
             ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y, w, 1));
             if (_titleText is { } title)
             {
-                var pad = Math.Max(6, Math.Round(w * 0.072));
-                ctx.DrawText(title, new Point(r.X + band + pad, r.Bottom - pad - title.Height));
+                var pad = PlaceholderPad(w);
+                ctx.DrawText(title, new Point(r.X + band + pad, r.Y + pad));
             }
         }
     }
 
+    private static double PlaceholderPad(double w) => Math.Clamp(Math.Round(w * 0.082), 10, 16);
+
     private void EnsureText(Rect r, SystemLook look)
     {
         var key = (Title, Badge, SystemId, (int)r.Width, (int)r.Height);
-        if (_titleText != null && key == _textKey) return;
+        if (_textKey == key && (_titleText != null || !ShowTitle || string.IsNullOrEmpty(Title))) return;
         _textKey = key;
         var w = r.Width;
         var band = Math.Max(6, Math.Round(w * 0.16));
-        var pad = Math.Max(6, Math.Round(w * 0.072));
-        // the title stays whole (DESIGN 10.2): shrink from 0.105 × width until the longest word fits on a line
-        var maxWidth = Math.Max(1, w - band - 2 * pad);
-        var title = Title ?? "";
-        var longest = title.Split([' ', '-'], StringSplitOptions.RemoveEmptyEntries).OrderByDescending(s => s.Length).FirstOrDefault() ?? "";
-        var size = Math.Max(9, w * 0.105);
-        var minSize = Math.Max(8, w * 0.068);
-        while (size > minSize && longest.Length > 0 &&
-               new FormattedText(longest, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, PaperBrush).Width > maxWidth)
-            size -= 0.5;
-        _titleText = new FormattedText(title, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, PaperBrush)
+        var pad = PlaceholderPad(w);
+        // the title (DESIGN 10.2): top left after the band, one size per tile width (never shrunk per title),
+        // word wrap, at most 4 lines; the stage variants (Start, Detail) carry no title – the poster stands beside them
+        _titleText = null;
+        if (ShowTitle && !string.IsNullOrEmpty(Title))
         {
-            MaxTextWidth = maxWidth,
-            MaxTextHeight = Math.Max(1, r.Height * 0.62),
-            MaxLineCount = 5,
-            LineHeight = size * 1.12,
-            Trimming = TextTrimming.WordEllipsis,
-        };
-        var codeSize = Math.Max(7, w * 0.09);
+            var size = PlaceholderTitleSize(w);
+            var maxWidth = Math.Max(1, w - band - pad - 6);
+            // one size per tile width; only when a single word would break inside, two small steps down (never < 16)
+            var longest = Title.Split([' ', '-', '/'], StringSplitOptions.RemoveEmptyEntries).OrderByDescending(s => s.Length).FirstOrDefault() ?? "";
+            bool Overflows(double sz) => longest.Length > 0 &&
+                new FormattedText(longest, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, sz, PaperBrush).Width > maxWidth;
+            for (var step = 0; step < 2 && size - 2 >= 16 && Overflows(size); step++)
+                size -= 2;
+            // a word that still does not fit breaks inside (never an ellipsis in place of a whole first line)
+            var trimming = Overflows(size) ? TextTrimming.None : TextTrimming.WordEllipsis;
+            _titleText = new FormattedText(Title, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, PaperBrush)
+            {
+                MaxTextWidth = maxWidth,
+                MaxTextHeight = Math.Max(1, r.Height * 0.62),
+                MaxLineCount = 4,
+                LineHeight = Math.Round(size * 1.1),
+                Trimming = trimming,
+            };
+        }
+        var codeSize = ShowTitle ? Math.Max(7, w * 0.09) : Math.Min(28, Math.Max(7, w * 0.11));
         _codeText = string.IsNullOrEmpty(Badge) ? null :
             new FormattedText(Badge, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, codeSize, look.TextOnColorBrush)
             {

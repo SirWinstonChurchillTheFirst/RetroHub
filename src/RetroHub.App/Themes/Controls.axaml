@@ -304,12 +304,14 @@
             <c:CoverArt Name="PART_Art" Source="{Binding CoverPath}" Title="{Binding Title}" Badge="{Binding SystemShort}"
                         SystemId="{Binding SystemId}" Accent="{Binding Accent}" IsFavorite="{Binding IsFavorite}" IsMissing="{Binding IsMissing}" />
           </Panel>
-          <!-- caption: 16 px below the 10 px shelf edge -->
-          <StackPanel Grid.Row="1" Margin="0,26,0,0" Spacing="4" IsVisible="{TemplateBinding ShowCaption}">
-            <TextBlock Name="PART_Title" Classes="caption" Text="{Binding Title}" TextWrapping="Wrap" MaxLines="2" Height="42" TextTrimming="CharacterEllipsis" />
+          <!-- caption: 16 px below the 10 px shelf edge. A spine placeholder carries its title itself, so the caption
+               keeps only the label line (no title twice); in a system context the code and the bar drop out too. -->
+          <StackPanel Grid.Row="1" Margin="0,26,0,0" Spacing="4" Height="66" IsVisible="{TemplateBinding ShowCaption}">
+            <TextBlock Name="PART_Title" Classes="caption" Text="{Binding Title}" TextWrapping="Wrap" MaxLines="2" Height="42" TextTrimming="CharacterEllipsis"
+                       IsVisible="{Binding HasCover}" />
             <StackPanel Orientation="Horizontal" Spacing="8" Height="20">
-              <Border Width="3" Height="14" Background="{Binding SystemColorBrush}" VerticalAlignment="Center" />
-              <TextBlock Classes="label" Text="{Binding SystemShort}" VerticalAlignment="Center" />
+              <Border Name="PART_Bar" Width="3" Height="14" Background="{Binding SystemColorBrush}" VerticalAlignment="Center" />
+              <TextBlock Name="PART_Code" Classes="label" Text="{Binding SystemShort}" VerticalAlignment="Center" />
               <TextBlock Classes="number" FontSize="15" Foreground="{DynamicResource RhText3Brush}" Text="{Binding YearText}" VerticalAlignment="Center" />
             </StackPanel>
           </StackPanel>
@@ -332,6 +334,13 @@
     </Style>
     <Style Selector="^:pressed /template/ Panel#PART_CoverArea">
       <Setter Property="RenderTransform" Value="scale(0.98)" />
+    </Style>
+    <!-- system context (system page): the whole page is that system – only the year remains in the label line -->
+    <Style Selector="^.in-system /template/ Border#PART_Bar">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^.in-system /template/ TextBlock#PART_Code">
+      <Setter Property="IsVisible" Value="False" />
     </Style>
   </ControlTheme>
 
@@ -383,6 +392,92 @@
     </Style>
   </ControlTheme>
 
+  <!-- ================= Selection row (DESIGN 7.3 "Auswahlzeilen", 8.2) ================= -->
+  <!-- A ComboBox as a 64 px flat row: label (Tag) in ui 18 Text 3 (200 wide), value in ui 18 paper, an arrow right;
+       no box, no chevron. Focus = row in Regal hell, 8 px side bar, 1 px light edge on top, label in a paper chip.
+       Confirm opens the choice list as an overlay. -->
+  <ControlTheme x:Key="RhChoiceRow" TargetType="ComboBox">
+    <Setter Property="Height" Value="64" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="MaxDropDownHeight" Value="420" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
+          <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
+          <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource RhLineBrush}" />
+          <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
+          <Grid ColumnDefinitions="200,*,Auto" Margin="16,0,8,0">
+            <Border Name="PART_Chip" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="8,4" CornerRadius="2" Margin="-8,0,0,0" Background="Transparent">
+              <TextBlock Name="PART_Label" Text="{TemplateBinding Tag}" Foreground="{DynamicResource RhText3Brush}" />
+            </Border>
+            <ContentControl Grid.Column="1" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding ItemTemplate}"
+                            VerticalAlignment="Center" Margin="0,0,16,0" />
+            <c:RhIcon Grid.Column="2" Name="PART_Arrow" Data="{DynamicResource Icon.ArrowRight}" Filled="True" Width="20" Height="20" VerticalAlignment="Center"
+                      Foreground="{DynamicResource RhText2Brush}" />
+          </Grid>
+          <Popup Name="PART_Popup" WindowManagerAddShadowHint="False" IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}"
+                 MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                 IsLightDismissEnabled="True" InheritsTransform="True" Placement="Bottom">
+            <Border Background="{DynamicResource RhSurfaceBrush}" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1"
+                    CornerRadius="{DynamicResource RhRadiusPanel}" Padding="4" BoxShadow="{DynamicResource RhPanelShadow}">
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+              </ScrollViewer>
+            </Border>
+          </Popup>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Edge">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Bar">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Chip">
+      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ TextBlock#PART_Label">
+      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ c|RhIcon#PART_Arrow">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- the solution button (DESIGN 7.3 "Spielen nicht möglich"): a chamfered plate in Regal hell with a 2 px warning
+       contour, Icon.Warning and the way out ("Emulator einrichten"); focus = the paper ring like the primary plate -->
+  <ControlTheme x:Key="RhSolutionButton" TargetType="Button" BasedOn="{StaticResource RhPrimaryButton}">
+    <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    <Style Selector="^ /template/ c|ChamferPlate#PART_Plate">
+      <Setter Property="Outline" Value="{DynamicResource RhWarningBrush}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ c|ChamferPlate#PART_Plate">
+      <Setter Property="Background" Value="#363128" />
+    </Style>
+    <Style Selector="^:pressed /template/ c|ChamferPlate#PART_Plate">
+      <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+  </ControlTheme>
+
   <!-- ================= System wall ("Wand") ================= -->
   <ControlTheme x:Key="{x:Type c:SystemCard}" TargetType="c:SystemCard">
     <Setter Property="ClipToBounds" Value="False" />
@@ -399,13 +494,16 @@
     </Setter>
     <Setter Property="Template">
       <ControlTemplate x:DataType="vm:SystemItemViewModel">
+        <!-- the wall stands on a board (drawn by the panel below it); the name sits in the light upper zone at full
+             width, measured 28 → 24 → 20 on word boundaries only (else the code in the spine role); the motif stands
+             on the bottom edge at 72 % of the wall height; maker/year and the count bottom left beside it -->
         <Panel>
-          <c:SystemWall SystemId="{Binding Id}" Accent="{Binding Accent}" MotifShare="0.46" MotifInset="14" />
-          <StackPanel VerticalAlignment="Bottom" Spacing="2" Margin="18,0,18,14">
-            <TextBlock Text="{Binding Name}" FontFamily="{DynamicResource RhFontPoster}" FontWeight="ExtraBold" FontSize="22" LineHeight="26"
-                       Foreground="{DynamicResource RhText1Brush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Margin="0,0,96,0" />
-            <TextBlock Text="{Binding SubTitle}" Classes="ui" FontSize="15" Foreground="{DynamicResource RhText2Brush}" TextTrimming="CharacterEllipsis" Margin="0,0,96,0" />
-            <TextBlock Text="{Binding CountText}" Classes="number" FontSize="15" Foreground="{DynamicResource RhText2Brush}" />
+          <c:SystemWall Name="PART_Wall" SystemId="{Binding Id}" Accent="{Binding Accent}" MotifShare="0.72" MotifInset="12" />
+          <c:FitText Name="PART_Name" Classes="poster" Source="{Binding Name}" FallbackSource="{Binding ShortName}" Sizes="28,24,20" FallbackSize="28"
+                     MaxLines="2" LastResortLines="3" LineFactor="1.08" VerticalAlignment="Top" Margin="20,18,20,0" Foreground="{DynamicResource RhText1Brush}" />
+          <StackPanel Name="PART_Meta" VerticalAlignment="Bottom" HorizontalAlignment="Left" Spacing="0" Margin="20,0,0,14">
+            <TextBlock Text="{Binding SubTitle}" Classes="ui" FontSize="15" Foreground="{DynamicResource RhText2Brush}" />
+            <TextBlock Text="{Binding CountText}" Classes="number" FontSize="15" Foreground="{DynamicResource RhText1Brush}" />
           </StackPanel>
           <c:FocusRing Name="PART_Ring" Brush="{Binding LightBrush}" Opacity="0" />
         </Panel>
@@ -483,31 +581,77 @@
     </Style>
   </ControlTheme>
 
+  <!-- the "Alle anzeigen" spine (DESIGN 7.1): 72 wide, Regal hell, 8 px Bernstein band, text −90° in Rücken 18;
+       focus = the chamfered ring in paper (like the primary plate) -->
+  <ControlTheme x:Key="RhSpineButton" TargetType="Button">
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Width" Value="72" />
+    <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="RenderTransformOrigin" Value="50%,100%" />
+    <Setter Property="RenderTransform" Value="scale(1)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Face" Background="{TemplateBinding Background}" />
+          <Border Height="8" VerticalAlignment="Top" Background="{DynamicResource RhAccentBrush}" />
+          <LayoutTransformControl HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16">
+            <LayoutTransformControl.LayoutTransform>
+              <RotateTransform Angle="-90" />
+            </LayoutTransformControl.LayoutTransform>
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
+                              FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="18" />
+          </LayoutTransformControl>
+          <c:FocusRing Name="PART_Ring" Brush="{DynamicResource RhPaperBrush}" Opacity="0" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ c|FocusRing#PART_Ring">
+      <Setter Property="Transitions">
+        <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.09" /></Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Face">
+      <Setter Property="Background" Value="#363128" />
+    </Style>
+    <Style Selector="^:focus-visible">
+      <Setter Property="RenderTransform" Value="scale(1.03)" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ c|FocusRing#PART_Ring">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+  </ControlTheme>
+
   <!-- ================= Shelf (a board with boxes and a paper label) ================= -->
+  <!-- No "Alle anzeigen ›" link (DESIGN 1.3): the way into the library is a spine standing at the end of the board. -->
   <ControlTheme x:Key="{x:Type c:Shelf}" TargetType="c:Shelf">
     <Setter Property="Template">
       <ControlTemplate>
         <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-          <Grid Name="PART_Host" RowDefinitions="*,24,40" Margin="0,48,0,0">
-            <ItemsControl Name="PART_Items" ItemsSource="{TemplateBinding ItemsSource}" ItemTemplate="{TemplateBinding ItemTemplate}"
-                          VerticalAlignment="Bottom" Margin="{TemplateBinding ItemsMargin}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="{Binding $parent[c:Shelf].ItemSpacing}" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-            </ItemsControl>
+          <Grid Name="PART_Host" RowDefinitions="*,24,40" Margin="{TemplateBinding TopGap, Converter={x:Static c:Shelf.TopMargin}}">
+            <StackPanel Orientation="Horizontal" Spacing="{TemplateBinding ItemSpacing}" VerticalAlignment="Bottom" Margin="{TemplateBinding ItemsMargin}">
+              <ItemsControl Name="PART_Items" ItemsSource="{TemplateBinding ItemsSource}" ItemTemplate="{TemplateBinding ItemTemplate}" VerticalAlignment="Bottom">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="{Binding $parent[c:Shelf].ItemSpacing}" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+              <Button Name="PART_AllSpine" Theme="{StaticResource RhSpineButton}" Content="{TemplateBinding ActionLabel}" Command="{TemplateBinding ActionCommand}"
+                      Height="{TemplateBinding ItemHeight}" VerticalAlignment="Bottom"
+                      IsVisible="{TemplateBinding ActionLabel, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
             <c:ShelfBoard Grid.Row="1" Height="24" />
             <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" Margin="{TemplateBinding LabelMargin}">
               <c:ShelfLabel Text="{TemplateBinding Header}" Height="24" />
               <TextBlock Text="{TemplateBinding SubHeader}" Classes="meta" VerticalAlignment="Center" />
-              <Button Theme="{StaticResource RhGhostButton}" Command="{TemplateBinding ActionCommand}" MinHeight="24" Height="24" Padding="8,0" FontSize="15"
-                      IsVisible="{TemplateBinding ActionLabel, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                  <TextBlock Text="{TemplateBinding ActionLabel}" VerticalAlignment="Center" />
-                  <c:RhIcon Data="{DynamicResource Icon.ChevronRight}" Width="14" Height="14" />
-                </StackPanel>
-              </Button>
             </StackPanel>
           </Grid>
         </ScrollViewer>

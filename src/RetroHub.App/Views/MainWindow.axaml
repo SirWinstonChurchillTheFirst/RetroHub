@@ -117,7 +117,7 @@
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="0">
               <TextBlock Text="{Binding LocationParent}" FontSize="16" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />
               <TextBlock Text="{l:T shell.location.sep}" FontSize="16" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" IsVisible="{Binding HasLocationText}" />
-              <TextBlock Name="LocationText" Text="{Binding LocationText}" FontSize="16" Foreground="{DynamicResource RhText2Brush}" VerticalAlignment="Center"
+              <TextBlock Name="LocationText" c:Sentence.Text="{Binding LocationText}" FontSize="16" Foreground="{DynamicResource RhText2Brush}" VerticalAlignment="Center"
                          TextTrimming="CharacterEllipsis" MaxWidth="760" />
             </StackPanel>
             <ItemsControl Grid.Column="1" ItemsSource="{Binding VisibleHints}" VerticalAlignment="Center" IsVisible="{Binding ShowHints}">

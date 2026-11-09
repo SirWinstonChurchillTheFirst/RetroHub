@@ -16,7 +16,8 @@ public enum BackdropKind
 /// <summary>
 /// The room-light request of a page for the shell's RoomBackdrop. <paramref name="StageShare"/> = where the stage
 /// board's top edge sits (share of the window height; below it the room is plain); <paramref name="GlowX"/>/
-/// <paramref name="GlowY"/> = centre of the glow at the source (the TV / the box), relative to the window.
+/// <paramref name="GlowY"/> = centre of the glow at the source (the TV / the box), relative to the window;
+/// <paramref name="GhostX"/> = horizontal centre of the motif outline shown when the game has no picture.
 /// </summary>
 public sealed record BackdropSpec(
     BackdropKind Kind,
@@ -26,7 +27,8 @@ public sealed record BackdropSpec(
     long GameId = 0,
     double StageShare = 0.54,
     double GlowX = 0.75,
-    double GlowY = 0.33)
+    double GlowY = 0.33,
+    double GhostX = 0.82)
 {
     public static readonly BackdropSpec Room = new(BackdropKind.Room);
 }
