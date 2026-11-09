@@ -61,3 +61,23 @@ public sealed class PpssppSetup : PortableSetupBase
             Log.Warn($"PPSSPP is not portable: {installed} exists, so it keeps its data in Documents\\PPSSPP. Delete that file to make it portable.");
     }
 }
+
+/// <summary>
+/// Cemu 2.x: a folder named "portable" next to Cemu.exe makes it keep settings.xml, keys.txt, the MLC (Wii U
+/// internal storage with the saves), shader caches and logs there instead of %APPDATA%\Cemu. RetroHub creates
+/// that folder; Wii U saves therefore live in &lt;Cemu folder&gt;\portable\mlc01, not in saves/.
+/// </summary>
+public sealed class CemuSetup : PortableSetupBase
+{
+    public override string Id => "cemu";
+
+    public override string Summary =>
+        "Cemu läuft portabel (Ordner „portable“ neben der Cemu.exe). Einstellungen, keys.txt und Spielstände (mlc01) liegen dort, " +
+        "z. B. emulators/cemu/portable, nicht in saves/.";
+
+    protected override void Configure(PortableContext ctx)
+    {
+        var dir = ctx.Ensure(Path.Combine(ctx.ExeDir, "portable"));
+        Log.Debug($"Cemu keeps its data in {dir}");
+    }
+}

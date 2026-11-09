@@ -182,9 +182,37 @@ public partial class MainWindow : Window
         // RetroHub is the foreground window right now, so it may hand the foreground to the emulator
         var emu = _vm.Launch.HandoffWindow;
         if (emu != 0 && OperatingSystem.IsWindows()) GameScreenNative.SetForegroundWindow(emu);
+        // the game belongs on the monitor RetroHub is on (emulators like Dolphin open where they like)
+        var own = TryGetPlatformHandle()?.Handle ?? 0;
+        if (emu != 0 && RetroHub.Core.Emulation.Windows.MonitorPlacement.MonitorOf(own) is { } monitor)
+            _ = KeepGameOnMonitorAsync(emu, monitor);
         Log.Info("Fullscreen hand-off: hiding the RetroHub window");
         Hide();
         TestHooks.Report("shell-hidden");
+    }
+
+    /// <summary>
+    /// For the first seconds of a fullscreen game: if the emulator's window sits on another monitor than RetroHub's
+    /// (or switches there while it enters fullscreen), it is moved over. Stops early when the game ends.
+    /// </summary>
+    private async Task KeepGameOnMonitorAsync(nint emu, RetroHub.Core.Emulation.Windows.MonitorArea monitor)
+    {
+        var moves = 0;
+        foreach (var delay in new[] { 0, 400, 800, 1500, 2500, 4000 })
+        {
+            if (delay > 0) await Task.Delay(delay);
+            if (!_hiddenForGame || _vm.Launch.HandoffWindow != emu) return;
+            if (RetroHub.Core.Emulation.Windows.MonitorPlacement.MoveTo(emu, monitor))
+            {
+                moves++;
+                TestHooks.Report("moved-to-monitor", ("window", emu.ToString("X")), ("monitor", monitor.Bounds.ToString()));
+                if (moves >= 3)
+                {
+                    Log.Warn($"Emulator window {emu:X} keeps returning to another monitor – leaving it there");
+                    return;
+                }
+            }
+        }
     }
 
     /// <summary>Back from a fullscreen game (or the hard-kill question needs the window): shown, activated, in front.</summary>

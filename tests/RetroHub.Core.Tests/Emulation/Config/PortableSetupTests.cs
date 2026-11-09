@@ -42,7 +42,7 @@ public sealed class PortableSetupTests : IDisposable
     public void All_recipes_are_registered_once()
     {
         var ids = PortableSetups.All.Select(s => s.Id).ToList();
-        Assert.Equal(["retroarch", "mgba", "melonds", "desmume", "azahar", "dolphin", "pcsx2", "duckstation", "ppsspp"], ids);
+        Assert.Equal(["retroarch", "mgba", "melonds", "desmume", "azahar", "dolphin", "pcsx2", "duckstation", "ppsspp", "cemu"], ids);
         Assert.Same(PortableSetups.All[1], PortableSetups.Find("MGBA"));
         Assert.Null(PortableSetups.Find("nope"));
         Assert.All(PortableSetups.All, s => Assert.False(string.IsNullOrWhiteSpace(PortableSetups.SummaryFor(s.Id))));
@@ -265,6 +265,10 @@ public sealed class PortableSetupTests : IDisposable
         var (dolphin, _) = Emu("dolphin", "emulators/dolphin/Dolphin-x64/Dolphin.exe");
         RunTwiceIdempotent(dolphin, Make.Plan("gc", LaunchMode.Fullscreen));
         Assert.True(File.Exists(P("emulators", "dolphin", "Dolphin-x64", "portable.txt")));
+
+        var (cemu, _) = Emu("cemu", "emulators/cemu/Cemu_2.6/Cemu.exe");
+        RunTwiceIdempotent(cemu, Make.Plan("wiiu", LaunchMode.Fullscreen));
+        Assert.True(Directory.Exists(P("emulators", "cemu", "Cemu_2.6", "portable")));
 
         var (pcsx2, _) = Emu("pcsx2", "emulators/pcsx2/pcsx2-qt.exe");
         RunTwiceIdempotent(pcsx2, Make.Plan("ps2", LaunchMode.Fullscreen));

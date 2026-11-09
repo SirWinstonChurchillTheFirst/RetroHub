@@ -24,7 +24,7 @@ namespace RetroHub.App.Controls;
 /// the game is left to the desktop and the session continues windowed.</item>
 /// <item>while loading the host is masked (empty window region) and the loading view behind it shows; ready when
 /// <see cref="EmbedReadiness"/> says so → Settled, unmask, fit, nudge (profile), keys to the game.</item>
-/// <item>fit: the host is aspect-fitted to the picture (+ the emulator's measured bars, taken when two samples agree)
+/// <item>fit: the host is aspect-fitted to the picture; the emulator's measured bars (taken when two samples agree) lie outside it, clipped
 /// in the available area; the window is placed in physical pixels on every size/position change (coalesced). A window
 /// the emulator re-created is found and taken again.</item>
 /// </list>
@@ -488,14 +488,16 @@ public partial class GameScreen : UserControl
         var scale = Scale;
         var area = Area.Bounds.Size;
         var bars = _bars.Current ?? ((int)Math.Round(_profile.BarTop * scale), (int)Math.Round(_profile.BarBottom * scale));
-        var fit = GameScreenFit.Compute(area.Width, area.Height, scale, _aspect, bars.Item1, bars.Item2);
+        // The host is only as big as the picture: the emulator's menu/status bars are placed above and below it, where
+        // the host clips them away (console look; "Eigenes Fenster" gives the full emulator window with its menus back).
+        var fit = GameScreenFit.Compute(area.Width, area.Height, scale, _aspect);
         if (fit.IsEmpty) return;
         if (GameScreenFit.Differs(Host.Width, fit.Width)) Host.Width = fit.Width;
         if (GameScreenFit.Differs(Host.Height, fit.Height)) Host.Height = fit.Height;
         if (_embedder is not { IsAttached: true } e) return;
         var (pw, ph) = HostPixels();
         if (pw <= 0 || ph <= 0) (pw, ph) = (fit.PixelWidth, fit.PixelHeight);
-        e.Place(0, 0, pw, ph);
+        e.Place(0, -bars.Item1, pw, ph + bars.Item1 + bars.Item2);
         if (_placed != (pw, ph))
         {
             _placed = (pw, ph);

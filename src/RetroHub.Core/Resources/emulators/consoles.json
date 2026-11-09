@@ -120,7 +120,8 @@
     "defaultMode": "Fullscreen",
     "modes": ["Fullscreen", "Windowed"],
     "downloadUrl": "https://cemu.info/#download",
-    "notes": "Portabel, wenn neben Cemu.exe ein Ordner „portable“ existiert. Für .wux/.wud braucht Cemu die Disc-Keys (keys.txt) – nur eigene Dumps."
+    "portable": "cemu",
+    "notes": "RetroHub legt den Ordner „portable“ neben Cemu.exe an (Einstellungen, keys.txt, Spielstände). Portabel, wenn neben Cemu.exe ein Ordner „portable“ existiert. Für .wux/.wud braucht Cemu die Disc-Keys (keys.txt) – nur eigene Dumps."
   },
   {
     "id": "ryujinx",
