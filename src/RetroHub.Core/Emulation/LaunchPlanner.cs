@@ -172,6 +172,13 @@ public sealed class LaunchPlanner : ILaunchPlanner
             && !Portable.EdenSetup.HasProdKeys(_paths.Bios, Path.GetDirectoryName(exe)!))
             problems.Add(new LaunchProblem(LaunchProblemKind.BiosMissing, Portable.EdenSetup.MissingKeysMessage, false));
 
+        // Wii U disc keys (Cemu): a hint, not blocking, for .wux/.wud without a .key next to it while keys.txt holds no key
+        if (exe != null && string.Equals(def.Portable, "cemu", StringComparison.OrdinalIgnoreCase)
+            && Portable.CemuSetup.IsDiscImage(fullPath) && File.Exists(fullPath)
+            && Portable.CemuSetup.FindKeyFile(fullPath!) == null
+            && !Portable.CemuSetup.HasDiscKeys(Portable.CemuSetup.KeysPath(Path.GetDirectoryName(exe)!)))
+            problems.Add(new LaunchProblem(LaunchProblemKind.BiosMissing, Portable.CemuSetup.MissingDiscKeyMessage, false));
+
         if (exe != null && EmulatorProcesses.IsRunning(exe))
             problems.Add(new LaunchProblem(LaunchProblemKind.AlreadyRunning,
                 $"{def.Name} läuft bereits. Zwei Instanzen können sich gegenseitig die Spielstände überschreiben.", false));

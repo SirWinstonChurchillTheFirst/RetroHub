@@ -68,19 +68,181 @@ public sealed class PpssppSetup : PortableSetupBase
 /// Cemu 2.x: a folder named "portable" next to Cemu.exe makes it keep settings.xml, keys.txt, the MLC (Wii U
 /// internal storage with the saves), shader caches and logs there instead of %APPDATA%\Cemu. RetroHub creates
 /// that folder; Wii U saves therefore live in &lt;Cemu folder&gt;\portable\mlc01, not in saves/.
+/// Disc keys: encrypted disc images (.wux/.wud) need the disc key in keys.txt. When the launched file is such an
+/// image and a "&lt;same name&gt;.key" lies next to it (or the folder holds exactly one .key file), RetroHub adds that key
+/// to portable\keys.txt — once (keys already in the file, compared without comments, are not added again). Existing
+/// lines, their order and line endings stay untouched; the .key file is only read. Accepted: 16 bytes binary, or text
+/// with exactly 32 hex digits (whitespace allowed). Cemu's keys.txt: one key per line as 32 hex digits, text after
+/// '#' is a comment.
 /// </summary>
 public sealed class CemuSetup : PortableSetupBase
 {
     public override string Id => "cemu";
 
+    public const string KeysFile = "keys.txt";
+    public const string KeyExtension = ".key";
+    /// <summary>Comment after an imported key (after the game's file name).</summary>
+    public const string ImportedComment = "(von RetroHub übernommen)";
+    /// <summary>Larger .key files are not read (a disc key file has 16 bytes, a hex text version a few more).</summary>
+    private const long MaxKeyFileSize = 1024;
+
     public override string Summary =>
         "Cemu läuft portabel (Ordner „portable“ neben der Cemu.exe). Einstellungen, keys.txt und Spielstände (mlc01) liegen dort, " +
-        "z. B. emulators/cemu/portable, nicht in saves/.";
+        "z. B. emulators/cemu/portable, nicht in saves/. Liegt neben einem .wux/.wud-Abbild deiner eigenen Disc die passende " +
+        ".key-Datei (gleicher Name), trägt RetroHub den Disc-Key beim Start in Cemus keys.txt ein (vorhandene Zeilen bleiben erhalten).";
+
+    /// <summary>Hint for .wux/.wud games without a key (German, for the launch problems).</summary>
+    public const string MissingDiscKeyMessage =
+        "Cemu braucht für .wux/.wud-Abbilder den Disc-Key deiner eigenen Wii-U-Disc. Lege die passende .key-Datei mit demselben " +
+        "Namen neben das Abbild (z. B. „Spiel.key“ neben „Spiel.wux“) – RetroHub trägt den Key beim Start in Cemus keys.txt " +
+        "(Ordner „portable“ neben der Cemu.exe) ein. RetroHub liefert keine Keys mit.";
 
     protected override void Configure(PortableContext ctx)
     {
         var dir = ctx.Ensure(Path.Combine(ctx.ExeDir, "portable"));
+        var game = ctx.GamePath;
+        if (IsDiscImage(game)) ImportDiscKey(game!, Path.Combine(dir, KeysFile));
         Log.Debug($"Cemu keeps its data in {dir}");
+    }
+
+    /// <summary>keys.txt in Cemu's portable folder for that exe folder.</summary>
+    public static string KeysPath(string cemuExeDir) => Path.Combine(cemuExeDir, "portable", KeysFile);
+
+    /// <summary>True for .wux / .wud (encrypted Wii U disc images).</summary>
+    public static bool IsDiscImage(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return false;
+        var ext = Path.GetExtension(path);
+        return ext.Equals(".wux", StringComparison.OrdinalIgnoreCase) || ext.Equals(".wud", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The key file for a disc image: "&lt;same base name&gt;.key" next to it (case-insensitive), else the only .key file
+    /// in that folder, else null. Never throws.
+    /// </summary>
+    public static string? FindKeyFile(string gamePath)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(Path.GetFullPath(gamePath));
+            if (dir == null || !Directory.Exists(dir)) return null;
+            var stem = Path.GetFileNameWithoutExtension(gamePath);
+            var keys = Directory.EnumerateFiles(dir)
+                .Where(f => Path.GetExtension(f).Equals(KeyExtension, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var same = keys.FirstOrDefault(f => Path.GetFileNameWithoutExtension(f).Equals(stem, StringComparison.OrdinalIgnoreCase));
+            if (same != null) return same;
+            return keys.Count == 1 ? keys[0] : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            Log.Warn($"Cemu: could not look for a disc key next to {gamePath}", ex);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The 16-byte key from a .key file: 16 bytes binary, or text holding exactly 32 hex digits (whitespace ignored).
+    /// Anything else → null (logged). Only reads the file.
+    /// </summary>
+    public static byte[]? ReadKey(string keyFile)
+    {
+        try
+        {
+            var info = new FileInfo(keyFile);
+            if (!info.Exists) return null;
+            if (info.Length == 0 || info.Length > MaxKeyFileSize)
+            {
+                Log.Warn($"Cemu: {keyFile} is not a disc key ({info.Length} bytes; expected 16 bytes or 32 hex digits) – ignored");
+                return null;
+            }
+            var bytes = File.ReadAllBytes(keyFile);
+            if (bytes.Length == 16) return bytes;
+            var text = new string(System.Text.Encoding.UTF8.GetString(bytes).Where(c => !char.IsWhiteSpace(c) && c != '﻿').ToArray());
+            if (text.Length == 32 && text.All(Uri.IsHexDigit)) return Convert.FromHexString(text);
+            Log.Warn($"Cemu: {keyFile} is not a disc key ({bytes.Length} bytes; expected 16 bytes or 32 hex digits) – ignored");
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn($"Cemu: could not read {keyFile}", ex);
+            return null;
+        }
+    }
+
+    /// <summary>The keys in a keys.txt text (upper-case hex): per line, text before '#' that is exactly 32 hex digits.</summary>
+    public static IEnumerable<(string Key, string Comment)> ParseKeys(string text)
+    {
+        foreach (var raw in text.Split('\n'))
+        {
+            var hash = raw.IndexOf('#');
+            var value = (hash < 0 ? raw : raw[..hash]).Trim();
+            var comment = hash < 0 ? "" : raw[(hash + 1)..].Trim();
+            if (value.Length == 32 && value.All(Uri.IsHexDigit)) yield return (value.ToUpperInvariant(), comment);
+        }
+    }
+
+    /// <summary>
+    /// True when keys.txt holds at least one key other than the example line of Cemu's template
+    /// ("# example key (can be deleted)"). Never throws.
+    /// </summary>
+    public static bool HasDiscKeys(string keysTxt)
+    {
+        try
+        {
+            if (!File.Exists(keysTxt)) return false;
+            return ParseKeys(File.ReadAllText(keysTxt))
+                .Any(k => !k.Comment.Contains("example key", StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn($"Cemu: could not read {keysTxt}", ex);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Adds the disc key found next to <paramref name="gamePath"/> to keys.txt unless it is there already.
+    /// True when keys.txt was written. Never throws (problems are logged).
+    /// </summary>
+    public static bool ImportDiscKey(string gamePath, string keysTxt)
+    {
+        try
+        {
+            var keyFile = FindKeyFile(gamePath);
+            if (keyFile == null)
+            {
+                Log.Info($"Cemu: no disc key (.key) next to {gamePath} – Cemu can only start it when keys.txt already holds its key");
+                return false;
+            }
+            if (!Path.GetFileNameWithoutExtension(keyFile).Equals(Path.GetFileNameWithoutExtension(gamePath), StringComparison.OrdinalIgnoreCase))
+                Log.Info($"Cemu: using {keyFile}, the only .key file next to {gamePath}");
+            var key = ReadKey(keyFile);
+            if (key == null) return false;
+            var hex = Convert.ToHexString(key);
+
+            var existing = File.Exists(keysTxt) ? File.ReadAllBytes(keysTxt) : [];
+            var text = System.Text.Encoding.UTF8.GetString(existing);
+            if (ParseKeys(text).Any(k => k.Key == hex))
+            {
+                Log.Debug($"Cemu: disc key from {keyFile} already in {keysTxt}");
+                return false;
+            }
+            // keep every existing byte; append one line with the file's own line ending (CRLF for a new file)
+            var eol = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : text.Contains('\n') ? "\n" : "\r\n";
+            var sb = new System.Text.StringBuilder();
+            if (text.Length > 0 && !text.EndsWith('\n')) sb.Append(eol);
+            sb.Append(hex.ToLowerInvariant()).Append(" # ").Append(Path.GetFileName(gamePath)).Append(' ').Append(ImportedComment).Append(eol);
+            var added = new System.Text.UTF8Encoding(false).GetBytes(sb.ToString());
+            SafeFile.WriteAllBytes(keysTxt, [.. existing, .. added]);
+            Log.Info($"Cemu: added the disc key from {keyFile} to {keysTxt}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Cemu: could not add the disc key for {gamePath} to {keysTxt}", ex);
+            return false;
+        }
     }
 }
 

@@ -265,3 +265,28 @@ Sammlung vorher/nachher (31 Einträge im Switch-Ordner, Größe und Änderungsze
 
 **Offen:** echtes Spielen nicht getestet (keine eigenen Keys/Firmware vorhanden); Eden lässt sich bei offenem
 Fehlerdialog nicht per „Spiel beenden“ schließen.
+
+## Wii U mit Cemu: Disc-Keys aus `.key`-Dateien – 09.11.2026
+
+Neu: Startet RetroHub ein `.wux`/`.wud`-Abbild mit Cemu und liegt daneben die gleichnamige `.key`-Datei (16 Byte binär
+oder 32 Hex-Zeichen als Text; sonst die einzige `.key`-Datei im Ordner), trägt das Cemu-Rezept den Key in
+`emulators/cemu/Cemu_2.6/portable/keys.txt` ein – nur wenn er dort noch fehlt, angehängt mit
+„# <Dateiname> (von RetroHub übernommen)“. Vorhandene Zeilen und Zeilenenden bleiben, die `.key`-Datei wird nur gelesen.
+Fehlt die `.key`-Datei und enthält keys.txt keinen Key außer Cemus Beispielzeile, zeigt der Spielstart einen nicht
+blockierenden Hinweis (nur per Unit-Test geprüft, nicht im echten Lauf).
+
+**Spielstart über RetroHub** (`--launch` „Spiel.wux“ aus der Sammlung, `--test-quit-after 40`,
+`--test-exit-after-return 5`, eigener RetroHub-Root im Scratchpad, Cemu per `emulatorPaths` auf
+`D:\RetroHub\emulators\cemu\Cemu_2.6\Cemu.exe`; beobachtet über RetroHub-Log, Testbericht, Cemus `portable/log.txt` und
+den Fenstertitel des Cemu-Prozesses, keine Bildschirmaufnahmen):
+
+| Schritt | Beobachtet |
+|---|---|
+| Rezept | RetroHub-Log: „Cemu: added the disc key from E:\…\Spiel.key to D:\RetroHub\emulators\cemu\Cemu_2.6\portable\keys.txt“ |
+| keys.txt | vorher 277 Bytes (Cemus Vorlage, CRLF), nachher 384 Bytes; die ersten 277 Bytes unverändert, eine neue CRLF-Zeile „<Key> # Spiel.wux (von RetroHub übernommen)“ (Key hier gekürzt) |
+| Plan | Emulator `cemu`, Vollbild, startbar, keine Hinweise |
+| Cemu | Log „Mounting title <Title-ID>“, „Loaded title“ (EU v0), „Run title“; **kein** „Could not decrypt title“ mehr. Fenstertitel nach 8,2 s: „Cemu 2.6 - FPS: 0.00 [Vulkan] … [TitleId: <Title-ID>] <Spieltitel> [EU v0]“, danach durchgehend 25,8–30,3 FPS |
+| Beenden | nach 40 s „Spiel beenden“ → `WM_CLOSE` an 1 Fenster, Cemu nach 0,3 s beendet (Exitcode 0, `close-result closed=true`), RetroHub wieder im Vordergrund, schloss sich 5 s später (Exitcode 0). Danach lief kein Cemu-Prozess mehr |
+
+Nicht angesehen: das Spielbild selbst (nur Fenstertitel/FPS und Logs). Twilight Princess HD und Hyrule Warriors (ohne
+`.key`) wurden nicht gestartet. Sammlung vorher/nachher (8 Einträge im Ordner „Wii U“, Größe und Änderungszeit): **unverändert**.

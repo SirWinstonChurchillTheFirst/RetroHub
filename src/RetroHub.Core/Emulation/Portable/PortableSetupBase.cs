@@ -31,6 +31,19 @@ public sealed class PortableContext
     public bool Embedded => Plan.Mode == LaunchMode.Embedded;
     public bool Fullscreen => Plan.Mode == LaunchMode.Fullscreen;
 
+    /// <summary>Absolute path of the launched game file (the plan's game path resolved against the root), or null
+    /// when there is none or it is not a usable file path (e.g. a URI).</summary>
+    public string? GamePath
+    {
+        get
+        {
+            var raw = Plan.Game.Path;
+            if (string.IsNullOrWhiteSpace(raw) || raw.Contains("://", StringComparison.Ordinal)) return null;
+            try { return Paths.FromPortable(raw); }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return null; }
+        }
+    }
+
     internal PortableContext(EmulatorInstall emulator, LaunchPlan plan, AppPaths paths, string exe)
     {
         Emulator = emulator;
