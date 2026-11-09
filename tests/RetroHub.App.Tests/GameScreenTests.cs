@@ -96,6 +96,23 @@ public class GameScreenLogicTests
     }
 
     [Fact]
+    public void Toast_cutout_is_clipped_to_the_host_scaled_and_padded()
+    {
+        // toast 380x100 DIPs whose top-left lies 900,700 DIPs from the host's corner; host 1156x792 DIPs at 100 %
+        Assert.Equal(new PixelHole(892, 692, 1156, 792), GameScreenCutout.Compute(900, 700, 380, 100, 1156, 792, 1));
+        // 150 %: everything in physical pixels
+        Assert.Equal(new PixelHole(1342, 1042, 1734, 1188), GameScreenCutout.Compute(900, 700, 380, 100, 1156, 792, 1.5));
+        // fully inside
+        Assert.Equal(new PixelHole(92, 92, 318, 218), GameScreenCutout.Compute(100, 100, 210, 110, 1156, 792, 1));
+        // no toasts (height 0) or outside the host: no hole
+        Assert.Null(GameScreenCutout.Compute(900, 700, 380, 0, 1156, 792, 1));
+        Assert.Null(GameScreenCutout.Compute(1200, 700, 380, 100, 1156, 792, 1));
+        Assert.Null(GameScreenCutout.Compute(-500, 100, 400, 100, 1156, 792, 1));
+        Assert.Null(GameScreenCutout.Compute(double.NaN, 0, 10, 10, 1156, 792, 1));
+        Assert.Null(GameScreenCutout.Compute(0, 0, 10, 10, 0, 0, 1));
+    }
+
+    [Fact]
     public void Bars_are_taken_only_when_two_samples_agree()
     {
         var bars = new BarSampler();
@@ -263,6 +280,10 @@ public class CommandLineTests
         Assert.Equal(8, o.Test.ReleaseAfterSeconds);
         Assert.Equal(@"C:\t\r.jsonl", o.Test.ReportFile);
         Assert.True(o.Test.Any);
+        var more = CommandLineOptions.Parse(["--test-fullscreen-after=13", "--test-overlays-after", "5"]);
+        Assert.Equal(13, more.Test.FullscreenAfterSeconds);
+        Assert.Equal(5, more.Test.OverlaysAfterSeconds);
+        Assert.True(more.Test.Any);
         Assert.False(CommandLineOptions.Parse(["--test-quit-after", "-1"]).Test.Any);
         Assert.False(CommandLineOptions.Parse([]).Test.Any);
     }
@@ -293,6 +314,25 @@ public class CommandLineTests
             Assert.Equal("7", requests[1].Args[1]);
             Assert.Empty(Directory.GetFiles(dir));
             Assert.Empty(SingleInstance.TakeRequests(dir));
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Left_behind_requests_are_dropped_not_started()
+    {
+        // review regression: a request the running instance never took (it was closing) would start a game out of the
+        // blue on some later second start
+        var dir = Path.Combine(Path.GetTempPath(), "retrohub-requests-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Assert.True(SingleInstance.PostRequest(dir, ["--launch", "old.gba"], null));
+            var old = Directory.GetFiles(dir).Single();
+            File.SetLastWriteTimeUtc(old, DateTime.UtcNow - SingleInstance.MaxRequestAge - TimeSpan.FromMinutes(1));
+            Assert.True(SingleInstance.PostRequest(dir, ["--launch", "new.gba"], null));
+            var requests = SingleInstance.TakeRequests(dir);
+            Assert.Equal("new.gba", Assert.Single(requests).Args[1]);
+            Assert.Empty(Directory.GetFiles(dir)); // the old one is gone too
         }
         finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
     }
@@ -547,6 +587,28 @@ public class LaunchFlowTests
         vm.Dialogs.Current!.ChooseCommand.Execute(vm.Dialogs.Current.Buttons.Single(b => b.Result == "kill"));
         Assert.True(TestSupport.Pump(() => vm.Launch.Phase == LaunchPhase.Idle, 3000));
         Assert.Equal(1, sessions.Last.Kills);
+        window.Close();
+    });
+
+    [Fact]
+    public Task Hard_kill_question_goes_away_when_the_game_closes_by_itself() => UiTest.Run(() =>
+    {
+        // review regression: the question stayed open (about a game that was gone) until the user answered it
+        var (window, vm, sessions, _) = Open();
+        vm.Launch.CloseTimeout = TimeSpan.FromMilliseconds(100);
+        _ = vm.Launch.LaunchAsync(GoldenSun(vm), null, LaunchMode.Windowed);
+        Assert.True(TestSupport.Pump(() => vm.Launch.Phase == LaunchPhase.Running, 3000));
+        sessions.Last!.ClosesOnRequest = false;
+        vm.Launch.StopCommand.Execute(null);
+        Assert.True(TestSupport.Pump(() => vm.Dialogs.Current != null, 3000));
+        Assert.Equal(Loc.T("launch.forceQuit.title"), vm.Dialogs.Current!.Title);
+
+        sessions.Last.End(); // the emulator finally saved and quit
+        Assert.True(TestSupport.Pump(() => vm.Launch.Phase == LaunchPhase.Idle && vm.Dialogs.Current == null, 3000));
+        TestSupport.Settle(300);
+        Assert.Null(vm.Dialogs.Current); // not asked again
+        Assert.Equal(0, sessions.Last.Kills);
+        Assert.Equal(1, sessions.Last.CloseRequests);
         window.Close();
     });
 

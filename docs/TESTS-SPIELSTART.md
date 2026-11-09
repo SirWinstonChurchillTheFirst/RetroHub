@@ -17,6 +17,8 @@ Spiel über RetroHubs eigenen Code-Pfad („Spiel beenden“ → `LaunchCoordina
 | `--test-release-after <s>` | nach *s* Sekunden: `GameScreen.ReleaseToDesktop()` (derselbe Weg wie „Eigenes Fenster“) |
 | `--test-exit-after-return <s>` | *s* Sekunden nach der Rückkehr (oder nach einem Start, der nicht möglich war) schließt RetroHub |
 | `--test-report <datei>` | JSON-Zeilen mit Zeitstempel (ms seit Start): Plan, Sitzung, Fenster gefunden/übernommen/bereit, Bildprobe im Host, Fokus, Rückkehr |
+| `--test-fullscreen-after <s>` | nach *s* Sekunden Sitzung: RetroHubs eigenes Vollbild an (`MainWindow.SetFullscreen`, derselbe Weg wie F11/„Vollbild“) |
+| `--test-overlays-after <s>` | nach *s* Sekunden: ein Toast, 2,5 s später ein Dialog, der nach 3 s wieder schließt (Airspace-Prüfung: Loch für Toasts, Maske + Tastaturfokus beim Dialog) |
 
 `TestHooks.Allowed` ist nur in DEBUG-Builds `true`; ein Release-Build ignoriert die `--test-*`-Schalter (Log-Warnung).
 
@@ -143,7 +145,7 @@ Jede Sitzung mit Exitcode 0. Die Werte stimmen mit den `session-ended`-Sekunden 
 
 ## Automatisierte Tests
 
-`dotnet test --project tests/RetroHub.App.Tests` – 88/88 bestanden; `dotnet test --project tests/RetroHub.Core.Tests` – 606/606 bestanden. Neu:
+`dotnet test --project tests/RetroHub.App.Tests` – 91/91 bestanden (nach dem Review; vorher 88/88); `dotnet test --project tests/RetroHub.Core.Tests` – 606/606 bestanden. Neu:
 - `GameScreenLogicTests` (14): Seitenverhältnis-Fit mit Leisten und 150 %-Skalierung, Zufallsprüfung (500 Fälle),
   2-Stichproben-Regel der Leisten, Bereitschaft (5 Antworten + 1,5 s, Titelregel Azahar, 30-s-Grenze, neuer Take),
   Fenstersuche (64 px, 60 s), Auto-Ausblenden der Leiste.
@@ -156,11 +158,39 @@ Jede Sitzung mit Exitcode 0. Die Werte stimmen mit den `session-ended`-Sekunden 
   Kopie von mGBA und der GBA-ROM außerhalb der Bibliothek (Erkennung + Hinzufügen), eingebettet, prüft Bericht und
   Datenbank. Bestanden (Fenster nach 457 ms, bereit nach 2,0 s, Bild im Host 92 %, Spielzeit 9 s gespeichert).
 
+## Review (unabhängige Prüfung, 2026-11-09)
+
+Neu ausgeführt mit dem Build des Reviews (`RETROHUB_ROOT=D:\RetroHub`, Aufnahmen nur per Fensterkopie von RetroHub):
+
+| Lauf | Ergebnis |
+|---|---|
+| a1 mGBA eingebettet | Fenster nach 459 ms, bereit 1,54 s nach Take, Bild 92 % nicht schwarz, `parentIsHost=true`, Tastaturfokus im Spiel; Beenden → Ende nach 0,2 s, Exitcode 0, RetroHub sichtbar + aktiv |
+| a2 mGBA eingebettet + Overlays + RetroHub-Vollbild | Toast sichtbar **über** dem Spiel (Loch 962,649–1156,752 im Host, `spielstart-a-toast-ueber-spiel.png`); Dialog: Spiel maskiert, Tastaturfokus von mGBA zurück zu RetroHub (`keyboard-back ok=true`), nach dem Schließen wieder im Spiel (`spielstart-a-dialog-maskiert.png`); F11-Pfad: Host 2128×1440 (3:2 + 21 px mGBA-Menü), Leiste nach 2 s ausgeblendet (`spielstart-a-retrohub-vollbild.png`) – damit erstmals auf dem Desktop geprüft |
+| a3 (Endstand) | wie a1/a2, Exitcode 0 |
+| d1 RetroArch fceumm eingebettet | Fenster nach 151 ms, Take 292 ms, bereit 1,63 s nach Take, Bild im 4:3-Host 1055×792, Rückkehr aktiv |
+| d2 RetroArch eingebettet → „Eigenes Fenster“ | 1,5 s nach der Freigabe ist RetroArch Vordergrund (`release-foreground`: PID = Spiel) |
+| c1 RetroArch fceumm Vollbild | Fenster nach 0,86 s, RetroHub versteckt; nach Beenden `visible/active/foreground=true` (nur Bericht, keine Bildschirmkopie) |
+
+Gefundene und behobene Fehler:
+- **„Hart beenden?“ blieb offen**, wenn das Spiel sich währenddessen doch selbst beendete (Frage zu einem Spiel, das es
+  nicht mehr gibt). Die Frage schließt jetzt beim Sitzungsende selbst (Regressionstest).
+- **Toasts unter dem eingebetteten Spiel unsichtbar** (Airspace): der Host bekommt jetzt nur dort ein Loch, wo der
+  Toast-Stapel liegt; das Spiel bleibt drumherum sichtbar.
+- **Tastatur bei Dialogen über dem Spiel**: der Win32-Fokus blieb im (maskierten) Emulator, Enter/Pfeile gingen ans
+  unsichtbare Spiel. RetroHub holt den Fokus jetzt beim Maskieren zurück und gibt ihn danach dem Spiel wieder.
+- **„Eigenes Fenster“ / Aufgeben**: hatte das Spiel zuvor den Vordergrund, aktivierte sich RetroHub beim Abbau der
+  Spielansicht selbst wieder und konnte dem gerade freigegebenen Fenster den Vordergrund wegnehmen (bei echtem
+  Mausklick, wenn RetroHub die letzte Eingabe bekam). Jetzt nur noch beim Spielende. Hinweis: im Testlauf d2 hatte
+  RetroArch schon vorher den Vordergrund, der Lauf beweist also nur, dass es mit der Korrektur funktioniert, nicht dass
+  es vorher scheiterte.
+- **Liegen gebliebene Startanfragen** (zweite Instanz, während die erste gerade schloss) hätten bei einem späteren
+  zweiten Start plötzlich ein Spiel gestartet; Anfragen älter als 2 Minuten werden jetzt verworfen (Regressionstest).
+
 ## Bekannte Einschränkungen
 
-- Vollbild von RetroHub (F11 / „Vollbild“) mit eingebettetem Spiel und das Auto-Ausblenden der Leiste sind nur per
-  Unit-Test der Logik geprüft, nicht auf dem Desktop.
-- Toasts unten rechts können vom eingebetteten Emulatorfenster verdeckt werden (Airspace); Dialoge maskieren das Spiel.
+- Das Auto-Ausblenden der Leiste im RetroHub-Vollbild ist auf dem Desktop nur im Zustand „ausgeblendet“ gesehen
+  (kein Mauszeiger an der Oberkante bewegt – keine synthetischen Eingaben).
+- Das Loch für Toasts ist ein Rechteck um den ganzen Toast-Stapel (+8 px); dort ist das Spiel kurz verdeckt.
 - Die Exit-Combo (XInput) konnte ohne Controller nicht real ausgelöst werden; geprüft ist der Weg ab `Triggered`.
 - `Foreground.BringToFront` (Rückkehr aus dem Vollbild) nutzt als letzten Ausweg einen synthetischen Alt-Tastendruck;
   in allen Läufen genügte der erste Versuch (`foreground=true`).

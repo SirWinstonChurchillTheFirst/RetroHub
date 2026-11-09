@@ -192,7 +192,9 @@ public partial class GameScreen : UserControl
         LoadingView.IsVisible = false;
         LoadingBar.IsIndeterminate = false; // no animation while nothing is shown
         if (_masked && Host.Hwnd != 0) WindowEmbedder.SetMasked(Host.Hwnd, false);
+        else if (_holes != null && Host.Hwnd != 0) GameScreenNative.SetHoles(Host.Hwnd, []);
         _masked = false;
+        _holes = null;
         Host.Width = double.NaN;
         Host.Height = double.NaN;
         Bar.IsVisible = true;
@@ -220,6 +222,8 @@ public partial class GameScreen : UserControl
         // up behind RetroHub (the embedder only activates it when RetroHub itself was the foreground window, not when
         // the embedded window had taken the foreground – RetroArch does)
         if (game != 0 && OperatingSystem.IsWindows()) GameScreenNative.SetForegroundWindow(game);
+        // the game left RetroHub on purpose: RetroHub must not take the foreground back from it when the screen detaches
+        _hadForeground = false;
         _launch.EmbedReleased(EmbedRelease.User);
     }
 
@@ -229,6 +233,7 @@ public partial class GameScreen : UserControl
         Log.Warn($"Game screen: giving up embedding ({reason}) after {(_clock.Elapsed - _attachedAt).TotalSeconds:0.0} s");
         if (_embedder is { GameWindow: not 0 } e) e.Release(toDesktop: true);
         RestoreSessionWindows();
+        _hadForeground = false; // the game runs on in its own window: no foreground grab when the screen detaches
         _launch?.EmbedReleased(reason);
     }
 
@@ -356,7 +361,30 @@ public partial class GameScreen : UserControl
         if (_obscured == obscured) return;
         _obscured = obscured;
         ApplyMask();
-        if (!obscured) FocusGameSoon();
+        if (obscured) TakeKeyboardBack();
+        else FocusGameSoon();
+    }
+
+    /// <summary>
+    /// A dialog now lies above the (masked) game: the Win32 keyboard focus may still be on the emulator's window, so
+    /// Enter/arrows would go to the invisible game instead of the dialog. RetroHub's own window takes it back (own
+    /// window, input queues of a cross-process child are attached, so SetFocus works; never blocks).
+    /// </summary>
+    private void TakeKeyboardBack()
+    {
+        if (!OperatingSystem.IsWindows() || _embedder is not { GameWindow: not 0 } e || OwnHandle is var own && own == 0) return;
+        // only when the keys really are with the game (RetroHub in front); anything else is left alone
+        var focus = GameScreenNative.KeyboardFocus();
+        if (focus == 0 || focus == own || !IsInsideGame(focus, e.GameWindow)) return;
+        GameScreenNative.SetFocus(own);
+        TestHooks.Report("keyboard-back", ("ok", GameScreenNative.KeyboardFocus() == own));
+    }
+
+    private static bool IsInsideGame(nint window, nint game)
+    {
+        for (var w = window; w != 0; w = GameScreenNative.GetParent(w))
+            if (w == game) return true;
+        return false;
     }
 
     private void ApplyMask(bool force = false)
@@ -364,9 +392,54 @@ public partial class GameScreen : UserControl
         var host = Host.Hwnd;
         if (host == 0) return;
         bool want = _session != null && (_obscured || (_profile.MaskWhileLoading && !_readiness.IsReady));
-        if (want == _masked && !force) return;
-        WindowEmbedder.SetMasked(host, want);
-        _masked = want;
+        if (want != _masked || force)
+        {
+            WindowEmbedder.SetMasked(host, want);
+            _masked = want;
+            _holes = null; // the region was replaced
+        }
+        UpdateHoles();
+    }
+
+    // ================= holes for toasts (airspace) =================
+
+    private Control? _holeSource;
+    /// <summary>What was cut out of the host last (null: no region of ours on it).</summary>
+    private (PixelHole Hole, PixelPoint Origin)? _holes;
+
+    /// <summary>
+    /// Avalonia content that has to stay visible above the game (the toast stack): where it overlaps the host, a hole is
+    /// cut into the host (only there – the game stays visible around it). Kept up to date on every fit.
+    /// </summary>
+    public void SetHoleSource(Control? source)
+    {
+        _holeSource = source;
+        UpdateHoles();
+    }
+
+    /// <summary>Re-checks the holes now (e.g. a toast appeared or went away).</summary>
+    public void UpdateHoles()
+    {
+        var host = Host.Hwnd;
+        if (host == 0 || _masked || !OperatingSystem.IsWindows()) return;
+        (PixelHole, PixelPoint)? wanted = null;
+        if (_session != null && _holeSource is { IsEffectivelyVisible: true } src && TopLevel.GetTopLevel(Host) != null
+            && src.TranslatePoint(default, Host) is { } at
+            && GameScreenCutout.Compute(at.X, at.Y, src.Bounds.Width, src.Bounds.Height, Host.Bounds.Width, Host.Bounds.Height, Scale) is { } hole)
+            wanted = (hole, Host.PointToScreen(default));
+        if (wanted == _holes) return;
+        _holes = wanted;
+        if (wanted is { } w)
+        {
+            var (h, o) = w;
+            GameScreenNative.SetHoles(host, [new GameScreenNative.RECT(o.X + h.Left, o.Y + h.Top, o.X + h.Right, o.Y + h.Bottom)]);
+            TestHooks.Report("embed-hole", ("px", $"{h.Left},{h.Top}-{h.Right},{h.Bottom}"));
+        }
+        else
+        {
+            GameScreenNative.SetHoles(host, []);
+            TestHooks.Report("embed-hole", ("px", null));
+        }
     }
 
     /// <summary>Keys to the game – only while RetroHub is the active window and nothing of RetroHub's lies above it.</summary>
@@ -439,6 +512,7 @@ public partial class GameScreen : UserControl
                 if (moved && _profile.NudgeOnMove && _readiness.IsReady) e.NudgeMoved();
             }
         }
+        UpdateHoles();
     }
 
     // ================= full screen =================

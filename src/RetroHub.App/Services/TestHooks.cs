@@ -67,7 +67,8 @@ public static class TestHooks
     /// Wires --test-quit-after (press "Spiel beenden" after the session ran that long, same command as the button) and
     /// --test-exit-after-return (close the window that long after the return / after a launch that did not start).
     /// </summary>
-    public static void Attach(LaunchCoordinator launch, Window window, Action? releaseEmbedded = null)
+    public static void Attach(LaunchCoordinator launch, Window window, Action? releaseEmbedded = null, Action<bool>? setFullscreen = null,
+        UiContext? ctx = null)
     {
         if (!Enabled) return;
         if (Options.ReleaseAfterSeconds is double release && releaseEmbedded != null)
@@ -75,8 +76,39 @@ public static class TestHooks
             {
                 if (launch.Session != session) return;
                 Report("test-release", ("embedded", launch.IsEmbedded));
-                if (launch.IsEmbedded) releaseEmbedded();
+                if (!launch.IsEmbedded) return;
+                releaseEmbedded();
+                // who has the foreground a moment later (the released game must keep it)
+                DispatcherTimer.RunOnce(() => Report("release-foreground", ("foregroundPid", ForegroundPid()),
+                    ("retroHubPid", Environment.ProcessId), ("gamePid", SafePid(session))), TimeSpan.FromSeconds(1.5));
             }, TimeSpan.FromSeconds(release));
+        if (Options.FullscreenAfterSeconds is double full && setFullscreen != null)
+            launch.SessionBegan += session => DispatcherTimer.RunOnce(() =>
+            {
+                if (launch.Session != session) return;
+                Report("test-fullscreen", ("embedded", launch.IsEmbedded));
+                setFullscreen(true);
+            }, TimeSpan.FromSeconds(full));
+        if (Options.OverlaysAfterSeconds is double overlays && ctx != null)
+            launch.SessionBegan += session => DispatcherTimer.RunOnce(() =>
+            {
+                if (launch.Session != session) return;
+                Report("test-toast");
+                ctx.Toasts.Show(Localization.Loc.T("test.toast"), ToastKind.Info, Localization.Loc.T("test.toast.detail"), seconds: 5);
+                DispatcherTimer.RunOnce(() =>
+                {
+                    if (launch.Session != session) return;
+                    Report("test-dialog-open", ("keyboardFocus", Controls.GameScreenNative.KeyboardFocus().ToString("X")));
+                    _ = ctx.Dialogs.InfoAsync(Localization.Loc.T("test.dialog.title"), Localization.Loc.T("test.dialog.message"));
+                    DispatcherTimer.RunOnce(() =>
+                    {
+                        Report("test-dialog-close");
+                        ctx.Dialogs.Current?.Cancel();
+                        DispatcherTimer.RunOnce(() => Report("test-dialog-closed", ("keyboardFocus", Controls.GameScreenNative.KeyboardFocus().ToString("X"))),
+                            TimeSpan.FromSeconds(1));
+                    }, TimeSpan.FromSeconds(3));
+                }, TimeSpan.FromSeconds(2.5));
+            }, TimeSpan.FromSeconds(overlays));
         if (Options.QuitAfterSeconds is double quit)
             launch.SessionBegan += session => DispatcherTimer.RunOnce(() =>
             {
@@ -86,6 +118,19 @@ public static class TestHooks
             }, TimeSpan.FromSeconds(quit));
         launch.Returned += (_, _) => ScheduleExit(window);
         launch.LaunchAborted += _ => ScheduleExit(window);
+    }
+
+    private static int? SafePid(Core.Emulation.IGameSession session)
+    {
+        try { return session.Process?.Id; }
+        catch (InvalidOperationException) { return null; }
+    }
+
+    private static int ForegroundPid()
+    {
+        if (!OperatingSystem.IsWindows()) return 0;
+        var fg = Controls.GameScreenNative.GetForegroundWindow();
+        return fg == 0 ? 0 : (int)Controls.GameScreenNative.ProcessOf(fg);
     }
 
     /// <summary>--test-exit-after-return: closes the window after the configured delay (no-op without the switch).</summary>

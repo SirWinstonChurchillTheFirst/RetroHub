@@ -368,5 +368,9 @@
   "cli.resolveFailed": "„{0}“ konnte nicht geöffnet werden: {1}",
   "cli.added": "„{0}“ wurde zur Bibliothek hinzugefügt",
   "cli.title": "Spielstart über die Kommandozeile",
+  "test.toast": "Testhinweis",
+  "test.toast.detail": "Nur im Entwicklungstest (--test-overlays-after)",
+  "test.dialog.title": "Testdialog",
+  "test.dialog.message": "Nur im Entwicklungstest: Das Spiel ist ausgeblendet, solange dieser Dialog offen ist.",
   "cli.forwarded": "Startanfrage von einer zweiten RetroHub-Instanz übernommen"
 }

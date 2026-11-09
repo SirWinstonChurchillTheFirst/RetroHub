@@ -56,6 +56,40 @@ public static class GameScreenFit
     private static double Sanitize(double v) => double.IsNaN(v) || double.IsInfinity(v) || v < 0 ? 0 : v;
 }
 
+/// <summary>A rectangle in physical pixels relative to the host's top-left corner.</summary>
+public readonly record struct PixelHole(int Left, int Top, int Right, int Bottom);
+
+/// <summary>
+/// Airspace for small overlays: Avalonia content above the embedded game (toasts) is only visible where the native
+/// host has a hole. Pure math: where an overlay (in DIPs, relative to the host) cuts into the host, in pixels.
+/// </summary>
+public static class GameScreenCutout
+{
+    /// <summary>Extra pixels around the overlay (slide-in animations, shadows).</summary>
+    public const int Margin = 8;
+
+    /// <param name="x">The overlay's left edge in DIPs relative to the host's left edge.</param>
+    /// <param name="y">The overlay's top edge in DIPs relative to the host's top edge.</param>
+    /// <param name="width">The overlay's size in DIPs.</param>
+    /// <param name="height">The overlay's size in DIPs.</param>
+    /// <param name="hostWidth">The host's size in DIPs.</param>
+    /// <param name="hostHeight">The host's size in DIPs.</param>
+    /// <param name="scale">Physical pixels per DIP.</param>
+    /// <returns>The part of the host to cut out (clipped to the host), or null when the overlay is empty or misses the host.</returns>
+    public static PixelHole? Compute(double x, double y, double width, double height, double hostWidth, double hostHeight, double scale)
+    {
+        if (!(scale > 0) || double.IsInfinity(scale)) scale = 1;
+        if (!(width > 0) || !(height > 0) || !(hostWidth > 0) || !(hostHeight > 0)) return null;
+        if (double.IsNaN(x) || double.IsNaN(y) || double.IsInfinity(x) || double.IsInfinity(y)) return null;
+        int hw = (int)Math.Round(hostWidth * scale), hh = (int)Math.Round(hostHeight * scale);
+        int l = Math.Max(0, (int)Math.Floor(x * scale) - Margin);
+        int t = Math.Max(0, (int)Math.Floor(y * scale) - Margin);
+        int r = Math.Min(hw, (int)Math.Ceiling((x + width) * scale) + Margin);
+        int b = Math.Min(hh, (int)Math.Ceiling((y + height) * scale) + Margin);
+        return r > l && b > t ? new PixelHole(l, t, r, b) : null;
+    }
+}
+
 /// <summary>
 /// The emulator's bars (menu bar on top, status bar at the bottom) are only taken when two samples a moment apart
 /// agree – right after a resize the emulator may not have laid out its inside yet, and a half-way value would make the

@@ -25,8 +25,13 @@ public sealed record TestHookOptions
     public double? ReleaseAfterSeconds { get; init; }
     /// <summary>--test-report &lt;file&gt;: JSON lines with what the game screen / launch flow observed.</summary>
     public string? ReportFile { get; init; }
+    /// <summary>--test-fullscreen-after &lt;s&gt;: RetroHub's own full screen is switched on after that long (same code path as F11 / "Vollbild").</summary>
+    public double? FullscreenAfterSeconds { get; init; }
+    /// <summary>--test-overlays-after &lt;s&gt;: after that long a toast appears, then a dialog opens and closes again (airspace check).</summary>
+    public double? OverlaysAfterSeconds { get; init; }
 
-    public bool Any => QuitAfterSeconds != null || ExitAfterReturnSeconds != null || ReleaseAfterSeconds != null || ReportFile != null;
+    public bool Any => QuitAfterSeconds != null || ExitAfterReturnSeconds != null || ReleaseAfterSeconds != null || ReportFile != null
+                       || FullscreenAfterSeconds != null || OverlaysAfterSeconds != null;
 }
 
 /// <summary>
@@ -46,7 +51,7 @@ public sealed record CommandLineOptions
     {
         string? target = null, emulator = null, report = null;
         LaunchMode? mode = null;
-        double? quitAfter = null, exitAfter = null, releaseAfter = null;
+        double? quitAfter = null, exitAfter = null, releaseAfter = null, fullscreenAfter = null, overlaysAfter = null;
         bool demo = false, modeGiven = false, emulatorGiven = false;
         var errors = new List<string>();
 
@@ -104,6 +109,12 @@ public sealed record CommandLineOptions
                 case "--test-report":
                     report = Value();
                     break;
+                case "--test-fullscreen-after":
+                    fullscreenAfter = Seconds(Value());
+                    break;
+                case "--test-overlays-after":
+                    overlaysAfter = Seconds(Value());
+                    break;
                 default:
                     Log.Info($"Command line: ignoring '{arg}'");
                     break;
@@ -117,7 +128,11 @@ public sealed record CommandLineOptions
         {
             Launch = target == null ? null : new LaunchRequest(target, mode, emulator, workingDirectory),
             Demo = demo,
-            Test = new TestHookOptions { QuitAfterSeconds = quitAfter, ExitAfterReturnSeconds = exitAfter, ReleaseAfterSeconds = releaseAfter, ReportFile = report },
+            Test = new TestHookOptions
+            {
+                QuitAfterSeconds = quitAfter, ExitAfterReturnSeconds = exitAfter, ReleaseAfterSeconds = releaseAfter, ReportFile = report,
+                FullscreenAfterSeconds = fullscreenAfter, OverlaysAfterSeconds = overlaysAfter,
+            },
             Errors = errors,
         };
     }

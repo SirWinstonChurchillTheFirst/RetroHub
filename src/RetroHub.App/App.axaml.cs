@@ -67,7 +67,7 @@ public partial class App : Application
             desktop.MainWindow = window;
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
             desktop.Exit += (_, _) => Shutdown();
-            TestHooks.Attach(_ctx.Launch, window, () => window.GameScreenControl.ReleaseToDesktop());
+            TestHooks.Attach(_ctx.Launch, window, () => window.GameScreenControl.ReleaseToDesktop(), window.SetFullscreen, _ctx);
             var ctx = _ctx;
             // a second start: front, then whatever it asked for (e.g. --launch from a desktop shortcut)
             Program.Instance?.Listen(() => Dispatcher.UIThread.Post(() =>

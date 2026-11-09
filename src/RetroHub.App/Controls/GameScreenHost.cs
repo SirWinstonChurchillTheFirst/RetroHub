@@ -68,7 +68,11 @@ internal static partial class GameScreenNative
     public struct POINT { public int X, Y; }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct RECT { public int Left, Top, Right, Bottom; }
+    public struct RECT
+    {
+        public int Left, Top, Right, Bottom;
+        public RECT(int left, int top, int right, int bottom) => (Left, Top, Right, Bottom) = (left, top, right, bottom);
+    }
 
     public const int SW_RESTORE = 9;
     public const int SW_SHOWNORMAL = 1;
@@ -136,6 +140,53 @@ internal static partial class GameScreenNative
 
     [LibraryImport("gdi32.dll")]
     public static partial uint GetPixel(nint dc, int x, int y);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint SetFocus(nint hwnd);
+
+    [LibraryImport("user32.dll")]
+    private static partial uint GetWindowThreadProcessId(nint hwnd, out uint pid);
+
+    /// <summary>Process id of a window's owner (0 when unknown). Read-only query.</summary>
+    public static uint ProcessOf(nint hwnd) => hwnd != 0 && GetWindowThreadProcessId(hwnd, out var pid) != 0 ? pid : 0;
+
+    [LibraryImport("gdi32.dll")]
+    private static partial nint CreateRectRgn(int l, int t, int r, int b);
+
+    [LibraryImport("gdi32.dll")]
+    private static partial int CombineRgn(nint dst, nint a, nint b, int mode);
+
+    [LibraryImport("user32.dll")]
+    private static partial int SetWindowRgn(nint hwnd, nint region, [MarshalAs(UnmanagedType.Bool)] bool redraw);
+
+    private const int RGN_DIFF = 4;
+
+    /// <summary>
+    /// Cuts <paramref name="holes"/> (screen pixels) out of the host window and its parents up to (not including) the
+    /// top-level window, so Avalonia content there (toasts) is visible above the embedded game; no holes = no region.
+    /// Own-process windows only (the game inside is clipped by its parent), never blocks.
+    /// </summary>
+    public static void SetHoles(nint host, IReadOnlyList<RECT> holes)
+    {
+        if (!OperatingSystem.IsWindows() || host == 0) return;
+        var root = GetAncestor(host, GA_ROOT);
+        for (var h = host; h != 0 && h != root; h = GetParent(h))
+        {
+            if (!GetWindowRect(h, out var r)) continue;
+            nint region = 0;
+            foreach (var hole in holes)
+            {
+                int l = Math.Max(hole.Left, r.Left), t = Math.Max(hole.Top, r.Top), rr = Math.Min(hole.Right, r.Right), b = Math.Min(hole.Bottom, r.Bottom);
+                if (rr <= l || b <= t) continue; // this hole does not touch this window
+                if (region == 0) region = CreateRectRgn(0, 0, r.Right - r.Left, r.Bottom - r.Top);
+                var cut = CreateRectRgn(l - r.Left, t - r.Top, rr - r.Left, b - r.Top);
+                CombineRgn(region, region, cut, RGN_DIFF);
+                DeleteObject(cut);
+            }
+            // on success the system owns the region
+            if (SetWindowRgn(h, region, true) == 0 && region != 0) DeleteObject(region);
+        }
+    }
 
     public static (int X, int Y)? Cursor()
     {

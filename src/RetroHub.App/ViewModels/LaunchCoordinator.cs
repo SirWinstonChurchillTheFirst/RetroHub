@@ -67,6 +67,8 @@ public sealed partial class LaunchCoordinator : ObservableObject
     private IGameSession? _session;
     private IExitComboSource? _exitCombo;
     private readonly DispatcherTimer _clock;
+    /// <summary>The open "Hart beenden?" question (null when none).</summary>
+    private DialogViewModel? _forceQuitQuestion;
 
     public LaunchCoordinator(UiContext ctx)
     {
@@ -416,6 +418,9 @@ public sealed partial class LaunchCoordinator : ObservableObject
     private void ResetToIdle()
     {
         _clock.Stop();
+        // "Hart beenden?" about a game that is gone now: closes ("Weiter warten" result; StopAsync then sees the end)
+        _forceQuitQuestion?.Cancel();
+        _forceQuitQuestion = null;
         StopExitCombo();
         if (_session != null) _session.Ended -= OnSessionEnded;
         _session = null;
@@ -469,7 +474,7 @@ public sealed partial class LaunchCoordinator : ObservableObject
                 Presentation = LaunchPresentation.Overlay;
             }
             try { _ctx.Services.Input.SetSuspended(false); } catch (Exception ex) { Log.Warn("Input resume failed", ex); }
-            var answer = await _ctx.Dialogs.ShowAsync(new DialogViewModel
+            var question = new DialogViewModel
             {
                 Title = Loc.T("launch.forceQuit.title"),
                 Message = Loc.T("launch.forceQuit.message", EmulatorName.Length > 0 ? EmulatorName : Loc.T("launch.theEmulator"), (int)CloseTimeout.TotalSeconds),
@@ -479,7 +484,12 @@ public sealed partial class LaunchCoordinator : ObservableObject
                     new DialogButton(Loc.T("launch.forceQuit.wait"), "wait", IsCancel: true),
                     new DialogButton(Loc.T("launch.forceQuit.confirm"), "kill", IsPrimary: true, IsDanger: true),
                 ],
-            }).ConfigureAwait(true);
+            };
+            // the game may still close by itself while the question is open: then the question goes away on its own
+            _forceQuitQuestion = question;
+            string? answer;
+            try { answer = await _ctx.Dialogs.ShowAsync(question).ConfigureAwait(true); }
+            finally { if (_forceQuitQuestion == question) _forceQuitQuestion = null; }
             if (_session != session) return; // it closed while the question was open
             if (answer == "kill")
             {

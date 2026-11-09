@@ -74,6 +74,9 @@ public partial class MainWindow : Window
         vm.Launch.PropertyChanged += (_, e) => OnLaunchChanged(e.PropertyName);
         vm.Launch.Returned += OnGameReturned;
         GameScreen.FullscreenRequested += () => SetFullscreen(WindowState != WindowState.FullScreen);
+        // toasts lie above the embedded game: the game screen cuts a hole for them into its native host (airspace)
+        GameScreen.SetHoleSource(ToastHost);
+        ToastHost.SizeChanged += (_, _) => Dispatcher.UIThread.Post(GameScreen.UpdateHoles, DispatcherPriority.Render);
         Closing += (_, _) =>
         {
             // a game inside RetroHub would go down with the window: it goes back to its own window and runs on

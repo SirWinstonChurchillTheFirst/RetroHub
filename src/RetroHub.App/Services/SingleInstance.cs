@@ -85,10 +85,17 @@ public sealed partial class SingleInstance : IDisposable
         }
     }
 
+    /// <summary>
+    /// A request older than this is dropped instead of carried out: it was left behind (the running instance was
+    /// closing or crashed when it was posted), and a game must not start out of the blue on some later second start.
+    /// </summary>
+    public static readonly TimeSpan MaxRequestAge = TimeSpan.FromMinutes(2);
+
     /// <summary>First instance: the requests left by second starts, oldest first; the files are deleted. Never throws.</summary>
-    public static IReadOnlyList<ForwardedRequest> TakeRequests(string folder)
+    public static IReadOnlyList<ForwardedRequest> TakeRequests(string folder, DateTime? nowUtc = null)
     {
         var list = new List<ForwardedRequest>();
+        var now = nowUtc ?? DateTime.UtcNow;
         try
         {
             if (!Directory.Exists(folder)) return list;
@@ -96,8 +103,10 @@ public sealed partial class SingleInstance : IDisposable
             {
                 try
                 {
+                    var age = now - File.GetLastWriteTimeUtc(file);
                     var request = System.Text.Json.JsonSerializer.Deserialize<ForwardedRequest>(File.ReadAllText(file));
-                    if (request?.Args != null) list.Add(request);
+                    if (age > MaxRequestAge) Log.Warn($"Forwarded request {Path.GetFileName(file)} is {age.TotalMinutes:0} min old – dropped");
+                    else if (request?.Args != null) list.Add(request);
                 }
                 catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException)
                 {

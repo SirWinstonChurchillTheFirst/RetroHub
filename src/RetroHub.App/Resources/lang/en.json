@@ -148,5 +148,9 @@
   "cli.resolveFailed": "“{0}” could not be opened: {1}",
   "cli.added": "“{0}” was added to the library",
   "cli.title": "Game start from the command line",
+  "test.toast": "Test notice",
+  "test.toast.detail": "Development test only (--test-overlays-after)",
+  "test.dialog.title": "Test dialog",
+  "test.dialog.message": "Development test only: the game is hidden while this dialog is open.",
   "cli.forwarded": "Took over a start request from a second RetroHub instance"
 }
