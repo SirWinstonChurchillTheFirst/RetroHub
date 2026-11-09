@@ -12,8 +12,10 @@ namespace RetroHub.Core.Emulation.Portable;
 /// /sdmc/ (both created first: Azahar ignores folders that do not exist and writes its default back).</item>
 /// <item>[Miscellaneous] check_for_update_on_start=false (RetroHub manages the version).</item>
 /// <item>[UI] confirmClose=false: RetroHub closes the emulator itself (WM_CLOSE); a confirmation dialog would block it.</item>
-/// <item>[Paths] romsPath → games/&lt;system&gt;/ (as MonHub). screenshotPath → screenshots/&lt;system&gt;/ (key name as in
-/// Citra's Qt frontend, not verified against an Azahar-written config).</item>
+/// <item>[UI] Paths\romsPath → games/&lt;system&gt;/ and Paths\screenshotPath (+ its \default twin) →
+/// screenshots/&lt;system&gt;/. Azahar keeps its "Paths" group inside [UI] (verified against an Azahar-written
+/// qt-config.ini); MonHub's "[Paths] romsPath" was never read by Azahar. romsPath has no \default twin in
+/// Azahar's own file (it is read without a default), so none is written for it.</item>
 /// </list>
 /// Savestates stay in Azahar's own user\states folder (not configurable). Windows' 260-character path limit:
 /// 3DS games create deeply nested folders below sdmc (≈140 characters), a too deep RetroHub folder is logged.
@@ -46,8 +48,8 @@ public sealed class AzaharSetup : PortableSetupBase
         Set(ini, "Data%20Storage", "sdmc_directory", Quote(sdmc));
         Set(ini, "Miscellaneous", "check_for_update_on_start", "false");
         Set(ini, "UI", "confirmClose", "false");
-        Set(ini, "Paths", "romsPath", Quote(ctx.GamesDir));
-        Set(ini, "Paths", "screenshotPath", Quote(ctx.ScreenshotsDir));
+        ini.Set("UI", @"Paths\romsPath", Quote(ctx.GamesDir));
+        Set(ini, "UI", @"Paths\screenshotPath", Quote(ctx.ScreenshotsDir));
         Saved(Id, file, ini.SaveIfChanged(file));
     }
 

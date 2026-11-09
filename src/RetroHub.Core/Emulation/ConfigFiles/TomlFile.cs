@@ -13,7 +13,8 @@ namespace RetroHub.Core.Emulation.ConfigFiles;
 /// <item>Missing keys are added after the table's last key; missing tables are appended at the end; top-level
 /// keys are always inserted before the first table (TOML requires that).</item>
 /// <item>Multi-line arrays and multi-line strings are skipped as a whole so lines inside them are never
-/// mistaken for tables or keys.</item>
+/// mistaken for tables or keys; <see cref="Set"/> / <see cref="Remove"/> of such a key replace / remove all of
+/// its lines, and new keys are never inserted inside such a value.</item>
 /// <item>Comments, blank lines, ordering, encoding and line endings are preserved.</item>
 /// </list>
 /// Not a full TOML parser: dotted keys, inline tables and array-of-tables are left untouched (never edited).
@@ -36,11 +37,12 @@ public sealed class TomlFile : TextDocument
         return t;
     }
 
-    private enum Kind { Other, Table, ArrayTable, Key }
+    /// <summary>Continuation = a line inside a multi-line value (array / string) that started on a Key line above.</summary>
+    private enum Kind { Other, Table, ArrayTable, Key, Continuation }
 
     private readonly record struct LineInfo(Kind Kind, string? Name);
 
-    /// <summary>Classifies each line; lines inside multi-line values are "Other".</summary>
+    /// <summary>Classifies each line; lines inside multi-line values are <see cref="Kind.Continuation"/>.</summary>
     private List<LineInfo> Classify()
     {
         var info = new List<LineInfo>(Lines.Count);
@@ -50,13 +52,13 @@ public sealed class TomlFile : TextDocument
         {
             if (openString != null)
             {
-                info.Add(new LineInfo(Kind.Other, null));
+                info.Add(new LineInfo(Kind.Continuation, null));
                 if (CountOccurrences(line, openString) % 2 == 1) openString = null;
                 continue;
             }
             if (depth > 0)
             {
-                info.Add(new LineInfo(Kind.Other, null));
+                info.Add(new LineInfo(Kind.Continuation, null));
                 depth += BracketBalance(line);
                 if (depth < 0) depth = 0;
                 continue;
@@ -192,6 +194,8 @@ public sealed class TomlFile : TextDocument
                 var indent = old[..(old.Length - old.TrimStart().Length)];
                 var oldValue = old[(old.IndexOf('=') + 1)..].Trim();
                 var comment = CommentOf(oldValue);
+                // a multi-line old value: its continuation lines go too (else they would dangle as invalid TOML)
+                RemoveContinuation(info, i);
                 ReplaceLine(i, indent + line + (comment.Length > 0 ? " " + comment : ""));
                 return Edits != edits;
             }
@@ -199,9 +203,7 @@ public sealed class TomlFile : TextDocument
         }
         int insert = lastKey >= 0 ? lastKey + 1 : r.Start;
         // a key whose value spans lines: insert after its last line
-        if (lastKey >= 0)
-            while (insert < r.End && info[insert].Kind == Kind.Other && Lines[insert].Trim().Length > 0 && !Lines[insert].TrimStart().StartsWith('#'))
-                insert++;
+        while (insert < r.End && info[insert].Kind == Kind.Continuation) insert++;
         InsertLine(insert, line);
         return Edits != edits;
     }
@@ -219,10 +221,19 @@ public sealed class TomlFile : TextDocument
         for (int i = r.Start; i < r.End; i++)
             if (info[i].Kind == Kind.Key && info[i].Name == key)
             {
+                RemoveContinuation(info, i);
                 RemoveLine(i);
                 return true;
             }
         return false;
+    }
+
+    /// <summary>Removes the continuation lines of the (multi-line) value that starts on line <paramref name="keyLine"/>.</summary>
+    private void RemoveContinuation(List<LineInfo> info, int keyLine)
+    {
+        int end = keyLine + 1;
+        while (end < info.Count && info[end].Kind == Kind.Continuation) end++;
+        for (int j = end - 1; j > keyLine; j--) RemoveLine(j);
     }
 
     public bool HasTable(string table) => Range(Classify(), table) != null;

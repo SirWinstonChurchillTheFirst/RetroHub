@@ -236,7 +236,11 @@ public sealed class PortableSetupTests : IDisposable
         Assert.Equal("false", ini.Get("Miscellaneous", "check_for_update_on_start"));
         Assert.Equal("false", ini.Get("Miscellaneous", @"check_for_update_on_start\default"));
         Assert.Equal("false", ini.Get("UI", "confirmClose"));
-        Assert.Equal(Q("games", "3ds"), ini.Get("Paths", "romsPath"));
+        // Azahar keeps its "Paths" group inside [UI] (there is no [Paths] section in an Azahar-written file)
+        Assert.Equal(Q("games", "3ds"), ini.Get("UI", @"Paths\romsPath"));
+        Assert.Equal(Q("screenshots", "3ds"), ini.Get("UI", @"Paths\screenshotPath"));
+        Assert.Equal("false", ini.Get("UI", @"Paths\screenshotPath\default"));
+        Assert.False(ini.HasSection("Paths"));
         Assert.True(Directory.Exists(P("saves", "3ds", "nand")));
         Assert.True(Directory.Exists(P("saves", "3ds", "sdmc")));
     }

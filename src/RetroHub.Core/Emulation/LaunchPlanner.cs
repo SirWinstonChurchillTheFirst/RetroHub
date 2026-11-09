@@ -43,10 +43,12 @@ public sealed class LaunchPlanner : ILaunchPlanner
         catch (Exception ex)
         {
             Log.Error($"Planning '{game.Path}' failed", ex);
+            SystemDef? system = null;
+            try { system = _catalog.GetSystem(game.SystemId); } catch (Exception) { /* the catalog itself is broken */ }
             return new LaunchPlan
             {
                 Game = game,
-                System = _catalog.GetSystem(game.SystemId) ?? UnknownSystem(game.SystemId),
+                System = system ?? UnknownSystem(game.SystemId),
                 Problems = [new LaunchProblem(LaunchProblemKind.Other, $"Der Start konnte nicht vorbereitet werden: {ex.Message}", true)],
             };
         }
@@ -172,7 +174,8 @@ public sealed class LaunchPlanner : ILaunchPlanner
         // ---- arguments ----
         var ctx = ArgumentContext.For(_paths, system.Id, fullPath, exe, corePath, mode, def.FullscreenArgs);
         var args = new List<string>(ArgumentTemplate.Expand(def.Args, ctx));
-        if (_settings.Current.EmulatorExtraArgs.TryGetValue(def.Id, out var extra) && extra is { Length: > 0 })
+        // settings dictionaries are null when settings.json says e.g. "emulatorExtraArgs": null (hand-edited)
+        if (_settings.Current.EmulatorExtraArgs?.TryGetValue(def.Id, out var extra) == true && extra is { Length: > 0 })
             args.AddRange(ArgumentTemplate.Expand(extra, ctx));
 
         return new LaunchPlan
@@ -270,7 +273,7 @@ public sealed class LaunchPlanner : ILaunchPlanner
         LaunchMode wanted;
         if (modeOverride is { } m) wanted = m;
         else if (game.LaunchModeOverride is { } g) wanted = g;
-        else if (_settings.Current.EmulatorMode.TryGetValue(def.Id, out var s)) wanted = s;
+        else if (_settings.Current.EmulatorMode?.TryGetValue(def.Id, out var s) == true) wanted = s;
         else wanted = def.DefaultMode;
         var modes = def.Modes is { Length: > 0 } ? def.Modes : [LaunchMode.Fullscreen, LaunchMode.Windowed];
         if (modes.Contains(wanted)) return wanted;
@@ -285,7 +288,7 @@ public sealed class LaunchPlanner : ILaunchPlanner
                  {
                      ("override", explicitOverride),
                      ("game", game.EmulatorOverride),
-                     ("settings", _settings.Current.SystemEmulator.TryGetValue(system.Id, out var s) ? s : null),
+                     ("settings", _settings.Current.SystemEmulator?.TryGetValue(system.Id, out var s) == true ? s : null),
                  })
         {
             if (string.IsNullOrWhiteSpace(value)) continue;

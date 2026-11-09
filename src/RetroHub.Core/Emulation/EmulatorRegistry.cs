@@ -66,6 +66,8 @@ public sealed class EmulatorRegistry : IEmulatorRegistry
             {
                 _settings.Update(s =>
                 {
+                    // a hand-edited settings.json may contain "emulatorPaths": null
+                    s.EmulatorPaths ??= new Dictionary<string, string>();
                     if (stored == null) s.EmulatorPaths.Remove(emulatorId);
                     else s.EmulatorPaths[emulatorId] = stored;
                 });
@@ -131,7 +133,8 @@ public sealed class EmulatorRegistry : IEmulatorRegistry
         string? exe = null;
         bool user = false;
         var settings = _settings.Current;
-        if (settings.EmulatorPaths.TryGetValue(def.Id, out var stored) && !string.IsNullOrWhiteSpace(stored))
+        // EmulatorPaths is null when settings.json says "emulatorPaths": null (hand-edited) — treat as empty
+        if (settings.EmulatorPaths?.TryGetValue(def.Id, out var stored) == true && !string.IsNullOrWhiteSpace(stored))
         {
             try
             {
