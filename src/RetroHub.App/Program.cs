@@ -43,6 +43,12 @@ internal static class Program
             if (!Instance.IsFirst)
             {
                 Log.Info("RetroHub is already running for this root – bringing it to the front");
+                // "--launch …" (desktop shortcut while RetroHub runs): the running instance starts the game
+                if (CommandLineOptions.Parse(args).Launch != null)
+                {
+                    var forwarded = SingleInstance.PostRequest(RequestFolder(paths), args, Environment.CurrentDirectory);
+                    Log.Info(forwarded ? "Launch request forwarded to the running instance" : "Launch request could not be forwarded");
+                }
                 Instance.SignalFirstInstance();
                 Instance.Dispose();
                 Log.Shutdown();
@@ -70,6 +76,9 @@ internal static class Program
             Log.Shutdown();
         }
     }
+
+    /// <summary>Where a second start leaves its command line for the running instance.</summary>
+    public static string RequestFolder(AppPaths paths) => Path.Combine(paths.Cache, "requests");
 
     /// <summary>Avalonia configuration (also used by the designer).</summary>
     public static AppBuilder BuildAvaloniaApp() =>

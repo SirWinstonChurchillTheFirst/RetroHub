@@ -324,7 +324,10 @@ public class ReviewRegressionTests
         Assert.True(window.Execute(NavAction.Accept));
         Assert.True(TestSupport.Pump(() => vm.Launch.Phase == LaunchPhase.Running, 4000));
         TestSupport.Settle(50);
-        Assert.Equal("StopButton", Focused(window)?.Name);
+        // Golden Sun runs embedded (mGBA): the focus is on the game screen inside the overlay – never on "Beenden",
+        // so a stray Enter cannot quit the game (the keys go to the emulator once it is ready)
+        Assert.Equal("GameScreen", Focused(window)?.Name);
+        Assert.True(IsInside(Focused(window), window.FindControl<Panel>("LaunchOverlay")!));
         Assert.True(TestSupport.Pump(() => vm.Launch.Phase == LaunchPhase.Idle, 6000));
         TestSupport.Settle(150);
         var focused = Focused(window);
