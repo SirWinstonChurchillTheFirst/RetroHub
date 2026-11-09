@@ -2,17 +2,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="RetroHub.App.App"
              RequestedThemeVariant="Dark">
-  <!-- Fluent as the base for stock controls, then RetroHub's own tokens + control themes ("Nova"). -->
+  <!-- Fluent as the base for stock controls, then RetroHub's own tokens + control themes ("Fernsehlicht"). -->
   <Application.Styles>
     <FluentTheme>
       <FluentTheme.Palettes>
-        <ColorPaletteResources x:Key="Dark" Accent="#7B61FF" RegionColor="#0B0A1A" ErrorText="#FF5C72"
-                               AltHigh="#0B0A1A" AltLow="#0B0A1A" AltMedium="#0B0A1A" AltMediumHigh="#0B0A1A" AltMediumLow="#0B0A1A"
-                               BaseHigh="#F3F4FA" BaseLow="#33FFFFFF" BaseMedium="#B9BCD3" BaseMediumHigh="#D6D8E6" BaseMediumLow="#80849E"
-                               ChromeAltLow="#D6D8E6" ChromeBlackHigh="#000000" ChromeBlackLow="#33000000" ChromeBlackMedium="#99000000"
-                               ChromeBlackMediumLow="#66000000" ChromeDisabledHigh="#33FFFFFF" ChromeDisabledLow="#80849E"
-                               ChromeGray="#80849E" ChromeHigh="#3A3860" ChromeLow="#15142B" ChromeMedium="#1E1C3A" ChromeMediumLow="#191833"
-                               ChromeWhite="#FFFFFF" ListLow="#14FFFFFF" ListMedium="#26FFFFFF" />
+        <ColorPaletteResources x:Key="Dark" Accent="#FFB547" RegionColor="#14120F" ErrorText="#FF6A5E"
+                               AltHigh="#14120F" AltLow="#14120F" AltMedium="#14120F" AltMediumHigh="#14120F" AltMediumLow="#14120F"
+                               BaseHigh="#F4ECDF" BaseLow="#3A342B" BaseMedium="#C9BFAF" BaseMediumHigh="#DCD3C4" BaseMediumLow="#948A7A"
+                               ChromeAltLow="#DCD3C4" ChromeBlackHigh="#0A0908" ChromeBlackLow="#330A0908" ChromeBlackMedium="#990A0908"
+                               ChromeBlackMediumLow="#660A0908" ChromeDisabledHigh="#3A342B" ChromeDisabledLow="#948A7A"
+                               ChromeGray="#948A7A" ChromeHigh="#4A4337" ChromeLow="#1E1B17" ChromeMedium="#2A2620" ChromeMediumLow="#241F1A"
+                               ChromeWhite="#F4ECDF" ListLow="#2A2620" ListMedium="#3A342B" />
       </FluentTheme.Palettes>
     </FluentTheme>
     <StyleInclude Source="avares://RetroHub.App/Themes/Styles.axaml" />

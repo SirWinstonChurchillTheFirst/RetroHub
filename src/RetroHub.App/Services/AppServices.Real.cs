@@ -21,6 +21,9 @@ public sealed partial class AppServices
     /// <summary>Cover lookup (local folders + optional libretro-thumbnails); null in demo mode.</summary>
     public ArtworkService? Artwork { get; init; }
 
+    /// <summary>Design previews / tests: the real services without opening SDL (no gamepad input in the test process).</summary>
+    internal static bool WithoutGamepad { get; set; }
+
     /// <summary>Set when a broken database was copied aside at startup (shown once to the user).</summary>
     public string? PreservedCorruptDatabase { get; init; }
 
@@ -57,7 +60,7 @@ public sealed partial class AppServices
                 Emulators = registry,
                 Launcher = planner,
                 Sessions = sessions,
-                Input = GamepadInputSource.TryCreate(swapAcceptBack: false),
+                Input = WithoutGamepad ? new NullInputSource() : GamepadInputSource.TryCreate(swapAcceptBack: false),
                 PreservedCorruptDatabase = games.PreservedCorruptFile,
                 Artwork = new ArtworkService(paths, games, catalog, settings),
                 IsDemo = false,

@@ -9,15 +9,15 @@
   <p:PageBase.Styles>
     <Style Selector="Grid.row">
       <Setter Property="Margin" Value="0,4" />
-      <Setter Property="MinHeight" Value="52" />
+      <Setter Property="MinHeight" Value="72" />
     </Style>
     <Style Selector="TextBlock.rowTitle">
-      <Setter Property="FontSize" Value="14.5" />
-      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="FontWeight" Value="Medium" />
       <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     </Style>
     <Style Selector="TextBlock.rowHint">
-      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="FontSize" Value="15" />
       <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="Margin" Value="0,2,0,0" />
@@ -34,16 +34,16 @@
   </p:PageBase.Styles>
 
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="40,4,40,40" MaxWidth="980" HorizontalAlignment="Left" Spacing="22">
+    <StackPanel Margin="{DynamicResource RhPageInset}" MaxWidth="1100" HorizontalAlignment="Left" Spacing="22">
       <StackPanel Spacing="2">
         <TextBlock Text="{l:T nav.settings}" Classes="title" />
         <TextBlock Text="{l:T settings.intro}" Classes="meta" />
       </StackPanel>
 
       <!-- appearance -->
-      <Border Classes="glass" Padding="28,24">
+      <Border Padding="0,8">
         <StackPanel Spacing="10">
-          <TextBlock Text="{l:T settings.appearance}" Classes="h2" Margin="0,0,0,6" />
+          <c:ShelfLabel Text="{l:T settings.appearance}" Margin="0,0,0,6" />
           <Grid Classes="row" ColumnDefinitions="*,Auto">
             <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
               <TextBlock Text="{l:T settings.accent}" Classes="rowTitle" />
@@ -57,13 +57,13 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:AccentOption">
-                  <Button Theme="{StaticResource RhIconButton}" Classes="swatch" Width="40" Height="40" CornerRadius="20" Padding="3" ToolTip.Tip="{Binding Name}"
+                  <Button Theme="{StaticResource RhIconButton}" Classes="swatch" Width="40" Height="40" CornerRadius="{DynamicResource RhRadiusControl}" Padding="3" ToolTip.Tip="{Binding Name}"
                           Classes.selected="{Binding IsSelected}" Background="Transparent" BorderThickness="0"
                           HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                           Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectAccentCommand}" CommandParameter="{Binding}">
                     <Panel>
-                      <Ellipse Fill="{Binding Swatch}" />
-                      <c:RhIcon Data="{StaticResource Icon.Check}" Width="16" Height="16" Foreground="White" IsVisible="{Binding IsSelected}" StrokeThickness="2.6" />
+                      <Border Background="{Binding Swatch}" CornerRadius="2" />
+                      <c:RhIcon Data="{StaticResource Icon.Check}" Width="18" Height="18" Foreground="{DynamicResource RhInkBrush}" IsVisible="{Binding IsSelected}" StrokeThickness="2.6" />
                     </Panel>
                   </Button>
                 </DataTemplate>
@@ -76,7 +76,7 @@
               <TextBlock Text="{l:T settings.motion}" Classes="rowTitle" />
               <TextBlock Text="{Binding MotionHint}" Classes="rowHint" />
             </StackPanel>
-            <Border Grid.Column="1" Classes="chip" Padding="4" CornerRadius="15" VerticalAlignment="Center">
+            <Border Grid.Column="1" Classes="chip" Padding="4" CornerRadius="{DynamicResource RhRadiusControl}" VerticalAlignment="Center">
               <ItemsControl ItemsSource="{Binding MotionOptions}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
@@ -87,28 +87,6 @@
                   <DataTemplate x:DataType="vm:ChoiceOption">
                     <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}" Content="{Binding Label}" BorderThickness="0"
                             Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectMotionCommand}" CommandParameter="{Binding}" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </Border>
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.sidebar}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.sidebar.hint}" Classes="rowHint" />
-            </StackPanel>
-            <Border Grid.Column="1" Classes="chip" Padding="4" CornerRadius="15" VerticalAlignment="Center">
-              <ItemsControl ItemsSource="{Binding SidebarOptions}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="2" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ChoiceOption">
-                    <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}" Content="{Binding Label}" BorderThickness="0"
-                            Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectSidebarCommand}" CommandParameter="{Binding}" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
@@ -148,10 +126,10 @@
       </Border>
 
       <!-- controller -->
-      <Border Classes="glass" Padding="28,24">
+      <Border Padding="0,8">
         <StackPanel Spacing="10">
           <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
-            <TextBlock Text="{l:T settings.controller}" Classes="h2" />
+            <c:ShelfLabel Text="{l:T settings.controller}" />
             <Border Grid.Column="1" Classes="chip">
               <TextBlock Text="{Binding ControllerStatus}" />
             </Border>
@@ -162,28 +140,6 @@
               <TextBlock Text="{l:T settings.controller.enabled.hint}" Classes="rowHint" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding ControllerEnabled}" VerticalAlignment="Center" />
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.glyphs}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.glyphs.hint}" Classes="rowHint" />
-            </StackPanel>
-            <Border Grid.Column="1" Classes="chip" Padding="4" CornerRadius="15" VerticalAlignment="Center">
-              <ItemsControl ItemsSource="{Binding GlyphOptions}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="2" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ChoiceOption">
-                    <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}" Content="{Binding Label}" BorderThickness="0"
-                            Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectGlyphsCommand}" CommandParameter="{Binding}" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </Border>
           </Grid>
           <Border Classes="divider" />
           <Grid Classes="row" ColumnDefinitions="*,Auto">
@@ -200,9 +156,9 @@
       </Border>
 
       <!-- library -->
-      <Border Classes="glass" Padding="28,24">
+      <Border Padding="0,8">
         <StackPanel Spacing="10">
-          <TextBlock Text="{l:T settings.library}" Classes="h2" Margin="0,0,0,6" />
+          <c:ShelfLabel Text="{l:T settings.library}" Margin="0,0,0,6" />
           <Grid Classes="row" ColumnDefinitions="*,Auto">
             <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
               <TextBlock Text="{l:T settings.scanOnStartup}" Classes="rowTitle" />
@@ -238,9 +194,9 @@
       </Border>
 
       <!-- folders -->
-      <Border Classes="glass" Padding="28,24">
+      <Border Padding="0,8">
         <StackPanel Spacing="8">
-          <TextBlock Text="{l:T settings.paths}" Classes="h2" />
+          <c:ShelfLabel Text="{l:T settings.paths}" />
           <TextBlock Text="{l:T settings.paths.hint}" Classes="rowHint" Margin="0,0,0,8" />
           <ItemsControl ItemsSource="{Binding Paths}">
             <ItemsControl.ItemsPanel>
@@ -251,13 +207,13 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:PathEntry">
                 <Grid ColumnDefinitions="180,*,Auto" MinHeight="46">
-                  <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Label}" FontSize="15" FontWeight="Medium" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="1" Text="{Binding Display}" Classes="mono" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
                   <Button Grid.Column="2" Theme="{StaticResource RhGhostButton}"
                           Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).OpenPathCommand}" CommandParameter="{Binding}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                       <c:RhIcon Data="{StaticResource Icon.Folder}" Width="16" Height="16" />
-                      <TextBlock Text="{l:T settings.openFolder}" VerticalAlignment="Center" FontSize="13" />
+                      <TextBlock Text="{l:T settings.openFolder}" VerticalAlignment="Center" FontSize="15" />
                     </StackPanel>
                   </Button>
                 </Grid>

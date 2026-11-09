@@ -8,7 +8,7 @@
             x:Class="RetroHub.App.Views.Pages.ImportsPage"
             x:DataType="vm:ImportsViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="40,4,40,40" Spacing="0">
+    <StackPanel Margin="{DynamicResource RhPageInset}" Spacing="0">
       <TextBlock Text="{l:T nav.imports}" Classes="title" />
       <TextBlock Text="{l:T imports.intro}" Classes="body" MaxWidth="860" HorizontalAlignment="Left" Margin="0,8,0,24" />
 
@@ -36,20 +36,20 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:FolderItemViewModel">
-                  <Border CornerRadius="16" Padding="16,14" Background="#0AFFFFFF" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1">
+                  <Border CornerRadius="{DynamicResource RhRadiusControl}" Padding="16,14" Background="{DynamicResource RhSurfaceHiBrush}" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1">
                     <Grid ColumnDefinitions="Auto,*,Auto">
-                      <Border Width="40" Height="40" CornerRadius="12" Background="{DynamicResource RhAccentSoftBrush}" VerticalAlignment="Top">
-                        <c:RhIcon Data="{StaticResource Icon.Folder}" Width="19" Height="19" Foreground="{DynamicResource RhAccentTextBrush}" />
+                      <Border Width="40" Height="40" CornerRadius="{DynamicResource RhRadiusControl}" Background="{DynamicResource RhSurfaceHiBrush}" VerticalAlignment="Top">
+                        <c:RhIcon Data="{StaticResource Icon.Folder}" Width="19" Height="19" Foreground="{DynamicResource RhText2Brush}" />
                       </Border>
                       <StackPanel Grid.Column="1" Margin="14,0,12,0" Spacing="3">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                          <TextBlock Text="{Binding PathText}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                          <Border Classes="chip" Padding="7,1" CornerRadius="7" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding BadgeText}" FontSize="10.5" />
+                          <TextBlock Text="{Binding PathText}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                          <Border Classes="chip" Padding="7,1" CornerRadius="{DynamicResource RhRadiusSmall}" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding BadgeText}" FontSize="15" />
                           </Border>
                         </StackPanel>
-                        <TextBlock Classes="meta" FontSize="12" TextWrapping="Wrap">
-                          <Run Text="{Binding SystemText}" /><Run Text=" · " /><Run Text="{Binding OptionsText}" /><Run Text=" · " /><Run Text="{Binding ScanText}" />
+                        <TextBlock Classes="meta" FontSize="15" TextWrapping="Wrap">
+                          <Run Text="{Binding SystemText}" /><Run Text=", " /><Run Text="{Binding OptionsText}" /><Run Text=", " /><Run Text="{Binding ScanText}" />
                         </TextBlock>
                       </StackPanel>
                       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -82,7 +82,7 @@
               <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
                 <Button Name="ScanButton" Theme="{StaticResource RhPrimaryButton}" Command="{Binding ScanCommand}">
                   <StackPanel Orientation="Horizontal" Spacing="10">
-                    <c:RhIcon Data="{StaticResource Icon.Refresh}" Width="17" Height="17" Foreground="White" />
+                    <c:RhIcon Data="{StaticResource Icon.Refresh}" Width="17" Height="17" />
                     <TextBlock Text="{l:T imports.scanNow}" VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
@@ -90,8 +90,8 @@
               </StackPanel>
               <StackPanel Spacing="8" IsVisible="{Binding IsScanning}">
                 <ProgressBar Value="{Binding Progress}" IsIndeterminate="{Binding IsIndeterminate}" Maximum="100" />
-                <TextBlock Text="{Binding ProgressText}" FontSize="13" FontWeight="Medium" />
-                <TextBlock Text="{Binding CurrentFile}" Classes="mono" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding ProgressText}" FontSize="15" FontWeight="Medium" />
+                <TextBlock Text="{Binding CurrentFile}" Classes="mono" FontSize="15" TextTrimming="CharacterEllipsis" />
               </StackPanel>
             </StackPanel>
           </Border>
@@ -101,7 +101,7 @@
             <StackPanel Spacing="14">
               <TextBlock Text="{l:T artwork.title}" Classes="h2" />
               <TextBlock Text="{l:T artwork.hint}" Classes="body" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding CoverOnlineText}" Classes="meta" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding CoverOnlineText}" Classes="meta" FontSize="15" TextWrapping="Wrap" />
               <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
                 <Button Name="CoversButton" Command="{Binding FindCoversCommand}" MinHeight="48">
                   <StackPanel Orientation="Horizontal" Spacing="10">
@@ -113,10 +113,10 @@
               </StackPanel>
               <StackPanel Spacing="8" IsVisible="{Binding IsFindingCovers}">
                 <ProgressBar Value="{Binding CoverProgress}" IsIndeterminate="{Binding CoverIndeterminate}" Maximum="100" />
-                <TextBlock Text="{Binding CoverProgressText}" FontSize="13" FontWeight="Medium" />
-                <TextBlock Text="{Binding CoverCurrent}" Classes="meta" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding CoverProgressText}" FontSize="15" FontWeight="Medium" />
+                <TextBlock Text="{Binding CoverCurrent}" Classes="meta" FontSize="15" TextTrimming="CharacterEllipsis" />
               </StackPanel>
-              <TextBlock Text="{Binding CoverResultText}" IsVisible="{Binding HasCoverResult}" Classes="meta" FontSize="12.5" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding CoverResultText}" IsVisible="{Binding HasCoverResult}" Classes="meta" FontSize="15" TextWrapping="Wrap" />
             </StackPanel>
           </Border>
 
@@ -129,21 +129,21 @@
               </StackPanel>
               <Grid ColumnDefinitions="*,10,*,10,*,10,*">
                 <Border Classes="card" Padding="14,12">
-                  <StackPanel><TextBlock Text="{Binding Report.Added}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.added}" Classes="meta" FontSize="12" /></StackPanel>
+                  <StackPanel><TextBlock Text="{Binding Report.Added}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.added}" Classes="meta" FontSize="15" /></StackPanel>
                 </Border>
                 <Border Grid.Column="2" Classes="card" Padding="14,12">
-                  <StackPanel><TextBlock Text="{Binding Report.Updated}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.updated}" Classes="meta" FontSize="12" /></StackPanel>
+                  <StackPanel><TextBlock Text="{Binding Report.Updated}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.updated}" Classes="meta" FontSize="15" /></StackPanel>
                 </Border>
                 <Border Grid.Column="4" Classes="card" Padding="14,12">
-                  <StackPanel><TextBlock Text="{Binding Report.Unchanged}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.unchanged}" Classes="meta" FontSize="12" /></StackPanel>
+                  <StackPanel><TextBlock Text="{Binding Report.Unchanged}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.unchanged}" Classes="meta" FontSize="15" /></StackPanel>
                 </Border>
                 <Border Grid.Column="6" Classes="card" Padding="14,12">
-                  <StackPanel><TextBlock Text="{Binding Report.Missing}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.missing}" Classes="meta" FontSize="12" /></StackPanel>
+                  <StackPanel><TextBlock Text="{Binding Report.Missing}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.missing}" Classes="meta" FontSize="15" /></StackPanel>
                 </Border>
               </Grid>
               <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ReportClean}">
                 <c:RhIcon Data="{StaticResource Icon.Check}" Width="16" Height="16" Foreground="{DynamicResource RhSuccessBrush}" />
-                <TextBlock Text="{l:T imports.clean}" FontSize="13" Foreground="#8FF0C8" />
+                <TextBlock Text="{l:T imports.clean}" FontSize="15" Foreground="{DynamicResource RhSuccessBrush}" />
               </StackPanel>
               <ItemsControl ItemsSource="{Binding Issues}">
                 <ItemsControl.ItemsPanel>
@@ -155,9 +155,9 @@
                   <DataTemplate x:DataType="vm:IssueGroup">
                     <StackPanel Spacing="6">
                       <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="{Binding Title}" Classes="h3" FontSize="14" />
-                        <Border Classes="chip" Padding="7,1" CornerRadius="7">
-                          <TextBlock Text="{Binding Total}" FontSize="11" />
+                        <TextBlock Text="{Binding Title}" Classes="h3" FontSize="15" />
+                        <Border Classes="chip" Padding="7,1" CornerRadius="{DynamicResource RhRadiusSmall}">
+                          <TextBlock Text="{Binding Total}" FontSize="15" />
                         </Border>
                       </StackPanel>
                       <ItemsControl ItemsSource="{Binding Items}">
@@ -166,14 +166,14 @@
                             <Grid ColumnDefinitions="Auto,*" Margin="0,3">
                               <Ellipse Width="5" Height="5" Fill="{DynamicResource RhText3Brush}" VerticalAlignment="Top" Margin="2,8,10,0" />
                               <StackPanel Grid.Column="1">
-                                <TextBlock Text="{Binding Path}" Classes="mono" FontSize="12" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{Binding Reason}" Classes="meta" FontSize="12" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Path}" Classes="mono" FontSize="15" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Reason}" Classes="meta" FontSize="15" TextWrapping="Wrap" />
                               </StackPanel>
                             </Grid>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
-                      <TextBlock Text="{Binding MoreText}" IsVisible="{Binding HasMore}" Classes="meta" FontSize="12" />
+                      <TextBlock Text="{Binding MoreText}" IsVisible="{Binding HasMore}" Classes="meta" FontSize="15" />
                     </StackPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

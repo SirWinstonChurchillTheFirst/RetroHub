@@ -13,13 +13,8 @@ public sealed partial class SystemItemViewModel : ObservableObject
     public SystemItemViewModel(SystemDef def, int gameCount, long playSeconds)
     {
         Def = def;
-        Accent = ColorUtil.Parse(def.Accent, Color.Parse(ThemeManager.DefaultAccent));
-        var deep = ColorUtil.Mix(Accent, Color.Parse("#0B0A1A"), 0.55);
-        CardBrush = ThemeManager.Gradient(ColorUtil.WithAlpha(ColorUtil.Mix(Accent, Color.Parse("#15142B"), 0.25), 0xF0), ColorUtil.WithAlpha(deep, 0xF0),
-            new RelativePoint(0, 0, RelativeUnit.Relative), new RelativePoint(1, 1, RelativeUnit.Relative));
-        AccentBrush = new SolidColorBrush(Accent);
-        GlowBrush = ThemeManager.Radial(ColorUtil.WithAlpha(ColorUtil.Mix(Accent, Colors.White, 0.2), 0x70), new RelativePoint(0.85, 0.1, RelativeUnit.Relative), 0.9);
-        AmbientBrush = ThemeManager.Radial(ColorUtil.WithAlpha(Accent, 0x55), new RelativePoint(0.8, 0.0, RelativeUnit.Relative), 0.9);
+        Accent = ColorUtil.Parse(def.Accent, Color.Parse("#948A7A"));
+        Look = SystemPalette.Get(def.Id, Accent);
         Update(gameCount, playSeconds);
     }
 
@@ -28,15 +23,19 @@ public sealed partial class SystemItemViewModel : ObservableObject
     public string Name => Def.Name;
     public string ShortName => string.IsNullOrEmpty(Def.ShortName) ? Def.Id.ToUpperInvariant() : Def.ShortName;
     public string Manufacturer => Def.Manufacturer;
-    public string SubTitle => Def.Year is { } y ? $"{Def.Manufacturer} · {y}" : Def.Manufacturer;
+    /// <summary>"Nintendo, 2001" (a sentence part, no "A · B" chains).</summary>
+    public string SubTitle => Def.Year is { } y ? (string.IsNullOrEmpty(Def.Manufacturer) ? y.ToString() : $"{Def.Manufacturer}, {y}") : Def.Manufacturer;
     public string CategoryText => Fmt.Category(Def.Category);
     public bool IsHandheld => Def.Category == SystemCategory.Handheld;
+    /// <summary>Catalog accent (only used for systems without a palette entry).</summary>
     public Color Accent { get; }
-    public IBrush AccentBrush { get; }
-    public IBrush CardBrush { get; }
-    public IBrush GlowBrush { get; }
-    /// <summary>Static ambient background for the system page (pre-computed gradient, no blur).</summary>
-    public IBrush AmbientBrush { get; }
+    /// <summary>Wall, colour band and light of this system (DESIGN 2.4).</summary>
+    public SystemLook Look { get; }
+    /// <summary>"Farbe": colour band, label bar, ticker underline.</summary>
+    public IBrush AccentBrush => Look.ColorBrush;
+    /// <summary>"Licht": focus ring and light in the system context.</summary>
+    public IBrush LightBrush => Look.LightBrush;
+    public IBrush WallBrush => Look.WallBrush;
 
     [ObservableProperty] public partial int GameCount { get; private set; }
     [ObservableProperty] public partial string CountText { get; private set; } = "";

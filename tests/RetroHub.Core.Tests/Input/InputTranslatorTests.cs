@@ -49,6 +49,26 @@ public class InputTranslatorTests
     }
 
     [Fact]
+    public void Held_direction_flags_its_repeats_and_reports_the_release()
+    {
+        // DESIGN 8.4: the shell's NavRepeatTracker needs to know which directions come from the auto-repeat
+        var t = Fresh();
+        Assert.Equal([UiAction.Right], U(t, 10, P(0, PadButtons.DPadRight)));
+        Assert.Equal([false], t.LastRepeatFlags);
+        Assert.False(t.DirectionsReleased);
+        Assert.Empty(U(t, 100, P(0, PadButtons.DPadRight)));
+        Assert.Equal([UiAction.Right], U(t, 10 + t.Options.RepeatDelayMs, P(0, PadButtons.DPadRight)));
+        Assert.Equal([true], t.LastRepeatFlags);
+        Assert.Empty(U(t, 600, P(0)));
+        Assert.True(t.DirectionsReleased);
+        Assert.Empty(U(t, 610, P(0)));
+        Assert.False(t.DirectionsReleased);
+        // buttons are never repeats
+        Assert.Equal([UiAction.Accept], U(t, 620, P(0, PadButtons.South)));
+        Assert.Equal([false], t.LastRepeatFlags);
+    }
+
+    [Fact]
     public void Stick_clicks_are_ignored()
     {
         var t = Fresh();

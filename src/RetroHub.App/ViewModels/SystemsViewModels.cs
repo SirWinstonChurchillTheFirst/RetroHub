@@ -78,6 +78,8 @@ public sealed partial class SystemViewModel : PageViewModel
     [ObservableProperty] public partial string EmulatorText { get; private set; } = "";
     [ObservableProperty] public partial bool EmulatorReady { get; private set; }
     [ObservableProperty] public partial string FactsText { get; private set; } = "";
+    /// <summary>"Heimkonsole von Nintendo, 1990. 18 Spiele." (numbers become Archivo runs in the view).</summary>
+    [ObservableProperty] public partial string SentenceText { get; private set; } = "";
     [ObservableProperty] public partial string FoldersText { get; private set; } = "";
     [ObservableProperty] public partial string ExtensionsText { get; private set; } = "";
     [ObservableProperty] public partial bool IsEmpty { get; private set; }
@@ -120,7 +122,7 @@ public sealed partial class SystemViewModel : PageViewModel
         if (System?.Id != systemId)
         {
             System = new SystemItemViewModel(def, data.stats.GamesPerSystem.GetValueOrDefault(systemId), data.stats.PlaySecondsPerSystem.GetValueOrDefault(systemId));
-            Ambient = System.AmbientBrush;
+            Backdrop = new BackdropSpec(BackdropKind.Wall, SystemId: systemId, Accent: System.Accent);
         }
         else System.Update(data.stats.GamesPerSystem.GetValueOrDefault(systemId), data.stats.PlaySecondsPerSystem.GetValueOrDefault(systemId));
 
@@ -132,7 +134,11 @@ public sealed partial class SystemViewModel : PageViewModel
         EmulatorText = installed.Install != null
             ? Loc.T("system.emulatorReady", EmulatorLabel(installed.Ref, installed.Install.Def.Name))
             : data.choices.Count == 0 ? Loc.T("system.noEmulatorDefined") : Loc.T("system.emulatorMissing", string.Join(", ", data.choices.Select(c => c.Install?.Def.Name ?? c.Ref.EmulatorId).Distinct()));
-        FactsText = string.Join(" · ", new[] { def.Manufacturer, def.Year?.ToString(), Fmt.Category(def.Category) }.Where(s => !string.IsNullOrEmpty(s)));
+        // "Handheld von Nintendo, 2001" – a sentence part, no "A · B · C" chain (DESIGN 3.2)
+        var category = Fmt.Category(def.Category);
+        var facts = !string.IsNullOrEmpty(def.Manufacturer) ? Loc.T("detail.meta.by", category, def.Manufacturer) : category;
+        FactsText = def.Year is { } year ? $"{facts}, {year}" : facts;
+        SentenceText = $"{FactsText}. {System.CountText}.";
         FoldersText = string.Join(", ", def.Folders.Select(f => "games/" + f));
         ExtensionsText = string.Join(" ", def.Extensions);
     }

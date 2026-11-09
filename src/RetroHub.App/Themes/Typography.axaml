@@ -1,0 +1,146 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Text classes of "Fernsehlicht" (DESIGN 3.2, reference 1080p; the shell scales everything by UiScale).
+    Roles: Plakat = Archivo Expanded 800, Zahl = Archivo SemiExpanded 700 (+tnum), UI = Archivo SemiCondensed 500/600,
+    Rücken = Archivo Condensed 700, Lesen = Atkinson Hyperlegible Next 400/500.
+    No uppercase overlines; readable text ≥ 15 px; Text 3 only from 15 px.
+  -->
+
+  <!-- ===== Plakat ===== -->
+  <Style Selector="TextBlock.poster-xl">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontPoster}" />
+    <Setter Property="FontWeight" Value="ExtraBold" />
+    <Setter Property="FontSize" Value="72" />
+    <Setter Property="LineHeight" Value="76" />
+    <Setter Property="LetterSpacing" Value="-0.7" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+  </Style>
+  <Style Selector="TextBlock.poster, TextBlock.display">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontPoster}" />
+    <Setter Property="FontWeight" Value="ExtraBold" />
+    <Setter Property="FontSize" Value="56" />
+    <Setter Property="LineHeight" Value="62" />
+    <Setter Property="LetterSpacing" Value="-0.56" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+  </Style>
+  <Style Selector="TextBlock.poster-s, TextBlock.title">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontPoster}" />
+    <Setter Property="FontWeight" Value="ExtraBold" />
+    <Setter Property="FontSize" Value="40" />
+    <Setter Property="LineHeight" Value="46" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+  </Style>
+
+  <!-- ===== Etikett / Button / Überschriften (Werkbank, Dialoge) ===== -->
+  <Style Selector="TextBlock.h2">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="24" />
+    <Setter Property="LineHeight" Value="30" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+  </Style>
+  <Style Selector="TextBlock.h3, TextBlock.ui-l">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="LineHeight" Value="26" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+  </Style>
+  <Style Selector="TextBlock.h3">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.ui">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="LineHeight" Value="24" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+  </Style>
+  <Style Selector="TextBlock.button">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="LetterSpacing" Value="0.2" />
+  </Style>
+  <Style Selector="TextBlock.caption">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="FontSize" Value="17" />
+    <Setter Property="LineHeight" Value="21" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+  </Style>
+  <Style Selector="TextBlock.label">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="LineHeight" Value="18" />
+    <Setter Property="LetterSpacing" Value="0.45" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
+  </Style>
+
+  <!-- ===== Lesen ===== -->
+  <Style Selector="TextBlock.read-l">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontRead}" />
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="LineHeight" Value="30" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="TextBlock.read, TextBlock.body">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontRead}" />
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="LineHeight" Value="28" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="TextBlock.meta">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontRead}" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="LineHeight" Value="20" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
+  </Style>
+
+  <!-- ===== Rücken / Zahl ===== -->
+  <Style Selector="TextBlock.code">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontSpine}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="FontSize" Value="17" />
+    <Setter Property="LineHeight" Value="20" />
+    <Setter Property="LetterSpacing" Value="0.7" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+  </Style>
+  <Style Selector="TextBlock.spine">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontSpine}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="LetterSpacing" Value="0.4" />
+  </Style>
+  <Style Selector="TextBlock.number">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontNumber}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="FontFeatures">
+      <FontFeatureCollection>
+        <FontFeature Tag="tnum" />
+      </FontFeatureCollection>
+    </Setter>
+  </Style>
+  <Style Selector="TextBlock.osd">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontNumber}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="FontSize" Value="40" />
+    <Setter Property="LineHeight" Value="44" />
+    <Setter Property="FontFeatures">
+      <FontFeatureCollection>
+        <FontFeature Tag="tnum" />
+      </FontFeatureCollection>
+    </Setter>
+  </Style>
+  <Style Selector="TextBlock.mono">
+    <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+  </Style>
+  <Style Selector="TextBlock.accent">
+    <Setter Property="Foreground" Value="{DynamicResource RhAccentTextBrush}" />
+  </Style>
+</Styles>

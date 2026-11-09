@@ -6,41 +6,39 @@
             xmlns:l="using:RetroHub.App.Localization"
             x:Class="RetroHub.App.Views.Pages.SystemsPage"
             x:DataType="vm:SystemsViewModel">
+  <!-- Konsolen (M1 foundation state): one painted wall per system. The spine shelf with the turning front follows in M5 (DESIGN 7.4). -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="40,4,40,40" Spacing="8">
-      <TextBlock Text="{l:T nav.systems}" Classes="title" />
-      <TextBlock Text="{Binding SummaryText}" Classes="meta" />
-      <!-- columns follow the page width (code-behind), cards stretch to fill the row -->
-      <ItemsControl Name="Cards" ItemsSource="{Binding Systems}" Margin="0,22,0,0" ClipToBounds="False">
+    <StackPanel Margin="{DynamicResource RhPageInset}" Spacing="8">
+      <TextBlock c:Sentence.Text="{Binding SummaryText}" Classes="read" Margin="0,0,0,16" />
+      <!-- columns follow the page width (code-behind), walls stretch to fill the row -->
+      <ItemsControl Name="Cards" ItemsSource="{Binding Systems}" ClipToBounds="False">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <UniformGrid Columns="4" ColumnSpacing="20" RowSpacing="20" />
+            <UniformGrid Columns="4" ColumnSpacing="24" RowSpacing="32" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:SystemItemViewModel">
-            <c:SystemCard Height="172" />
+            <c:SystemCard Height="200" />
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
 
-      <StackPanel IsVisible="{Binding HasEmptySystems}" Spacing="12" Margin="0,28,0,0">
-        <TextBlock Text="{l:T systems.withoutGames}" Classes="h2" />
-        <TextBlock Text="{l:T systems.withoutGames.hint}" Classes="body" MaxWidth="720" HorizontalAlignment="Left" />
+      <StackPanel IsVisible="{Binding HasEmptySystems}" Spacing="12" Margin="0,40,0,0">
+        <c:ShelfLabel Text="{l:T systems.withoutGames}" />
+        <TextBlock Text="{l:T systems.withoutGames.hint}" Classes="read" MaxWidth="760" HorizontalAlignment="Left" />
         <ItemsControl ItemsSource="{Binding EmptySystems}" Margin="0,6,0,0">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <WrapPanel ItemSpacing="10" LineSpacing="10" />
+              <WrapPanel ItemSpacing="24" LineSpacing="10" />
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:SystemItemViewModel">
-              <Border Classes="chip" Padding="12,8">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Ellipse Width="8" Height="8" Fill="{Binding AccentBrush}" VerticalAlignment="Center" />
-                  <TextBlock Text="{Binding Name}" />
-                </StackPanel>
-              </Border>
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Border Width="3" Height="14" Background="{Binding AccentBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Name}" Classes="ui" Foreground="{DynamicResource RhText2Brush}" />
+              </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

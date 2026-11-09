@@ -1,4 +1,6 @@
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
@@ -6,66 +8,107 @@ using RetroHub.Core.Logging;
 
 namespace RetroHub.App.Theming;
 
-/// <summary>A selectable accent preset (settings page swatches).</summary>
+/// <summary>A selectable light-colour preset (settings page swatches).</summary>
 public sealed record AccentPreset(string Id, string NameKey, string Hex);
 
 /// <summary>
-/// Runtime theme tokens. Every accent-dependent resource is replaced in one go in Application.Resources
-/// (never per frame – see MonHub PERFORMANCE.md); all consumers use DynamicResource.
+/// Runtime theme tokens ("Fernsehlicht"). The light colour (Bernstein by default) replaces every light-dependent
+/// resource in one go in Application.Resources (never per frame – see MonHub PERFORMANCE.md); all consumers use
+/// DynamicResource. Everything is a solid colour: no gradients, no glow.
+/// <para>
+/// <see cref="BoardLight"/> is the ONE shared SolidColorBrush on the top edge of every shelf board (DESIGN 2.5.6). It is
+/// never replaced, only re-coloured (<see cref="SetBoardLight"/>), so a change costs one colour and animates through
+/// its ColorTransition.
+/// </para>
 /// </summary>
 public static class ThemeManager
 {
-    public const string DefaultAccent = "#7B61FF";
+    /// <summary>Standby-Bernstein, the only brand colour (DESIGN 2.2).</summary>
+    public const string DefaultAccent = "#FFB547";
 
     public static IReadOnlyList<AccentPreset> Presets { get; } =
     [
-        new("nova", "accent.nova", "#7B61FF"),
-        new("ocean", "accent.ocean", "#2F9BFF"),
-        new("aurora", "accent.aurora", "#1FC7A2"),
-        new("sunset", "accent.sunset", "#FF7A45"),
-        new("rose", "accent.rose", "#F2558F"),
-        new("gold", "accent.gold", "#E8B030"),
+        new("amber", "accent.amber", "#FFB547"),
+        new("phosphor", "accent.phosphor", "#8FE3A0"),
+        new("tube", "accent.tube", "#EDE3D0"),
+        new("ice", "accent.ice", "#8CC4FF"),
+        new("cherry", "accent.cherry", "#FF8A80"),
+        new("neon", "accent.neon", "#FF8CC6"),
     ];
 
     public static Color CurrentAccent { get; private set; } = Color.Parse(DefaultAccent);
 
     public static event Action? AccentChanged;
 
-    /// <summary>Applies an accent (#RRGGBB; null/invalid = Nova default).</summary>
+    /// <summary>Neutral board light outside the TV-light and system contexts (= light edge #17FFF3E0).</summary>
+    public static readonly Color NeutralBoardLight = Color.Parse("#17FFF3E0");
+
+    private static SolidColorBrush? _boardLight;
+
+    /// <summary>The shared board-light brush (created on first use, registered as RhBoardLightBrush).</summary>
+    public static SolidColorBrush BoardLight
+    {
+        get
+        {
+            if (_boardLight != null) return _boardLight;
+            _boardLight = new SolidColorBrush(NeutralBoardLight);
+            ApplyBoardLightTransition();
+            return _boardLight;
+        }
+    }
+
+    /// <summary>Re-colours the shared board light (animated by its ColorTransition, 420 ms, hard when motion is off).</summary>
+    public static void SetBoardLight(Color color)
+    {
+        if (BoardLight.Color == color) return;
+        BoardLight.Color = color;
+    }
+
+    /// <summary>Board light for a context: TV light 35 % (Start/Detail), light colour 22 % (library/system), else neutral.</summary>
+    public static Color BoardLightFor(Color? light, double share) =>
+        light is { } l ? ColorUtil.WithAlpha(l, (byte)Math.Round(255 * share)) : NeutralBoardLight;
+
+    /// <summary>Re-reads the motion level for the board-light transition.</summary>
+    public static void ApplyBoardLightTransition()
+    {
+        if (_boardLight == null) return;
+        var d = Motion.Light;
+        _boardLight.Transitions = d == TimeSpan.Zero ? null :
+            [new ColorTransition { Property = SolidColorBrush.ColorProperty, Duration = d, Easing = new SineEaseInOut() }];
+    }
+
+    /// <summary>
+    /// Applies a light colour (#RRGGBB; null / unknown = Bernstein). Only the presets are accepted: values of the old
+    /// "Nova" accent palette (violet, blue …) are not part of the warm palette and fall back to Bernstein.
+    /// </summary>
     public static void ApplyAccent(string? hex)
     {
         var app = Application.Current;
         if (app == null) return;
-        var a = ColorUtil.Parse(hex, Color.Parse(DefaultAccent));
-        a = Color.FromRgb(a.R, a.G, a.B);
-        var b = hex == null || string.Equals(hex, DefaultAccent, StringComparison.OrdinalIgnoreCase)
-            ? Color.Parse("#4C8DFF") // Nova's own partner colour
-            : ColorUtil.GradientPartner(a);
+        var a = Resolve(hex);
         CurrentAccent = a;
         var r = app.Resources;
 
         r["RhAccentAColor"] = a;
-        r["RhAccentBColor"] = b;
-        r["RhAccentSoftColor"] = ColorUtil.WithAlpha(a, 0x2E);
+        r["RhAccentBColor"] = a;
+        r["RhAccentSoftColor"] = ColorUtil.WithAlpha(a, 0x33);
         r["RhAccentBrush"] = new SolidColorBrush(a);
-        r["RhAccentBBrush"] = new SolidColorBrush(b);
-        r["RhAccentSoftBrush"] = new SolidColorBrush(ColorUtil.WithAlpha(a, 0x2E));
-        r["RhAccentFaintBrush"] = new SolidColorBrush(ColorUtil.WithAlpha(a, 0x18));
-        r["RhAccentTextBrush"] = new SolidColorBrush(ColorUtil.Mix(a, Colors.White, 0.35));
-        r["RhAccentGradientBrush"] = Gradient(a, b, new RelativePoint(0, 0.5, RelativeUnit.Relative), new RelativePoint(1, 0.5, RelativeUnit.Relative));
-        r["RhAccentGradientDiagBrush"] = Gradient(a, b, new RelativePoint(0, 0, RelativeUnit.Relative), new RelativePoint(1, 1, RelativeUnit.Relative));
-        r["RhFocusRingBrush"] = Gradient(ColorUtil.Mix(a, Colors.White, 0.15), ColorUtil.Mix(b, Colors.White, 0.15),
-            new RelativePoint(0, 0, RelativeUnit.Relative), new RelativePoint(1, 1, RelativeUnit.Relative));
-        r["RhFocusGlow"] = BoxShadows.Parse($"0 0 0 1 {Hex(ColorUtil.WithAlpha(a, 0x55))}, 0 14 36 -4 {Hex(ColorUtil.WithAlpha(a, 0x80))}");
-        r["RhButtonGlow"] = BoxShadows.Parse($"0 8 24 -6 {Hex(ColorUtil.WithAlpha(a, 0xA0))}");
-        r["RhAmbientBrushA"] = Radial(ColorUtil.WithAlpha(a, 0x3A), new RelativePoint(0.12, 0.0, RelativeUnit.Relative), 0.75);
-        r["RhAmbientBrushB"] = Radial(ColorUtil.WithAlpha(b, 0x26), new RelativePoint(0.95, 1.0, RelativeUnit.Relative), 0.7);
+        r["RhAccentBBrush"] = new SolidColorBrush(a);
+        r["RhAccentPressedBrush"] = new SolidColorBrush(ColorUtil.Mix(a, Colors.Black, 0.12));
+        r["RhAccentSoftBrush"] = new SolidColorBrush(ColorUtil.WithAlpha(a, 0x33));
+        r["RhAccentFaintBrush"] = new SolidColorBrush(ColorUtil.WithAlpha(a, 0x1F));
+        r["RhAccentTextBrush"] = new SolidColorBrush(ColorUtil.Mix(a, Colors.White, 0.22));
+        // legacy gradient keys: solid
+        r["RhAccentGradientBrush"] = new SolidColorBrush(a);
+        r["RhAccentGradientDiagBrush"] = new SolidColorBrush(a);
+        r["RhFocusRingBrush"] = new SolidColorBrush(a);
+        r["RhBoardLightBrush"] = BoardLight;
 
-        // Fluent controls (ToggleSwitch, Slider, ProgressBar, ComboBox selection …) follow the accent too.
+        // Fluent controls (selection, progress, slider) follow the light colour too.
         r["SystemAccentColor"] = a;
-        r["SystemAccentColorLight1"] = ColorUtil.Shift(a, dLight: 0.08);
-        r["SystemAccentColorLight2"] = ColorUtil.Shift(a, dLight: 0.16);
-        r["SystemAccentColorLight3"] = ColorUtil.Shift(a, dLight: 0.24);
+        r["SystemAccentColorLight1"] = ColorUtil.Shift(a, dLight: 0.06);
+        r["SystemAccentColorLight2"] = ColorUtil.Shift(a, dLight: 0.12);
+        r["SystemAccentColorLight3"] = ColorUtil.Shift(a, dLight: 0.18);
         r["SystemAccentColorDark1"] = ColorUtil.Shift(a, dLight: -0.08);
         r["SystemAccentColorDark2"] = ColorUtil.Shift(a, dLight: -0.16);
         r["SystemAccentColorDark3"] = ColorUtil.Shift(a, dLight: -0.24);
@@ -79,6 +122,14 @@ public static class ThemeManager
         try { AccentChanged?.Invoke(); } catch (Exception ex) { Log.Warn("AccentChanged handler failed", ex); }
     }
 
+    /// <summary>The light colour for a stored setting value (presets only; everything else = Bernstein).</summary>
+    public static Color Resolve(string? hex)
+    {
+        var preset = Presets.FirstOrDefault(p => string.Equals(p.Hex, hex?.Trim(), StringComparison.OrdinalIgnoreCase));
+        return Color.Parse(preset?.Hex ?? DefaultAccent);
+    }
+
+    /// <summary>Linear two-stop gradient (only for scrims and shadows – never as decoration).</summary>
     public static IBrush Gradient(Color a, Color b, RelativePoint start, RelativePoint end) => new LinearGradientBrush
     {
         StartPoint = start,
@@ -94,6 +145,4 @@ public static class ThemeManager
         RadiusY = new RelativeScalar(radius, RelativeUnit.Relative),
         GradientStops = { new GradientStop(c, 0), new GradientStop(ColorUtil.WithAlpha(c, 0), 1) },
     };
-
-    private static string Hex(Color c) => $"#{c.A:X2}{c.R:X2}{c.G:X2}{c.B:X2}";
 }

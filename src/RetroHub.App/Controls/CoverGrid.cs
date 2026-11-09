@@ -8,6 +8,7 @@ using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using RetroHub.App.Input;
@@ -66,10 +67,17 @@ public sealed class CoverGrid : UserControl
     public static readonly StyledProperty<Control?> HeaderProperty =
         AvaloniaProperty.Register<CoverGrid, Control?>(nameof(Header));
 
+    /// <summary>Draw the 10 px shelf edge (board) and the contact shadows under every row of boxes.</summary>
+    public static readonly StyledProperty<bool> ShowBoardProperty =
+        AvaloniaProperty.Register<CoverGrid, bool>(nameof(ShowBoard), true);
+
     private readonly ScrollViewer _scroll;
     private readonly ItemsControl _rows;
     private readonly StackPanel _outer;
+    private readonly Panel _content;
     private readonly ContentControl _headerHost;
+    private readonly FocusLayer _focus;
+    private readonly Control _boards;
     private IReadOnlyList<object> _items = [];
     private Dictionary<object, int> _indexOf = new(ReferenceEqualityComparer.Instance);
     private INotifyCollectionChanged? _observed;
@@ -96,14 +104,23 @@ public sealed class CoverGrid : UserControl
         };
         _headerHost = new ContentControl();
         _outer = new StackPanel { Children = { _headerHost, _rows } };
+        // one focus layer per grid, inside the scroll content (scrolls along): cone behind the rows, ring above them
+        _content = new Panel();
+        _focus = new FocusLayer(_content, _rows) { BoardFront = ShelfBoard.EdgeHeight };
+        _boards = new BoardLayer(this);
+        _content.Children.Add(_focus.Back);
+        _content.Children.Add(_boards);
+        _content.Children.Add(_outer);
+        _content.Children.Add(_focus.Front);
         _scroll = new ScrollViewer
         {
             HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
             VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            Content = _outer,
+            Content = _content,
         };
         Content = _scroll;
         _scroll.SizeChanged += (_, _) => UpdateLayoutMetrics();
+        _rows.LayoutUpdated += (_, _) => _boards.InvalidateVisual();
         // tunnel: tiles (buttons) or the focus manager must not consume the arrows before the grid sees them
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         AddHandler(GotFocusEvent, OnTileGotFocus, RoutingStrategies.Bubble);
@@ -122,6 +139,10 @@ public sealed class CoverGrid : UserControl
     public Thickness ContentPadding { get => GetValue(ContentPaddingProperty); set => SetValue(ContentPaddingProperty, value); }
     public ICommand? ItemInvokedCommand { get => GetValue(ItemInvokedCommandProperty); set => SetValue(ItemInvokedCommandProperty, value); }
     public Control? Header { get => GetValue(HeaderProperty); set => SetValue(HeaderProperty, value); }
+    public bool ShowBoard { get => GetValue(ShowBoardProperty); set => SetValue(ShowBoardProperty, value); }
+
+    /// <summary>The grid's focus visuals (light colour: null = the user's light colour; a system's light in its context).</summary>
+    public FocusLayer FocusVisuals => _focus;
 
     /// <summary>Index of the selected (last focused) item; -1 = none.</summary>
     public int SelectedIndex
@@ -157,7 +178,7 @@ public sealed class CoverGrid : UserControl
     private void ApplyPadding()
     {
         var p = ContentPadding;
-        _outer.Margin = p;
+        _content.Margin = p;
     }
 
     private void OnItemsSourceChanged()
@@ -334,14 +355,17 @@ public sealed class CoverGrid : UserControl
         return true;
     }
 
-    /// <summary>Keeps a margin above/below the focused row so the scaled tile and its glow stay visible.</summary>
+    /// <summary>
+    /// Keeps a margin above/below the focused row so the lifted box, its ring and the board stay visible
+    /// (DESIGN 8.4: 40 px = ring 6 + lift 15 + board 10 + shadow ≈ 9).
+    /// </summary>
     private void BringRowIntoView(Control tile)
     {
-        var p = tile.TranslatePoint(new Point(0, 0), _outer);
+        var p = tile.TranslatePoint(new Point(0, 0), _content);
         if (p == null) return;
-        var margin = 24;
-        var top = p.Value.Y + _outer.Margin.Top - margin;
-        var bottom = p.Value.Y + _outer.Margin.Top + tile.Bounds.Height + margin;
+        var margin = 40;
+        var top = p.Value.Y + _content.Margin.Top - margin;
+        var bottom = p.Value.Y + _content.Margin.Top + tile.Bounds.Height + margin;
         var offset = _scroll.Offset;
         if (top < offset.Y) _scroll.Offset = offset.WithY(Math.Max(0, top));
         else if (bottom > offset.Y + _scroll.Viewport.Height) _scroll.Offset = offset.WithY(bottom - _scroll.Viewport.Height);
@@ -414,6 +438,34 @@ public sealed class CoverGrid : UserControl
     }
 
     /// <summary>
+    /// The shelf edges under the realized rows (DESIGN 4.2: 10 px over the full content width) and the contact
+    /// shadow of every box on them (from the boxes' ArtRects). ONE layer per grid behind the rows, in the scroll
+    /// content; static brushes; redrawn only when rows are realized/laid out or a cover changes its rectangle.
+    /// </summary>
+    private sealed class BoardLayer(CoverGrid grid) : Control
+    {
+        static BoardLayer() { IsHitTestVisibleProperty.OverrideDefaultValue<BoardLayer>(false); }
+
+        public override void Render(DrawingContext context)
+        {
+            if (!grid.ShowBoard) return;
+            var width = Bounds.Width;
+            foreach (var row in grid.RealizedRows())
+            {
+                if (row.Children.Count == 0 || row.Children[0] is not GameTile first || first.CoverBottomInTile() is not { } bottom) continue;
+                if (row.TranslatePoint(new Point(0, 0), this) is not { } origin) continue;
+                var y = origin.Y + first.Bounds.Y + bottom;
+                ShelfBoard.Draw(context, new Rect(0, y, width, ShelfBoard.EdgeHeight));
+                foreach (var child in row.Children)
+                {
+                    if (child is not GameTile tile || tile.ArtRectInTile() is not { } art || art.Width <= 0) continue;
+                    context.FillRectangle(ShelfBoard.ContactBrush, new Rect(origin.X + tile.Bounds.X + art.X, y, art.Width, ShelfBoard.EdgeHeight));
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Row view: a horizontal panel whose children are the item tiles. On recycling (DataContext = another row)
     /// existing tiles are reused and only get the new item as DataContext.
     /// </summary>
@@ -428,6 +480,8 @@ public sealed class CoverGrid : UserControl
             ClipToBounds = false;
         }
 
+        private void OnTileArtChanged(object? sender, EventArgs e) => _grid._boards.InvalidateVisual();
+
         protected override void OnDataContextChanged(EventArgs e)
         {
             base.OnDataContextChanged(e);
@@ -438,7 +492,11 @@ public sealed class CoverGrid : UserControl
         {
             if (DataContext is not CoverRow row) return;
             var template = _grid.ItemTemplate;
-            while (Children.Count > row.Items.Count) Children.RemoveAt(Children.Count - 1);
+            while (Children.Count > row.Items.Count)
+            {
+                if (Children[^1] is GameTile old) old.ArtChanged -= OnTileArtChanged;
+                Children.RemoveAt(Children.Count - 1);
+            }
             for (var i = 0; i < row.Items.Count; i++)
             {
                 var item = row.Items[i];
@@ -449,6 +507,7 @@ public sealed class CoverGrid : UserControl
                 }
                 var tile = template?.Build(item) ?? new TextBlock { Text = item.ToString() };
                 tile.DataContext = item;
+                if (tile is GameTile gt) gt.ArtChanged += OnTileArtChanged;
                 Children.Add(tile);
             }
             ApplySize();

@@ -1,50 +1,83 @@
 using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Documents;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using RetroHub.App.Services;
 using RetroHub.App.Theming;
-using RetroHub.App.ViewModels;
 
 namespace RetroHub.App.Controls;
 
 /// <summary>
-/// A game cover. Loads <see cref="Source"/> lazily through <see cref="AsyncImageLoader"/> (cancelled when the tile is
-/// recycled or detached); without a cover it draws generated placeholder art from the system accent + the title's
-/// initials (deterministic per title, so every game keeps "its" look).
+/// Object "Schachtel" (DESIGN 1.2, 10.2): a game cover, drawn CONTAIN, bottom-aligned and horizontally centred –
+/// never cropped; mixed box formats are intended. <see cref="ArtRect"/> is the rectangle actually covered, read by the
+/// shelf board (contact shadow) and the <see cref="FocusLayer"/> (ring, cone). Loads <see cref="Source"/> lazily
+/// through <see cref="AsyncImageLoader"/> (cancelled when the tile is recycled or detached). Without a cover it draws
+/// the spine placeholder: a two-tone wall in the system's housing, the colour band as a spine with the system code,
+/// the motif silhouette and the full title. Text layouts are built on change, never in <see cref="Render"/>.
+/// No focus visuals here: covers clip.
 /// </summary>
 public sealed class CoverArt : Control
 {
     public static readonly StyledProperty<string?> SourceProperty = AvaloniaProperty.Register<CoverArt, string?>(nameof(Source));
     public static readonly StyledProperty<string?> TitleProperty = AvaloniaProperty.Register<CoverArt, string?>(nameof(Title));
+    /// <summary>System code shown on the placeholder spine ("GBA").</summary>
     public static readonly StyledProperty<string?> BadgeProperty = AvaloniaProperty.Register<CoverArt, string?>(nameof(Badge));
-    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<CoverArt, Color>(nameof(Accent), Color.Parse("#7B61FF"));
-    /// <summary>Draw the title on placeholder art (used where no caption is shown below the cover).</summary>
-    public static readonly StyledProperty<bool> ShowTitleProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(ShowTitle));
+    public static readonly StyledProperty<string?> SystemIdProperty = AvaloniaProperty.Register<CoverArt, string?>(nameof(SystemId));
+    /// <summary>Catalog accent: only used for systems without a palette entry (<see cref="SystemPalette.From"/>).</summary>
+    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<CoverArt, Color>(nameof(Accent), Color.Parse("#948A7A"));
+    /// <summary>Legacy (v0): the spine placeholder always carries its title now.</summary>
+    public static readonly StyledProperty<bool> ShowTitleProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(ShowTitle), true);
+    /// <summary>Legacy (v0): badge pills are gone (DESIGN 10.2).</summary>
     public static readonly StyledProperty<bool> ShowBadgeProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(ShowBadge), true);
+    /// <summary>Fill the slot (UniformToFill) instead of contain – only for small list thumbnails.</summary>
+    public static readonly StyledProperty<bool> FillProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(Fill));
+    /// <summary>Favourite marker: star 18 px in favourite yellow on a room-deep square, top left of the box.</summary>
+    public static readonly StyledProperty<bool> IsFavoriteProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(IsFavorite));
+    /// <summary>Status "Datei fehlt": cover dimmed to 0.45 plus the Missing icon top right (dimming = status only).</summary>
+    public static readonly StyledProperty<bool> IsMissingProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(IsMissing));
+
+    /// <summary>Width/height of the placeholder box (DESIGN 10.2: 0.72, portrait).</summary>
+    public const double PlaceholderAspect = 0.72;
+
+    private static readonly IImmutableSolidColorBrush PaperBrush = new ImmutableSolidColorBrush(SystemPalette.Paper);
+    private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
 
     private Bitmap? _bitmap;
     private CancellationTokenSource? _cts;
     private int _requestedWidth;
+    private Rect _artRect;
+    // placeholder text cache (built on change, never in Render)
+    private FormattedText? _titleText;
+    private FormattedText? _codeText;
+    private (string? Title, string? Code, string? System, int W, int H) _textKey;
 
     static CoverArt()
     {
-        AffectsRender<CoverArt>(TitleProperty, BadgeProperty, AccentProperty, ShowTitleProperty, ShowBadgeProperty);
+        AffectsRender<CoverArt>(TitleProperty, BadgeProperty, AccentProperty, SystemIdProperty, FillProperty, IsFavoriteProperty, IsMissingProperty);
         ClipToBoundsProperty.OverrideDefaultValue<CoverArt>(true);
     }
 
     public string? Source { get => GetValue(SourceProperty); set => SetValue(SourceProperty, value); }
     public string? Title { get => GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
     public string? Badge { get => GetValue(BadgeProperty); set => SetValue(BadgeProperty, value); }
+    public string? SystemId { get => GetValue(SystemIdProperty); set => SetValue(SystemIdProperty, value); }
     public Color Accent { get => GetValue(AccentProperty); set => SetValue(AccentProperty, value); }
     public bool ShowTitle { get => GetValue(ShowTitleProperty); set => SetValue(ShowTitleProperty, value); }
     public bool ShowBadge { get => GetValue(ShowBadgeProperty); set => SetValue(ShowBadgeProperty, value); }
+    public bool Fill { get => GetValue(FillProperty); set => SetValue(FillProperty, value); }
+    public bool IsFavorite { get => GetValue(IsFavoriteProperty); set => SetValue(IsFavoriteProperty, value); }
+    public bool IsMissing { get => GetValue(IsMissingProperty); set => SetValue(IsMissingProperty, value); }
 
     /// <summary>True when a real cover bitmap is shown (tests / diagnostics).</summary>
     public bool HasImage => _bitmap != null;
+
+    /// <summary>The covered rectangle in local coordinates (contain, bottom-aligned, centred).</summary>
+    public Rect ArtRect => _artRect;
+
+    /// <summary>Raised when <see cref="ArtRect"/> changed (image loaded, resized).</summary>
+    public event EventHandler? ArtRectChanged;
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -53,14 +86,20 @@ public sealed class CoverArt : Control
         {
             _bitmap = null;
             _requestedWidth = 0;
+            UpdateArtRect();
             InvalidateVisual();
             RequestImage();
         }
         else if (change.Property == BoundsProperty)
         {
+            UpdateArtRect();
             var wanted = AsyncImageLoader.Bucket(Bounds.Width * Scaling);
             if (Source != null && wanted > _requestedWidth) RequestImage();
         }
+        else if (change.Property == FillProperty) UpdateArtRect();
+        if (change.Property == TitleProperty || change.Property == BadgeProperty || change.Property == SystemIdProperty
+            || change.Property == BoundsProperty || change.Property == SourceProperty)
+            _titleText = null; // rebuilt lazily on the next placeholder layout (see EnsureText)
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -75,7 +114,18 @@ public sealed class CoverArt : Control
         Cancel();
     }
 
-    private double Scaling => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+    /// <summary>Device-pixel factor (render scaling × UI scale), so decodes match the real on-screen size.</summary>
+    private double Scaling
+    {
+        get
+        {
+            var top = TopLevel.GetTopLevel(this);
+            if (top == null) return 1.0;
+            var m = this.TransformToVisual(top);
+            var ui = m is { } mm ? Math.Sqrt(mm.M11 * mm.M11 + mm.M12 * mm.M12) : 1.0;
+            return top.RenderScaling * (ui > 0 ? ui : 1.0);
+        }
+    }
 
     private void Cancel()
     {
@@ -88,22 +138,19 @@ public sealed class CoverArt : Control
     {
         Cancel();
         var source = Source;
-        if (string.IsNullOrEmpty(source) || !IsAttachedToVisualTree() || Bounds.Width <= 0) return;
+        if (string.IsNullOrEmpty(source) || TopLevel.GetTopLevel(this) == null || Bounds.Width <= 0) return;
         var width = AsyncImageLoader.Bucket(Bounds.Width * Scaling);
         _requestedWidth = width;
         var cached = AsyncImageLoader.Shared.TryGetCached(source, width);
         if (cached != null)
         {
-            _bitmap = cached;
-            InvalidateVisual();
+            SetBitmap(cached);
             return;
         }
         var cts = new CancellationTokenSource();
         _cts = cts;
         _ = LoadAsync(source, width, cts.Token);
     }
-
-    private bool IsAttachedToVisualTree() => this.GetVisualRootSafe() != null;
 
     private async Task LoadAsync(string source, int width, CancellationToken ct)
     {
@@ -114,93 +161,170 @@ public sealed class CoverArt : Control
         Dispatcher.UIThread.Post(() =>
         {
             if (ct.IsCancellationRequested || Source != source) return;
-            _bitmap = bitmap;
-            InvalidateVisual();
+            SetBitmap(bitmap);
         }, DispatcherPriority.Background);
+    }
+
+    private void SetBitmap(Bitmap bitmap)
+    {
+        _bitmap = bitmap;
+        UpdateArtRect();
+        InvalidateVisual();
+    }
+
+    private void UpdateArtRect()
+    {
+        var r = Compute(new Rect(Bounds.Size), _bitmap?.Size, Fill);
+        if (r == _artRect) return;
+        _artRect = r;
+        ArtRectChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Contain + bottom-aligned + centred (image aspect, or the placeholder's 0.72).</summary>
+    public static Rect Compute(Rect slot, Size? image, bool fill = false)
+    {
+        if (slot.Width <= 0 || slot.Height <= 0) return default;
+        if (fill) return slot;
+        var aspect = image is { Width: > 0, Height: > 0 } s ? s.Width / s.Height : PlaceholderAspect;
+        var w = slot.Width;
+        var h = w / aspect;
+        if (h > slot.Height)
+        {
+            h = slot.Height;
+            w = h * aspect;
+        }
+        w = Math.Round(w);
+        h = Math.Round(h);
+        return new Rect(slot.X + Math.Round((slot.Width - w) / 2), slot.Bottom - h, w, h);
     }
 
     public override void Render(DrawingContext ctx)
     {
-        var rect = new Rect(Bounds.Size);
-        if (rect.Width <= 0 || rect.Height <= 0) return;
+        var art = _artRect;
+        if (art.Width <= 0 || art.Height <= 0) return;
         if (_bitmap is { } bmp)
         {
-            // UniformToFill: crop the image to the tile
-            var src = bmp.Size;
-            var scale = Math.Max(rect.Width / src.Width, rect.Height / src.Height);
-            var w = rect.Width / scale;
-            var h = rect.Height / scale;
-            var srcRect = new Rect((src.Width - w) / 2, (src.Height - h) / 2, w, h);
-            ctx.DrawImage(bmp, srcRect, rect);
-            return;
+            var src = new Rect(bmp.Size);
+            if (Fill)
+            {
+                var scale = Math.Max(art.Width / src.Width, art.Height / src.Height);
+                var w = art.Width / scale;
+                var h = art.Height / scale;
+                src = new Rect((src.Width - w) / 2, (src.Height - h) / 2, w, h);
+            }
+            using (ctx.PushOpacity(IsMissing ? 0.45 : 1))
+            using (ctx.PushClip(new RoundedRect(art, 2)))
+                ctx.DrawImage(bmp, src, art);
         }
-        DrawPlaceholder(ctx, rect);
+        else
+        {
+            using (ctx.PushOpacity(IsMissing ? 0.45 : 1))
+                DrawPlaceholder(ctx, art);
+        }
+        DrawMarkers(ctx, art);
     }
 
-    private void DrawPlaceholder(DrawingContext ctx, Rect rect)
+    private static readonly IImmutableSolidColorBrush MarkerGround = new ImmutableSolidColorBrush(Color.Parse("#0A0908"));
+    private static readonly IImmutableSolidColorBrush FavoriteBrush = new ImmutableSolidColorBrush(Color.Parse("#FFD36A"));
+    private static readonly IImmutableSolidColorBrush MissingBrush = new ImmutableSolidColorBrush(Color.Parse("#FF6A5E"));
+    private static readonly Geometry StarGeometry = Geometry.Parse("M12,3 L14.6,8.6 L20.6,9.2 L16,13.2 L17.4,19.2 L12,16 L6.6,19.2 L8,13.2 L3.4,9.2 L9.4,8.6 Z");
+    private static readonly Geometry MissingGeometry = Geometry.Parse("M6,3 H14 L19,8 V20 L18,21 H6 L5,20 V4 Z M3,3 L21,21");
+
+    /// <summary>Status markers on the box (DESIGN 7.2.1): favourite top left, missing top right. No system badges.</summary>
+    private void DrawMarkers(DrawingContext ctx, Rect art)
     {
-        var title = Title ?? "";
-        var hash = Hash(title);
-        var accent = Accent;
-        var top = ColorUtil.Shift(ColorUtil.Mix(accent, Color.Parse("#1E1C3A"), 0.30), dHue: (hash % 21) - 10);
-        var bottom = ColorUtil.Mix(accent, Color.Parse("#0B0A1A"), 0.80);
-        ctx.FillRectangle(ThemeManager.Gradient(top, bottom, new RelativePoint(0, 0, RelativeUnit.Relative), new RelativePoint(0.8, 1, RelativeUnit.Relative)), rect);
-
-        var w = rect.Width;
-        var h = rect.Height;
-        // soft light from a corner
-        var lightX = (hash >> 3) % 2 == 0 ? 0.85 : 0.15;
-        ctx.FillRectangle(ThemeManager.Radial(ColorUtil.WithAlpha(ColorUtil.Mix(accent, Colors.White, 0.45), 0x55),
-            new RelativePoint(lightX, 0.05, RelativeUnit.Relative), 0.75), rect);
-
-        // generative shapes: a large disc and two rings, positioned by the title hash
-        var cx = w * (0.25 + ((hash >> 5) % 50) / 100.0);
-        var cy = h * (0.30 + ((hash >> 11) % 40) / 100.0);
-        var r = w * (0.42 + ((hash >> 17) % 18) / 100.0);
-        ctx.DrawEllipse(new SolidColorBrush(ColorUtil.WithAlpha(ColorUtil.Mix(accent, Colors.White, 0.15), 0x2A)), null, new Point(cx, cy), r, r);
-        var ringPen = new Pen(new SolidColorBrush(Color.FromArgb(0x26, 255, 255, 255)), Math.Max(1, w / 140));
-        ctx.DrawEllipse(null, ringPen, new Point(w - cx * 0.6, h - cy * 0.5), r * 0.75, r * 0.75);
-        ctx.DrawEllipse(null, ringPen, new Point(w - cx * 0.6, h - cy * 0.5), r * 0.48, r * 0.48);
-
-        var family = GetValue(TextElement.FontFamilyProperty);
-
-        // big initials
-        var initials = Fmt.Initials(title);
-        var initialsText = new FormattedText(initials, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
-            new Typeface(family, FontStyle.Normal, FontWeight.Bold), Math.Max(12, w * 0.36), new SolidColorBrush(Color.FromArgb(0xEE, 255, 255, 255)));
-        var ix = (w - initialsText.Width) / 2;
-        var iy = ShowTitle ? h * 0.22 : (h - initialsText.Height) / 2 - h * 0.02;
-        ctx.DrawText(initialsText, new Point(ix, iy));
-
-        // bottom scrim + title (only where no caption is shown)
-        if (ShowTitle && title.Length > 0)
+        if (art.Width < 60) return;
+        if (IsFavorite)
         {
-            ctx.FillRectangle(ThemeManager.Gradient(Color.FromArgb(0, 11, 10, 26), Color.FromArgb(0xD8, 11, 10, 26),
-                new RelativePoint(0, 0.45, RelativeUnit.Relative), new RelativePoint(0, 1, RelativeUnit.Relative)), rect);
-            var pad = w * 0.09;
-            var titleText = new FormattedText(title, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
-                new Typeface(family, FontStyle.Normal, FontWeight.SemiBold), Math.Max(10, w * 0.085), new SolidColorBrush(Color.Parse("#F3F4FA")))
+            // on a placeholder the marker sits right of the spine band, so the system code stays readable
+            var left = _bitmap == null && !Fill ? Math.Max(6, Math.Round(art.Width * 0.16)) + 6 : 6;
+            var box = new Rect(art.X + left, art.Y + 6, 26, 26);
+            ctx.DrawRectangle(MarkerGround, null, new RoundedRect(box, 2));
+            using (ctx.PushTransform(Matrix.CreateScale(0.75, 0.75) * Matrix.CreateTranslation(box.X + 4, box.Y + 4)))
+                ctx.DrawGeometry(FavoriteBrush, null, StarGeometry);
+        }
+        if (IsMissing)
+        {
+            var box = new Rect(art.Right - 34, art.Y + 6, 28, 28);
+            ctx.DrawRectangle(MarkerGround, null, new RoundedRect(box, 2));
+            using (ctx.PushTransform(Matrix.CreateScale(20 / 24.0, 20 / 24.0) * Matrix.CreateTranslation(box.X + 4, box.Y + 4)))
+                ctx.DrawGeometry(null, new ImmutablePen(MissingBrush, 2.2, lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter), MissingGeometry);
+        }
+    }
+
+    private void DrawPlaceholder(DrawingContext ctx, Rect r)
+    {
+        var look = SystemPalette.Get(SystemId, Accent);
+        EnsureText(r, look);
+        var w = r.Width;
+        using (ctx.PushClip(new RoundedRect(r, 2)))
+        {
+            // ground: two tones like the wall, texture 8 % (shared brush, offset per title so neighbours differ)
+            var split = Math.Round(r.Height * 0.38);
+            ctx.FillRectangle(look.WallHiBrush, new Rect(r.X, r.Y, w, split));
+            ctx.FillRectangle(look.WallBrush, new Rect(r.X, r.Y + split, w, r.Height - split));
+            if (TextureBrushes.Get(look.Texture) is { } tex)
             {
-                MaxTextWidth = Math.Max(1, w - 2 * pad),
-                MaxLineCount = 3,
-                Trimming = TextTrimming.CharacterEllipsis,
-                LineHeight = Math.Max(10, w * 0.085) * 1.2,
-            };
-            ctx.DrawText(titleText, new Point(pad, h - pad - titleText.Height));
+                var hash = Hash(Title ?? "");
+                var ox = hash % (uint)Math.Max(1, tex.Size.Width);
+                var oy = (hash >> 8) % (uint)Math.Max(1, tex.Size.Height);
+                using (ctx.PushOpacity(0.08 / 0.07 * look.TextureOpacity))
+                using (ctx.PushTransform(Matrix.CreateTranslation(r.X - ox, r.Y - oy)))
+                    ctx.FillRectangle(tex.Brush, new Rect(ox, oy, w, r.Height));
+            }
+            // motif silhouette: colour 18 %, 45 % of the height, bottom right
+            var motif = r.Height * 0.45;
+            MotifCatalog.Draw(ctx, look, new Rect(r.Right - motif - w * 0.04, r.Bottom - motif, motif, motif), 0.18, silhouette: true);
+            // spine band: 16 % of the width, full colour, code −90°
+            var band = Math.Max(6, Math.Round(w * 0.16));
+            ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, band, r.Height));
+            if (_codeText is { } code)
+            {
+                using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(r.X + (band - code.Height) / 2, r.Y + w * 0.08 + code.Width)))
+                    ctx.DrawText(code, new Point(0, 0));
+            }
+            ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y, w, 1));
+            if (_titleText is { } title)
+            {
+                var pad = Math.Max(6, Math.Round(w * 0.072));
+                ctx.DrawText(title, new Point(r.X + band + pad, r.Bottom - pad - title.Height));
+            }
         }
+    }
 
-        // system badge (top left)
-        if (ShowBadge && !string.IsNullOrEmpty(Badge))
+    private void EnsureText(Rect r, SystemLook look)
+    {
+        var key = (Title, Badge, SystemId, (int)r.Width, (int)r.Height);
+        if (_titleText != null && key == _textKey) return;
+        _textKey = key;
+        var w = r.Width;
+        var band = Math.Max(6, Math.Round(w * 0.16));
+        var pad = Math.Max(6, Math.Round(w * 0.072));
+        // the title stays whole (DESIGN 10.2): shrink from 0.105 × width until the longest word fits on a line
+        var maxWidth = Math.Max(1, w - band - 2 * pad);
+        var title = Title ?? "";
+        var longest = title.Split([' ', '-'], StringSplitOptions.RemoveEmptyEntries).OrderByDescending(s => s.Length).FirstOrDefault() ?? "";
+        var size = Math.Max(9, w * 0.105);
+        var minSize = Math.Max(8, w * 0.068);
+        while (size > minSize && longest.Length > 0 &&
+               new FormattedText(longest, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, PaperBrush).Width > maxWidth)
+            size -= 0.5;
+        _titleText = new FormattedText(title, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, PaperBrush)
         {
-            var size = Math.Clamp(w * 0.062, 9, 13);
-            var badgeText = new FormattedText(Badge.ToUpperInvariant(), CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                new Typeface(family, FontStyle.Normal, FontWeight.SemiBold), size, new SolidColorBrush(Color.FromArgb(0xF0, 255, 255, 255)));
-            var m = Math.Max(6, w * 0.06);
-            var box = new Rect(m, m, badgeText.Width + size * 1.3, badgeText.Height + size * 0.55);
-            ctx.DrawRectangle(new SolidColorBrush(Color.FromArgb(0x52, 11, 10, 26)), new Pen(new SolidColorBrush(Color.FromArgb(0x30, 255, 255, 255)), 1),
-                new RoundedRect(box, box.Height / 2));
-            ctx.DrawText(badgeText, new Point(box.X + size * 0.65, box.Y + size * 0.275));
-        }
+            MaxTextWidth = maxWidth,
+            MaxTextHeight = Math.Max(1, r.Height * 0.62),
+            MaxLineCount = 5,
+            LineHeight = size * 1.12,
+            Trimming = TextTrimming.WordEllipsis,
+        };
+        var codeSize = Math.Max(7, w * 0.09);
+        _codeText = string.IsNullOrEmpty(Badge) ? null :
+            new FormattedText(Badge, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, codeSize, look.TextOnColorBrush)
+            {
+                MaxTextWidth = Math.Max(1, r.Height - w * 0.16),
+                MaxLineCount = 1,
+                Trimming = TextTrimming.CharacterEllipsis,
+            };
     }
 
     private static uint Hash(string s)

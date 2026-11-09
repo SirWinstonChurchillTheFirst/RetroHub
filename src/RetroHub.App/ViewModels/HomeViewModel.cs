@@ -28,9 +28,6 @@ public sealed partial class HomeViewModel : PageViewModel
     [ObservableProperty] public partial bool IsLoaded { get; private set; }
     [ObservableProperty] public partial string ContinueMeta { get; private set; } = "";
     [ObservableProperty] public partial string Greeting { get; private set; } = "";
-    /// <summary>Hero background tinted with the game's system accent (static gradients, no blur).</summary>
-    [ObservableProperty] public partial IBrush? HeroBrush { get; private set; }
-    [ObservableProperty] public partial IBrush? HeroGlow { get; private set; }
 
     [ObservableProperty] public partial string StatGames { get; private set; } = "–";
     [ObservableProperty] public partial string StatPlatforms { get; private set; } = "–";
@@ -83,13 +80,11 @@ public sealed partial class HomeViewModel : PageViewModel
         var previous = Continue;
         Continue = snap.Last != null ? items.Get(snap.Last) : null;
         HasContinue = Continue != null;
-        if (Continue != null && (Continue != previous || HeroBrush == null))
-        {
-            var a = Continue.Accent;
-            HeroBrush = ThemeManager.Gradient(ColorUtil.WithAlpha(ColorUtil.Mix(a, Color.Parse("#15142B"), 0.35), 0xE6), ColorUtil.WithAlpha(Color.Parse("#15142B"), 0x99),
-                new RelativePoint(0, 0, RelativeUnit.Relative), new RelativePoint(1, 1, RelativeUnit.Relative));
-            HeroGlow = ThemeManager.Radial(ColorUtil.WithAlpha(ColorUtil.Mix(a, Colors.White, 0.25), 0x66), new RelativePoint(0.82, 0.35, RelativeUnit.Relative), 0.6);
-        }
+        // TV light of the game to continue, above the stage board; the glow sits at its box (right)
+        if (Continue != previous || Backdrop.Kind != BackdropKind.TvLight)
+            Backdrop = Continue != null
+                ? new BackdropSpec(BackdropKind.TvLight, Continue.CoverPath, Continue.SystemId, Continue.Accent, Continue.Id, StageShare: 0.55, GlowX: 0.78, GlowY: 0.32)
+                : new BackdropSpec(BackdropKind.TvLight, StageShare: 0.55);
         ContinueMeta = Continue == null ? "" : Loc.T("home.continueMeta", Continue.SystemName, Continue.LastPlayedText, Continue.PlayTimeText);
         // Lists are only replaced when their content changed: a new list rebuilds the shelf, which drops the keyboard /
         // controller focus of its tiles (refreshes happen often, e.g. while a scan runs). The items are shared
@@ -97,7 +92,7 @@ public sealed partial class HomeViewModel : PageViewModel
         RecentlyPlayed = Keep(RecentlyPlayed, items.GetAll(snap.Recent.Skip(snap.Last != null ? 1 : 0)));
         Favorites = Keep(Favorites, items.GetAll(snap.Favs));
         RecentlyAdded = Keep(RecentlyAdded, items.GetAll(snap.Added));
-        Greeting = GreetingText(DateTime.Now.Hour).ToUpper(Loc.Culture);
+        Greeting = GreetingText(DateTime.Now.Hour); // no uppercase overlines (DESIGN 3.2)
 
         var stats = snap.Stats;
         StatGames = stats.GameCount.ToString("N0", Loc.Culture);

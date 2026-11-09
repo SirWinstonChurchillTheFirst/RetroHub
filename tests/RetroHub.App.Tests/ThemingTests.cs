@@ -11,19 +11,49 @@ namespace RetroHub.App.Tests;
 public class ThemingTests
 {
     [Fact]
-    public Task Accent_swap_replaces_the_tokens() => UiTest.Run(() =>
+    public Task Light_colour_swap_replaces_the_tokens() => UiTest.Run(() =>
     {
         var app = Application.Current!;
-        ThemeManager.ApplyAccent("#2F9BFF");
+        ThemeManager.ApplyAccent("#8CC4FF"); // Eisblau preset
         Assert.True(app.TryGetResource("RhAccentBrush", null, out var brush));
-        Assert.Equal(Color.Parse("#2F9BFF"), ((ISolidColorBrush)brush!).Color);
+        Assert.Equal(Color.Parse("#8CC4FF"), ((ISolidColorBrush)brush!).Color);
         Assert.True(app.TryGetResource("SystemAccentColor", null, out var fluent));
-        Assert.Equal(Color.Parse("#2F9BFF"), (Color)fluent!);
+        Assert.Equal(Color.Parse("#8CC4FF"), (Color)fluent!);
+        // the legacy gradient keys are solid now (no decorative gradients)
+        Assert.True(app.TryGetResource("RhAccentGradientBrush", null, out var legacy));
+        Assert.IsAssignableFrom<ISolidColorBrush>(legacy);
 
-        ThemeManager.ApplyAccent(null); // back to Nova
+        ThemeManager.ApplyAccent(null); // back to Standby-Bernstein
         app.TryGetResource("RhAccentBBrush", null, out var b);
-        Assert.Equal(Color.Parse("#4C8DFF"), ((ISolidColorBrush)b!).Color);
-        Assert.Equal(Color.Parse("#7B61FF"), ThemeManager.CurrentAccent);
+        Assert.Equal(Color.Parse("#FFB547"), ((ISolidColorBrush)b!).Color);
+        Assert.Equal(Color.Parse("#FFB547"), ThemeManager.CurrentAccent);
+
+        // an old "Nova" accent from a v0 settings file is not part of the warm palette: Bernstein
+        ThemeManager.ApplyAccent("#7B61FF");
+        Assert.Equal(Color.Parse("#FFB547"), ThemeManager.CurrentAccent);
+        ThemeManager.ApplyAccent(null);
+    });
+
+    [Fact]
+    public void Ink_reaches_8_to_1_on_every_light_colour()
+    {
+        // DESIGN 2.2: on all light colours ink is ≥ 8 : 1
+        foreach (var p in ThemeManager.Presets)
+            Assert.True(ColorUtil.Contrast(Color.Parse("#14120F"), Color.Parse(p.Hex)) >= 8.0, $"{p.Id} {p.Hex}");
+    }
+
+    [Fact]
+    public Task Board_light_is_one_shared_brush() => UiTest.Run(() =>
+    {
+        var app = Application.Current!;
+        ThemeManager.ApplyAccent(null);
+        Assert.True(app.TryGetResource("RhBoardLightBrush", null, out var a));
+        ThemeManager.SetBoardLight(Color.Parse("#59FFB547"));
+        ThemeManager.ApplyAccent(null);
+        Assert.True(app.TryGetResource("RhBoardLightBrush", null, out var b));
+        Assert.Same(a, b);
+        Assert.Same(ThemeManager.BoardLight, a);
+        ThemeManager.SetBoardLight(ThemeManager.NeutralBoardLight);
     });
 
     [Theory]

@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Chrome;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using RetroHub.App.Controls;
@@ -26,7 +27,7 @@ public interface IPageView
 /// <summary>
 /// The shell window: own title bar over the kept OS frame (Avalonia 12: ExtendClientAreaToDecorationsHint +
 /// WindowDecorations.BorderOnly, roles via WindowDecorationProperties.ElementRole so Windows still provides snap,
-/// resize and – on the maximize button – the snap-layouts flyout), sidebar, keep-alive page host, hint bar, toasts,
+/// resize and – on the maximize button – the snap-layouts flyout), header with channels, keep-alive page host, footer, toasts,
 /// launch and dialog overlays, and the central <see cref="NavAction"/> router for keyboard and controller.
 /// </summary>
 public partial class MainWindow : Window
@@ -55,15 +56,30 @@ public partial class MainWindow : Window
         CloseButton.Click += (_, _) => Close();
         TopBar.DoubleTapped += (_, e) => { if (e.Source == TopBar) ToggleMaximize(); };
 
+        // auto-repeat detection (DESIGN 8.4): ".nav-repeat" on the root while a direction is held
+        NavRepeatTracker.Current = _repeat;
+        _repeat.Changed += OnRepeatChanged;
+
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, (_, e) => _repeat.OnKeyUp(e.Key), RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerPressedEvent, (_, _) => _pointerMode = true, RoutingStrategies.Tunnel, handledEventsToo: true);
-        SizeChanged += (_, e) => vm.WindowWidth = e.NewSize.Width;
+        SizeChanged += (_, e) =>
+        {
+            vm.WindowWidth = e.NewSize.Width;
+            ApplyScale(e.NewSize);
+        };
         Activated += (_, _) => { Motion.Refresh(); CaptionButtons.Opacity = 1; };
         Deactivated += (_, _) => CaptionButtons.Opacity = 0.55;
 
         Motion.Changed += ApplyMotionClass;
         ApplyMotionClass();
+        ApplyScale(new Size(Width, Height));
+        Pages.LayoutUpdated += (_, _) => UpdateStage();
         vm.PageShown += OnPageShown;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainViewModel.CurrentPage)) WatchPage(vm.CurrentPage);
+        };
         vm.Dialogs.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName != nameof(DialogService.Current)) return;
@@ -83,15 +99,18 @@ public partial class MainWindow : Window
             // (the session service keeps session.json, the next start re-attaches it)
             if (vm.Launch.IsEmbedded) GameScreen.ReleaseForClose();
         };
-        vm.Ctx.Services.Input.ActionRaised += a => Dispatcher.UIThread.Post(() =>
+        vm.Ctx.Services.Input.ActionRaised += (a, isRepeat) => Dispatcher.UIThread.Post(() =>
         {
             if (!vm.Ctx.Services.Settings.Current.ControllerEnabled) return; // setting "Mit Controller bedienen"
             // SDL delivers pad events in the background too: only steer RetroHub while it is the active window
             // (otherwise the pad would navigate RetroHub while the user plays or works in another program).
             if (!IsActive) return;
             _pointerMode = false;
+            vm.KeyboardGlyphs = false;
+            if (a is NavAction.Up or NavAction.Down or NavAction.Left or NavAction.Right) _repeat.OnPadDirection(isRepeat);
             Execute(a);
         });
+        vm.Ctx.Services.Input.DirectionReleased += () => Dispatcher.UIThread.Post(_repeat.OnPadReleased);
 
         var openedOnce = false;
         Opened += (_, _) =>
@@ -302,6 +321,92 @@ public partial class MainWindow : Window
     {
         foreach (var m in new[] { EffectiveMotion.Full, EffectiveMotion.Reduced, EffectiveMotion.Off })
             Root.Classes.Set(Motion.ClassName(m), m == Motion.Current);
+        ThemeManager.ApplyBoardLightTransition();
+        Backdrop.ApplyTransitions();
+    }
+
+    // ================= UI scale (DESIGN 7.0) =================
+
+    private readonly NavRepeatTracker _repeat = new();
+    private double _scale = -1;
+
+    /// <summary>
+    /// s = clamp(min(W/1920, H/1080), 0.80, 2.0), quantised to 1/120 (so 1600×900 → 0.833 = 1920×1080 logical,
+    /// 2560×1440 → 1.333). Applied to the shell and the dialogs only; room light, game screen and OSD stay unscaled.
+    /// </summary>
+    public static double ComputeScale(Size client)
+    {
+        if (client.Width <= 0 || client.Height <= 0 || double.IsNaN(client.Width) || double.IsNaN(client.Height)) return 1;
+        var s = Math.Clamp(Math.Min(client.Width / 1920, client.Height / 1080), 0.80, 2.0);
+        return Math.Round(s * 120) / 120;
+    }
+
+    /// <summary>The current UI scale (tests, diagnostics).</summary>
+    public double UiScale => _scale <= 0 ? 1 : _scale;
+
+    private void ApplyScale(Size client)
+    {
+        var s = ComputeScale(client);
+        if (Math.Abs(s - _scale) < 0.0001) return;
+        _scale = s;
+        ScaleHost.LayoutTransform = new ScaleTransform(s, s);
+        DialogScaleHost.LayoutTransform = new ScaleTransform(s, s);
+        Osd.Scale = s;
+        var logical = client.Width / s;
+        _vm.LogicalWidth = logical;
+        var margin = logical >= 1600 ? 96 : 56;
+        Osd.PageMargin = margin;
+        // the caption buttons are not scaled: keep 170 REAL pixels free for them
+        TopBar.Margin = new Thickness(margin == 96 ? 48 : 32, 0, 170 / s, 0);
+        if (Application.Current is { } app && (_margin != margin))
+        {
+            _margin = margin;
+            app.Resources["RhPageInset"] = new Thickness(margin, 24, margin, 48);
+            app.Resources["RhGridInset"] = new Thickness(margin, 48, margin, 64);
+            app.Resources["RhPageInsetX"] = new Thickness(margin, 0, margin, 0);
+        }
+    }
+
+    private double _margin;
+
+    private void OnRepeatChanged(bool active)
+    {
+        Root.Classes.Set("nav-repeat", active);
+        if (!active) Backdrop.OnRepeatEnded();
+    }
+
+    // ================= room light =================
+
+    private PageViewModel? _watched;
+
+    private void WatchPage(PageViewModel? page)
+    {
+        if (_watched != null) _watched.PropertyChanged -= OnWatchedPageChanged;
+        _watched = page;
+        if (page == null) return;
+        page.PropertyChanged += OnWatchedPageChanged;
+        Backdrop.Show(page.Backdrop);
+    }
+
+    private void OnWatchedPageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PageViewModel.Backdrop) && sender is PageViewModel p) Backdrop.Show(p.Backdrop);
+    }
+
+    /// <summary>The stage board of the current page (named "StageBoard") ends the TV light; its top in window DIPs.</summary>
+    private void UpdateStage()
+    {
+        if (Pages.Current?.FindControl<Control>("StageBoard") is { IsEffectivelyVisible: true } board
+            && board.TranslatePoint(new Point(0, 0), this) is { } p)
+            Backdrop.SetStageY(p.Y);
+        else Backdrop.SetStageY(double.NaN);
+    }
+
+    /// <summary>The channel display after a switch by keyboard/controller.</summary>
+    private void ShowChannel(NavItemViewModel? channel)
+    {
+        if (channel?.Channel == null) return;
+        Osd.Show(channel.Channel, channel.Label, ThemeManager.CurrentAccent);
     }
 
     // ================= pages =================
@@ -325,11 +430,12 @@ public partial class MainWindow : Window
         if (Pages.Current != null) Pages.RememberFocus(Pages.Current, focused);
         var view = Pages.GetOrCreate(entry.Key, () => CreatePageView(entry.Key, page));
         Pages.Show(view, entry.IsBack);
-        var focusInSidebar = focused is Visual fv && IsInside(fv, Sidebar);
+        var focusInHeader = focused is Visual fv && IsInside(fv, TopBar);
         Dispatcher.UIThread.Post(() =>
         {
-            // keep the focus in the sidebar while browsing it with the controller; otherwise focus the page
-            if (focusInSidebar && !entry.IsBack && Navigator.IsTopLevel(entry.Key)) return;
+            UpdateStage();
+            // keep the focus in the header while browsing the channels with the controller; otherwise focus the page
+            if (focusInHeader && !entry.IsBack && Navigator.IsTopLevel(entry.Key)) return;
             FocusPage(view, entry.IsBack);
         }, DispatcherPriority.Loaded);
     }
@@ -349,6 +455,8 @@ public partial class MainWindow : Window
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
         _pointerMode = false;
+        _vm.KeyboardGlyphs = true;
+        _repeat.OnKeyDown(e.Key);
         if (e.Key == Key.F11)
         {
             SetFullscreen(WindowState != WindowState.FullScreen);
@@ -369,6 +477,15 @@ public partial class MainWindow : Window
         {
             // leave the text field (keeps its text); a second Escape is Back
             if (Pages.Current != null) FocusPage(Pages.Current, preferRemembered: false);
+            e.Handled = true;
+            return;
+        }
+        // keys 1/2/3 switch the channel directly (not while typing, not inside overlays)
+        if (!inText && e.KeyModifiers == KeyModifiers.None && _vm.Dialogs.Current == null && !_vm.Launch.IsActive
+            && e.Key is Key.D1 or Key.D2 or Key.D3 or Key.NumPad1 or Key.NumPad2 or Key.NumPad3)
+        {
+            var digit = e.Key is Key.D1 or Key.NumPad1 ? "1" : e.Key is Key.D2 or Key.NumPad2 ? "2" : "3";
+            ShowChannel(_vm.SelectChannel(digit));
             e.Handled = true;
             return;
         }
@@ -425,16 +542,19 @@ public partial class MainWindow : Window
                 return Invoke(focused);
             case NavAction.Back:
                 if (_vm.Navigator.GoBack()) return true;
-                if (focused is Visual fv && IsInside(fv, Sidebar))
+                if (focused is Visual fv && IsInside(fv, TopBar))
                 {
-                    if (_vm.Navigator.Current != PageKey.Home) _vm.Navigator.Navigate(PageKey.Home);
+                    // Back in the header: to the remembered focus of the page (Start when on a tool page)
+                    if (_vm.Navigator.Current != PageKey.Home && !Navigator.IsTopLevel(_vm.Navigator.Current)) _vm.Navigator.Navigate(PageKey.Home);
+                    else if (Pages.Current != null) FocusPage(Pages.Current, true);
                     return true;
                 }
-                FocusSidebar();
+                FocusHeader();
                 return true;
             case NavAction.Menu:
-                if (focused is Visual mv && IsInside(mv, Sidebar)) { if (Pages.Current != null) FocusPage(Pages.Current, true); }
-                else FocusSidebar();
+                // Menu focuses the active channel; again: back to the page
+                if (focused is Visual mv && IsInside(mv, TopBar)) { if (Pages.Current != null) FocusPage(Pages.Current, true); }
+                else FocusHeader();
                 return true;
             case NavAction.Favorite:
                 if ((focused as Control)?.DataContext is GameItemViewModel item && focused is GameTile)
@@ -449,11 +569,10 @@ public partial class MainWindow : Window
                 return true;
             case NavAction.View:
                 return page?.HandleAction(action) ?? false;
-            case NavAction.PageLeft:
-                _vm.CycleSection(-1);
-                return true;
-            case NavAction.PageRight:
-                _vm.CycleSection(+1);
+            case NavAction.PageLeft or NavAction.PageRight:
+                // shoulders are page-local first (library: shelf, system: neighbour …); otherwise they switch the channel
+                if (page?.HandleAction(action) == true) return true;
+                ShowChannel(_vm.CycleSection(action == NavAction.PageLeft ? -1 : +1));
                 return true;
         }
         return false;
@@ -475,7 +594,12 @@ public partial class MainWindow : Window
         // FindNextElement + Focus(Directional) instead of TryMoveFocus: only a directional focus shows the focus ring
         var next = fm.FindNextElement(ToDirection(action), new FindNextElementOptions { SearchRoot = Shell });
         var moved = next != null && next.Focus(NavigationMethod.Directional);
-        if (!moved && action == NavAction.Left && !IsInside(v, Sidebar)) FocusSidebar();
+        if (!moved)
+        {
+            // Up from the top of the page reaches the header; Down from the header goes back into the page
+            if (action == NavAction.Up && !IsInside(v, TopBar)) FocusHeader();
+            else if (action == NavAction.Down && IsInside(v, TopBar) && Pages.Current != null) FocusPage(Pages.Current, true);
+        }
         return true;
     }
 
@@ -498,12 +622,12 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private void FocusSidebar()
+    /// <summary>Focuses the active channel (or the active tool icon) in the header.</summary>
+    private void FocusHeader()
     {
-        var selected = NavList.GetRealizedContainers()
-            .Select(c => c.GetVisualDescendants().OfType<Button>().FirstOrDefault())
-            .FirstOrDefault(b => b?.Classes.Contains("selected") == true);
-        (selected ?? (Control)CollapseButton).Focus(NavigationMethod.Directional);
+        var buttons = TopBar.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("navitem") && b.IsEffectivelyVisible).ToList();
+        var selected = buttons.FirstOrDefault(b => b.Classes.Contains("selected")) ?? buttons.FirstOrDefault();
+        selected?.Focus(NavigationMethod.Directional);
     }
 
     private void FocusDialog()

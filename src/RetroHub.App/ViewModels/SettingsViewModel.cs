@@ -41,8 +41,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         {
             Hex = p.Hex,
             Name = Loc.T(p.NameKey),
-            Swatch = ThemeManager.Gradient(Color.Parse(p.Hex), p.Id == "nova" ? Color.Parse("#4C8DFF") : ColorUtil.GradientPartner(Color.Parse(p.Hex)),
-                new Avalonia.RelativePoint(0, 0, Avalonia.RelativeUnit.Relative), new Avalonia.RelativePoint(1, 1, Avalonia.RelativeUnit.Relative)),
+            Swatch = new ImmutableSolidColorBrush(Color.Parse(p.Hex)),
         }).ToList();
         MotionOptions =
         [

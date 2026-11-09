@@ -400,7 +400,8 @@ public class LaunchFlowTests
     private sealed class FakeInput : IInputSource
     {
         public List<bool> Suspends { get; } = [];
-        public event Action<NavAction>? ActionRaised { add { } remove { } }
+        public event Action<NavAction, bool>? ActionRaised { add { } remove { } }
+        public event Action? DirectionReleased { add { } remove { } }
         public event Action? ControllerChanged { add { } remove { } }
         public ControllerFamily Controller => ControllerFamily.None;
         public string? ControllerName => null;

@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -55,10 +56,14 @@ public class NavigationTests
         TestSupport.Settle(60);
         Assert.NotSame(tile, Focused(window));
         Assert.IsType<GameTile>(Focused(window));
-        // Left from the first column ends in the sidebar
-        for (var i = 0; i < 12; i++) window.KeyPress(Key.Left, RawInputModifiers.None, PhysicalKey.ArrowLeft, null);
+        // Up from the top of the page reaches the header channels (DESIGN 7.0: the "left edge → sidebar" jump is gone)
+        for (var i = 0; i < 6; i++) window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.ArrowUp, null);
         TestSupport.Settle(60);
         Assert.Contains("navitem", Focused(window)?.Classes ?? []);
+        // Down goes back into the page
+        window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+        TestSupport.Settle(60);
+        Assert.DoesNotContain("navitem", Focused(window)?.Classes ?? []);
         window.Close();
     });
 
@@ -132,7 +137,7 @@ public class NavigationTests
     });
 
     [Fact]
-    public Task Shoulder_buttons_cycle_sections_and_search_opens_library() => UiTest.Run(() =>
+    public Task Shoulder_buttons_cycle_channels_and_search_opens_library() => UiTest.Run(() =>
     {
         var (window, vm) = Open();
         Assert.True(window.Execute(NavAction.PageRight));
@@ -141,7 +146,13 @@ public class NavigationTests
         Assert.True(window.Execute(NavAction.PageLeft));
         Assert.True(window.Execute(NavAction.PageLeft));
         TestSupport.Settle(50);
-        Assert.Equal(PageKey.Settings, vm.Navigator.Current); // wraps around
+        Assert.Equal(PageKey.Systems, vm.Navigator.Current); // channels 1–3 wrap around
+
+        // keys 1/2/3 switch the channel directly and show the channel display
+        window.KeyPress(Key.D2, RawInputModifiers.None, PhysicalKey.Digit2, "2");
+        TestSupport.Settle(50);
+        Assert.Equal(PageKey.Library, vm.Navigator.Current);
+        Assert.True(window.FindControl<OsdLayer>("Osd")!.IsShowing);
 
         Assert.True(window.Execute(NavAction.Search));
         TestSupport.Pump(() => Focused(window) is TextBox);
@@ -187,15 +198,34 @@ public class NavigationTests
     });
 
     [Fact]
-    public Task Narrow_window_collapses_the_sidebar() => UiTest.Run(() =>
+    public Task Narrow_window_scales_the_shell_and_compacts_the_header() => UiTest.Run(() =>
     {
         var (window, vm) = Open();
+        window.Width = 2560;
+        window.Height = 1440;
+        TestSupport.Settle(80);
+        Assert.Equal(160 / 120.0, window.UiScale, 3); // 2560×1440 → 1.333
         Assert.False(vm.IsSidebarCollapsed);
         window.Width = 1100;
+        window.Height = 700;
         TestSupport.Settle(80);
-        Assert.True(vm.IsSidebarCollapsed);
-        var sidebar = window.FindControl<Border>("Sidebar")!;
-        Assert.Equal(84, sidebar.Bounds.Width, 1);
+        Assert.Equal(0.8, window.UiScale, 3); // 1100×700 → clamped to 0.8 = 1375×875 logical
+        Assert.True(vm.IsSidebarCollapsed);   // < 1500 logical: no controller name
+        // nothing of the header is cut off: the clock still ends left of the caption buttons
+        var clock = window.FindControl<TextBlock>("ClockText")!;
+        var right = clock.TranslatePoint(new Avalonia.Point(clock.Bounds.Width, 0), window)!.Value.X;
+        Assert.True(right <= 1100 - 170 + 1, $"clock ends at {right}");
+        var channels = window.FindControl<ItemsControl>("ChannelList")!;
+        Assert.True(channels.IsEffectivelyVisible);
         window.Close();
     });
+
+    [Theory]
+    [InlineData(1920, 1080, 1.0)]
+    [InlineData(1600, 900, 100 / 120.0)]
+    [InlineData(1100, 700, 0.8)]
+    [InlineData(960, 600, 0.8)]
+    [InlineData(3840, 2160, 2.0)]
+    public void Ui_scale_follows_the_reference_1080p(int w, int h, double expected) =>
+        Assert.Equal(expected, MainWindow.ComputeScale(new Avalonia.Size(w, h)), 3);
 }

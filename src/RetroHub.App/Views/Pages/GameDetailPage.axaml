@@ -6,198 +6,148 @@
             xmlns:l="using:RetroHub.App.Localization"
             x:Class="RetroHub.App.Views.Pages.GameDetailPage"
             x:DataType="vm:GameDetailViewModel">
-  <Panel>
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-      <Grid Margin="40,4,40,40">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="300" />
-          <ColumnDefinition Width="48" />
-          <ColumnDefinition Width="*" MaxWidth="940" />
-        </Grid.ColumnDefinitions>
-        <!-- left: cover + actions -->
-        <StackPanel Spacing="14">
-          <Border Width="300" Height="410" CornerRadius="24" ClipToBounds="True" BoxShadow="0 28 60 -16 #C0000000" BorderBrush="#26FFFFFF" BorderThickness="1">
-            <c:CoverArt Source="{Binding Game.CoverPath}" Title="{Binding Game.Title}" Badge="{Binding Game.SystemShort}" Accent="{Binding Game.Accent}" ShowTitle="True" />
-          </Border>
-          <Button Name="PlayButton" Theme="{StaticResource RhPrimaryButton}" HorizontalAlignment="Stretch" MinHeight="54" Command="{Binding PlayCommand}" Margin="0,10,0,0">
+  <!--
+    Game detail (M1 foundation state): the box stands on the stage board in the TV light, the text column is anchored
+    bottom right of it; below the board the "Rückseite" (about + start). The generated box spine, the measured title,
+    screenshots and the play log follow in M4 (DESIGN 7.3).
+  -->
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="0">
+      <!-- ===== stage ===== -->
+      <Grid Height="588" ColumnDefinitions="360,56,*" Margin="{DynamicResource RhPageInsetX}">
+        <Panel Width="360" Height="504" VerticalAlignment="Bottom">
+          <c:CoverArt Name="DetailBox" Source="{Binding Game.CoverPath}" Title="{Binding Game.Title}" Badge="{Binding Game.SystemShort}"
+                      SystemId="{Binding Game.SystemId}" Accent="{Binding Game.Accent}" IsMissing="{Binding Game.IsMissing}" />
+        </Panel>
+        <StackPanel Grid.Column="2" VerticalAlignment="Bottom" Spacing="0" Margin="0,0,0,44" MaxWidth="1100" HorizontalAlignment="Left">
+          <!-- system label: colour bar + name in the system's light -->
+          <Button Theme="{StaticResource RhGhostButton}" Command="{Binding OpenSystemCommand}" ToolTip.Tip="{l:T detail.openSystem}" HorizontalAlignment="Left"
+                  Padding="8,0" Margin="-8,0,0,0" MinHeight="36">
             <StackPanel Orientation="Horizontal" Spacing="10">
-              <c:RhIcon Data="{StaticResource Icon.Play}" Filled="True" Width="17" Height="17" Foreground="White" />
-              <TextBlock Text="{l:T detail.play}" VerticalAlignment="Center" FontSize="16" />
+              <Border Width="4" Height="18" Background="{Binding Game.SystemColorBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Game.SystemName}" FontSize="18" FontWeight="SemiBold" Foreground="{Binding System.LightBrush}" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
-          <Button HorizontalAlignment="Stretch" Command="{Binding ToggleFavoriteCommand}">
-            <Panel>
-              <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding !Game.IsFavorite}">
-                <c:RhIcon Data="{StaticResource Icon.Star}" Width="17" Height="17" />
-                <TextBlock Text="{l:T detail.addFavorite}" VerticalAlignment="Center" />
-              </StackPanel>
-              <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding Game.IsFavorite}">
-                <c:RhIcon Data="{StaticResource Icon.Star}" Filled="True" Width="17" Height="17" Foreground="{DynamicResource RhFavoriteBrush}" />
-                <TextBlock Text="{l:T detail.isFavorite}" VerticalAlignment="Center" />
-              </StackPanel>
-            </Panel>
-          </Button>
-          <!-- cover (artwork module) -->
-          <DockPanel IsVisible="{Binding CanEditCover}">
-            <Button Name="RemoveCoverButton" DockPanel.Dock="Right" Margin="10,0,0,0" Theme="{StaticResource RhIconButton}" Width="44" Height="44"
-                    VerticalAlignment="Center" IsVisible="{Binding HasCover}" Command="{Binding RemoveCoverCommand}"
-                    ToolTip.Tip="{l:T artwork.remove}" AutomationProperties.Name="{l:T artwork.remove}">
-              <c:RhIcon Data="{StaticResource Icon.Close}" Width="15" Height="15" />
-            </Button>
-            <Button Name="ChooseCoverButton" HorizontalAlignment="Stretch" Command="{Binding ChooseCoverCommand}">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <c:RhIcon Data="{StaticResource Icon.Folder}" Width="17" Height="17" />
-                <TextBlock Text="{l:T artwork.choose}" VerticalAlignment="Center" />
-              </StackPanel>
-            </Button>
-          </DockPanel>
-        </StackPanel>
-
-        <!-- right: info -->
-        <StackPanel Grid.Column="2" Spacing="0">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <Button Theme="{StaticResource RhChip}" Command="{Binding OpenSystemCommand}" ToolTip.Tip="{l:T detail.openSystem}">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Ellipse Width="8" Height="8" Fill="{Binding Game.AccentBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding Game.SystemName}" VerticalAlignment="Center" />
-              </StackPanel>
-            </Button>
-            <Border Classes="chip bad" IsVisible="{Binding Game.IsMissing}" VerticalAlignment="Center">
-              <TextBlock Text="{l:T tile.missing}" />
-            </Border>
+          <TextBlock Text="{Binding Game.Title}" Classes="poster" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Margin="0,10,0,0" />
+          <TextBlock c:Sentence.Text="{Binding MetaSentence}" Classes="read-l" Margin="0,16,0,0" />
+          <TextBlock c:Sentence.Text="{Binding PlaySentence}" Classes="read-l" />
+          <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0" IsVisible="{Binding Game.IsMissing}">
+            <c:RhIcon Data="{StaticResource Icon.Missing}" Width="20" Height="20" Foreground="{DynamicResource RhDangerBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{l:T tile.missing}" Classes="ui" Foreground="{DynamicResource RhDangerBrush}" VerticalAlignment="Center" />
           </StackPanel>
-          <TextBlock Text="{Binding Game.Title}" Classes="display" TextWrapping="Wrap" Margin="0,16,0,0" />
-          <ItemsControl ItemsSource="{Binding Facts}" Margin="0,14,0,0">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <WrapPanel ItemSpacing="28" LineSpacing="8" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:FactItem">
-                <StackPanel Spacing="1">
-                  <TextBlock Text="{Binding Caption}" Classes="label" FontSize="10.5" />
-                  <TextBlock Text="{Binding Value}" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource RhText1Brush}" />
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <TextBlock Text="{Binding Description}" Classes="body" FontSize="15" LineHeight="25" MaxWidth="820" HorizontalAlignment="Left" Margin="0,22,0,0" />
-
-          <!-- play stats -->
-          <Grid ColumnDefinitions="*,14,*,14,*,14,*" Margin="0,28,0,0">
-            <Border Classes="card" Padding="18,14">
-              <StackPanel Spacing="3">
-                <StackPanel Orientation="Horizontal" Spacing="7">
-                  <c:RhIcon Data="{StaticResource Icon.Clock}" Width="14" Height="14" Foreground="{DynamicResource RhText3Brush}" />
-                  <TextBlock Text="{l:T detail.playTime}" Classes="meta" FontSize="12" />
-                </StackPanel>
-                <TextBlock Text="{Binding PlayTime}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+          <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,28,0,0">
+            <Button Name="PlayButton" Theme="{StaticResource RhPrimaryButton}" MinWidth="300" MinHeight="64" Command="{Binding PlayCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <c:RhIcon Data="{StaticResource Icon.Play}" Filled="True" Width="24" Height="24" />
+                <TextBlock Text="{l:T detail.play}" VerticalAlignment="Center" />
               </StackPanel>
-            </Border>
-            <Border Grid.Column="2" Classes="card" Padding="18,14">
-              <StackPanel Spacing="3">
-                <StackPanel Orientation="Horizontal" Spacing="7">
-                  <c:RhIcon Data="{StaticResource Icon.Calendar}" Width="14" Height="14" Foreground="{DynamicResource RhText3Brush}" />
-                  <TextBlock Text="{l:T detail.lastPlayed}" Classes="meta" FontSize="12" />
+            </Button>
+            <Button MinHeight="64" Padding="24,0" Command="{Binding ToggleFavoriteCommand}">
+              <Panel>
+                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding !Game.IsFavorite}">
+                  <c:RhIcon Data="{StaticResource Icon.Star}" Width="22" Height="22" />
+                  <TextBlock Text="{l:T detail.addFavorite}" VerticalAlignment="Center" />
                 </StackPanel>
-                <TextBlock Text="{Binding LastPlayed}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
-            </Border>
-            <Border Grid.Column="4" Classes="card" Padding="18,14">
-              <StackPanel Spacing="3">
-                <StackPanel Orientation="Horizontal" Spacing="7">
-                  <c:RhIcon Data="{StaticResource Icon.Trophy}" Width="14" Height="14" Foreground="{DynamicResource RhText3Brush}" />
-                  <TextBlock Text="{l:T detail.starts}" Classes="meta" FontSize="12" />
+                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding Game.IsFavorite}">
+                  <c:RhIcon Data="{StaticResource Icon.Star}" Filled="True" Width="22" Height="22" Foreground="{DynamicResource RhFavoriteBrush}" />
+                  <TextBlock Text="{l:T detail.isFavorite}" VerticalAlignment="Center" />
                 </StackPanel>
-                <TextBlock Text="{Binding PlayCount}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
-            </Border>
-            <Border Grid.Column="6" Classes="card" Padding="18,14">
-              <StackPanel Spacing="3">
-                <StackPanel Orientation="Horizontal" Spacing="7">
-                  <c:RhIcon Data="{StaticResource Icon.Plus}" Width="14" Height="14" Foreground="{DynamicResource RhText3Brush}" />
-                  <TextBlock Text="{l:T detail.added}" Classes="meta" FontSize="12" />
+              </Panel>
+            </Button>
+            <!-- cover (artwork module) -->
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding CanEditCover}">
+              <Button Name="ChooseCoverButton" MinHeight="64" Padding="20,0" Command="{Binding ChooseCoverCommand}" ToolTip.Tip="{l:T artwork.choose}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <c:RhIcon Data="{StaticResource Icon.Cover}" Width="22" Height="22" />
+                  <TextBlock Text="{l:T artwork.choose}" VerticalAlignment="Center" />
                 </StackPanel>
-                <TextBlock Text="{Binding Added}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
-            </Border>
-          </Grid>
-
-          <!-- launch settings -->
-          <Border Classes="glass" Padding="24,22" Margin="0,18,0,0">
-            <StackPanel Spacing="16">
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Text="{l:T detail.launchSettings}" Classes="h3" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="{Binding PlanSummary}" Classes="meta" VerticalAlignment="Center" Margin="16,0,0,0" />
-              </Grid>
-              <Grid ColumnDefinitions="*,16,*">
-                <StackPanel Spacing="6">
-                  <TextBlock Text="{l:T detail.emulator, Upper=True}" Classes="label" FontSize="10.5" />
-                  <ComboBox Name="EmulatorBox" ItemsSource="{Binding Emulators}" SelectedItem="{Binding SelectedEmulator}" HorizontalAlignment="Stretch">
-                    <ComboBox.ItemTemplate>
-                      <DataTemplate x:DataType="vm:EmulatorOption">
-                        <Grid ColumnDefinitions="*,Auto">
-                          <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Grid.Column="1" Text="{Binding Status}" Classes="meta" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center" />
-                        </Grid>
-                      </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                  </ComboBox>
-                </StackPanel>
-                <StackPanel Grid.Column="2" Spacing="6">
-                  <TextBlock Text="{l:T detail.mode, Upper=True}" Classes="label" FontSize="10.5" />
-                  <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" HorizontalAlignment="Stretch">
-                    <ComboBox.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ModeOption">
-                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                      </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                  </ComboBox>
-                </StackPanel>
-              </Grid>
-              <TextBlock Text="{Binding SelectedMode.Hint}" Classes="meta" TextWrapping="Wrap" />
-              <!-- problems from the planner, shown as they are -->
-              <ItemsControl ItemsSource="{Binding Problems}" IsVisible="{Binding HasProblems}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Spacing="8" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ProblemItem">
-                    <Panel>
-                      <Border Classes="chip bad" Padding="12,10" CornerRadius="14" IsVisible="{Binding IsBlocking}">
-                        <Grid ColumnDefinitions="Auto,*">
-                          <c:RhIcon Data="{StaticResource Icon.Alert}" Width="17" Height="17" Foreground="{DynamicResource RhDangerBrush}" VerticalAlignment="Top" />
-                          <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding Text}" TextWrapping="Wrap" FontWeight="Medium" />
-                        </Grid>
-                      </Border>
-                      <Border Classes="chip warn" Padding="12,10" CornerRadius="14" IsVisible="{Binding !IsBlocking}">
-                        <Grid ColumnDefinitions="Auto,*">
-                          <c:RhIcon Data="{StaticResource Icon.Info}" Width="17" Height="17" Foreground="{DynamicResource RhWarningBrush}" VerticalAlignment="Top" />
-                          <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding Text}" TextWrapping="Wrap" FontWeight="Medium" />
-                        </Grid>
-                      </Border>
-                    </Panel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding !HasProblems}">
-                <c:RhIcon Data="{StaticResource Icon.Check}" Width="16" Height="16" Foreground="{DynamicResource RhSuccessBrush}" />
-                <TextBlock Text="{l:T detail.ready}" FontSize="13" FontWeight="Medium" Foreground="#8FF0C8" VerticalAlignment="Center" />
-              </StackPanel>
+              </Button>
+              <Button Name="RemoveCoverButton" Width="64" Height="64" Padding="0" IsVisible="{Binding HasCover}" Command="{Binding RemoveCoverCommand}"
+                      ToolTip.Tip="{l:T artwork.remove}" AutomationProperties.Name="{l:T artwork.remove}">
+                <c:RhIcon Data="{StaticResource Icon.Remove}" Width="22" Height="22" />
+              </Button>
             </StackPanel>
-          </Border>
-
-          <!-- file -->
-          <StackPanel Spacing="4" Margin="0,22,0,0">
-            <TextBlock Text="{l:T detail.file, Upper=True}" Classes="label" FontSize="10.5" />
-            <TextBlock Text="{Binding FilePath}" Classes="mono" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding FileInfo}" Classes="meta" FontSize="12" />
           </StackPanel>
         </StackPanel>
       </Grid>
-    </ScrollViewer>
-  </Panel>
+
+      <!-- the stage board, edge to edge; the TV light ends here -->
+      <c:ShelfBoard Name="StageBoard" Height="24" />
+
+      <!-- ===== "Rückseite": about the game | start ===== -->
+      <Grid ColumnDefinitions="*,80,*" Margin="{DynamicResource RhPageInset}">
+        <StackPanel Spacing="14" Margin="0,16,0,0">
+          <c:ShelfLabel Text="{l:T detail.section.about}" IsVisible="{Binding HasDescription}" />
+          <TextBlock Text="{Binding Description}" Classes="read-l" MaxWidth="760" HorizontalAlignment="Left" IsVisible="{Binding HasDescription}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Spacing="14" Margin="0,16,0,0">
+          <Grid ColumnDefinitions="Auto,*">
+            <c:ShelfLabel Text="{l:T detail.section.start}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding PlanSummary}" Classes="meta" VerticalAlignment="Center" Margin="16,0,0,0" TextTrimming="CharacterEllipsis" />
+          </Grid>
+          <Grid ColumnDefinitions="200,*" RowDefinitions="64,64">
+            <TextBlock Text="{l:T detail.emulator}" Classes="ui" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Name="EmulatorBox" ItemsSource="{Binding Emulators}" SelectedItem="{Binding SelectedEmulator}" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:EmulatorOption">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Text="{Binding Status}" Classes="meta" Margin="12,0,0,0" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Grid.Row="1" Text="{l:T detail.mode}" Classes="ui" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />
+            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ModeOption">
+                  <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+          <TextBlock Text="{Binding SelectedMode.Hint}" Classes="meta" TextWrapping="Wrap" />
+          <!-- problems from the planner, shown as they are: icon + text, status colour at 14 % on the shelf -->
+          <ItemsControl ItemsSource="{Binding Problems}" IsVisible="{Binding HasProblems}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="8" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ProblemItem">
+                <Panel>
+                  <Border Background="{DynamicResource RhDangerSoftBrush}" CornerRadius="{DynamicResource RhRadiusControl}" Padding="14,12" IsVisible="{Binding IsBlocking}">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <c:RhIcon Data="{StaticResource Icon.Error}" Width="20" Height="20" Foreground="{DynamicResource RhDangerBrush}" VerticalAlignment="Top" />
+                      <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding Text}" Classes="read" Foreground="{DynamicResource RhText1Brush}" />
+                    </Grid>
+                  </Border>
+                  <Border Background="{DynamicResource RhWarningSoftBrush}" CornerRadius="{DynamicResource RhRadiusControl}" Padding="14,12" IsVisible="{Binding !IsBlocking}">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <c:RhIcon Data="{StaticResource Icon.Warning}" Width="20" Height="20" Foreground="{DynamicResource RhWarningBrush}" VerticalAlignment="Top" />
+                      <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding Text}" Classes="read" Foreground="{DynamicResource RhText1Brush}" />
+                    </Grid>
+                  </Border>
+                </Panel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding !HasProblems}">
+            <c:RhIcon Data="{StaticResource Icon.Ok}" Width="20" Height="20" Foreground="{DynamicResource RhSuccessBrush}" />
+            <TextBlock Text="{l:T detail.ready}" Classes="ui" Foreground="{DynamicResource RhSuccessBrush}" VerticalAlignment="Center" />
+          </StackPanel>
+          <!-- file -->
+          <Grid ColumnDefinitions="200,*" Margin="0,8,0,0">
+            <TextBlock Text="{l:T detail.file}" Classes="ui" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Top" />
+            <StackPanel Grid.Column="1" Spacing="4">
+              <TextBlock Text="{Binding FilePath}" Classes="mono" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding FileInfo}" Classes="meta" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
 </p:PageBase>

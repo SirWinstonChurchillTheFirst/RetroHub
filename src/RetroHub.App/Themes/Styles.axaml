@@ -1,10 +1,13 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="using:RetroHub.App.Controls">
-  <!-- Global styles: typography classes, glass surfaces, search box, motion levels. -->
+  <!-- Global styles: window defaults, surfaces, input fields, motion levels (.motion-*, .nav-repeat on the shell root). -->
+  <StyleInclude Source="avares://RetroHub.App/Themes/Typography.axaml" />
 
   <Style Selector="Window">
     <Setter Property="FontFamily" Value="{DynamicResource RhFont}" />
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     <Setter Property="Background" Value="{DynamicResource RhBaseBrush}" />
   </Style>
@@ -12,165 +15,127 @@
     <Setter Property="TextTrimming" Value="None" />
   </Style>
 
-  <!-- ===== Typography (Nova scale) ===== -->
-  <Style Selector="TextBlock.display">
-    <Setter Property="FontSize" Value="{DynamicResource RhFontDisplay}" />
-    <Setter Property="FontWeight" Value="Bold" />
-    <Setter Property="LetterSpacing" Value="-0.6" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-  </Style>
-  <Style Selector="TextBlock.title">
-    <Setter Property="FontSize" Value="{DynamicResource RhFontTitle}" />
-    <Setter Property="FontWeight" Value="Bold" />
-    <Setter Property="LetterSpacing" Value="-0.4" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-  </Style>
-  <Style Selector="TextBlock.h2">
-    <Setter Property="FontSize" Value="{DynamicResource RhFontH2}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-  </Style>
-  <Style Selector="TextBlock.h3">
-    <Setter Property="FontSize" Value="15.5" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-  </Style>
-  <Style Selector="TextBlock.body">
-    <Setter Property="FontSize" Value="{DynamicResource RhFontBody}" />
-    <Setter Property="LineHeight" Value="23" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
-    <Setter Property="TextWrapping" Value="Wrap" />
-  </Style>
-  <Style Selector="TextBlock.meta">
-    <Setter Property="FontSize" Value="{DynamicResource RhFontMeta}" />
-    <Setter Property="FontWeight" Value="Medium" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
-  </Style>
-  <Style Selector="TextBlock.label">
-    <Setter Property="FontSize" Value="{DynamicResource RhFontLabel}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="LetterSpacing" Value="1.4" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
-  </Style>
-  <Style Selector="TextBlock.accent">
-    <Setter Property="Foreground" Value="{DynamicResource RhAccentTextBrush}" />
-  </Style>
-  <Style Selector="TextBlock.mono">
-    <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
-    <Setter Property="FontSize" Value="12.5" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
-  </Style>
-
-  <!-- ===== Surfaces ===== -->
+  <!-- ===== Surfaces (opaque; no cards in cards – DESIGN 4.3) ===== -->
+  <!-- "glass"/"card" are legacy class names: flat, opaque shelf surfaces now (removed in M6) -->
   <Style Selector="Border.glass">
-    <Setter Property="Background" Value="{DynamicResource RhGlassBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource RhGlassBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RhLineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusPanel}" />
   </Style>
   <Style Selector="Border.card">
-    <Setter Property="Background" Value="{DynamicResource RhGlassBrush}" />
+    <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource RhLineBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusNone}" />
   </Style>
+  <!-- chip = paper label ("Etikett"): paper, ink, square -->
   <Style Selector="Border.chip">
-    <Setter Property="Background" Value="{DynamicResource RhGlassFaintBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource RhLineBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusChip}" />
-    <Setter Property="Padding" Value="10,4" />
+    <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusSmall}" />
+    <Setter Property="Padding" Value="8,3" />
   </Style>
   <Style Selector="Border.chip > TextBlock">
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
   </Style>
   <Style Selector="Border.chip.ok">
     <Setter Property="Background" Value="{DynamicResource RhSuccessSoftBrush}" />
-    <Setter Property="BorderBrush" Value="#4434D399" />
   </Style>
   <Style Selector="Border.chip.ok > TextBlock">
-    <Setter Property="Foreground" Value="#8FF0C8" />
+    <Setter Property="Foreground" Value="{DynamicResource RhSuccessBrush}" />
   </Style>
   <Style Selector="Border.chip.warn">
     <Setter Property="Background" Value="{DynamicResource RhWarningSoftBrush}" />
-    <Setter Property="BorderBrush" Value="#44F5B83D" />
   </Style>
   <Style Selector="Border.chip.warn > TextBlock">
-    <Setter Property="Foreground" Value="#FFD98A" />
+    <Setter Property="Foreground" Value="{DynamicResource RhWarningBrush}" />
   </Style>
   <Style Selector="Border.chip.bad">
     <Setter Property="Background" Value="{DynamicResource RhDangerSoftBrush}" />
-    <Setter Property="BorderBrush" Value="#44FF5C72" />
   </Style>
   <Style Selector="Border.chip.bad > TextBlock">
-    <Setter Property="Foreground" Value="#FFB3BE" />
+    <Setter Property="Foreground" Value="{DynamicResource RhDangerBrush}" />
   </Style>
   <Style Selector="Border.divider">
     <Setter Property="Height" Value="1" />
     <Setter Property="Background" Value="{DynamicResource RhLineBrush}" />
   </Style>
 
-  <!-- ===== Search box ===== -->
-  <Style Selector="TextBox.search">
-    <Setter Property="MinHeight" Value="44" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusTile}" />
-    <Setter Property="Padding" Value="2,0,12,0" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="FontSize" Value="14" />
-    <Setter Property="InnerLeftContent">
-      <Template>
-        <c:RhIcon Data="{DynamicResource Icon.Search}" Width="18" Height="18" Margin="14,0,6,0" Foreground="{DynamicResource RhText3Brush}" />
-      </Template>
-    </Setter>
-  </Style>
+  <!-- ===== Text fields: Regal, 2 px Bernstein frame when focused (DESIGN 8.2) ===== -->
   <Style Selector="TextBox">
     <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="SelectionBrush" Value="{DynamicResource RhAccentSoftBrush}" />
-    <Setter Property="CaretBrush" Value="{DynamicResource RhText1Brush}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource RhAccentBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusControl}" />
+    <Setter Property="FontSize" Value="18" />
+  </Style>
+  <Style Selector="TextBox.search">
+    <Setter Property="MinHeight" Value="48" />
+    <Setter Property="Padding" Value="2,0,12,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="InnerLeftContent">
+      <Template>
+        <c:RhIcon Data="{DynamicResource Icon.Search}" Width="20" Height="20" Margin="14,0,8,0" Foreground="{DynamicResource RhText3Brush}" />
+      </Template>
+    </Setter>
   </Style>
   <Style Selector="ComboBox">
-    <Setter Property="MinHeight" Value="44" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusTile}" />
+    <Setter Property="MinHeight" Value="48" />
+    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusControl}" />
     <Setter Property="Padding" Value="14,0,10,0" />
-    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontSize" Value="18" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
   </Style>
+  <!-- choice fields (replaced by service-menu rows in M6): a 2 px paper frame when focused -->
+  <Style Selector="ComboBox:focus-visible /template/ Border#Background, ComboBox:focus /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
+  </Style>
   <Style Selector="ComboBox:focus-visible /template/ Border#Background">
-    <Setter Property="BorderBrush" Value="{DynamicResource RhAccentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RhPaperBrush}" />
     <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="ComboBox:focus-visible /template/ Border#HighlightBackground, ComboBox:focus /template/ Border#HighlightBackground">
+    <Setter Property="IsVisible" Value="False" />
   </Style>
   <Style Selector="ToggleSwitch">
     <Setter Property="FocusAdorner" Value="{x:Null}" />
   </Style>
   <Style Selector="ToggleSwitch:focus-visible /template/ Border#OuterBorder">
-    <Setter Property="BorderBrush" Value="{DynamicResource RhAccentTextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RhPaperBrush}" />
     <Setter Property="BorderThickness" Value="2" />
   </Style>
   <Style Selector="Slider:focus-visible /template/ Thumb">
-    <Setter Property="BorderBrush" Value="White" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RhPaperBrush}" />
   </Style>
   <Style Selector="ProgressBar">
     <Setter Property="MinHeight" Value="6" />
     <Setter Property="Height" Value="6" />
-    <Setter Property="CornerRadius" Value="3" />
-    <Setter Property="Foreground" Value="{DynamicResource RhAccentGradientBrush}" />
-    <Setter Property="Background" Value="#14FFFFFF" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource RhAccentBrush}" />
+    <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
   </Style>
   <Style Selector="ScrollViewer">
     <Setter Property="AllowAutoHide" Value="True" />
   </Style>
 
-  <!-- ===== Motion levels (class on the window root, set by the shell) ===== -->
-  <Style Selector=".motion-off Button, .motion-off c|GameTile, .motion-off c|SystemCard">
+  <!-- ===== Motion levels (classes on the shell root) ===== -->
+  <Style Selector=".motion-off Button, .motion-off ToggleButton, .motion-off c|GameTile, .motion-off c|SystemCard">
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
-  <Style Selector=".motion-off Button /template/ Border, .motion-off c|GameTile /template/ Border, .motion-off c|SystemCard /template/ Border">
+  <Style Selector=".motion-off Button /template/ :is(Control), .motion-off ToggleButton /template/ :is(Control), .motion-off c|GameTile /template/ :is(Control), .motion-off c|SystemCard /template/ :is(Control)">
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
-  <!-- reduced: no scaling, only the ring/glow fade -->
-  <Style Selector=".motion-reduced c|GameTile:focus-visible, .motion-reduced c|GameTile:pointerover, .motion-reduced c|SystemCard:focus-visible, .motion-reduced c|SystemCard:pointerover, .motion-reduced Button:focus-visible">
+  <!-- reduced: no lift, no scaling (DESIGN 9.4) -->
+  <Style Selector=".motion-reduced c|GameTile /template/ Panel#PART_CoverArea, .motion-off c|GameTile /template/ Panel#PART_CoverArea">
     <Setter Property="RenderTransform" Value="scale(1)" />
+  </Style>
+  <Style Selector=".motion-reduced c|SystemCard:focus-visible, .motion-reduced Button:focus-visible, .motion-off c|SystemCard:focus-visible, .motion-off Button:focus-visible">
+    <Setter Property="RenderTransform" Value="scale(1)" />
+  </Style>
+  <!-- auto-repeat: the lift jumps (no transition), the ring jumps along (DESIGN 8.4) -->
+  <Style Selector=".nav-repeat c|GameTile /template/ Panel#PART_CoverArea, .nav-repeat c|SystemCard, .nav-repeat Button">
+    <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
 </Styles>

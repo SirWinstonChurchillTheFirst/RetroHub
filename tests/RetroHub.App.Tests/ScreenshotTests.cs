@@ -40,7 +40,8 @@ public class ScreenshotTests
     public Task Render_main_pages(int width, int height, string suffix) => UiTest.Run(() =>
     {
         var (window, vm) = Open(width, height);
-        Assert.Equal(width < MainViewModel.CollapseBelow, vm.IsSidebarCollapsed);
+        // narrow windows scale the shell (UiScale 0.8 → 1375 px logical): the header gets compact (no controller name)
+        Assert.Equal(width / window.UiScale < MainViewModel.CompactBelow, vm.IsSidebarCollapsed);
         Save(window, "home" + suffix);
 
         vm.Navigator.Navigate(PageKey.Library);

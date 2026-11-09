@@ -71,6 +71,17 @@ public sealed class InputTranslator
     /// <summary>Nintendo-style layout: East confirms, South goes back. May be changed from any thread.</summary>
     public bool SwapAcceptBack { get => _swapAcceptBack; set => _swapAcceptBack = value; }
 
+    /// <summary>
+    /// Per action of the last <see cref="Update"/> result: true when it came from the auto-repeat of a held direction
+    /// (same order and length as the returned list).
+    /// </summary>
+    public IReadOnlyList<bool> LastRepeatFlags => _repeatFlags;
+
+    /// <summary>True when the last <see cref="Update"/> released the last held direction (end of an auto-repeat).</summary>
+    public bool DirectionsReleased { get; private set; }
+
+    private readonly List<bool> _repeatFlags = new();
+
     /// <summary>The pad that most recently pressed something (null until the first press).</summary>
     public int? LastActivePadId { get; private set; }
 
@@ -112,7 +123,10 @@ public sealed class InputTranslator
         if (_pads.Count != seen) RemoveStale(gen);
 
         List<UiAction>? output = null;
+        _repeatFlags.Clear();
         uint pressed = merged & ~_prevMerged;
+        const uint directionBits = (1u << LUp) | (1u << LDown) | (1u << LLeft) | (1u << LRight);
+        DirectionsReleased = (_prevMerged & directionBits) != 0 && (merged & directionBits) == 0;
 
         // directions: press + repeat
         for (int d = LUp; d <= LRight; d++)
@@ -125,10 +139,12 @@ public sealed class InputTranslator
                 r.PressedAt = timestampMs;
                 r.NextAt = timestampMs + _o.RepeatDelayMs;
                 (output ??= new()).Add(DirectionAction(d));
+                _repeatFlags.Add(false);
             }
             else if (timestampMs >= r.NextAt)
             {
                 (output ??= new()).Add(DirectionAction(d));
+                _repeatFlags.Add(true);
                 int interval = timestampMs - r.PressedAt >= _o.AccelerateAfterMs ? _o.FastRepeatIntervalMs : _o.RepeatIntervalMs;
                 r.NextAt += interval;
                 if (r.NextAt <= timestampMs) r.NextAt = timestampMs + interval; // after a stall: no burst
@@ -140,6 +156,7 @@ public sealed class InputTranslator
         {
             if ((pressed & (1u << b)) == 0) continue;
             (output ??= new()).Add(ButtonAction(b));
+            _repeatFlags.Add(false);
         }
 
         _prevMerged = merged;

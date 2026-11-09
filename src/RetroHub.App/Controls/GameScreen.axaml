@@ -22,15 +22,15 @@
     </Style>
   </UserControl.Styles>
   <Grid Name="Root" RowDefinitions="Auto,*" Background="Transparent">
-    <Border Name="Bar" Height="64" Padding="28,0,152,0" Background="#E60B0A1A" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="0,0,0,1">
+    <Border Name="Bar" Height="64" Padding="28,0,152,0" Background="{DynamicResource RhLaunchScrimBrush}" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <Border Width="34" Height="46" CornerRadius="8" ClipToBounds="True" VerticalAlignment="Center" Margin="0,0,14,0">
-          <c:CoverArt Source="{Binding Game.CoverPath}" Title="{Binding Game.Title}" Accent="{Binding Game.Accent}" ShowBadge="False" />
+        <Border Width="34" Height="46" CornerRadius="{DynamicResource RhRadiusSmall}" ClipToBounds="True" VerticalAlignment="Center" Margin="0,0,14,0">
+          <c:CoverArt Source="{Binding Game.CoverPath}" Title="{Binding Game.Title}" SystemId="{Binding Game.SystemId}" Accent="{Binding Game.Accent}" Fill="True" />
         </Border>
         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" Margin="0,0,16,0">
           <TextBlock Name="TitleText" Text="{Binding Game.Title}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-          <TextBlock Classes="meta" FontSize="12.5" TextTrimming="CharacterEllipsis">
-            <Run Text="{Binding EmulatorName}" /><Run Text="  ·  " /><Run Text="{Binding ElapsedText}" /><Run Text="   " /><Run Text="{Binding StatusNote}" Foreground="{DynamicResource RhWarningBrush}" />
+          <TextBlock Classes="meta" FontSize="15" TextTrimming="CharacterEllipsis">
+            <Run Text="{Binding EmulatorName}" /><Run Text=", " /><Run Text="{Binding ElapsedText}" /><Run Text="   " /><Run Text="{Binding StatusNote}" Foreground="{DynamicResource RhWarningBrush}" />
           </TextBlock>
         </StackPanel>
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -59,8 +59,8 @@
     <Panel Name="Area" Grid.Row="1" Margin="24,20,24,24">
       <!-- behind the (masked) host while the emulator loads -->
       <StackPanel Name="LoadingView" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0" IsVisible="False">
-        <Border Width="150" Height="210" CornerRadius="18" ClipToBounds="True" HorizontalAlignment="Center" BoxShadow="{DynamicResource RhFocusGlow}">
-          <c:CoverArt Source="{Binding Game.CoverPath}" Title="{Binding Game.Title}" Badge="{Binding Game.SystemShort}" Accent="{Binding Game.Accent}" ShowTitle="True" />
+        <Border Width="150" Height="210" CornerRadius="{DynamicResource RhRadiusControl}" ClipToBounds="True" HorizontalAlignment="Center" >
+          <c:CoverArt Source="{Binding Game.CoverPath}" Title="{Binding Game.Title}" Badge="{Binding Game.SystemShort}" SystemId="{Binding Game.SystemId}" Accent="{Binding Game.Accent}" />
         </Border>
         <TextBlock Name="LoadingTitle" Classes="h2" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,28,0,6" MaxWidth="640" TextWrapping="Wrap" />
         <TextBlock Name="LoadingNote" Classes="meta" HorizontalAlignment="Center" TextAlignment="Center" MinWidth="260" />

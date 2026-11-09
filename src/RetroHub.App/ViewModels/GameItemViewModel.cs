@@ -28,6 +28,10 @@ public sealed partial class GameItemViewModel : ObservableObject
     [ObservableProperty] public partial string SystemShort { get; private set; } = "";
     [ObservableProperty] public partial Color Accent { get; private set; }
     [ObservableProperty] public partial IBrush AccentBrush { get; private set; } = Brushes.Transparent;
+    /// <summary>The system's "Farbe" (DESIGN 2.4): label bar, list bar, spine band.</summary>
+    [ObservableProperty] public partial IBrush SystemColorBrush { get; private set; } = Brushes.Transparent;
+    /// <summary>Release year ("" when unknown – the label line then shows only the code).</summary>
+    [ObservableProperty] public partial string YearText { get; private set; } = "";
     /// <summary>Full path of the cover image, or null (placeholder art is generated then).</summary>
     [ObservableProperty] public partial string? CoverPath { get; private set; }
     [ObservableProperty] public partial bool IsFavorite { get; private set; }
@@ -48,8 +52,11 @@ public sealed partial class GameItemViewModel : ObservableObject
         SystemId = game.SystemId;
         SystemName = sys?.Name ?? game.SystemId;
         SystemShort = string.IsNullOrEmpty(sys?.ShortName) ? game.SystemId.ToUpperInvariant() : sys!.ShortName;
-        Accent = ColorUtil.Parse(sys?.Accent, Color.Parse(ThemeManager.DefaultAccent));
-        AccentBrush = new SolidColorBrush(Accent);
+        Accent = ColorUtil.Parse(sys?.Accent, Color.Parse("#948A7A"));
+        var look = SystemPalette.Get(game.SystemId, Accent);
+        AccentBrush = look.ColorBrush;
+        SystemColorBrush = look.ColorBrush;
+        YearText = game.Year is { } year ? year.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
         CoverPath = string.IsNullOrEmpty(game.CoverPath) ? null : _services.Paths.FromPortable(game.CoverPath);
         IsFavorite = game.Favorite;
         IsMissing = game.Status == GameStatus.Missing;

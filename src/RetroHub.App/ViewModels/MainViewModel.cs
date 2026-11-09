@@ -9,17 +9,20 @@ using RetroHub.Core.Logging;
 
 namespace RetroHub.App.ViewModels;
 
-/// <summary>A sidebar entry.</summary>
+/// <summary>A header entry: a channel ("1 Start") or a tool icon (Importe, Emulatoren, Einstellungen).</summary>
 public sealed partial class NavItemViewModel : ObservableObject
 {
     public required PageKey Key { get; init; }
     public required string LabelKey { get; init; }
     public required string IconKey { get; init; }
+    /// <summary>Channel digit ("1"); null for tool icons.</summary>
+    public string? Channel { get; init; }
+    public bool IsChannel => Channel != null;
     [ObservableProperty] public partial string Label { get; set; } = "";
     [ObservableProperty] public partial bool IsSelected { get; set; }
 }
 
-/// <summary>Shell state: navigation, pages, hint bar, clock, sidebar, overlays.</summary>
+/// <summary>Shell state: navigation, pages, header channels, footer (location + hints), clock, overlays.</summary>
 public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly Dictionary<PageKey, PageViewModel> _pages = new();
@@ -30,13 +33,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Ctx = ctx;
         NavItems =
         [
-            new NavItemViewModel { Key = PageKey.Home, LabelKey = "nav.home", IconKey = "Icon.Home" },
-            new NavItemViewModel { Key = PageKey.Library, LabelKey = "nav.library", IconKey = "Icon.Library" },
-            new NavItemViewModel { Key = PageKey.Systems, LabelKey = "nav.systems", IconKey = "Icon.Gamepad" },
-            new NavItemViewModel { Key = PageKey.Emulators, LabelKey = "nav.emulators", IconKey = "Icon.Chip" },
-            new NavItemViewModel { Key = PageKey.Imports, LabelKey = "nav.imports", IconKey = "Icon.Import" },
+            new NavItemViewModel { Key = PageKey.Home, LabelKey = "nav.home", IconKey = "Icon.Start", Channel = "1" },
+            new NavItemViewModel { Key = PageKey.Library, LabelKey = "nav.library", IconKey = "Icon.Library", Channel = "2" },
+            new NavItemViewModel { Key = PageKey.Systems, LabelKey = "nav.systems", IconKey = "Icon.Systems", Channel = "3" },
+            new NavItemViewModel { Key = PageKey.Imports, LabelKey = "nav.imports", IconKey = "Icon.Imports" },
+            new NavItemViewModel { Key = PageKey.Emulators, LabelKey = "nav.emulators", IconKey = "Icon.Emulators" },
             new NavItemViewModel { Key = PageKey.Settings, LabelKey = "nav.settings", IconKey = "Icon.Settings" },
         ];
+        Channels = NavItems.Where(n => n.IsChannel).ToList();
+        Tools = NavItems.Where(n => !n.IsChannel).ToList();
         UpdateTexts();
         ctx.Navigator.Navigated += OnNavigated;
         ctx.Services.Ui.Changed += _ => Dispatcher.UIThread.Post(UpdatePreferences);
@@ -57,7 +62,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public DialogService Dialogs => Ctx.Dialogs;
     public LaunchCoordinator Launch => Ctx.Launch;
     public Navigator Navigator => Ctx.Navigator;
+    /// <summary>All header entries (channels first, then the tools).</summary>
     public ObservableCollection<NavItemViewModel> NavItems { get; }
+    /// <summary>"1 Start  2 Bibliothek  3 Konsolen".</summary>
+    public IReadOnlyList<NavItemViewModel> Channels { get; }
+    /// <summary>Header icons after the search: Importe, Emulatoren, Einstellungen.</summary>
+    public IReadOnlyList<NavItemViewModel> Tools { get; }
     public bool IsDemo => Ctx.Services.IsDemo;
 
     [ObservableProperty] public partial PageViewModel? CurrentPage { get; private set; }
@@ -65,21 +75,50 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] public partial string Clock { get; private set; } = "";
     [ObservableProperty] public partial string PageTitle { get; private set; } = "";
     [ObservableProperty] public partial bool CanGoBack { get; private set; }
-    [ObservableProperty] public partial GlyphStyle Glyphs { get; private set; } = GlyphStyle.Xbox;
+    /// <summary>Legacy (v0 brand glyphs); the footer glyphs are position-based now.</summary>
+    [ObservableProperty] public partial GlyphStyle Glyphs { get; private set; } = GlyphStyle.Auto;
+    /// <summary>The last input was the keyboard: the footer shows key caps instead of pad glyphs.</summary>
+    [ObservableProperty] public partial bool KeyboardGlyphs { get; set; } = true;
     [ObservableProperty] public partial bool ShowHints { get; private set; } = true;
     [ObservableProperty] public partial bool ControllerConnected { get; private set; }
     [ObservableProperty] public partial string ControllerName { get; private set; } = "";
     [ObservableProperty] public partial string StatusText { get; private set; } = "";
     [ObservableProperty] public partial string DemoText { get; private set; } = "";
-    /// <summary>Window width, set by the view (drives the automatic sidebar collapse).</summary>
+    /// <summary>Footer location sentence: the parent part (section, Text 3) …</summary>
+    [ObservableProperty] public partial string LocationParent { get; private set; } = "";
+    /// <summary>… and the page part (Text 2), e.g. "Bibliothek › Pokémon Smaragd-Edition".</summary>
+    [ObservableProperty] public partial string LocationText { get; private set; } = "";
+    public bool HasLocationText => !string.IsNullOrEmpty(LocationText);
+    /// <summary>Window width, set by the view.</summary>
     [ObservableProperty] public partial double WindowWidth { get; set; } = 1600;
+    /// <summary>Logical (scaled) width of the shell, set by the view.</summary>
+    [ObservableProperty] public partial double LogicalWidth { get; set; } = 1920;
+    /// <summary>Below 1500 px logical width the controller name is hidden (DESIGN 5.3).</summary>
+    [ObservableProperty] public partial bool ShowControllerName { get; private set; } = true;
+    /// <summary>Below 1300 px logical width the footer shows at most 3 hints (DESIGN 7.0).</summary>
+    [ObservableProperty] public partial IReadOnlyList<HintItem> VisibleHints { get; private set; } = [];
+    /// <summary>Legacy name: true when the header is in its compact form (narrow window).</summary>
     [ObservableProperty] public partial bool IsSidebarCollapsed { get; private set; }
     [ObservableProperty] public partial bool IsFullscreen { get; set; }
 
-    /// <summary>Below this window width the sidebar shows icons only.</summary>
-    public const double CollapseBelow = 1280;
+    /// <summary>Below this logical width the header is compact (no controller name).</summary>
+    public const double CompactBelow = 1500;
 
-    partial void OnWindowWidthChanged(double value) => UpdateSidebar();
+    partial void OnLogicalWidthChanged(double value) => UpdateCompact();
+    partial void OnHintsChanged(IReadOnlyList<HintItem> value) => UpdateCompact();
+    partial void OnLocationTextChanged(string value) => OnPropertyChanged(nameof(HasLocationText));
+
+    /// <summary>The "Demo-Modus" label in the header (hidden in the compact header).</summary>
+    [ObservableProperty] public partial bool ShowDemoChip { get; private set; }
+
+    private void UpdateCompact()
+    {
+        ShowControllerName = LogicalWidth >= CompactBelow;
+        ShowDemoChip = IsDemo && ShowControllerName;
+        IsSidebarCollapsed = !ShowControllerName;
+        var max = LogicalWidth < 1300 ? 3 : 4;
+        VisibleHints = Hints.Count <= max ? Hints : Hints.Take(max).ToList();
+    }
 
     /// <summary>Lazily created page view model (kept alive).</summary>
     public PageViewModel GetPage(PageKey key)
@@ -102,6 +141,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (s != CurrentPage) return;
             if (e.PropertyName == nameof(PageViewModel.Hints)) Hints = CurrentPage!.Hints;
             if (e.PropertyName == nameof(PageViewModel.Title)) PageTitle = CurrentPage!.Title;
+            if (e.PropertyName is nameof(PageViewModel.Title) or nameof(PageViewModel.Location)) UpdateLocation();
         };
         _pages[key] = page;
         return page;
@@ -127,7 +167,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Hints = page.Hints;
         PageTitle = page.Title;
         CanGoBack = Ctx.Navigator.CanGoBack;
+        UpdateLocation();
         PageShown?.Invoke(e, page);
+    }
+
+    /// <summary>"Bibliothek › 66 Spiele" – parent in Text 3, page part in Text 2 (DESIGN 7.0).</summary>
+    private void UpdateLocation()
+    {
+        var section = NavItems.FirstOrDefault(n => n.Key == Ctx.Navigator.Section)?.Label ?? "";
+        var page = CurrentPage;
+        var detail = page?.Location ?? page?.Title ?? "";
+        if (string.Equals(detail, section, StringComparison.CurrentCulture)) detail = "";
+        LocationParent = section;
+        LocationText = detail;
     }
 
     /// <summary>
@@ -177,45 +229,35 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void Back() => Ctx.Navigator.GoBack();
 
-    /// <summary>LB/RB: previous/next sidebar section (wraps).</summary>
-    public void CycleSection(int delta)
+    /// <summary>
+    /// Channel switch (LB/RB when the page does not use the shoulders itself, keys 1/2/3): previous/next channel,
+    /// wrapping. From a tool page (Importe …) the cycle starts at "Start". Returns the channel shown.
+    /// </summary>
+    public NavItemViewModel CycleSection(int delta)
     {
-        var index = NavItems.ToList().FindIndex(n => n.Key == Ctx.Navigator.Section);
-        if (index < 0) index = 0;
-        var next = NavItems[(index + delta + NavItems.Count) % NavItems.Count];
+        var index = Channels.ToList().FindIndex(n => n.Key == Ctx.Navigator.Section);
+        if (index < 0) index = delta > 0 ? -1 : 0;
+        var next = Channels[((index + delta) % Channels.Count + Channels.Count) % Channels.Count];
         Ctx.Navigator.Navigate(next.Key);
+        return next;
+    }
+
+    /// <summary>Keys 1/2/3: the channel with that digit (null when none).</summary>
+    public NavItemViewModel? SelectChannel(string digit)
+    {
+        var channel = Channels.FirstOrDefault(c => c.Channel == digit);
+        if (channel != null) Ctx.Navigator.Navigate(channel.Key);
+        return channel;
     }
 
     [RelayCommand]
-    private void ToggleSidebar()
-    {
-        var collapsed = !IsSidebarCollapsed;
-        Ctx.Services.Ui.Update(p => p.Sidebar = collapsed ? SidebarMode.Collapsed : SidebarMode.Expanded);
-    }
-
-    private void UpdateSidebar()
-    {
-        IsSidebarCollapsed = Ctx.Services.Ui.Current.Sidebar switch
-        {
-            SidebarMode.Collapsed => true,
-            SidebarMode.Expanded => false,
-            _ => WindowWidth < CollapseBelow,
-        };
-    }
+    private void Search() => Ctx.Navigator.Navigate(PageKey.Library, LibraryRequest.Search);
 
     private void UpdatePreferences()
     {
         var prefs = Ctx.Services.Ui.Current;
         ShowHints = prefs.ShowHints;
-        UpdateGlyphs();
-        UpdateSidebar();
-    }
-
-    private void UpdateGlyphs()
-    {
-        var pref = Ctx.Services.Ui.Current.Glyphs;
-        Glyphs = pref != GlyphStyle.Auto ? pref
-            : Ctx.Services.Input.Controller == ControllerFamily.PlayStation ? GlyphStyle.PlayStation : GlyphStyle.Xbox;
+        UpdateCompact();
     }
 
     private void UpdateController()
@@ -223,7 +265,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var input = Ctx.Services.Input;
         ControllerConnected = input.Controller != ControllerFamily.None;
         ControllerName = input.ControllerName ?? Loc.T("shell.noController");
-        UpdateGlyphs();
+        if (ControllerConnected) KeyboardGlyphs = false;
     }
 
     private void UpdateClock() => Clock = DateTime.Now.ToString("t", Loc.Culture);
@@ -260,6 +302,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             Hints = CurrentPage.Hints;
             PageTitle = CurrentPage.Title;
         }
+        UpdateLocation();
     }
 
     public void Dispose()

@@ -15,13 +15,15 @@ public sealed class GamepadInputSource : IInputSource
     private readonly object _gate = new();
     private bool _suspended;
 
-    public event Action<NavAction>? ActionRaised;
+    public event Action<NavAction, bool>? ActionRaised;
+    public event Action? DirectionReleased;
     public event Action? ControllerChanged;
 
     private GamepadInputSource(GamepadService service)
     {
         _service = service;
-        _service.ActionTriggered += OnAction;
+        _service.ActionRepeated += OnAction;
+        _service.DirectionsReleased += OnReleased;
         _service.Connected += OnPadChanged;
         _service.Disconnected += OnPadChanged;
         _service.LastUsedStyleChanged += _ => Raise(ControllerChanged);
@@ -104,13 +106,19 @@ public sealed class GamepadInputSource : IInputSource
         _ => null,
     };
 
-    private void OnAction(UiAction action)
+    private void OnAction(UiAction action, bool isRepeat)
     {
         if (_suspended) return;
         if (Map(action) is { } nav)
         {
-            try { ActionRaised?.Invoke(nav); } catch (Exception ex) { Log.Warn("Gamepad action handler failed", ex); }
+            try { ActionRaised?.Invoke(nav, isRepeat); } catch (Exception ex) { Log.Warn("Gamepad action handler failed", ex); }
         }
+    }
+
+    private void OnReleased()
+    {
+        if (_suspended) return;
+        Raise(DirectionReleased);
     }
 
     private void OnPadChanged(GamepadInfo info) => Raise(ControllerChanged);
@@ -122,7 +130,8 @@ public sealed class GamepadInputSource : IInputSource
 
     public void Dispose()
     {
-        _service.ActionTriggered -= OnAction;
+        _service.ActionRepeated -= OnAction;
+        _service.DirectionsReleased -= OnReleased;
         _service.Dispose();
     }
 }

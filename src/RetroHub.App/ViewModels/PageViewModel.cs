@@ -17,8 +17,14 @@ public abstract partial class PageViewModel(UiContext ctx) : ObservableObject
 
     public abstract PageKey Key { get; }
 
-    /// <summary>Optional page ambience (static gradient behind the whole window, e.g. the system accent).</summary>
+    /// <summary>Legacy (v0 ambient gradients): unused by the shell, removed in M6.</summary>
     [ObservableProperty] public partial Avalonia.Media.IBrush? Ambient { get; protected set; }
+
+    /// <summary>What the room behind this page shows (TV light, a system wall, or the plain room).</summary>
+    [ObservableProperty] public partial BackdropSpec Backdrop { get; protected set; } = BackdropSpec.Room;
+
+    /// <summary>The page part of the footer's location sentence ("Pokémon Smaragd-Edition", "66 Spiele"); null = title.</summary>
+    [ObservableProperty] public partial string? Location { get; protected set; }
 
     /// <summary>Page title shown in the top bar.</summary>
     [ObservableProperty] public partial string Title { get; protected set; } = "";

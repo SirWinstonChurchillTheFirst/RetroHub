@@ -6,8 +6,14 @@ namespace RetroHub.App.Input;
 /// </summary>
 public interface IInputSource : IDisposable
 {
-    /// <summary>A UI action (already debounced / with key repeat applied by the source).</summary>
-    event Action<NavAction>? ActionRaised;
+    /// <summary>
+    /// A UI action (already debounced / with key repeat applied by the source). The flag is true for a direction
+    /// that comes from the auto-repeat of a held direction (drives <see cref="NavRepeatTracker"/>).
+    /// </summary>
+    event Action<NavAction, bool>? ActionRaised;
+
+    /// <summary>All held directions were released (ends the auto-repeat state).</summary>
+    event Action? DirectionReleased;
 
     /// <summary>Raised when a controller was connected or disconnected.</summary>
     event Action? ControllerChanged;
@@ -28,7 +34,8 @@ public interface IInputSource : IDisposable
 /// <summary>No controller support (used until the gamepad module is plugged in, and in tests).</summary>
 public sealed class NullInputSource : IInputSource
 {
-    public event Action<NavAction>? ActionRaised { add { } remove { } }
+    public event Action<NavAction, bool>? ActionRaised { add { } remove { } }
+    public event Action? DirectionReleased { add { } remove { } }
     public event Action? ControllerChanged { add { } remove { } }
     public ControllerFamily Controller => ControllerFamily.None;
     public string? ControllerName => null;

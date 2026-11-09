@@ -81,6 +81,12 @@ public sealed class GamepadService : IDisposable
 
     /// <summary>A UI action (raised on the input thread).</summary>
     public event Action<UiAction>? ActionTriggered;
+
+    /// <summary>Like <see cref="ActionTriggered"/>, with a flag: true = auto-repeat of a held direction (input thread).</summary>
+    public event Action<UiAction, bool>? ActionRepeated;
+
+    /// <summary>The last held direction was released (end of an auto-repeat; input thread).</summary>
+    public event Action? DirectionsReleased;
     /// <summary>A pad was plugged in (raised on the input thread; also for pads present at <see cref="Start"/>).
     /// Not raised again for the same pads after <see cref="Resume"/>.</summary>
     public event Action<GamepadInfo>? Connected;
@@ -465,6 +471,10 @@ public sealed class GamepadService : IDisposable
         {
             try { polled(); } catch (Exception ex) { Log.Error("Input: poll hook failed", ex); }
         }
+        if (_translator.DirectionsReleased && DirectionsReleased is { } released)
+        {
+            try { released(); } catch (Exception ex) { Log.Error("Input: release handler failed", ex); }
+        }
         if (actions.Count == 0) return;
 
         if (_translator.LastActivePadId is int id && open.TryGetValue(id, out var active))
@@ -472,7 +482,16 @@ public sealed class GamepadService : IDisposable
             _lastActivePad = id;
             SetLastUsedStyle(active.Style, fromInput: true);
         }
-        foreach (var a in actions) Raise(ActionTriggered, a);
+        var flags = _translator.LastRepeatFlags;
+        for (var i = 0; i < actions.Count; i++)
+        {
+            Raise(ActionTriggered, actions[i]);
+            if (ActionRepeated is { } repeated)
+            {
+                try { repeated(actions[i], i < flags.Count && flags[i]); }
+                catch (Exception ex) { Log.Error($"Input: event handler failed ({actions[i]})", ex); }
+            }
+        }
     }
 
     /// <summary>Finds (and removes) the pre-Suspend entry for a re-opened pad; null when it is a new pad.</summary>

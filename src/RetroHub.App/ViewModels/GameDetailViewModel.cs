@@ -28,7 +28,7 @@ public sealed record ProblemItem(string Text, bool IsBlocking);
 public sealed record FactItem(string Label, string Value)
 {
     /// <summary>Label in upper case (overline style).</summary>
-    public string Caption => Label.ToUpper(Loc.Culture);
+    public string Caption => Label; // no uppercase overlines (DESIGN 3.2)
 }
 
 /// <summary>Game detail: cover, metadata, playtime, emulator + mode choice, problems from the planner, play.</summary>
@@ -104,6 +104,24 @@ public sealed partial class GameDetailViewModel : PageViewModel
         return false;
     }
 
+    /// <summary>"Rollenspiel von Game Freak, 2004. 1 Spieler. Europa." – meta as a sentence, missing parts drop out (DESIGN 3.2).</summary>
+    [ObservableProperty] public partial string MetaSentence { get; private set; } = "";
+    /// <summary>"46 Std. in 41 Sitzungen gespielt, zuletzt heute." / "Noch nie gespielt. Seit … in der Sammlung."</summary>
+    [ObservableProperty] public partial string PlaySentence { get; private set; } = "";
+
+    internal static string BuildMetaSentence(Core.Library.Game g, string systemName)
+    {
+        var first = !string.IsNullOrEmpty(g.Genre) && !string.IsNullOrEmpty(g.Developer) ? Loc.T("detail.meta.by", g.Genre!, g.Developer!)
+            : !string.IsNullOrEmpty(g.Developer) ? Loc.T("detail.meta.byOnly", g.Developer!)
+            : g.Genre ?? "";
+        if (g.Year is { } y) first = first.Length > 0 ? $"{first}, {y}" : y.ToString();
+        var parts = new List<string>();
+        if (first.Length > 0) parts.Add(first + ".");
+        if (g.Players is { } p) parts.Add((p == 1 ? Loc.T("detail.onePlayer") : Loc.T("detail.manyPlayers", p)) + ".");
+        if (!string.IsNullOrEmpty(g.Region)) parts.Add(g.Region!.TrimEnd('.') + ".");
+        return parts.Count > 0 ? string.Join(" ", parts) : systemName + ".";
+    }
+
     public async Task LoadAsync(long gameId)
     {
         var version = ++_version;
@@ -131,7 +149,9 @@ public sealed partial class GameDetailViewModel : PageViewModel
             var def = s.Catalog.GetSystem(g.SystemId);
             System = def == null ? null : new SystemItemViewModel(def, data.Stats.GamesPerSystem.GetValueOrDefault(def.Id), data.Stats.PlaySecondsPerSystem.GetValueOrDefault(def.Id));
             Title = g.DisplayTitle;
-            Ambient = System?.AmbientBrush;
+            Location = g.DisplayTitle;
+            // TV light of the game above the stage board; the glow sits at the box (left)
+            Backdrop = new BackdropSpec(BackdropKind.TvLight, Game.CoverPath, g.SystemId, Game.Accent, g.Id, StageShare: 0.63, GlowX: 0.2, GlowY: 0.36);
             Description = string.IsNullOrWhiteSpace(g.Description) ? Loc.T("detail.noDescription") : g.Description!;
             HasDescription = !string.IsNullOrWhiteSpace(g.Description);
             var facts = new List<FactItem>();
@@ -142,6 +162,12 @@ public sealed partial class GameDetailViewModel : PageViewModel
             if (g.Players != null) facts.Add(new FactItem(Loc.T("detail.players"), g.Players == 1 ? Loc.T("detail.onePlayer") : Loc.T("detail.manyPlayers", g.Players)));
             if (!string.IsNullOrEmpty(g.Region)) facts.Add(new FactItem(Loc.T("detail.region"), g.Region!));
             Facts = facts;
+            MetaSentence = BuildMetaSentence(g, Game.SystemName);
+            PlaySentence = g.PlayCount == 0 || g.LastPlayedUtc == null
+                ? Loc.T("detail.sentence.never", Fmt.Date(g.AddedUtc))
+                : g.PlayCount == 1
+                    ? Loc.T("detail.sentence.once", Fmt.PlayTime(g.PlaySeconds), Fmt.LastPlayed(g.LastPlayedUtc))
+                    : Loc.T("detail.sentence.played", Fmt.PlayTime(g.PlaySeconds), g.PlayCount, Fmt.LastPlayed(g.LastPlayedUtc));
             PlayTime = Fmt.PlayTime(g.PlaySeconds);
             LastPlayed = Fmt.LastPlayed(g.LastPlayedUtc);
             PlayCount = g.PlayCount == 0 ? Loc.T("detail.neverStarted") : g.PlayCount == 1 ? Loc.T("detail.startedOnce") : Loc.T("detail.startedTimes", g.PlayCount);

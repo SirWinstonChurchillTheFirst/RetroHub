@@ -6,6 +6,11 @@
             xmlns:l="using:RetroHub.App.Localization"
             x:Class="RetroHub.App.Views.Pages.LibraryPage"
             x:DataType="vm:LibraryViewModel">
+  <!--
+    Library (M1 foundation state): no picture background, no headline – the count lives in the footer. A ticker row
+    (system filter) with the tools on the right, then the shelf grid (boxes on 10 px shelf edges, one focus layer).
+    The shelf mirror, the wall banner and the preview list follow in M3 (DESIGN 7.2).
+  -->
   <p:PageBase.Resources>
     <DataTemplate x:Key="GridTile" x:DataType="vm:GameItemViewModel">
       <c:GameTile />
@@ -15,27 +20,43 @@
     </DataTemplate>
   </p:PageBase.Resources>
 
-  <Grid RowDefinitions="Auto,Auto,*">
-    <!-- title + toolbar -->
-    <Grid ColumnDefinitions="*,Auto" Margin="40,4,40,0">
-      <StackPanel Spacing="2" VerticalAlignment="Bottom">
-        <TextBlock Text="{l:T nav.library}" Classes="title" />
-        <TextBlock Text="{Binding CountText}" Classes="meta" />
-      </StackPanel>
-      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Bottom">
+  <Grid RowDefinitions="64,*">
+    <!-- ticker (system filter) + tools -->
+    <Grid ColumnDefinitions="*,Auto" Margin="{DynamicResource RhPageInsetX}">
+      <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" VerticalAlignment="Center" Margin="-10,0,24,0">
+        <ItemsControl ItemsSource="{Binding Chips}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="12" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:FilterChip">
+              <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}"
+                      Command="{Binding $parent[p:PageBase].((vm:LibraryViewModel)DataContext).SelectChipCommand}" CommandParameter="{Binding}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="17" LetterSpacing="0.6" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Count}" Classes="number" FontSize="15" Opacity="0.7" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <TextBox Name="Search" Classes="search" Width="320" Text="{Binding SearchText}" PlaceholderText="{l:T library.searchPlaceholder}">
           <TextBox.InnerRightContent>
-            <Button Theme="{StaticResource RhGhostButton}" Width="30" Height="30" MinHeight="0" Padding="0" Margin="0,0,6,0" Focusable="False"
+            <Button Theme="{StaticResource RhGhostButton}" Width="32" Height="32" MinHeight="0" Padding="0" Margin="0,0,6,0" Focusable="False"
                     Command="{Binding ClearSearchCommand}" IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-              <c:RhIcon Data="{StaticResource Icon.Close}" Width="14" Height="14" />
+              <c:RhIcon Data="{StaticResource Icon.Close}" Width="16" Height="16" />
             </Button>
           </TextBox.InnerRightContent>
         </TextBox>
-        <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}" Width="196" ToolTip.Tip="{l:T library.sort}">
+        <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}" Width="210" ToolTip.Tip="{l:T library.sort}">
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="vm:SortOption">
               <StackPanel Orientation="Horizontal" Spacing="10">
-                <c:RhIcon Data="{StaticResource Icon.Sort}" Width="16" Height="16" Foreground="{DynamicResource RhText3Brush}" />
+                <c:RhIcon Data="{StaticResource Icon.Sort}" Width="18" Height="18" />
                 <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
               </StackPanel>
             </DataTemplate>
@@ -43,72 +64,35 @@
         </ComboBox>
         <ToggleButton Name="FavToggle" IsChecked="{Binding FavoritesOnly}" Theme="{StaticResource RhToggleChip}" ToolTip.Tip="{l:T library.favoritesOnly}">
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <c:RhIcon Data="{StaticResource Icon.Star}" Width="16" Height="16" />
+            <c:RhIcon Data="{StaticResource Icon.Star}" Width="20" Height="20" />
             <TextBlock Text="{l:T library.favorites}" VerticalAlignment="Center" />
           </StackPanel>
         </ToggleButton>
-        <Border Classes="chip" Padding="4" CornerRadius="14">
-          <StackPanel Orientation="Horizontal" Spacing="2">
-            <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsGridView}" Command="{Binding ShowGridCommand}" Width="40" Padding="0"
-                    BorderThickness="0" ToolTip.Tip="{l:T library.gridView}">
-              <c:RhIcon Data="{StaticResource Icon.ViewGrid}" Width="16" Height="16" />
-            </Button>
-            <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsListView}" Command="{Binding ShowListCommand}" Width="40" Padding="0"
-                    BorderThickness="0" ToolTip.Tip="{l:T library.listView}">
-              <c:RhIcon Data="{StaticResource Icon.ViewList}" Width="16" Height="16" />
-            </Button>
-          </StackPanel>
-        </Border>
+        <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsGridView}" Command="{Binding ShowGridCommand}" Width="44" Padding="0"
+                ToolTip.Tip="{l:T library.gridView}">
+          <c:RhIcon Data="{StaticResource Icon.Grid}" Width="22" Height="22" />
+        </Button>
+        <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsListView}" Command="{Binding ShowListCommand}" Width="44" Padding="0"
+                ToolTip.Tip="{l:T library.listView}">
+          <c:RhIcon Data="{StaticResource Icon.List}" Width="22" Height="22" />
+        </Button>
       </StackPanel>
     </Grid>
 
-    <!-- system filter chips -->
-    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,20,0,0">
-      <ItemsControl ItemsSource="{Binding Chips}" Margin="40,4,40,4">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-            <StackPanel Orientation="Horizontal" Spacing="8" />
-          </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:FilterChip">
-            <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}"
-                    Command="{Binding $parent[p:PageBase].((vm:LibraryViewModel)DataContext).SelectChipCommand}" CommandParameter="{Binding}">
-              <StackPanel Orientation="Horizontal" Spacing="7">
-                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding Count}" VerticalAlignment="Center" Opacity="0.6" FontSize="12" />
-              </StackPanel>
-            </Button>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </ScrollViewer>
-
-    <!-- covers -->
-    <c:CoverGrid Name="Covers" Grid.Row="2" Margin="0,8,0,0" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource GridTile}"
-                 IsVisible="{Binding IsGridView}" ItemWidth="168" Spacing="24" RowSpacing="26" CoverAspect="1.4" CaptionHeight="54"
-                 ContentPadding="40,14,40,32" />
+    <!-- shelf grid: 1 : 1.25 slots, boxes stand on 10 px shelf edges -->
+    <c:CoverGrid Name="Covers" Grid.Row="1" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource GridTile}"
+                 IsVisible="{Binding IsGridView}" ItemWidth="176" Spacing="28" RowSpacing="24" CoverAspect="1.25" CaptionHeight="92" MaxStretch="1.15"
+                 ContentPadding="{DynamicResource RhGridInset}" />
     <!-- list -->
-    <c:CoverGrid Name="Rows" Grid.Row="2" Margin="0,8,0,0" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource ListRow}"
-                 IsVisible="{Binding IsListView}" ItemWidth="4000" MaxStretch="1" Spacing="0" RowSpacing="4" CoverAspect="0" CaptionHeight="68"
-                 ContentPadding="34,6,34,32">
-      <c:CoverGrid.Header>
-        <Grid ColumnDefinitions="44,*,190,150,130,28" Margin="10,0,16,10">
-          <TextBlock Grid.Column="1" Margin="16,0,0,0" Text="{l:T library.col.title, Upper=True}" Classes="label" />
-          <TextBlock Grid.Column="2" Text="{l:T library.col.system, Upper=True}" Classes="label" />
-          <TextBlock Grid.Column="3" Text="{l:T library.col.lastPlayed, Upper=True}" Classes="label" />
-          <TextBlock Grid.Column="4" Text="{l:T library.col.playTime, Upper=True}" Classes="label" />
-        </Grid>
-      </c:CoverGrid.Header>
-    </c:CoverGrid>
+    <c:CoverGrid Name="Rows" Grid.Row="1" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource ListRow}" ShowBoard="False"
+                 IsVisible="{Binding IsListView}" ItemWidth="4000" MaxStretch="1" Spacing="0" RowSpacing="0" CoverAspect="0" CaptionHeight="64"
+                 ContentPadding="{DynamicResource RhPageInset}" />
 
-    <!-- empty state -->
-    <StackPanel Grid.Row="2" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="0,0,0,80">
-      <Border Width="64" Height="64" CornerRadius="20" Background="{DynamicResource RhAccentSoftBrush}" HorizontalAlignment="Center">
-        <c:RhIcon Data="{StaticResource Icon.Search}" Width="28" Height="28" Foreground="{DynamicResource RhAccentTextBrush}" />
-      </Border>
+    <!-- empty state: line drawing + one sentence + the way out -->
+    <StackPanel Grid.Row="1" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Margin="0,0,0,80">
+      <c:RhIcon Data="{StaticResource Icon.Library}" Width="64" Height="64" Foreground="{DynamicResource RhText2Brush}" HorizontalAlignment="Center" StrokeThickness="1.5" />
       <TextBlock Text="{Binding EmptyText}" Classes="h2" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,8,0,0" />
-      <TextBlock Text="{l:T library.emptyHint}" Classes="body" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="440" />
+      <TextBlock Text="{l:T library.emptyHint}" Classes="read" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="520" />
     </StackPanel>
   </Grid>
 </p:PageBase>

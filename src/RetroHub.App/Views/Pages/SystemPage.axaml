@@ -6,46 +6,41 @@
             xmlns:l="using:RetroHub.App.Localization"
             x:Class="RetroHub.App.Views.Pages.SystemPage"
             x:DataType="vm:SystemViewModel">
+  <!-- Systemseite (M1 foundation state): the page ground is the system's wall (RoomBackdrop); banner and motif follow in M5 (DESIGN 7.5). -->
   <p:PageBase.Resources>
     <DataTemplate x:Key="GridTile" x:DataType="vm:GameItemViewModel">
       <c:GameTile />
     </DataTemplate>
   </p:PageBase.Resources>
   <Panel>
-    <c:CoverGrid Name="Covers" ItemsSource="{Binding Games}" ItemTemplate="{StaticResource GridTile}" ItemWidth="168" Spacing="24" RowSpacing="26"
-                 CoverAspect="1.4" CaptionHeight="54" ContentPadding="40,4,40,32">
+    <c:CoverGrid Name="Covers" ItemsSource="{Binding Games}" ItemTemplate="{StaticResource GridTile}" ItemWidth="176" Spacing="28" RowSpacing="24"
+                 CoverAspect="1.25" CaptionHeight="92" MaxStretch="1.15" ContentPadding="{DynamicResource RhGridInset}">
       <c:CoverGrid.Header>
-        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,26">
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,48">
           <StackPanel Spacing="6">
             <StackPanel Orientation="Horizontal" Spacing="10">
-              <Border Classes="chip" Background="#1FFFFFFF">
-                <TextBlock Text="{Binding System.ShortName}" />
-              </Border>
-              <Border Classes="chip">
-                <TextBlock Text="{Binding System.CountText}" />
-              </Border>
+              <Border Width="4" Height="18" Background="{Binding System.AccentBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding System.ShortName}" Classes="code" Foreground="{Binding System.LightBrush}" VerticalAlignment="Center" />
             </StackPanel>
-            <TextBlock Text="{Binding System.Name}" Classes="display" Margin="0,6,0,0" />
-            <TextBlock Text="{Binding FactsText}" Classes="meta" FontSize="14" Foreground="{DynamicResource RhText2Brush}" />
+            <TextBlock Text="{Binding System.Name}" Classes="poster" TextWrapping="Wrap" MaxLines="2" Margin="0,6,0,0" />
+            <TextBlock Classes="read-l" c:Sentence.Text="{Binding SentenceText}" />
           </StackPanel>
-          <Border Grid.Column="1" Classes="card" Padding="20,16" VerticalAlignment="Bottom" MinWidth="320">
-            <StackPanel Spacing="10">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <Ellipse Width="9" Height="9" Fill="{DynamicResource RhSuccessBrush}" IsVisible="{Binding EmulatorReady}" VerticalAlignment="Center" />
-                <Ellipse Width="9" Height="9" Fill="{DynamicResource RhWarningBrush}" IsVisible="{Binding !EmulatorReady}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding EmulatorText}" FontSize="13.5" FontWeight="SemiBold" MaxWidth="360" TextWrapping="Wrap" />
-              </StackPanel>
-              <TextBlock Classes="meta">
-                <Run Text="{l:T system.folders}" /><Run Text=" " /><Run Text="{Binding FoldersText}" />
-              </TextBlock>
-              <TextBlock Classes="meta" TextWrapping="Wrap" MaxWidth="360">
-                <Run Text="{l:T system.extensions}" /><Run Text=" " /><Run Text="{Binding ExtensionsText}" />
-              </TextBlock>
+          <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Bottom" MaxWidth="440">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Ellipse Width="8" Height="8" Fill="{DynamicResource RhSuccessBrush}" IsVisible="{Binding EmulatorReady}" VerticalAlignment="Center" />
+              <c:RhIcon Data="{StaticResource Icon.Warning}" Width="20" Height="20" Foreground="{DynamicResource RhWarningBrush}" IsVisible="{Binding !EmulatorReady}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding EmulatorText}" Classes="ui" FontSize="16" TextWrapping="Wrap" MaxWidth="400" VerticalAlignment="Center" />
             </StackPanel>
-          </Border>
+            <TextBlock Classes="meta" TextWrapping="Wrap">
+              <Run Text="{l:T system.folders}" /><Run Text=" " /><Run Text="{Binding FoldersText}" />
+            </TextBlock>
+            <TextBlock Classes="meta" TextWrapping="Wrap">
+              <Run Text="{l:T system.extensions}" /><Run Text=" " /><Run Text="{Binding ExtensionsText}" />
+            </TextBlock>
+          </StackPanel>
         </Grid>
       </c:CoverGrid.Header>
     </c:CoverGrid>
-    <TextBlock Text="{l:T system.empty}" Classes="body" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    <TextBlock Text="{l:T system.empty}" Classes="read" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" />
   </Panel>
 </p:PageBase>

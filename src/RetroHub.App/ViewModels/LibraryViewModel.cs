@@ -156,6 +156,7 @@ public sealed partial class LibraryViewModel : PageViewModel
         UpdateChips(result.Stats);
         var total = result.Stats.GameCount;
         CountText = Items.Count == total ? Loc.T("library.count", total) : Loc.T("library.countFiltered", Items.Count, total);
+        Location = CountText; // the collection count lives in the footer's location sentence (DESIGN 7.0)
         IsEmpty = Items.Count == 0;
         EmptyText = total == 0 ? Loc.T("library.emptyLibrary") : Loc.T("library.noMatches");
         IsLoaded = true;

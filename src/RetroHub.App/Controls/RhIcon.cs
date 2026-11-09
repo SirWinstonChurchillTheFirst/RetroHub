@@ -6,7 +6,7 @@ using Avalonia.Media;
 namespace RetroHub.App.Controls;
 
 /// <summary>
-/// Vector icon drawn from a <see cref="Geometry"/> authored on a 24×24 grid (Lucide-style strokes; no icon fonts).
+/// Vector icon drawn from a <see cref="Geometry"/> authored on a 24×24 grid ("Gefaste Linie"; no icon fonts).
 /// Scales to its size; colour follows the inherited Foreground (TextElement.Foreground) unless set.
 /// </summary>
 public sealed class RhIcon : Control
@@ -18,7 +18,7 @@ public sealed class RhIcon : Control
         TextElement.ForegroundProperty.AddOwner<RhIcon>();
 
     public static readonly StyledProperty<double> StrokeThicknessProperty =
-        AvaloniaProperty.Register<RhIcon, double>(nameof(StrokeThickness), 1.9);
+        AvaloniaProperty.Register<RhIcon, double>(nameof(StrokeThickness), 2.0);
 
     /// <summary>Fill the geometry instead of stroking it (play triangle, filled star).</summary>
     public static readonly StyledProperty<bool> FilledProperty =
@@ -47,10 +47,11 @@ public sealed class RhIcon : Control
         var dy = (Bounds.Height - 24 * scale) / 2;
         using (context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(dx, dy)))
         {
+            // "Gefaste Linie": square caps, mitre joins (DESIGN 5.1)
             if (Filled)
-                context.DrawGeometry(brush, new Pen(brush, 1.2, lineJoin: PenLineJoin.Round), data);
+                context.DrawGeometry(brush, new Pen(brush, 1.0, lineJoin: PenLineJoin.Miter), data);
             else
-                context.DrawGeometry(null, new Pen(brush, StrokeThickness, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round), data);
+                context.DrawGeometry(null, new Pen(brush, StrokeThickness, lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter), data);
         }
     }
 }
