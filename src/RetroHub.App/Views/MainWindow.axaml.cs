@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using RetroHub.App.Controls;
 using RetroHub.App.Input;
+using RetroHub.App.Services;
 using RetroHub.App.Theming;
 using RetroHub.App.ViewModels;
 using RetroHub.App.Views.Pages;
@@ -67,14 +68,20 @@ public partial class MainWindow : Window
         {
             if (e.PropertyName != nameof(DialogService.Current)) return;
             OnOverlayChanged();
+            UpdateGameObscured();
             Dispatcher.UIThread.Post(FocusDialog, DispatcherPriority.Loaded);
         };
-        vm.Launch.PropertyChanged += (_, e) =>
+        vm.Launch.PropertyChanged += (_, e) => OnLaunchChanged(e.PropertyName);
+        vm.Launch.Returned += OnGameReturned;
+        GameScreen.FullscreenRequested += () => SetFullscreen(WindowState != WindowState.FullScreen);
+        // toasts lie above the embedded game: the game screen cuts a hole for them into its native host (airspace)
+        GameScreen.SetHoleSource(ToastHost);
+        ToastHost.SizeChanged += (_, _) => Dispatcher.UIThread.Post(GameScreen.UpdateHoles, DispatcherPriority.Render);
+        Closing += (_, _) =>
         {
-            if (e.PropertyName != nameof(LaunchCoordinator.Phase)) return;
-            OnOverlayChanged();
-            if (vm.Launch.IsRunning)
-                Dispatcher.UIThread.Post(() => StopButton.Focus(NavigationMethod.Directional), DispatcherPriority.Loaded);
+            // a game inside RetroHub would go down with the window: it goes back to its own window and runs on
+            // (the session service keeps session.json, the next start re-attaches it)
+            if (vm.Launch.IsEmbedded) GameScreen.ReleaseForClose();
         };
         vm.Ctx.Services.Input.ActionRaised += a => Dispatcher.UIThread.Post(() =>
         {
@@ -86,10 +93,19 @@ public partial class MainWindow : Window
             Execute(a);
         });
 
+        var openedOnce = false;
         Opened += (_, _) =>
         {
+            // raised again when the window is shown after Hide() (fullscreen hand-off): start-up work only once
+            if (openedOnce) return;
+            openedOnce = true;
             if (vm.Ctx.Services.Settings.Current.StartFullscreen) SetFullscreen(true);
             if (vm.CurrentPage == null) vm.Navigator.Navigate(PageKey.Home);
+            // a game still running from before a crash/close (re-attached by the session service): show it
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (vm.Ctx.Services.Sessions.Current is { } running) vm.Launch.AttachRecovered(running);
+            }, DispatcherPriority.Background);
         };
         PropertyChanged += (_, e) =>
         {
@@ -105,11 +121,94 @@ public partial class MainWindow : Window
     /// <summary>Brings the window to the front (second start of RetroHub).</summary>
     public void BringToFront()
     {
+        // a fullscreen emulator owns the screen right now: RetroHub comes back when it exits
+        if (_hiddenForGame) return;
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Show();
         Activate();
         Topmost = true;
         Topmost = false;
+    }
+
+    // ================= running game (launch coordinator) =================
+
+    private bool _hiddenForGame;
+    private bool _focusPlayAfterReturn;
+
+    internal GameScreen GameScreenControl => GameScreen;
+
+    private void OnLaunchChanged(string? property)
+    {
+        var launch = _vm.Launch;
+        switch (property)
+        {
+            case nameof(LaunchCoordinator.Phase):
+                OnOverlayChanged();
+                UpdateGameObscured();
+                if (launch.Phase == LaunchPhase.Running) Dispatcher.UIThread.Post(FocusRunningGame, DispatcherPriority.Loaded);
+                break;
+            case nameof(LaunchCoordinator.Presentation):
+                // e.g. "Eigenes Fenster": the running overlay replaces the game screen - its button gets the focus
+                if (launch.IsRunning) Dispatcher.UIThread.Post(FocusRunningGame, DispatcherPriority.Loaded);
+                break;
+            case nameof(LaunchCoordinator.IsShellHidden):
+                if (launch.IsShellHidden) HideForGame();
+                else ShowAfterGame();
+                break;
+        }
+    }
+
+    private void FocusRunningGame()
+    {
+        var launch = _vm.Launch;
+        if (!launch.IsRunning || _vm.Dialogs.Current != null) return;
+        if (launch.ShowRunningOverlay) StopButton.Focus(NavigationMethod.Directional);
+        else if (launch.ShowGameScreen)
+        {
+            // nothing destructive under the keyboard focus (Enter must not quit the game); the keys go to the game when ready
+            GameScreen.Focus(NavigationMethod.Directional);
+            GameScreen.FocusGameSoon();
+        }
+    }
+
+    /// <summary>The start transition or a dialog lies above the embedded game: the game is masked meanwhile (airspace).</summary>
+    private void UpdateGameObscured() => GameScreen.SetObscured(_vm.Dialogs.Current != null || _vm.Launch.IsStarting);
+
+    /// <summary>Fullscreen hand-off: the emulator owns the screen; RetroHub hides (no rendering, no animations).</summary>
+    private void HideForGame()
+    {
+        if (_hiddenForGame) return;
+        _hiddenForGame = true;
+        // RetroHub is the foreground window right now, so it may hand the foreground to the emulator
+        var emu = _vm.Launch.HandoffWindow;
+        if (emu != 0 && OperatingSystem.IsWindows()) GameScreenNative.SetForegroundWindow(emu);
+        Log.Info("Fullscreen hand-off: hiding the RetroHub window");
+        Hide();
+        TestHooks.Report("shell-hidden");
+    }
+
+    /// <summary>Back from a fullscreen game (or the hard-kill question needs the window): shown, activated, in front.</summary>
+    private void ShowAfterGame()
+    {
+        if (!_hiddenForGame) return;
+        _hiddenForGame = false;
+        Log.Info("Showing the RetroHub window again");
+        Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+        var own = TryGetPlatformHandle()?.Handle ?? 0;
+        if (own != 0) RetroHub.Core.Emulation.Windows.Foreground.BringToFront(own);
+        Motion.Refresh();
+        if (TestHooks.Enabled)
+            Dispatcher.UIThread.Post(() => TestHooks.Report("shell-shown", ("visible", IsVisible), ("active", IsActive),
+                ("foreground", OperatingSystem.IsWindows() && GameScreenNative.GetForegroundWindow() == own)), DispatcherPriority.Background);
+    }
+
+    private void OnGameReturned(GameItemViewModel? item, Core.Emulation.IGameSession session)
+    {
+        ShowAfterGame();
+        // back at the game detail: the controller is on "Spielen" again
+        _focusPlayAfterReturn = true;
     }
 
     // ================= overlays (dialog, launch) =================
@@ -135,6 +234,11 @@ public partial class MainWindow : Window
         {
             if (_overlayOpen) return;
             var method = _pointerMode ? NavigationMethod.Pointer : NavigationMethod.Directional;
+            if (_focusPlayAfterReturn)
+            {
+                _focusPlayAfterReturn = false;
+                if (Pages.Current is GameDetailPage detail && detail.FocusDefault()) return;
+            }
             if (restore is Visual rv && IsInside(rv, Shell) && restore.IsEffectivelyVisible && restore.IsEffectivelyEnabled && restore.Focus(method)) return;
             // the element is gone (e.g. the game ended on another page): keep the controller usable
             if (FocusManager?.GetFocusedElement() is not Visual f || !IsInside(f, Shell) || f is InputElement { IsEffectivelyVisible: false })
@@ -161,6 +265,7 @@ public partial class MainWindow : Window
         var full = WindowState == WindowState.FullScreen;
         _vm.IsFullscreen = full;
         CaptionButtons.IsVisible = !full;
+        GameScreen.SetFullscreen(full);
         if (this.TryFindResource(WindowState == WindowState.Maximized ? "Glyph.Restore" : "Glyph.Maximize", out var glyph))
             MaximizeButton.Tag = glyph;
     }
@@ -277,7 +382,10 @@ public partial class MainWindow : Window
         if (_vm.Launch.IsActive)
         {
             if (action == NavAction.Accept) return Invoke(focused);
-            return true; // the running game owns the controller; only "Stop" is reachable
+            // the game screen's bar: left/right between its buttons
+            if (action is NavAction.Left or NavAction.Right && focused is Visual lv && IsInside(lv, LaunchOverlay))
+                fm?.FindNextElement(ToDirection(action), new FindNextElementOptions { SearchRoot = LaunchOverlay })?.Focus(NavigationMethod.Directional);
+            return true; // the running game owns the controller; only the overlay's buttons are reachable
         }
 
         var page = _vm.CurrentPage;

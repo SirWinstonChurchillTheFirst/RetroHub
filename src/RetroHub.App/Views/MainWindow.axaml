@@ -150,6 +150,63 @@
       </Grid>
     </Grid>
 
+    <!-- ============ Launch overlay ("Spiel wird gestartet", embedded game screen, running state) ============ -->
+    <!-- modal: Tab cycles inside the overlay and never reaches the shell behind it -->
+    <Panel Name="LaunchOverlay" IsVisible="{Binding Launch.IsActive}" KeyboardNavigation.TabNavigation="Cycle">
+      <Border Background="#F20B0A1A" />
+      <Border Background="{Binding Launch.Game.AccentBrush}" Opacity="0.10" />
+      <Border Background="{DynamicResource RhAmbientBrushA}" />
+      <!-- embedded: the emulator window lives in the game screen (masked while the start transition lies above it) -->
+      <Panel IsVisible="{Binding Launch.ShowGameScreen}">
+        <c:GameScreen Name="GameScreen" DataContext="{Binding Launch}" />
+      </Panel>
+      <!-- running in its own window (windowed, released, recovered, or fullscreen without a window) -->
+      <Grid IsVisible="{Binding Launch.ShowRunningOverlay}" RowDefinitions="Auto,*,Auto" Margin="48,72,48,40">
+        <StackPanel HorizontalAlignment="Center" Spacing="6">
+          <TextBlock Text="{l:T launch.running, Upper=True}" Classes="label accent" HorizontalAlignment="Center" />
+          <TextBlock Text="{Binding Launch.Game.Title}" Classes="title" HorizontalAlignment="Center" TextAlignment="Center" />
+          <TextBlock HorizontalAlignment="Center" Classes="meta">
+            <Run Text="{Binding Launch.EmulatorName}" /><Run Text="  ·  " /><Run Text="{Binding Launch.ModeText}" /><Run Text="  ·  " /><Run Text="{Binding Launch.ElapsedText}" />
+          </TextBlock>
+          <TextBlock Text="{Binding Launch.StatusNote}" Classes="meta" Foreground="{DynamicResource RhWarningBrush}" HorizontalAlignment="Center" />
+        </StackPanel>
+        <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+          <c:RhIcon Data="{StaticResource Icon.Fullscreen}" Width="44" Height="44" Foreground="{DynamicResource RhText3Brush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{l:T launch.externalHint}" Classes="body" TextAlignment="Center" MaxWidth="480" />
+          <Border Classes="chip warn" HorizontalAlignment="Center" Margin="0,8,0,0" IsVisible="{Binding Launch.WindowMissing}">
+            <TextBlock Text="{l:T launch.fullscreen.noWindow.hint}" TextWrapping="Wrap" MaxWidth="520" TextAlignment="Center" />
+          </Border>
+          <Border Classes="chip" HorizontalAlignment="Center" Margin="0,8,0,0" IsVisible="{Binding Launch.IsRecovered}">
+            <TextBlock Text="{l:T launch.recovered.hint}" TextWrapping="Wrap" MaxWidth="520" TextAlignment="Center" />
+          </Border>
+        </StackPanel>
+        <Button Name="StopButton" Grid.Row="2" Theme="{StaticResource RhDangerButton}" HorizontalAlignment="Center" Command="{Binding Launch.StopCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <c:RhIcon Data="{StaticResource Icon.Stop}" Width="16" Height="16" />
+            <TextBlock Text="{l:T launch.stop}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+      <!-- starting (above the masked game screen) -->
+      <Panel IsVisible="{Binding Launch.IsStarting}">
+        <Border Background="#F20B0A1A" />
+        <Border Background="{Binding Launch.Game.AccentBrush}" Opacity="0.10" />
+        <Border Background="{DynamicResource RhAmbientBrushA}" />
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
+          <Border Width="200" Height="280" CornerRadius="20" ClipToBounds="True" HorizontalAlignment="Center" BoxShadow="{DynamicResource RhFocusGlow}">
+            <c:CoverArt Source="{Binding Launch.Game.CoverPath}" Title="{Binding Launch.Game.Title}" Badge="{Binding Launch.Game.SystemShort}"
+                        Accent="{Binding Launch.Game.Accent}" ShowTitle="True" />
+          </Border>
+          <TextBlock Text="{l:T launch.starting, Upper=True}" Classes="label accent" HorizontalAlignment="Center" Margin="0,36,0,8" />
+          <TextBlock Text="{Binding Launch.Game.Title}" Classes="title" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="720" TextWrapping="Wrap" />
+          <TextBlock HorizontalAlignment="Center" Classes="meta" Margin="0,8,0,0">
+            <Run Text="{Binding Launch.EmulatorName}" /><Run Text="  ·  " /><Run Text="{Binding Launch.ModeText}" />
+          </TextBlock>
+          <ProgressBar IsIndeterminate="{Binding Launch.IsStarting}" Width="220" Margin="0,28,0,0" HorizontalAlignment="Center" />
+        </StackPanel>
+      </Panel>
+    </Panel>
+
     <!-- ============ Toasts ============ -->
     <ItemsControl Name="ToastHost" ItemsSource="{Binding Toasts.Items}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,28,72" Width="380">
       <ItemsControl.ItemsPanel>
@@ -183,50 +240,6 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-
-    <!-- ============ Launch overlay ("Spiel wird gestartet" + running state) ============ -->
-    <!-- modal: Tab cycles inside the overlay and never reaches the shell behind it -->
-    <Panel Name="LaunchOverlay" IsVisible="{Binding Launch.IsActive}" KeyboardNavigation.TabNavigation="Cycle">
-      <Border Background="#F20B0A1A" />
-      <Border Background="{Binding Launch.Game.AccentBrush}" Opacity="0.10" />
-      <Border Background="{DynamicResource RhAmbientBrushA}" />
-      <!-- starting -->
-      <StackPanel IsVisible="{Binding Launch.IsStarting}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
-        <Border Width="200" Height="280" CornerRadius="20" ClipToBounds="True" HorizontalAlignment="Center" BoxShadow="{DynamicResource RhFocusGlow}">
-          <c:CoverArt Source="{Binding Launch.Game.CoverPath}" Title="{Binding Launch.Game.Title}" Badge="{Binding Launch.Game.SystemShort}"
-                      Accent="{Binding Launch.Game.Accent}" ShowTitle="True" />
-        </Border>
-        <TextBlock Text="{l:T launch.starting, Upper=True}" Classes="label accent" HorizontalAlignment="Center" Margin="0,36,0,8" />
-        <TextBlock Text="{Binding Launch.Game.Title}" Classes="title" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="720" TextWrapping="Wrap" />
-        <TextBlock HorizontalAlignment="Center" Classes="meta" Margin="0,8,0,0">
-          <Run Text="{Binding Launch.EmulatorName}" /><Run Text="  ·  " /><Run Text="{Binding Launch.ModeText}" />
-        </TextBlock>
-        <ProgressBar IsIndeterminate="True" Width="220" Margin="0,28,0,0" HorizontalAlignment="Center" />
-      </StackPanel>
-      <!-- running -->
-      <Grid IsVisible="{Binding Launch.IsRunning}" RowDefinitions="Auto,*,Auto" Margin="48,72,48,40">
-        <StackPanel HorizontalAlignment="Center" Spacing="6">
-          <TextBlock Text="{l:T launch.running, Upper=True}" Classes="label accent" HorizontalAlignment="Center" />
-          <TextBlock Text="{Binding Launch.Game.Title}" Classes="title" HorizontalAlignment="Center" TextAlignment="Center" />
-          <TextBlock HorizontalAlignment="Center" Classes="meta">
-            <Run Text="{Binding Launch.EmulatorName}" /><Run Text="  ·  " /><Run Text="{Binding Launch.ModeText}" /><Run Text="  ·  " /><Run Text="{Binding Launch.ElapsedText}" />
-          </TextBlock>
-        </StackPanel>
-        <!-- embedded mode: the emulator window will be re-parented here (placeholder for now) -->
-        <c:GameScreenHost Name="GameScreen" Grid.Row="1" Margin="0,28" IsVisible="{Binding Launch.IsEmbedded}"
-                          GameTitle="{l:T launch.embedPlaceholder.title}" Detail="{l:T launch.embedPlaceholder.detail}" />
-        <StackPanel Grid.Row="1" IsVisible="{Binding !Launch.IsEmbedded}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-          <c:RhIcon Data="{StaticResource Icon.Fullscreen}" Width="44" Height="44" Foreground="{DynamicResource RhText3Brush}" HorizontalAlignment="Center" />
-          <TextBlock Text="{l:T launch.externalHint}" Classes="body" TextAlignment="Center" MaxWidth="460" />
-        </StackPanel>
-        <Button Name="StopButton" Grid.Row="2" Theme="{StaticResource RhDangerButton}" HorizontalAlignment="Center" Command="{Binding Launch.StopCommand}">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <c:RhIcon Data="{StaticResource Icon.Stop}" Width="16" Height="16" />
-            <TextBlock Text="{l:T launch.stop}" VerticalAlignment="Center" />
-          </StackPanel>
-        </Button>
-      </Grid>
-    </Panel>
 
     <!-- ============ Dialog overlay ============ -->
     <Panel Name="DialogOverlay" IsVisible="{Binding Dialogs.IsOpen}">

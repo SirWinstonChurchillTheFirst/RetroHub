@@ -50,7 +50,10 @@ public partial class App : Application
             try { SafeFile.SweepTemps(paths.Config); } catch (Exception ex) { Log.Warn("Temp sweep failed", ex); }
             InitializeUi(settings.Current, paths.Resources);
 
-            var forceDemo = Program.Args.Any(a => string.Equals(a, "--demo", StringComparison.OrdinalIgnoreCase));
+            // --demo, --launch <path-or-id> [--launch-mode …] [--emulator …], dev-only --test-* switches
+            var options = CommandLineOptions.Parse(Program.Args, Environment.CurrentDirectory);
+            TestHooks.Configure(options.Test);
+            var forceDemo = options.Demo;
             var services = AppServices.Create(paths, settings, ui, forceDemo);
             try
             {
@@ -64,8 +67,35 @@ public partial class App : Application
             desktop.MainWindow = window;
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
             desktop.Exit += (_, _) => Shutdown();
-            Program.Instance?.Listen(() => Dispatcher.UIThread.Post(window.BringToFront));
-            window.Opened += (_, _) => Dispatcher.UIThread.Post(() => _main?.StartBackgroundTasks(), DispatcherPriority.Background);
+            TestHooks.Attach(_ctx.Launch, window, () => window.GameScreenControl.ReleaseToDesktop(), window.SetFullscreen, _ctx);
+            var ctx = _ctx;
+            // a second start: front, then whatever it asked for (e.g. --launch from a desktop shortcut)
+            Program.Instance?.Listen(() => Dispatcher.UIThread.Post(() =>
+            {
+                window.BringToFront();
+                foreach (var request in SingleInstance.TakeRequests(Program.RequestFolder(paths)))
+                {
+                    var forwarded = CommandLineOptions.Parse(request.Args, request.WorkingDirectory);
+                    if (forwarded.Launch == null) continue;
+                    Log.Info("Launch request forwarded by a second start");
+                    _ = CommandLineLaunch.RunAsync(ctx, forwarded.Launch);
+                }
+            }));
+            // Opened is raised again whenever the window is shown after Hide() (fullscreen hand-off): only the first counts
+            var opened = false;
+            window.Opened += (_, _) => Dispatcher.UIThread.Post(() =>
+            {
+                if (opened) return;
+                opened = true;
+                _main?.StartBackgroundTasks();
+                foreach (var error in options.Errors) ctx.Toasts.Show(error, ToastKind.Warning, seconds: 8);
+                if (options.Launch is { } launch)
+                    Dispatcher.UIThread.Post(async () =>
+                    {
+                        if (!await CommandLineLaunch.RunAsync(ctx, launch)) TestHooks.ScheduleExit(window);
+                    }, DispatcherPriority.Background);
+                else if (options.Errors.Count > 0) TestHooks.ScheduleExit(window);
+            }, DispatcherPriority.Background);
             Log.Info($"UI ready ({(services.IsDemo ? "demo" : "real")} services, {services.Catalog.Systems.Count} systems)");
         }
         catch (Exception ex)
