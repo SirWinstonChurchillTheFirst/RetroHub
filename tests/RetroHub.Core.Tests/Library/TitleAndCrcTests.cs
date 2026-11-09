@@ -22,6 +22,13 @@ public sealed class TitleParserTests
     [InlineData("240p Test Suite (Homebrew).nes", "240p Test Suite", "240p Test Suite", null)]
     [InlineData("Castlevania (Proto) [b].nes", "Castlevania", "Castlevania", null)]
     [InlineData("(USA).gba", "(USA)", "(USA)", "USA")]
+    // language tags of personal collections tell versions apart instead of vanishing
+    [InlineData("The Legend of Zelda - A Link to the Past (Deutsch).sfc", "The Legend of Zelda - A Link to the Past", "Legend of Zelda - A Link to the Past", "Deutsch")]
+    [InlineData("The Legend of Zelda - A Link to the Past (Englisch, NTSC).sfc", "The Legend of Zelda - A Link to the Past", "Legend of Zelda - A Link to the Past", "Englisch, NTSC")]
+    [InlineData("Zelda no Densetsu - Kamigami no Triforce (Japanisch).sfc", "Zelda no Densetsu - Kamigami no Triforce", "Zelda no Densetsu - Kamigami no Triforce", "Japanisch")]
+    [InlineData("Metroid (German).nes", "Metroid", "Metroid", "German")]
+    [InlineData("BS The Legend of Zelda - Kapitel 1 (Englisch).sfc", "BS The Legend of Zelda - Kapitel 1", "BS The Legend of Zelda - Kapitel 1", "Englisch")]
+    [InlineData("Hyrule Warriors (Definitive Edition).nsp", "Hyrule Warriors", "Hyrule Warriors", null)]
     public void Parses_no_intro_and_goodtools_names(string file, string title, string sort, string? region)
     {
         var p = TitleParser.Parse(file);

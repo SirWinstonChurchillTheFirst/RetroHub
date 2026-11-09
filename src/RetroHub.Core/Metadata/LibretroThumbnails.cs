@@ -54,10 +54,11 @@ public static class LibretroThumbnails
         {
             var r = p.ToLowerInvariant() switch
             {
-                "europe" or "germany" or "austria" or "switzerland" => 0,
-                "usa" => 1,
-                "world" => 2,
-                "japan" => 3,
+                "europe" or "germany" or "austria" or "switzerland"
+                    or "deutsch" or "german" or "deutschland" or "europa" or "österreich" or "schweiz" or "pal" or "pal-g" => 0,
+                "usa" or "ntsc" or "ntsc-u" => 1,
+                "world" or "weltweit" => 2,
+                "japan" or "japanisch" or "japanese" or "ntsc-j" => 3,
                 _ => 4,
             };
             best = Math.Min(best, r);

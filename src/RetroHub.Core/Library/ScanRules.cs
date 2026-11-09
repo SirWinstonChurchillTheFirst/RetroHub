@@ -26,6 +26,8 @@ public static class ScanRules
         // configs / databases / logs / checksums
         ".cfg", ".ini", ".xml", ".json", ".yml", ".yaml", ".toml", ".db", ".dat", ".log", ".sfv", ".md5",
         ".sha1", ".crc", ".lpl", ".opt", ".cht", ".pal", ".bak",
+        // disc/title keys next to a dump (Wii U ".key" beside the ".wux"/".wud")
+        ".key",
         // patches (applied by the emulator / user, not games themselves)
         ".ips", ".bps", ".ups", ".xdelta", ".ppf",
         // temp / partial downloads

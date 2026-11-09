@@ -56,7 +56,9 @@ public sealed partial class GameItemViewModel : ObservableObject
         HasPlayed = game.LastPlayedUtc != null;
         PlayTimeText = Fmt.PlayTime(game.PlaySeconds);
         LastPlayedText = Fmt.LastPlayed(game.LastPlayedUtc);
-        MetaText = game.Year is { } y ? $"{SystemShort} · {y}" : SystemShort;
+        // Region/language under the title tells versions apart ("SNES · Deutsch" vs "SNES · Englisch, NTSC").
+        var meta = string.IsNullOrWhiteSpace(game.Region) ? SystemShort : $"{SystemShort} · {game.Region}";
+        MetaText = game.Year is { } y ? $"{meta} · {y}" : meta;
         CoverAspect = sys?.Category == SystemCategory.Handheld ? 1.0 : 1.4;
         OnPropertyChanged(nameof(Initials));
     }

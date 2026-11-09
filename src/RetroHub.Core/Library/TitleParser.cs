@@ -21,6 +21,15 @@ public static partial class TitleParser
         "Norway", "Denmark", "Finland", "Scandinavia", "UK", "United Kingdom", "Australia", "Brazil", "Canada",
         "Korea", "China", "Taiwan", "Hong Kong", "Asia", "Russia", "Poland", "Portugal", "Greece", "Mexico",
         "Latin America", "India", "Austria", "Switzerland", "Belgium", "Ireland", "New Zealand", "Unknown",
+        // TV standards, often tagged together with the language: "(Englisch, NTSC)"
+        "NTSC", "PAL", "NTSC-U", "NTSC-J", "PAL-G",
+        // language tags of personal collections (German and English): "Zelda (Deutsch).nes"
+        "Deutsch", "Englisch", "Französisch", "Franzoesisch", "Spanisch", "Italienisch", "Portugiesisch",
+        "Japanisch", "Chinesisch", "Koreanisch", "Russisch", "Polnisch", "Niederländisch", "Schwedisch",
+        "English", "German", "French", "Spanish", "Italian", "Portuguese", "Japanese", "Chinese", "Korean",
+        "Russian", "Polish", "Dutch", "Swedish",
+        // German country/region names
+        "Deutschland", "Europa", "Frankreich", "Spanien", "Italien", "Österreich", "Schweiz", "Weltweit",
     };
 
     /// <summary>GoodTools country codes.</summary>

@@ -157,6 +157,42 @@ public sealed class LibraryScannerTests : IDisposable
     }
 
     [Fact]
+    public async Task Full_rescan_takes_the_region_tag_from_the_file_name()
+    {
+        _tmp.Write("games/nes/Zelda (Deutsch).nes", RomImages.Nes(seed: 1));
+        await Scan();
+        var g = G("games/nes/Zelda (Deutsch).nes");
+        Assert.Equal("Deutsch", g.Region);
+        // an entry from an older parser that did not know the tag
+        g.Region = null;
+        _repo.Upsert(g);
+
+        await Scan();
+        Assert.Null(G("games/nes/Zelda (Deutsch).nes").Region);   // quick scan leaves unchanged files alone
+        var full = await Scan(new ScanOptions { Full = true });
+
+        Assert.Equal("Deutsch", G("games/nes/Zelda (Deutsch).nes").Region);
+        Assert.Equal(1, full.Updated);
+    }
+
+    [Fact]
+    public async Task Skips_update_and_dlc_folders_and_disc_keys_without_reporting_them()
+    {
+        // Layout of a real collection: <system>/<game>/{game, Updates/, DLC/}, Wii U dumps with a ".key" beside them.
+        _tmp.Write("games/nes/Zelda Test/Zelda Test.nes", RomImages.Nes(seed: 1));
+        _tmp.Write("games/nes/Zelda Test/Zelda Test.key", [1, 2, 3, 4]);
+        _tmp.Write("games/nes/Zelda Test/Updates/Zelda Test - Update v1.1.nes", RomImages.Nes(seed: 2));
+        _tmp.Write("games/nes/Zelda Test/DLC/Zelda Test - DLC 1.nes", RomImages.Nes(seed: 3));
+
+        var r = await Scan();
+
+        Assert.Equal(1, r.Added);
+        Assert.Equal("games/nes/Zelda Test/Zelda Test.nes", Assert.Single(_repo.All()).Path);
+        Assert.Empty(r.Unknown);
+        Assert.Empty(r.Errors);
+    }
+
+    [Fact]
     public async Task Skips_special_and_hidden_folders()
     {
         _tmp.Write("games/nes/Visible.nes", RomImages.Nes(seed: 1));

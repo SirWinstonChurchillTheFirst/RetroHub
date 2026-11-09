@@ -760,6 +760,11 @@ public sealed class LibraryScanner : ILibraryScanner
         var before = ScannerFields.Of(existing);
         RemoveIndexes(st, existing);
         ApplyFile(existing, folder, sys, kind, status, stat, crc, sniff);
+        // Full rescan: a region/language tag in the file name ("(Deutsch)", "(Englisch, NTSC)") wins over the header
+        // region, as it does for new games – so entries scanned by an older parser get it too.
+        if (st.Options.Full && existing.Kind == GameKind.Rom &&
+            TitleParser.Parse(System.IO.Path.GetFileName(existing.Path)).Region is { } tagged)
+            existing.Region = tagged;
         AddIndexes(st, existing);
         st.Seen.Add(existing);
         if (ScannerFields.Of(existing) == before)
@@ -790,7 +795,7 @@ public sealed class LibraryScanner : ILibraryScanner
             to.FileTimeUtc = from.FileTimeUtc;
             to.Crc32 = from.Crc32;
             if (from.Serial != null) to.Serial = from.Serial;
-            to.Region ??= from.Region;
+            if (from.Region != null) to.Region = from.Region;
         }
     }
 
