@@ -1,6 +1,7 @@
 using System.Net;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using GameTile = RetroHub.App.Controls.GameTile;
 using RetroHub.App.Services;
 using RetroHub.App.ViewModels;
 using RetroHub.App.Views;
@@ -365,6 +366,9 @@ public class DesignPreviewTests
             TestSupport.Settle(60);
         }
         Save(window, prefix + "-1e-start-zurueck.png", 1000);
+        // right along the actions to the box on the stage (it takes the object focus like a box on a shelf)
+        for (var i = 0; i < 4 && Focused() is not GameTile; i++) window.Execute(Input.NavAction.Right);
+        if (Focused() is GameTile) Save(window, prefix + "-1f-start-schachtel.png", 600);
     }
     /// <summary>The detail/system subject: the last played game, else one with a cover, else the first.</summary>
     private static GameItemViewModel? PickGame(UiContext ctx)
