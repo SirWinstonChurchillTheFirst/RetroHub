@@ -5,6 +5,7 @@ using RetroHub.App.Services;
 using RetroHub.Core;
 using RetroHub.Core.Library;
 using RetroHub.Core.Logging;
+using RetroHub.Core.Metadata;
 
 namespace RetroHub.App.ViewModels;
 
@@ -35,11 +36,15 @@ public sealed record IssueGroup(string Title, IReadOnlyList<ScanIssue> Items, in
 public sealed partial class ImportsViewModel : PageViewModel
 {
     private CancellationTokenSource? _scanCts;
+    private CancellationTokenSource? _coverCts;
+    private bool _coverRerunPending;
 
     public ImportsViewModel(UiContext ctx) : base(ctx)
     {
         Title = Loc.T("nav.imports");
         ctx.LibraryChanged += () => { if (!IsScanning) LoadFolders(); };
+        ctx.Services.Settings.Saved += _ => Avalonia.Threading.Dispatcher.UIThread.Post(UpdateCoverHint);
+        UpdateCoverHint();
     }
 
     public override PageKey Key => PageKey.Imports;
@@ -56,10 +61,24 @@ public sealed partial class ImportsViewModel : PageViewModel
     [ObservableProperty] public partial IReadOnlyList<IssueGroup> Issues { get; private set; } = [];
     [ObservableProperty] public partial bool ReportClean { get; private set; }
 
+    // ---- covers (ArtworkService) ----
+    [ObservableProperty] public partial bool IsFindingCovers { get; private set; }
+    [ObservableProperty] public partial double CoverProgress { get; private set; }
+    [ObservableProperty] public partial bool CoverIndeterminate { get; private set; }
+    [ObservableProperty] public partial string CoverProgressText { get; private set; } = "";
+    [ObservableProperty] public partial string CoverCurrent { get; private set; } = "";
+    [ObservableProperty] public partial string CoverResultText { get; private set; } = "";
+    [ObservableProperty] public partial bool HasCoverResult { get; private set; }
+    [ObservableProperty] public partial string CoverOnlineText { get; private set; } = "";
+    [ObservableProperty] public partial ArtworkReport? LastCoverReport { get; private set; }
+    public bool CoversAvailable => Ctx.Services.Artwork != null;
+    public bool CoversUnavailable => !CoversAvailable;
+
     public override void OnNavigatedTo(object? argument, bool isBack)
     {
         Title = Loc.T("nav.imports");
         LoadFolders();
+        UpdateCoverHint();
     }
 
     private void LoadFolders()
@@ -81,6 +100,12 @@ public sealed partial class ImportsViewModel : PageViewModel
     {
         ScanCommand.NotifyCanExecuteChanged();
         CancelScanCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnIsFindingCoversChanged(bool value)
+    {
+        FindCoversCommand.NotifyCanExecuteChanged();
+        CancelCoversCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand(CanExecute = nameof(CanScan))]
@@ -114,10 +139,12 @@ public sealed partial class ImportsViewModel : PageViewModel
         var options = new ScanOptions { ComputeHashes = Ctx.Services.Settings.Current.ComputeHashes };
         var scanner = Ctx.Services.Scanner;
         var ct = _scanCts.Token;
+        var scanned = false;
         try
         {
             var report = await Task.Run(() => scanner.ScanAsync(options, progress, ct), ct).ConfigureAwait(true);
             ShowReport(report);
+            scanned = true;
             if (!quiet || report.Added > 0 || report.Errors.Count > 0)
                 Ctx.Toasts.Show(Loc.T("imports.done"), ToastKind.Success, Loc.T("imports.doneDetail", report.Added, report.Updated, report.Missing));
         }
@@ -137,7 +164,89 @@ public sealed partial class ImportsViewModel : PageViewModel
             _scanCts = null;
             LoadFolders();
         }
+        // every successful scan is followed by a quiet cover lookup (new games get their covers right away)
+        // (not awaited: the scan button must not stay disabled while covers are looked up)
+        if (scanned) _ = RunCoverSearchAsync(quiet: true);
     }
+
+    private bool CanFindCovers() => !IsFindingCovers && CoversAvailable;
+
+    [RelayCommand(CanExecute = nameof(CanFindCovers))]
+    private Task FindCoversAsync() => RunCoverSearchAsync(quiet: false);
+
+    [RelayCommand(CanExecute = nameof(IsFindingCovers))]
+    private void CancelCovers() => _coverCts?.Cancel();
+
+    /// <summary>
+    /// "Cover suchen": artwork for every game without a cover (local folders first, then libretro-thumbnails when the
+    /// setting allows it). The quiet variant (after a scan) shows no toasts, only the result line on this page.
+    /// </summary>
+    public async Task RunCoverSearchAsync(bool quiet)
+    {
+        var artwork = Ctx.Services.Artwork;
+        if (artwork == null) return;
+        if (IsFindingCovers || artwork.IsRunning)
+        {
+            // a scan finished while covers are being looked up: its new games may not be part of the running
+            // pass (the library was read at its start) → one more quiet pass once the current one is done
+            if (quiet) _coverRerunPending = true;
+            else Ctx.Toasts.Show(Loc.T("artwork.busy"), ToastKind.Info);
+            return;
+        }
+        _coverRerunPending = false;
+        IsFindingCovers = true;
+        CoverIndeterminate = true;
+        CoverProgress = 0;
+        CoverProgressText = Loc.T("artwork.preparing");
+        CoverCurrent = "";
+        _coverCts = new CancellationTokenSource();
+        var ct = _coverCts.Token;
+        var progress = new Progress<ArtworkProgress>(p =>
+        {
+            CoverIndeterminate = p.Total <= 0;
+            CoverProgress = p.Total > 0 ? 100.0 * p.Done / p.Total : 0;
+            CoverProgressText = Loc.T(p.Phase == "online" ? "artwork.progressOnline" : "artwork.progressLocal", p.Done, p.Total);
+            CoverCurrent = p.CurrentTitle ?? "";
+        });
+        try
+        {
+            var report = await Task.Run(() => artwork.ResolveAsync(null, progress, ct), ct).ConfigureAwait(true);
+            LastCoverReport = report;
+            CoverResultText = Loc.T("artwork.lastResult", report.LocalFound, report.Downloaded, report.NotFound);
+            HasCoverResult = true;
+            if (report.LocalFound + report.Downloaded > 0) AsyncImageLoader.Shared.ResetFailures();
+            if (!quiet)
+                Ctx.Toasts.Show(Loc.T("artwork.done"), report.Errors > 0 ? ToastKind.Warning : ToastKind.Success,
+                    Loc.T("artwork.doneDetail", report.LocalFound, report.Downloaded, report.NotFound)
+                    + (report.Errors > 0 ? " " + Loc.T("artwork.errors", report.Errors) : ""));
+        }
+        catch (OperationCanceledException)
+        {
+            _coverRerunPending = false; // the user cancelled: do not start again on our own
+            if (!quiet) Ctx.Toasts.Show(Loc.T("artwork.cancelled"), ToastKind.Info);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Cover search failed", ex);
+            if (!quiet) Ctx.Toasts.Show(Loc.T("artwork.failed"), ToastKind.Error, ex.Message);
+        }
+        finally
+        {
+            IsFindingCovers = false;
+            _coverCts?.Dispose();
+            _coverCts = null;
+        }
+        if (_coverRerunPending)
+        {
+            _coverRerunPending = false;
+            await RunCoverSearchAsync(quiet: true);
+        }
+    }
+
+    private void UpdateCoverHint() =>
+        CoverOnlineText = CoversAvailable
+            ? Loc.T(Ctx.Services.Settings.Current.OnlineCovers ? "artwork.onlineOn" : "artwork.onlineOff")
+            : Loc.T("artwork.unavailable");
 
     [RelayCommand(CanExecute = nameof(IsScanning))]
     private void CancelScan() => _scanCts?.Cancel();
