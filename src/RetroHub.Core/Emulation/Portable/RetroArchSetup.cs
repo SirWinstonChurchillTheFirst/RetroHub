@@ -9,9 +9,10 @@ namespace RetroHub.Core.Emulation.Portable;
 /// read or written.
 /// <list type="bullet">
 /// <item>system/savefile/savestate/screenshot directories → bios/, saves/, savestates/, screenshots/.</item>
-/// <item>sort_*_by_content_enable = true: RetroArch puts files into a subfolder named after the content's folder,
-/// so games/gba/x.gba saves to saves/gba/x.srm. (For external library folders the subfolder is that folder's name.)
-/// sort_savefiles_enable / sort_savestates_enable (by core name) = false, so it is not saves/gba/mGBA/.</item>
+/// <item>The directories point straight at saves/&lt;system&gt;, savestates/&lt;system&gt;, screenshots/&lt;system&gt; (the override
+/// is rewritten for every launch) and every sort_* option is off: games/gba/x.gba saves to saves/gba/x.srm, and a game
+/// in an external folder like "I:/Zelda/SNES/A Link to the Past/x.sfc" to saves/snes/x.srm – not to a subfolder named
+/// after its game folder (what RetroArch's sort_*_by_content does) or after the core.</item>
 /// <item>*_in_content_dir = false, otherwise RetroArch would ignore the directories above.</item>
 /// <item>video_fullscreen per launch mode, video_windowed_fullscreen = true (borderless, fast alt-tab).</item>
 /// <item>pause_nonactive = false only when embedded (the RetroHub window has the focus then); otherwise the
@@ -37,13 +38,9 @@ public sealed class RetroArchSetup : PortableSetupBase
     {
         var p = ctx.Paths;
         var bios = ctx.Ensure(p.Bios);
-        var saves = ctx.Ensure(p.Saves);
-        var states = ctx.Ensure(p.SaveStates);
-        var shots = ctx.Ensure(p.Screenshots);
-        // RetroArch creates the per-content subfolder itself; creating the system's one up front does no harm
-        _ = ctx.SavesDir;
-        _ = ctx.SaveStatesDir;
-        _ = ctx.ScreenshotsDir;
+        var saves = ctx.SavesDir;
+        var states = ctx.SaveStatesDir;
+        var shots = ctx.ScreenshotsDir;
 
         var file = ArgumentContext.RetroArchOverridePath(p);
         var cfg = RetroArchConfig.Load(file);
@@ -58,9 +55,9 @@ public sealed class RetroArchSetup : PortableSetupBase
         cfg.Set("systemfiles_in_content_dir", "false");
         cfg.Set("sort_savefiles_enable", "false");
         cfg.Set("sort_savestates_enable", "false");
-        cfg.Set("sort_savefiles_by_content_enable", "true");
-        cfg.Set("sort_savestates_by_content_enable", "true");
-        cfg.Set("sort_screenshots_by_content_enable", "true");
+        cfg.Set("sort_savefiles_by_content_enable", "false");
+        cfg.Set("sort_savestates_by_content_enable", "false");
+        cfg.Set("sort_screenshots_by_content_enable", "false");
         cfg.Set("video_fullscreen", ctx.Plan.Mode == LaunchMode.Fullscreen ? "true" : "false");
         cfg.Set("video_windowed_fullscreen", "true");
         if (ctx.Embedded) cfg.Set("pause_nonactive", "false");

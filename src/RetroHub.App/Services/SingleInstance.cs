@@ -67,12 +67,15 @@ public sealed partial class SingleInstance : IDisposable
     /// Second instance: leaves its command line for the running instance as a small JSON file in
     /// <paramref name="folder"/> (data/cache/requests) – call before <see cref="SignalFirstInstance"/>.
     /// </summary>
+    private static int _requestSeq;
+
     public static bool PostRequest(string folder, IReadOnlyList<string> args, string? workingDirectory)
     {
         try
         {
             Directory.CreateDirectory(folder);
-            var name = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}.json";
+            // sortable name: 100-ns ticks + a per-process sequence, so two requests of one instance keep their order
+            var name = $"{DateTime.UtcNow.Ticks:D19}-{Interlocked.Increment(ref _requestSeq):D6}-{Guid.NewGuid():N}.json";
             var tmp = Path.Combine(folder, name + ".tmp");
             File.WriteAllText(tmp, System.Text.Json.JsonSerializer.Serialize(new ForwardedRequest(args.ToArray(), workingDirectory)));
             File.Move(tmp, Path.Combine(folder, name));

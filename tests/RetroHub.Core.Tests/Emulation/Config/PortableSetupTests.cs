@@ -61,12 +61,13 @@ public sealed class PortableSetupTests : IDisposable
         var file = P("data", "config", "retroarch", "retrohub.cfg");
         var cfg = RetroArchConfig.Load(file);
         Assert.Equal(P("bios"), cfg.Get("system_directory"));
-        Assert.Equal(P("saves"), cfg.Get("savefile_directory"));
-        Assert.Equal(P("savestates"), cfg.Get("savestate_directory"));
-        Assert.Equal(P("screenshots"), cfg.Get("screenshot_directory"));
-        Assert.Equal("true", cfg.Get("sort_savefiles_by_content_enable"));
-        Assert.Equal("true", cfg.Get("sort_savestates_by_content_enable"));
-        Assert.Equal("true", cfg.Get("sort_screenshots_by_content_enable"));
+        // straight into the system's folder – also for games in external folders (no per-game-folder subfolder)
+        Assert.Equal(P("saves", "gba"), cfg.Get("savefile_directory"));
+        Assert.Equal(P("savestates", "gba"), cfg.Get("savestate_directory"));
+        Assert.Equal(P("screenshots", "gba"), cfg.Get("screenshot_directory"));
+        Assert.Equal("false", cfg.Get("sort_savefiles_by_content_enable"));
+        Assert.Equal("false", cfg.Get("sort_savestates_by_content_enable"));
+        Assert.Equal("false", cfg.Get("sort_screenshots_by_content_enable"));
         Assert.Equal("false", cfg.Get("sort_savefiles_enable"));
         Assert.Equal("false", cfg.Get("savefiles_in_content_dir"));
         Assert.Equal("true", cfg.Get("video_fullscreen"));
