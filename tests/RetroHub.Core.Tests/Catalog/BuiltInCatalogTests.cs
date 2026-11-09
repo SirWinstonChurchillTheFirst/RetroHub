@@ -27,7 +27,7 @@ public sealed class BuiltInCatalogTests : IDisposable
     private static readonly string[] RequiredEmulators =
     [
         "retroarch", "mgba", "melonds", "desmume", "azahar", "dolphin", "pcsx2", "duckstation", "ppsspp", "mame",
-        "flycast", "redream", "native", "cemu", "ryujinx",
+        "flycast", "redream", "native", "cemu", "eden", "ryujinx",
     ];
 
     private static readonly HashSet<string> KnownSniffers =
@@ -241,6 +241,15 @@ public sealed class BuiltInCatalogTests : IDisposable
         Assert.Contains("desmume", nds);
         Assert.Contains("retroarch", nds);
         Assert.Equal(new EmulatorRef("melonds", null), _catalog.EmulatorRefsFor("nds")[0]);
+        // Switch: Eden first (portable, verified flags -f / -g), Ryujinx stays as the alternative
+        Assert.Equal([new EmulatorRef("eden", null), new EmulatorRef("ryujinx", null)], _catalog.EmulatorRefsFor("switch"));
+        var eden = _catalog.GetEmulator("eden")!;
+        Assert.Equal(["{fullscreen}", "-g", "{rom}"], eden.Args);
+        Assert.Equal(["-f"], eden.FullscreenArgs);
+        Assert.Equal(["eden.exe"], eden.Exe);
+        Assert.Equal("eden", eden.Portable);
+        Assert.Equal(LaunchMode.Fullscreen, eden.DefaultMode);
+        Assert.DoesNotContain(LaunchMode.Embedded, eden.Modes);
         Assert.True(_catalog.IsPlaylistExtension("ps1", ".CUE"));
         Assert.False(_catalog.IsPlaylistExtension("ps1", ".chd"));
     }

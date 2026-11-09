@@ -167,6 +167,11 @@ public sealed class LaunchPlanner : ILaunchPlanner
             }
         }
 
+        // Switch keys (Eden): never shipped; a hint, not blocking (Eden itself names what is missing)
+        if (exe != null && string.Equals(def.Portable, "eden", StringComparison.OrdinalIgnoreCase)
+            && !Portable.EdenSetup.HasProdKeys(_paths.Bios, Path.GetDirectoryName(exe)!))
+            problems.Add(new LaunchProblem(LaunchProblemKind.BiosMissing, Portable.EdenSetup.MissingKeysMessage, false));
+
         if (exe != null && EmulatorProcesses.IsRunning(exe))
             problems.Add(new LaunchProblem(LaunchProblemKind.AlreadyRunning,
                 $"{def.Name} läuft bereits. Zwei Instanzen können sich gegenseitig die Spielstände überschreiben.", false));

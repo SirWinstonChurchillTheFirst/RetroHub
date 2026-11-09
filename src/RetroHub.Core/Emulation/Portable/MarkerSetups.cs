@@ -1,3 +1,4 @@
+using RetroHub.Core.IO;
 using RetroHub.Core.Logging;
 
 namespace RetroHub.Core.Emulation.Portable;
@@ -79,5 +80,98 @@ public sealed class CemuSetup : PortableSetupBase
     {
         var dir = ctx.Ensure(Path.Combine(ctx.ExeDir, "portable"));
         Log.Debug($"Cemu keeps its data in {dir}");
+    }
+}
+
+/// <summary>
+/// Eden (Switch, yuzu successor): a folder named "user" next to eden.exe makes it keep config\, keys\, nand\
+/// (saves), sdmc\, shader\ and log\ there instead of %APPDATA%\eden (Windows checks the exe folder, not the working
+/// directory). RetroHub also creates user\config\: Eden shows a "migrate from yuzu/suyu/…" dialog on start when that
+/// folder is missing and %APPDATA%\yuzu (or another legacy folder) exists — accepting it would move or wipe data.
+/// Keys convenience: prod.keys / title.keys found in bios/switch/ (or directly in bios/) are copied into
+/// user\keys\ when the copy there is missing, or differs and is older. The source is never moved or deleted, an
+/// empty source never overwrites anything, and a newer different copy in Eden's folder (e.g. installed through
+/// Eden's menu) is kept. Firmware is not copied (Eden installs it itself through its menu).
+/// </summary>
+public sealed class EdenSetup : PortableSetupBase
+{
+    public override string Id => "eden";
+
+    /// <summary>Folder below bios/ where RetroHub looks for the Switch keys first.</summary>
+    public const string BiosSubfolder = "switch";
+    public const string ProdKeys = "prod.keys";
+    public const string TitleKeys = "title.keys";
+
+    public override string Summary =>
+        "Eden läuft portabel (Ordner „user“ neben der eden.exe, z. B. emulators/eden/user). Einstellungen, Spielstände (nand), " +
+        "Shader-Cache und Keys liegen dort, nicht in saves/. Eigene prod.keys/title.keys aus bios/switch/ kopiert RetroHub " +
+        "nach user/keys; die Firmware deiner Switch installierst du in Eden über dessen Menü („Firmware installieren“).";
+
+    /// <summary>Hint when no prod.keys exist (German, for the launch problems).</summary>
+    public const string MissingKeysMessage =
+        "Eden braucht die Schlüssel (prod.keys, meist auch title.keys) deiner eigenen Switch. Lege sie in den Ordner " +
+        "„bios/switch/“ – RetroHub kopiert sie beim Start in Edens Ordner „user/keys/“ neben der eden.exe. Die Firmware deiner Switch " +
+        "installierst du in Eden über das Menü. RetroHub liefert keine Keys oder Firmware mit.";
+
+    protected override void Configure(PortableContext ctx)
+    {
+        var user = ctx.Ensure(Path.Combine(ctx.ExeDir, "user"));
+        // an existing config folder keeps Eden's legacy-data migration dialog away
+        ctx.Ensure(Path.Combine(user, "config"));
+        var keysDir = Path.Combine(user, "keys");
+        foreach (var name in new[] { ProdKeys, TitleKeys })
+            CopyKey(ctx.Paths.Bios, keysDir, name);
+        if (!HasProdKeys(ctx.Paths.Bios, ctx.ExeDir))
+            Log.Warn($"Eden: no {ProdKeys} in {Path.Combine(ctx.Paths.Bios, BiosSubfolder)} or {keysDir} – encrypted Switch games (.nsp/.xci) will not start");
+        Log.Debug($"Eden keeps its data in {user}");
+    }
+
+    /// <summary>The key file in bios/switch/ or else directly in bios/ (non-empty), or null.</summary>
+    public static string? FindKeySource(string biosRoot, string name)
+    {
+        foreach (var candidate in new[] { Path.Combine(biosRoot, BiosSubfolder, name), Path.Combine(biosRoot, name) })
+        {
+            var info = new FileInfo(candidate);
+            if (info.Exists && info.Length > 0) return info.FullName;
+        }
+        return null;
+    }
+
+    /// <summary>True when prod.keys is in RetroHub's bios folder or already in Eden's portable keys folder.</summary>
+    public static bool HasProdKeys(string biosRoot, string edenExeDir)
+    {
+        if (FindKeySource(biosRoot, ProdKeys) != null) return true;
+        var installed = new FileInfo(Path.Combine(edenExeDir, "user", "keys", ProdKeys));
+        return installed.Exists && installed.Length > 0;
+    }
+
+    /// <summary>Copies one key file into Eden's keys folder when needed. True when it was copied.</summary>
+    internal static bool CopyKey(string biosRoot, string keysDir, string name)
+    {
+        var src = FindKeySource(biosRoot, name);
+        if (src == null)
+        {
+            var empty = new FileInfo(Path.Combine(biosRoot, BiosSubfolder, name));
+            if (empty.Exists) Log.Warn($"Eden: {empty.FullName} is empty – not copied");
+            return false;
+        }
+        var dst = Path.Combine(keysDir, name);
+        var bytes = File.ReadAllBytes(src);
+        if (bytes.Length == 0) return false;
+        var srcTime = File.GetLastWriteTimeUtc(src);
+        if (File.Exists(dst))
+        {
+            var existing = File.ReadAllBytes(dst);
+            if (existing.AsSpan().SequenceEqual(bytes)) return false;
+            if (File.GetLastWriteTimeUtc(dst) >= srcTime)
+            {
+                Log.Info($"Eden: {dst} differs from {src} but is newer – kept (delete it to take the one from bios/)");
+                return false;
+            }
+        }
+        SafeFile.WriteAllBytes(dst, bytes);
+        File.SetLastWriteTimeUtc(dst, srcTime);
+        Log.Info($"Eden: copied {src} to {dst}");
+        return true;
     }
 }

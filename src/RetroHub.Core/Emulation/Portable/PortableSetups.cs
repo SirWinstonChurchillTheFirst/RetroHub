@@ -20,6 +20,7 @@ public static class PortableSetups
         new DuckStationSetup(),
         new PpssppSetup(),
         new CemuSetup(),
+        new EdenSetup(),
     ];
 
     /// <summary>The recipe with that id (case-insensitive), or null.</summary>

@@ -232,3 +232,32 @@ und unter dem Titel angezeigt („SNES · Deutsch“), damit die neun Fassungen 
   Testtreiber hat RetroHub nach 90 s abgebrochen, der Neustart hat die Sitzung per Absturz-Wiederherstellung verbucht (90 s).
 - Dolphin zeigt auf der Emulatoren-Seite keine Version („Version unbekannt“).
 - Bildschirmaufnahmen (GDI) sehen OpenGL-/D3D-Vollbild teils nicht; für Tests: Fenstermodus oder RetroArch-eigene Screenshots.
+
+## Switch mit Eden – 09.11.2026
+
+Eden v0.2.1 (offizieller Download `Eden-Windows-v0.2.1-amd64-msvc-standard.zip` von stable.eden-emu.dev, 31 319 001 Bytes
+wie vom Server angegeben; eine Prüfsumme veröffentlicht Eden nicht) nach `emulators/eden/` entpackt. RetroHub legt
+`emulators/eden/user/` und `user/config/` an (portabel; ohne `user/config` würde Eden beim Start anbieten, Daten aus
+`%APPDATA%\yuzu` zu übernehmen). Keys: eigene `prod.keys`/`title.keys` nach `bios/switch/` – RetroHub kopiert sie nach
+`emulators/eden/user/keys/`. Fehlen sie, zeigt der Spielstart einen (nicht blockierenden) Hinweis.
+
+**Eden direkt gestartet** (mit vorher angelegtem `user/config`): Fenstertitel „Eden | v0.2.1 | Clang 22.1.4“, Eden legte
+`config/qt-config.ini`, `nand/`, `sdmc/`, `keys/`, `log/` … unter `emulators/eden/user/` an. `%APPDATA%\eden` und
+`%APPDATA%\yuzu` vorher/nachher (Pfad, Größe, Änderungszeit aller Dateien) **unverändert**, `%LOCALAPPDATA%\eden` nicht
+entstanden. Kein Übernahme-Dialog gesehen (nur Prozess-Fenstertitel geprüft).
+
+**Spielstart über RetroHub** (`--launch` „Spiel.nsp“ aus der Sammlung, `--test-quit-after 25`, eigener leerer
+RetroHub-Root, weil RetroHub für `D:\RetroHub` schon lief; Eden per `emulatorPaths` auf `D:\RetroHub\emulators\eden`):
+
+| Schritt | Beobachtet |
+|---|---|
+| Plan | Emulator `eden`, Vollbild, startbar, Hinweis „Eden braucht die Schlüssel (prod.keys …)“ |
+| Start | `eden.exe -f -g "E:\…\Spiel.nsp"`, Vollbild-Übergabe an Edens Fenster |
+| Eden | Kein Spiel: Edens Log „Failed to load ROM (Error 12)! … (0007-000C)“ mit vielen Krypto-Asserts (`aes_util.cpp`) – wie erwartet ohne Keys. „Installed firmware: No firmware available“. Bis zum `WM_CLOSE` nach 25 s stand Eden ohne Logeintrag (vermutlich ein Hinweisfenster beim Start; der Inhalt wurde nicht angesehen), erst danach „BootGame“ |
+| Beenden | `WM_CLOSE` an 2 Fenster, Eden blieb offen („close-result closed=false“), RetroHub zeigte sich nach 8 s wieder. Eden wurde dann vom Testtreiber per Prozess-Kill beendet; RetroHub erkannte das Sitzungsende (140 s, Exitcode −1), kehrte zur Übersicht zurück und schloss sich 5 s später (`--test-exit-after-return 5`) |
+
+Weitere Beobachtung: Edens Update-Prüfung ist aktiv (Log „Received update Eden v0.2.1“, `check_for_updates=true`).
+Sammlung vorher/nachher (31 Einträge im Switch-Ordner, Größe und Änderungszeit): **unverändert**.
+
+**Offen:** echtes Spielen nicht getestet (keine eigenen Keys/Firmware vorhanden); Eden lässt sich bei offenem
+Fehlerdialog nicht per „Spiel beenden“ schließen.

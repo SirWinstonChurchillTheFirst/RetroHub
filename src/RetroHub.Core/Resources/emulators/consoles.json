@@ -124,6 +124,21 @@
     "notes": "RetroHub legt den Ordner „portable“ neben Cemu.exe an (Einstellungen, keys.txt, Spielstände). Portabel, wenn neben Cemu.exe ein Ordner „portable“ existiert. Für .wux/.wud braucht Cemu die Disc-Keys (keys.txt) – nur eigene Dumps."
   },
   {
+    "id": "eden",
+    "name": "Eden",
+    "website": "https://eden-emu.dev/",
+    "license": "GPL-3.0-or-later",
+    "exe": ["eden.exe"],
+    "systems": ["switch"],
+    "args": ["{fullscreen}", "-g", "{rom}"],
+    "fullscreenArgs": ["-f"],
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed"],
+    "downloadUrl": "https://eden-emu.dev/downloads",
+    "portable": "eden",
+    "notes": "RetroHub legt den Ordner „user“ (mit „user/config“) neben der eden.exe an – damit ist Eden portabel und nutzt nicht %APPDATA%\\eden. Eden braucht die Schlüssel deiner eigenen Switch (prod.keys, meist auch title.keys): lege sie in „bios/switch/“, RetroHub kopiert sie nach „user/keys/“ neben der eden.exe. Die Firmware deiner eigenen Switch installierst du in Eden über dessen Menü (landet in „user/nand“). RetroHub liefert keine Keys oder Firmware mit."
+  },
+  {
     "id": "ryujinx",
     "name": "Ryujinx (Community-Fork)",
     "license": "MIT",

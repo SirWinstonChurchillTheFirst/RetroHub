@@ -42,7 +42,7 @@ public sealed class PortableSetupTests : IDisposable
     public void All_recipes_are_registered_once()
     {
         var ids = PortableSetups.All.Select(s => s.Id).ToList();
-        Assert.Equal(["retroarch", "mgba", "melonds", "desmume", "azahar", "dolphin", "pcsx2", "duckstation", "ppsspp", "cemu"], ids);
+        Assert.Equal(["retroarch", "mgba", "melonds", "desmume", "azahar", "dolphin", "pcsx2", "duckstation", "ppsspp", "cemu", "eden"], ids);
         Assert.Same(PortableSetups.All[1], PortableSetups.Find("MGBA"));
         Assert.Null(PortableSetups.Find("nope"));
         Assert.All(PortableSetups.All, s => Assert.False(string.IsNullOrWhiteSpace(PortableSetups.SummaryFor(s.Id))));
@@ -286,6 +286,87 @@ public sealed class PortableSetupTests : IDisposable
         Assert.Equal(PortableApplyResult.Applied, PortableSetups.Apply(ppsspp, Make.Plan("psp", LaunchMode.Fullscreen), _t.Paths));
         Assert.True(File.Exists(installed)); // never deleted
         Assert.Equal(before, _t.Files());
+    }
+
+    [Fact]
+    public void Eden_creates_user_and_config_folders_without_keys()
+    {
+        var (eden, _) = Emu("eden", "emulators/eden/eden.exe");
+        RunTwiceIdempotent(eden, Make.Plan("switch", LaunchMode.Fullscreen));
+        Assert.True(Directory.Exists(P("emulators", "eden", "user")));
+        // user\config keeps Eden's "migrate from yuzu" dialog away
+        Assert.True(Directory.Exists(P("emulators", "eden", "user", "config")));
+        Assert.False(Directory.Exists(P("emulators", "eden", "user", "keys")));
+        Assert.Equal(["emulators/eden/eden.exe"], _t.Files());
+        Assert.False(EdenSetup.HasProdKeys(_t.Paths.Bios, P("emulators", "eden")));
+    }
+
+    [Fact]
+    public void Eden_copies_keys_from_bios_without_touching_the_source()
+    {
+        var (eden, _) = Emu("eden", "emulators/eden/eden.exe");
+        var prod = _t.Touch("bios/switch/prod.keys", "header_key = 00\n");
+        var title = _t.Touch("bios/title.keys", "0100 = 11\n"); // directly in bios/ works too
+        File.SetLastWriteTimeUtc(prod, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetLastWriteTimeUtc(title, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        var plan = Make.Plan("switch", LaunchMode.Fullscreen);
+
+        RunTwiceIdempotent(eden, plan);
+        var dstProd = P("emulators", "eden", "user", "keys", "prod.keys");
+        var dstTitle = P("emulators", "eden", "user", "keys", "title.keys");
+        Assert.Equal("header_key = 00\n", File.ReadAllText(dstProd));
+        Assert.Equal("0100 = 11\n", File.ReadAllText(dstTitle));
+        Assert.Equal("header_key = 00\n", File.ReadAllText(prod)); // source kept
+        Assert.Equal("0100 = 11\n", File.ReadAllText(title));
+        Assert.True(EdenSetup.HasProdKeys(_t.Paths.Bios, P("emulators", "eden")));
+
+        // a newer, different copy in Eden's folder (installed through Eden's menu) is kept
+        File.WriteAllText(dstProd, "header_key = 22\n");
+        File.SetLastWriteTimeUtc(dstProd, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        PortableSetups.Apply(eden, plan, _t.Paths);
+        Assert.Equal("header_key = 22\n", File.ReadAllText(dstProd));
+
+        // a newer key file in bios/ replaces the older one in Eden's folder
+        File.WriteAllText(prod, "header_key = 33\n");
+        File.SetLastWriteTimeUtc(prod, new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc));
+        PortableSetups.Apply(eden, plan, _t.Paths);
+        Assert.Equal("header_key = 33\n", File.ReadAllText(dstProd));
+
+        // an empty key file in bios/switch/ never overwrites anything
+        File.WriteAllText(prod, "");
+        File.SetLastWriteTimeUtc(prod, new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc));
+        PortableSetups.Apply(eden, plan, _t.Paths);
+        Assert.Equal("header_key = 33\n", File.ReadAllText(dstProd));
+        Assert.True(File.Exists(prod));
+        Assert.DoesNotContain(_t.Files(), f => f.EndsWith(".retrohub-tmp", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Eden_launch_plan_warns_about_missing_keys_without_blocking()
+    {
+        var def = new EmulatorDef
+        {
+            Id = "eden", Name = "Eden", Exe = ["eden.exe"], Portable = "eden",
+            Args = ["{fullscreen}", "-g", "{rom}"], FullscreenArgs = ["-f"],
+            DefaultMode = LaunchMode.Fullscreen, Modes = [LaunchMode.Fullscreen, LaunchMode.Windowed],
+        };
+        var exe = _t.Touch("emulators/eden/eden.exe");
+        var rom = _t.Touch("games/switch/a.nsp");
+        var catalog = new FakeCatalog().Add(def).Add(new SystemDef { Id = "switch", Name = "Nintendo Switch", Emulators = ["eden"] });
+        var reg = new EmulatorRegistry(catalog, _t.Paths, _t.Settings);
+        var planner = new LaunchPlanner(catalog, reg, _t.Paths, _t.Settings);
+
+        var plan = planner.Plan(Make.Game("switch", "games/switch/a.nsp"));
+        Assert.True(plan.CanLaunch, string.Join("; ", plan.Problems.Select(p => p.Message)));
+        Assert.Equal(exe, plan.FileName);
+        Assert.Equal(["-f", "-g", rom], plan.Arguments);
+        var warning = Assert.Single(plan.Problems);
+        Assert.False(warning.Blocking);
+        Assert.Equal(LaunchProblemKind.BiosMissing, warning.Kind);
+        Assert.Contains("bios/switch/", warning.Message);
+
+        _t.Touch("bios/switch/prod.keys", "header_key = 00\n");
+        Assert.Empty(planner.Plan(Make.Game("switch", "games/switch/a.nsp")).Problems);
     }
 
     [Fact]
