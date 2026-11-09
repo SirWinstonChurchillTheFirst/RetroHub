@@ -174,6 +174,87 @@ public sealed class EmbeddingSmokeTests(ITestOutputHelper output)
         }
     }
 
+    /// <summary>
+    /// The usual way a game ends in embedded mode: RequestCloseAsync while the window is still inside RetroHub. As a
+    /// child window it is no longer a top-level window (EnumWindows does not list it), yet it must get WM_CLOSE so the
+    /// emulator can save and quit by itself instead of being killed.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Interactive")]
+    public async Task Mgba_RequestCloseWhileEmbedded_ClosesIt()
+    {
+        Assert.SkipUnless(File.Exists(Path.Combine(MgbaFolder, "mGBA.exe")) && File.Exists(Rom), "mGBA or the test ROM is not installed");
+        var temp = Path.Combine(Path.GetTempPath(), "RetroHub-embedtest-" + Guid.NewGuid().ToString("N")[..8]);
+        var emuDir = Path.Combine(temp, "mgba");
+        CopyDirectory(MgbaFolder, emuDir);
+        var romCopy = Path.Combine(temp, "rom", Path.GetFileName(Rom));
+        Directory.CreateDirectory(Path.GetDirectoryName(romCopy)!);
+        File.Copy(Rom, romCopy);
+        var exe = Path.Combine(emuDir, "mGBA.exe");
+
+        var profile = new EmbedProfile { KeepFrame = true, OffUiThread = true, MaskWhileLoading = true };
+        var repo = new FakeRepository();
+        using var root = new TempRoot();
+        var svc = new SessionService(repo, root.Paths, []);
+        var plan = Runtime.Plan(exe, [romCopy], new EmulatorInstall { Def = new EmulatorDef { Id = "mgba", Name = "mGBA", Embed = profile }, ExePath = exe },
+            LaunchMode.Embedded, workingDir: emuDir) with { Embed = profile };
+
+        GameSession? session = null;
+        try
+        {
+            using var win = new TestWindowThread("RetroHub embed test (mGBA close)", 960, 720);
+            session = (GameSession)svc.Start(plan);
+            var sw = Stopwatch.StartNew();
+            nint game = 0;
+            while (sw.Elapsed < TimeSpan.FromSeconds(30) && game == 0)
+            {
+                var found = session.FindWindows();
+                if (found.Count > 0) game = found[0];
+                else await Task.Delay(100, TestContext.Current.CancellationToken);
+            }
+            Assert.True(game != 0, "no mGBA window within 30 s");
+
+            using var embedder = new WindowEmbedder(profile);
+            Assert.True(embedder.Take(game, win.Host, win.HostWidth, win.HostHeight));
+            Assert.True(await Runtime.WaitUntil(() => embedder.IsAttached, TimeSpan.FromSeconds(5)), "not attached");
+            int answers = 0;
+            var readyWatch = Stopwatch.StartNew();
+            while (readyWatch.Elapsed < TimeSpan.FromSeconds(30) && !(answers >= 5 && readyWatch.Elapsed > TimeSpan.FromSeconds(1.5)))
+            {
+                answers = embedder.IsResponsive() ? answers + 1 : 0;
+                await Task.Delay(150, TestContext.Current.CancellationToken);
+            }
+            Assert.True(answers >= 5, "mGBA never became responsive");
+            embedder.Settled();
+            output.WriteLine($"embedded {game:X}; top-level windows found while embedded: {session.FindWindows().Count}");
+
+            var closeWatch = Stopwatch.StartNew();
+            bool closed = await session.RequestCloseAsync(TimeSpan.FromSeconds(15));
+            output.WriteLine($"RequestCloseAsync while embedded → {closed} after {closeWatch.ElapsedMilliseconds} ms");
+            Assert.True(closed, "mGBA did not close on RequestCloseAsync while embedded");
+            Assert.Equal(SessionState.Exited, session.State);
+            Assert.False(session.WasKilled);
+            Assert.Equal(0, session.ExitCode);
+            Assert.False(embedder.Exists);
+            embedder.Release(toDesktop: false); // window is gone: must be a harmless no-op
+        }
+        finally
+        {
+            if (session is { State: SessionState.Running or SessionState.Starting })
+            {
+                output.WriteLine("cleanup: killing mGBA");
+                session.Kill();
+                await Runtime.WaitUntil(() => session.State == SessionState.Exited, TimeSpan.FromSeconds(5));
+            }
+            svc.Dispose();
+            for (int i = 0; i < 10 && Directory.Exists(temp); i++)
+            {
+                try { Directory.Delete(temp, recursive: true); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Thread.Sleep(500); }
+            }
+        }
+    }
+
     private static bool SpinUntil(Func<bool> condition, int timeoutMs)
     {
         var sw = Stopwatch.StartNew();

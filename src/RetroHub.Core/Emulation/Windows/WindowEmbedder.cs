@@ -28,7 +28,10 @@ public sealed class WindowEmbedder : IDisposable
     private readonly object _gate = new();
 
     private nint _game, _host;
+    // the taken window's original styles (for Release) and which window they belong to; only touched on the
+    // worker thread (or the caller's thread without a worker)
     private (long Style, long ExStyle)? _own;
+    private nint _ownWindow;
     private (int L, int T, int R, int B) _frame;
     private (int X, int Y, int W, int H)? _placeWanted;
     private bool _placeQueued;
@@ -116,6 +119,21 @@ public sealed class WindowEmbedder : IDisposable
     /// <summary>The window title as kept by the system (never blocks on the emulator); "" when none.</summary>
     public string Title => Native.GetTitle(_game);
 
+    /// <summary>
+    /// Game windows currently taken by any embedder. They are child windows then, so EnumWindows (top-level only) does
+    /// not list them – GameSession.RequestCloseAsync sends WM_CLOSE to these as well.
+    /// </summary>
+    internal static IReadOnlyList<nint> EmbeddedWindows()
+    {
+        var list = new List<nint>();
+        foreach (var e in ByHost.Values)
+        {
+            var g = e._game;
+            if (g != 0 && !list.Contains(g)) list.Add(g);
+        }
+        return list;
+    }
+
     // ---- take -------------------------------------------------------------------------------------------------
 
     /// <summary>
@@ -132,7 +150,7 @@ public sealed class WindowEmbedder : IDisposable
 
         // an emulator that built a new window: let the old one go first (if it still exists)
         var previous = _game;
-        if (previous != 0 && previous != gameWindow && _attached && Native.IsWindow(previous)) Release(toDesktop: true);
+        if (previous != 0 && previous != gameWindow) Release(toDesktop: true);
 
         if (width <= 0 || height <= 0)
         {
@@ -140,12 +158,16 @@ public sealed class WindowEmbedder : IDisposable
             (width, height) = (rc.Width, rc.Height);
         }
 
+        nint oldHost;
         lock (_gate)
         {
+            oldHost = _host;
             _game = gameWindow;
             _host = hostWindow;
             _placeWanted = null;
         }
+        // moved to another host: destroying the old one must not touch the game any more
+        if (oldHost != 0 && oldHost != hostWindow) ByHost.TryRemove(new KeyValuePair<nint, WindowEmbedder>(oldHost, this));
         ByHost[hostWindow] = this;
         // Only off-thread emulators (the slow Qt starters) are asked whether they answer; the others count as ready
         // at once (DeSmuME stops drawing when pinged all the time). See MonHub GameWindow.Take.
@@ -169,7 +191,14 @@ public sealed class WindowEmbedder : IDisposable
             if (_game != game || _host != host) return false; // released (or replaced) while this was queued
         }
         long style = Native.GetStyle(game), ex = Native.GetExStyle(game);
-        _own = (style & ~Native.WS_MINIMIZE, ex); // given back as a normal window, not a minimized one
+        // Taken again while still ours (same window, already a child: the UI re-ran Take, or moved it to a new host):
+        // keep the styles saved by the first take – the current ones are the stripped child styles.
+        bool retake = _own != null && _ownWindow == game && (style & Native.WS_CHILD) != 0;
+        if (!retake)
+        {
+            _own = (style & ~Native.WS_MINIMIZE, ex); // given back as a normal window, not a minimized one
+            _ownWindow = game;
+        }
 
         long frame = Profile.KeepFrame ? 0 : Native.WS_CAPTION | Native.WS_THICKFRAME | Native.WS_SYSMENU | Native.WS_MINIMIZEBOX | Native.WS_MAXIMIZEBOX;
         long exFrame = Profile.KeepFrame ? 0 : Native.WS_EX_WINDOWEDGE | Native.WS_EX_CLIENTEDGE | Native.WS_EX_DLGMODALFRAME;
@@ -183,7 +212,12 @@ public sealed class WindowEmbedder : IDisposable
             Native.SetWindowLongPtr(game, Native.GWL_STYLE, (nint)style);
             Native.SetWindowLongPtr(game, Native.GWL_EXSTYLE, (nint)ex);
             Native.SetWindowPos(game, 0, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE | Native.SWP_FRAMECHANGED);
-            _own = null;
+            // a failed re-take leaves the window where it was (still ours, original styles still saved)
+            if (!retake)
+            {
+                _own = null;
+                _ownWindow = 0;
+            }
             return false;
         }
         // it was started minimized (SW_SHOWMINNOACTIVE): back to its normal state, now inside RetroHub
@@ -193,7 +227,11 @@ public sealed class WindowEmbedder : IDisposable
         Native.SetWindowPos(game, 0, 0, 0, Math.Max(1, w), Math.Max(1, h),
             Native.SWP_NOZORDER | Native.SWP_NOACTIVATE | Native.SWP_FRAMECHANGED | Native.SWP_SHOWWINDOW | Native.SWP_NOCOPYBITS);
         _frame = MeasureFrame(game);
-        _attached = true;
+        lock (_gate)
+        {
+            // released while this ran (busy emulator): the queued Release gives the window back right after
+            if (_game == game) _attached = true;
+        }
         PlaceNow(game, 0, 0, w, h);
         Log.Info($"Took window {game:X} ('{Native.GetTitle(game)}') into host {host:X}: {w}x{h}, frame {_frame}, keepFrame {Profile.KeepFrame}");
         return true;
@@ -396,31 +434,54 @@ public sealed class WindowEmbedder : IDisposable
             host = _host;
             _game = 0;
             _placeWanted = null;
+            _attached = false;
         }
         _watching = false;
         if (host != 0) ByHost.TryRemove(new KeyValuePair<nint, WindowEmbedder>(host, this));
-        bool wasAttached = _attached;
-        _attached = false;
-        if (game == 0 || !wasAttached || !Native.IsWindow(game)) return;
+        if (game == 0) return;
+        if (!Native.IsWindow(game))
+        {
+            Do(() => ForgetOwn(game)); // the window is gone (emulator closed): nothing to give back
+            return;
+        }
 
         bool foreground = host != 0 && Native.GetForegroundWindow() == Native.GetAncestor(host, Native.GA_ROOT);
         if (host == 0 || !Native.GetWindowRect(host, out var where)) Native.GetWindowRect(game, out where);
-        var own = _own;
-        _own = null;
+
+        // Decided where the window calls run (after any Take still running there for a busy emulator): the window is
+        // given back if it is inside the host by then – a take that was dropped or failed left it alone.
+        void Run()
+        {
+            var own = ForgetOwn(game);
+            if (Native.IsWindow(game) && Native.GetParent(game) == host) ReleaseNow(game, own, where, foreground, toDesktop);
+        }
 
         if (_worker == null || _work.IsAddingCompleted)
         {
-            ReleaseNow(game, own, where, foreground, toDesktop);
+            Run();
             return;
         }
-        using var done = new ManualResetEventSlim();
+        // not disposed: after a timeout the worker still sets it when the emulator finally answers
+        var done = new ManualResetEventSlim();
         bool queued = Enqueue(() =>
         {
-            try { ReleaseNow(game, own, where, foreground, toDesktop); }
+            try { Run(); }
             finally { done.Set(); }
         });
-        if (!queued) ReleaseNow(game, own, where, foreground, toDesktop);
+        if (!queued) Run();
         else if (!done.Wait(TimeSpan.FromSeconds(3))) Log.Warn($"Release of {game:X} did not finish within 3 s (emulator busy)");
+    }
+
+    /// <summary>The saved original styles of this window (null when none) – forgotten from now on.</summary>
+    private (long Style, long ExStyle)? ForgetOwn(nint game)
+    {
+        var own = _ownWindow == game ? _own : null;
+        if (_ownWindow == game)
+        {
+            _own = null;
+            _ownWindow = 0;
+        }
+        return own;
     }
 
     private static void ReleaseNow(nint game, (long Style, long ExStyle)? own, Native.RECT where, bool foreground, bool toDesktop)
@@ -508,7 +569,8 @@ public sealed class WindowEmbedder : IDisposable
         if (_disposed) return;
         try
         {
-            if (_attached) Release(toDesktop: true);
+            // also while a Take is still running for a busy emulator (not attached yet): Release waits for it
+            if (_game != 0) Release(toDesktop: true);
         }
         catch (Exception ex)
         {

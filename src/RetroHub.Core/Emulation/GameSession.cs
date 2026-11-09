@@ -309,7 +309,9 @@ public sealed class GameSession : IGameSession
 
     /// <summary>
     /// Posts WM_CLOSE to every visible top-level window of the session's processes (like the emulator's own close
-    /// button, so it can save on the way) and waits up to <paramref name="timeout"/> for all processes to exit.
+    /// button, so it can save on the way) – and to their windows currently embedded in RetroHub by a
+    /// <see cref="WindowEmbedder"/> (child windows then, which EnumWindows does not list) – and waits up to
+    /// <paramref name="timeout"/> for all processes to exit.
     /// </summary>
     public async Task<bool> RequestCloseAsync(TimeSpan timeout)
     {
@@ -319,8 +321,15 @@ public sealed class GameSession : IGameSession
             var ids = ProcessIds();
             int posted = 0;
             if (ids.Count > 0)
-                foreach (var hwnd in WindowFinder.FindTopLevelWindows(new HashSet<int>(ids), visibleOnly: true))
+            {
+                var pids = new HashSet<int>(ids);
+                var targets = new List<nint>(WindowFinder.FindTopLevelWindows(pids, visibleOnly: true));
+                foreach (var embedded in WindowEmbedder.EmbeddedWindows())
+                    if (!targets.Contains(embedded) && Native.IsWindow(embedded) && pids.Contains(Native.ProcessIdOf(embedded)))
+                        targets.Add(embedded);
+                foreach (var hwnd in targets)
                     if (Native.PostMessage(hwnd, Native.WM_CLOSE, 0, 0)) posted++;
+            }
             Log.Info($"RequestClose: WM_CLOSE posted to {posted} window(s) of pid(s) {string.Join(",", ids)}");
         }
         catch (Exception ex)
@@ -338,6 +347,16 @@ public sealed class GameSession : IGameSession
         if (State is SessionState.Exited or SessionState.Failed || Detached) return;
         _killed = true;
         bool done = false;
+        if (Recovered && Process != null)
+        {
+            // re-attached: processes the game started before RetroHub restarted are not in the new job – the
+            // process tree finds them (while the main process still lives)
+            try { Process.Kill(entireProcessTree: true); }
+            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or NotSupportedException or AggregateException)
+            {
+                Log.Warn($"Kill of re-attached process tree {ProcessId} failed", ex);
+            }
+        }
         try
         {
             done = _job?.Terminate(1) ?? false;

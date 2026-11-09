@@ -335,6 +335,13 @@ internal sealed class TestWindowThread : IDisposable
         }
     }
 
+    /// <summary>Runs on the window thread without waiting (e.g. to make the window "hang" with a Thread.Sleep).</summary>
+    public void Post(Action a)
+    {
+        _queue.Enqueue(a);
+        TestWin32.PostThreadMessageW(_threadId, TestWin32.WM_APP, IntPtr.Zero, IntPtr.Zero);
+    }
+
     /// <summary>Runs on the window thread and waits for it.</summary>
     public T Invoke<T>(Func<T> f)
     {

@@ -96,6 +96,81 @@ public sealed class RecoveryTests
     }
 
     [Fact]
+    public async Task ReattachedSession_Kill_AlsoKillsChildrenStartedBeforeTheRestart()
+    {
+        using var root = new TempRoot();
+        var repo = new FakeRepository();
+        using var svc = Runtime.Service(repo, root);
+        // cmd waits for its child ping: the ping was started "before RetroHub restarted", so it is not in the new job
+        using var cmd = Process.Start(new ProcessStartInfo(Runtime.Cmd, "/c \"ping -n 60 127.0.0.1 >nul\"") { UseShellExecute = false, CreateNoWindow = true })!;
+        int pingPid = 0;
+        try
+        {
+            Assert.True(await Runtime.WaitUntil(() => (pingPid = ChildPing(cmd.Id)) != 0, TimeSpan.FromSeconds(10)), "ping child did not start");
+            var start = cmd.StartTime.ToUniversalTime();
+            WriteSessionFile(svc, new { gameId = 10, pid = cmd.Id, exePath = Runtime.Cmd, startUtc = start, heartbeatUtc = start });
+            svc.RecoverInterruptedSession();
+            var current = Assert.IsType<GameSession>(svc.Current);
+            Assert.True(current.Recovered);
+            var ended = Runtime.EndedTask(current);
+
+            current.Kill();
+            await Runtime.WithTimeout(ended, TimeSpan.FromSeconds(10), "Ended after Kill");
+            Assert.True(await Runtime.WaitUntil(() => !Runtime.IsAlive(pingPid), TimeSpan.FromSeconds(5)), $"child ping {pingPid} survived Kill");
+        }
+        finally
+        {
+            if (!cmd.HasExited) cmd.Kill(entireProcessTree: true);
+            if (pingPid != 0 && Runtime.IsAlive(pingPid)) Process.GetProcessById(pingPid).Kill();
+        }
+    }
+
+    private static int ChildPing(int parentPid)
+    {
+        foreach (var p in Process.GetProcessesByName("PING"))
+        {
+            using (p)
+            {
+                if (ParentOf(p.Id) == parentPid) return p.Id;
+            }
+        }
+        return 0;
+    }
+
+    private static int ParentOf(int pid)
+    {
+        // WMI-free: NtQueryInformationProcess would need more interop; the toolhelp snapshot is enough here
+        var snap = CreateToolhelp32Snapshot(0x2 /* TH32CS_SNAPPROCESS */, 0);
+        try
+        {
+            var e = new PROCESSENTRY32W { dwSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<PROCESSENTRY32W>() };
+            for (bool ok = Process32FirstW(snap, ref e); ok; ok = Process32NextW(snap, ref e))
+                if (e.th32ProcessID == pid) return (int)e.th32ParentProcessID;
+            return 0;
+        }
+        finally
+        {
+            CloseHandle(snap);
+        }
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private struct PROCESSENTRY32W
+    {
+        public uint dwSize, cntUsage, th32ProcessID;
+        public IntPtr th32DefaultHeapID;
+        public uint th32ModuleID, cntThreads, th32ParentProcessID;
+        public int pcPriClassBase;
+        public uint dwFlags;
+        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValTStr, SizeConst = 260)] public string szExeFile;
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)] private static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint pid);
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)] private static extern bool Process32FirstW(IntPtr snap, ref PROCESSENTRY32W e);
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)] private static extern bool Process32NextW(IntPtr snap, ref PROCESSENTRY32W e);
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr h);
+
+    [Fact]
     public void CorruptOrMissingFile_NeverThrows()
     {
         using var root = new TempRoot();
