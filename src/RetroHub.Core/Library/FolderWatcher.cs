@@ -152,7 +152,8 @@ public sealed class FolderWatcher : IDisposable
         }
     }
 
-    private void OnError(long id, Exception ex)
+    /// <summary>A watcher failed (buffer overflow, folder gone, network drop): re-create it and report the folder as changed. Internal for tests.</summary>
+    internal void OnError(long id, Exception ex)
     {
         Log.Warn($"Folder watcher error for folder {id}, re-creating", ex);
         lock (_gate)

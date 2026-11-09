@@ -21,8 +21,9 @@ public static class ScanPhases
 /// Threading: every scan runs on the thread pool (never on the caller's thread). Scans never overlap. When
 /// <see cref="ScanAsync"/> is called while a scan is running:
 /// <list type="bullet">
-/// <item>if the running scan is still enumerating files and its options cover the request (same or more folders,
-/// at least as thorough), the caller gets the running scan's result;</item>
+/// <item>if the running scan has not read the folder list yet and its options cover the request (same or more
+/// folders, at least as thorough), the caller gets the running scan's result (later, a new folder or a folder already
+/// walked past could be missed, so the request is not joined to it);</item>
 /// <item>else if a queued (not yet started) scan covers the request, the caller shares that one;</item>
 /// <item>otherwise a new scan is queued and starts as soon as the running one has finished.</item>
 /// </list>
@@ -92,7 +93,8 @@ public sealed class LibraryScanner : ILibraryScanner
     {
         public ScanOptions Options { get; } = options;
         public Task<ScanReport> Task { get; set; } = null!;
-        public volatile bool EnumerationDone;
+        /// <summary>Set (under the scheduler lock) right before the first folder is listed; from then on nobody joins.</summary>
+        public bool EnumerationStarted;
     }
 
     public Task<ScanReport> ScanAsync(ScanOptions options, IProgress<ScanProgress>? progress, CancellationToken ct)
@@ -101,7 +103,7 @@ public sealed class LibraryScanner : ILibraryScanner
         if (ct.IsCancellationRequested) return Task.FromCanceled<ScanReport>(ct);
         lock (_sync)
         {
-            if (_running is { EnumerationDone: false } r && Covers(r.Options, options))
+            if (_running is { EnumerationStarted: false } r && Covers(r.Options, options))
                 return JoinAsync(r, options, progress, ct);
             if (_pending is { } p && Covers(p.Options, options))
                 return JoinAsync(p, options, progress, ct);
@@ -238,6 +240,8 @@ public sealed class LibraryScanner : ILibraryScanner
         ct.ThrowIfCancellationRequested();
 
         EnsureBuiltInFolder();
+        // From here on the folder list and the files are read: a later request may need something this run misses.
+        lock (_sync) job.EnumerationStarted = true;
         var allFolders = _repo.Folders();
         var folders = allFolders
             .Where(f => f.Enabled && (job.Options.FolderIds == null || job.Options.FolderIds.Contains(f.Id)))
@@ -266,7 +270,6 @@ public sealed class LibraryScanner : ILibraryScanner
             var complete = Walk(st, folder, root, otherRoots, entries);
             plans.Add(new FolderPlan(folder, root, entries, complete));
         }
-        job.EnumerationDone = true;
         st.FilesTotal = plans.Sum(p => p.Entries.Count);
         st.FilesSeen = 0; // the counter restarts for the checking phase
 
@@ -300,19 +303,7 @@ public sealed class LibraryScanner : ILibraryScanner
         }
         Flush(st);
 
-        var now = DateTime.UtcNow;
-        foreach (var plan in plans)
-        {
-            try
-            {
-                plan.Folder.LastScanUtc = now;
-                _repo.UpsertFolder(plan.Folder);
-            }
-            catch (Exception ex)
-            {
-                Log.Error($"Could not update library folder {plan.Folder.Path}", ex);
-            }
-        }
+        UpdateLastScan(plans);
 
         var report = new ScanReport
         {
@@ -330,6 +321,36 @@ public sealed class LibraryScanner : ILibraryScanner
                  $"{report.Missing} missing, {report.Duplicates.Count} duplicates, {report.Unknown.Count} unknown, " +
                  $"{report.Errors.Count} errors in {report.Duration.TotalSeconds:0.0} s");
         return report;
+    }
+
+    /// <summary>
+    /// Sets LastScanUtc on the scanned folders. The folders are read again first: the user may have changed a
+    /// folder's settings (or removed it) while the scan ran, and the scan must neither revert nor resurrect it.
+    /// </summary>
+    private void UpdateLastScan(List<FolderPlan> plans)
+    {
+        var now = DateTime.UtcNow;
+        IReadOnlyList<LibraryFolder> current;
+        try { current = _repo.Folders(); }
+        catch (Exception ex)
+        {
+            Log.Error("Could not re-read library folders after the scan", ex);
+            return;
+        }
+        foreach (var plan in plans)
+        {
+            var f = current.FirstOrDefault(x => x.Id == plan.Folder.Id);
+            if (f == null) continue; // removed during the scan
+            try
+            {
+                f.LastScanUtc = now;
+                _repo.UpsertFolder(f);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Could not update library folder {f.Path}", ex);
+            }
+        }
     }
 
     /// <summary>Makes sure the built-in games/ folder is registered (IsBuiltIn, path "games"). Returns it.</summary>
@@ -578,16 +599,13 @@ public sealed class LibraryScanner : ILibraryScanner
         string? crc = null;
         if (st.Options.ComputeHashes && kind == GameKind.Rom && !ScanRules.IsDiscImageExtension(ext) &&
             stat.Size is > 0 and <= MaxHashBytes && sniffs.Readable)
-            crc = ComputeCrc(path, stat, st.Ct);
+            crc = ComputeCrc(path, stat, useCache: !st.Options.Full, st.Ct);
 
         var status = broken ? GameStatus.Broken : GameStatus.Ok;
         if (existing != null)
         {
-            // Changed file (or Full scan): refresh what the file says, keep everything the user/metadata set.
-            ApplyFile(existing, folder, sys, kind, status, stat, crc, sniff);
-            st.Seen.Add(existing);
-            Queue(st, existing);
-            st.Updated++;
+            // Changed file (or Full scan / Broken re-check): refresh what the file says, keep what the user/metadata set.
+            Refresh(st, existing, folder, sys, kind, status, stat, crc, sniff);
             return;
         }
 
@@ -621,10 +639,7 @@ public sealed class LibraryScanner : ILibraryScanner
         var status = stat.Size == 0 ? GameStatus.Broken : GameStatus.Ok;
         if (existing != null)
         {
-            ApplyFile(existing, folder, sys, kind, status, stat, null, null);
-            st.Seen.Add(existing);
-            Queue(st, existing);
-            st.Updated++;
+            Refresh(st, existing, folder, sys, kind, status, stat, null, null);
             return;
         }
         var name = Path.GetFileName(path);
@@ -659,11 +674,8 @@ public sealed class LibraryScanner : ILibraryScanner
             var existingStat = existing.Path.Equals(portable, StringComparison.OrdinalIgnoreCase)
                 ? stat : StatOf(_paths.FromPortable(existing.Path), null);
             if (TryUnchanged(st, folder, existing, existingStat, () => existingStat.Size == 0)) return;
-            ApplyFile(existing, folder, sys, existing.Kind, existingStat.Size == 0 ? GameStatus.Broken : GameStatus.Ok,
+            Refresh(st, existing, folder, sys, existing.Kind, existingStat.Size == 0 ? GameStatus.Broken : GameStatus.Ok,
                 existingStat, null, null);
-            st.Seen.Add(existing);
-            Queue(st, existing);
-            st.Updated++;
             return;
         }
 
@@ -686,6 +698,9 @@ public sealed class LibraryScanner : ILibraryScanner
     private bool TryUnchanged(RunState st, LibraryFolder folder, Game existing, Stat stat, Func<bool> brokenCheck)
     {
         if (st.Options.Full || existing.Size != stat.Size || !SameTime(existing.FileTimeUtc, stat.TimeUtc)) return false;
+        // Broken may have been transient (file locked by another program, network hiccup): check it again.
+        // Refresh() counts it as unchanged when the result is the same, so this costs no writes.
+        if (existing.Status == GameStatus.Broken) return false;
         st.Seen.Add(existing);
         var changed = false;
         if (existing.Status == GameStatus.Missing)
@@ -735,6 +750,50 @@ public sealed class LibraryScanner : ILibraryScanner
         return true;
     }
 
+    /// <summary>
+    /// Re-applies what the file says to a known game at the same path. Counts it as Updated (and writes it) only when a
+    /// scanner-owned field actually changed, otherwise as Unchanged. Keeps the duplicate/rename indexes in sync.
+    /// </summary>
+    private void Refresh(RunState st, Game existing, LibraryFolder folder, SystemDef sys, GameKind kind, GameStatus status,
+        Stat stat, string? crc, SniffResult? sniff)
+    {
+        var before = ScannerFields.Of(existing);
+        RemoveIndexes(st, existing);
+        ApplyFile(existing, folder, sys, kind, status, stat, crc, sniff);
+        AddIndexes(st, existing);
+        st.Seen.Add(existing);
+        if (ScannerFields.Of(existing) == before)
+        {
+            st.Unchanged++;
+            return;
+        }
+        Queue(st, existing);
+        st.Updated++;
+    }
+
+    /// <summary>The fields the scanner owns on a <see cref="Game"/> (everything else belongs to the user/metadata).</summary>
+    private readonly record struct ScannerFields(string Path, string SystemId, long? FolderId, GameKind Kind, GameStatus Status,
+        long Size, DateTime FileTimeUtc, string? Crc32, string? Serial, string? Region)
+    {
+        public static ScannerFields Of(Game g) =>
+            new(g.Path, g.SystemId, g.FolderId, g.Kind, g.Status, g.Size, g.FileTimeUtc, g.Crc32, g.Serial, g.Region);
+
+        /// <summary>Copies the scanner's fields onto the current database row, keeping that row's user/metadata fields.</summary>
+        public static void CopyTo(Game from, Game to)
+        {
+            to.Path = from.Path;
+            to.SystemId = from.SystemId;
+            to.FolderId = from.FolderId;
+            to.Kind = from.Kind;
+            to.Status = from.Status;
+            to.Size = from.Size;
+            to.FileTimeUtc = from.FileTimeUtc;
+            to.Crc32 = from.Crc32;
+            if (from.Serial != null) to.Serial = from.Serial;
+            to.Region ??= from.Region;
+        }
+    }
+
     private void Relocate(RunState st, Game moved, LibraryFolder folder, string portable, SystemDef sys, GameKind kind,
         GameStatus status, Stat stat, string? crc, SniffResult? sniff)
     {
@@ -763,9 +822,11 @@ public sealed class LibraryScanner : ILibraryScanner
         g.FolderId = folder.Id;
         g.Kind = kind;
         g.Status = status;
+        // Without a new CRC (hashing off), the stored one stays valid as long as the file is unchanged.
+        var sameContent = g.Size == stat.Size && SameTime(g.FileTimeUtc, stat.TimeUtc);
+        g.Crc32 = crc ?? (sameContent ? g.Crc32 : null);
         g.Size = stat.Size;
         g.FileTimeUtc = stat.TimeUtc;
-        g.Crc32 = crc;
         if (!string.IsNullOrWhiteSpace(sniff?.Serial)) g.Serial = sniff.Serial;
         g.Region ??= sniff?.Region;
     }
@@ -823,7 +884,7 @@ public sealed class LibraryScanner : ILibraryScanner
         if (st.PendingWrites.Count == 0) return;
         try
         {
-            _repo.UpsertMany(st.PendingWrites.ToList());
+            _repo.UpsertMany(MergeWithCurrent(st.PendingWrites));
         }
         catch (Exception ex)
         {
@@ -832,6 +893,40 @@ public sealed class LibraryScanner : ILibraryScanner
         }
         st.PendingWrites.Clear();
         st.PendingSet.Clear();
+    }
+
+    /// <summary>
+    /// The scan works on a snapshot taken when it started; meanwhile the user may have played a game, toggled a
+    /// favourite, edited metadata or removed the game. So for known games only the scanner's own fields are copied
+    /// onto the row as it is now, and games removed during the scan are not written back.
+    /// </summary>
+    private List<Game> MergeWithCurrent(List<Game> pending)
+    {
+        var result = new List<Game>(pending.Count);
+        foreach (var g in pending)
+        {
+            if (g.Id == 0)
+            {
+                result.Add(g);
+                continue;
+            }
+            Game? current;
+            try { current = _repo.Get(g.Id); }
+            catch (Exception ex)
+            {
+                Log.Warn($"Could not re-read game {g.Id} before saving; writing the scanned state", ex);
+                result.Add(g);
+                continue;
+            }
+            if (current == null)
+            {
+                Log.Info($"Game {g.Id} ({g.Path}) was removed during the scan; not saved again");
+                continue;
+            }
+            ScannerFields.CopyTo(g, current);
+            result.Add(current);
+        }
+        return result;
     }
 
     private bool GameFileExists(RunState st, Game g)
@@ -1054,7 +1149,7 @@ public sealed class LibraryScanner : ILibraryScanner
     /// <summary>Size and mtime; for descriptors the sum/max over the descriptor and every referenced file.</summary>
     private static Stat StatOf(string path, (IReadOnlyList<string> Files, bool AnyRequiredMissing)? playlist)
     {
-        var fi = new FileInfo(path);
+        var fi = ScanRules.FollowLink(new FileInfo(path));
         var size = fi.Length;
         var time = fi.LastWriteTimeUtc;
         if (playlist != null)
@@ -1063,7 +1158,7 @@ public sealed class LibraryScanner : ILibraryScanner
             {
                 try
                 {
-                    var r = new FileInfo(f);
+                    var r = ScanRules.FollowLink(new FileInfo(f));
                     if (!r.Exists) continue;
                     size += r.Length;
                     if (r.LastWriteTimeUtc > time) time = r.LastWriteTimeUtc;
@@ -1076,12 +1171,12 @@ public sealed class LibraryScanner : ILibraryScanner
 
     private static long SafeLength(string path)
     {
-        try { return new FileInfo(path).Length; } catch (Exception) { return -1; }
+        try { return ScanRules.FollowLink(new FileInfo(path)).Length; } catch (Exception) { return -1; }
     }
 
-    private string? ComputeCrc(string path, Stat stat, CancellationToken ct)
+    private string? ComputeCrc(string path, Stat stat, bool useCache, CancellationToken ct)
     {
-        if (_crcCache.TryGetValue(path, out var c) && c.Size == stat.Size && c.Time == stat.TimeUtc)
+        if (useCache && _crcCache.TryGetValue(path, out var c) && c.Size == stat.Size && c.Time == stat.TimeUtc)
             return Crc32.ToHex(c.Crc);
         try
         {

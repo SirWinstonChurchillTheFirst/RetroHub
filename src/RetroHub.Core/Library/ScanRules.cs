@@ -68,6 +68,23 @@ public static class ScanRules
         extension.ToLowerInvariant() is ".iso" or ".chd" or ".cso" or ".zso" or ".rvz" or ".wia" or ".wbfs" or ".gcz"
             or ".gcm" or ".ciso" or ".cdi" or ".img" or ".mdf" or ".nrg" or ".pbp" or ".ecm" or ".dax" or ".nsp" or ".xci";
 
+    /// <summary>
+    /// For a file symbolic link, the final target (a <see cref="FileInfo"/> of the link itself reports length 0 and the
+    /// link's own time stamps). Anything else, or a link that cannot be resolved, is returned unchanged.
+    /// </summary>
+    internal static FileInfo FollowLink(FileInfo file)
+    {
+        try
+        {
+            if (file.LinkTarget == null) return file;
+            return file.ResolveLinkTarget(returnFinalTarget: true) as FileInfo ?? file;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            return file;
+        }
+    }
+
     /// <summary>Multi-file descriptors the scanner understands (their referenced files are hidden).</summary>
     public static bool IsPlaylistExtension(string extension) =>
         extension.ToLowerInvariant() is ".m3u" or ".cue" or ".gdi" or ".ccd" or ".mds";

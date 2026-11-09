@@ -70,7 +70,7 @@ internal static class SnifferUtil
 
     public static long FileLength(string path)
     {
-        try { return new FileInfo(path).Length; }
+        try { return ScanRules.FollowLink(new FileInfo(path)).Length; }
         catch (Exception) { return -1; }
     }
 

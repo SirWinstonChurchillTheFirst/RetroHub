@@ -384,9 +384,21 @@ public sealed class LibraryScannerTests : IDisposable
         Assert.Equal(2, third.Unchanged);
         Assert.NotEqual(oldCrc, G("games/gba/B.gba").Crc32);
 
+        // A Full scan re-checks every file, but only writes/counts games whose scanned data really changed.
+        var calls = _repo.UpsertManyCalls;
         var full = await Scan(new ScanOptions { Full = true });
-        Assert.Equal(3, full.Updated);
-        Assert.Equal(0, full.Unchanged);
+        Assert.Equal(0, full.Updated);
+        Assert.Equal(3, full.Unchanged);
+        Assert.Equal(calls, _repo.UpsertManyCalls);
+
+        // Content replaced with the same size and an identical time stamp: only a Full scan notices.
+        var t = File.GetLastWriteTimeUtc(b);
+        File.WriteAllBytes(b, RomImages.Gba(seed: 4));
+        File.SetLastWriteTimeUtc(b, t);
+        Assert.Equal(3, (await Scan()).Unchanged);
+        full = await Scan(new ScanOptions { Full = true });
+        Assert.Equal(1, full.Updated);
+        Assert.Equal(2, full.Unchanged);
     }
 
     [Fact]
@@ -664,7 +676,7 @@ public sealed class LibraryScannerTests : IDisposable
         var r4 = await fourth;
         Assert.NotSame(r3, r4);
         Assert.Equal(1, r3.Unchanged);
-        Assert.Equal(1, r4.Updated);
+        Assert.Equal(1, r4.Unchanged); // re-checked by the Full scan, nothing changed
     }
 
     private sealed class GatedRepository : InMemoryGameRepository

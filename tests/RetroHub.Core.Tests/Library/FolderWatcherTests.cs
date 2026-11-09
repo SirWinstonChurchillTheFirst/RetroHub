@@ -104,6 +104,42 @@ public sealed class FolderWatcherTests : IDisposable
     }
 
     [Fact]
+    public void Watcher_error_recreates_the_watcher_and_reports_the_folder()
+    {
+        Directory.CreateDirectory(_tmp.Full("games/gba"));
+        _watcher.SetFolders([Folder(1, "games")]);
+
+        _watcher.OnError(1, new InternalBufferOverflowException("simulated overflow"));
+        Assert.Equal([1L], Next()); // events may have been lost: rescan
+        Assert.Equal([1L], _watcher.ActiveFolderIds);
+
+        // The re-created watcher still works.
+        _tmp.Write("games/gba/after.gba", RomImages.Gba(seed: 11));
+        Assert.Equal([1L], Next());
+    }
+
+    [Fact]
+    public void Watched_folder_that_is_deleted_and_recreated_is_watched_again()
+    {
+        var ext = _tmp.External("Usb");
+        Directory.CreateDirectory(ext);
+        _watcher.SetFolders([new LibraryFolder { Id = 5, Path = ext }]);
+        Assert.Equal([5L], _watcher.ActiveFolderIds);
+
+        Directory.Delete(ext);
+        Assert.Equal([5L], Next()); // the deletion itself (or the watcher error) is a change
+        Directory.CreateDirectory(ext);
+        // Drain notifications until the folder is watched again (retry runs every 200 ms in this test).
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (!_watcher.ActiveFolderIds.Contains(5) && sw.ElapsedMilliseconds < 5000) Next(200);
+        Assert.Equal([5L], _watcher.ActiveFolderIds);
+        while (Next(800) != null) { }
+
+        File.WriteAllBytes(Path.Combine(ext, "y.nes"), RomImages.Nes());
+        Assert.Equal([5L], Next());
+    }
+
+    [Fact]
     public void Dispose_stops_notifications_and_is_idempotent()
     {
         _watcher.SetFolders([Folder(1, "games")]);

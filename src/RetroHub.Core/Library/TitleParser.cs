@@ -116,7 +116,8 @@ public static partial class TitleParser
     {
         s = s.Replace('_', ' ');
         s = MultiSpace().Replace(s, " ").Trim();
-        return s.Trim(' ', '-', '.', ',', '~').Trim();
+        // '.' is not trimmed: "Super Mario Bros.", "Ken Griffey Jr." end with one, ".hack" starts with one.
+        return s.Trim(' ', '-', ',', '~').Trim();
     }
 
     private static string? RegionOf(string tag)

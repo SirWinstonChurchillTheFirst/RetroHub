@@ -94,7 +94,7 @@ public static class PcGameDetector
 
     private static long SafeLength(FileInfo f)
     {
-        try { return f.Length; } catch (IOException) { return 0; }
+        try { return ScanRules.FollowLink(f).Length; } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return 0; }
     }
 
     /// <summary>"Half-Life 2" / "half_life2" / "HalfLife2" all become "halflife2".</summary>
