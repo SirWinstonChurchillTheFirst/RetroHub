@@ -667,6 +667,19 @@ MainWindow
 - **Fokuszeile**: Die Zeile wird Regal hell, der Balken wächst auf 8 px, oben liegt 1 px Lichtkante, und der Titel steht in einem **Papier-Chip** (Tinte, 8×4, R 2). Die Zeile wird nicht vollständig invertiert, weil ein 1280 px breiter Papierbalken heller wäre als jedes Spielbild.
 - **Vorschau** 56 %: Schachtel contain max 360×480 auf einer Regalkante, Titel `poster-s` (2 Zeilen, Ellipse), Meta-Satz, Spielen und Details. Kein Fernsehlicht.
 
+#### 7.2.3 Stand M3 (umgesetzt, Entscheidungen aus der QA)
+
+- **Schultertasten** blättern in der Bibliothek durch den Ticker (mit Umlauf: von „Alle“ nach links zum letzten System) und wechseln nie den Kanal; Kanäle wechseln über *Menü* oder die Tasten 1/2/3. Die Schulter-Glyphen an beiden Ticker-Enden sind per Maus klickbar. *Hoch* aus der ersten Regalzeile fokussiert den aktiven Ticker-Eintrag, *Runter* kehrt zur gemerkten Schachtel zurück.
+- **Werkzeuge**: Suche, Sortierung, Favoriten (an: Stern gefüllt in Favoritengelb) und **ein** Ansicht-Werkzeug („Regal“/„Liste“ mit Icon). Es gibt keinen zweiten Unterstrich für die gewählte Ansicht, denn Bernstein gehört nach 2.2 nur dem Ticker-Eintrag „Alle“.
+- **Regalspiegel**: Ein Rücken ist so hoch wie das Schachtelformat seines Systems (Format 1,0 steht 8 von 12 px, Hüllen ≥ 1,6 die vollen 12), ab 4 px Breite pro Spiel mit 1 px Fuge. So lesen sich Läufe eines Systems als Rückenreihe. Die Klammer folgt dem sichtbaren Bereich des Regals bzw. der Liste.
+- **Fach eines Systems**: Das Wand-Banner ist der Kopf des Regals und läuft randlos über die Seitenränder. Es zeigt die Wand (38/62, Band, Textur), links Name in Plakat 56 (≈ 1100: 44) und den Satz, rechts das Motiv 144 px (≈ 1100: 112) auf einem Bühnenbrett. Beim Systemwechsel gleiten Text und Motiv 24 px herein (Glide). Steht der Fokus in der ersten Zeile, bleibt das Banner im Bild. Seitengrund = Wand, Brettlicht = Licht bei 22 %, Ring, Kegel und Spiegelmarke in Licht. Bei „Alle“ tragen die Bretter die Lichtfarbe bei 22 %.
+- **Fachformat**: Median der gespeicherten Cover-Maße (≥ 8, sonst Startwert 11.4), *vor* dem Bau des Regals gesetzt. Rücken-Platzhalter übernehmen im Fach dieses Format und stehen damit wie ihre Nachbarn (PAL-SNES: quer).
+- **Namensvettern**: Haben zwei Spiele eines Systems denselben Titel (ohne Regions- und Versionsmarken), steht in der Etikett-Zeile die Region bzw. Sprache („Englisch“, „Japan“, „Europa“). Fehlt sie, steht „Original“. Bildunterschriften setzen „ - “ als Halbgeviertstrich.
+- **Aufkleber „Neu“**: nur, wenn höchstens ein Viertel der Bibliothek (und mehr als 3 Spiele) die Regel erfüllt. Ein frisch importiertes Regal ist keine Neuigkeit, und eine Wand voller Aufkleber markiert nichts.
+- **Listen-Ansicht**: Die Vorschau folgt der Fokuszeile (Schachtel bis 360×480 auf einer Regalkante, die bis zum rechten Fensterrand läuft). *Links* aus „Spielen“ kehrt zur Zeile zurück. Der Titel der Fokuszeile steht als Tinte auf dem Papier-Chip (vorher Papier auf Papier, weil eine App-Klassenregel die Fokusregel überstimmte).
+- **Leere Bibliothek**: Linienzeichnung „leeres Regal“ auf einer Regalkante, „Das Regal ist noch leer“ (poster-s), ein Satz, **Ordner hinzufügen** (Bernstein, erster Fokus) und **Importe öffnen**. Spiegel, Schultern und Werkzeuge entfallen. Fußleiste: „Noch keine Spiele“, Hinweise nur „Ordner hinzufügen“ und „Menü“. Ohne Treffer: Satz und Hinweis, Hinweise Suche, Fach, Menü.
+- **Laufschrift** in Listenzeilen ist noch nicht umgesetzt (Ellipse).
+
 ---
 
 ### 7.3 Spiel-Detail: „Die Schachtel aus dem Regal“
@@ -885,6 +898,7 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 - **Fernsehlicht** (nur Start/Detail): 2 Bildebenen 64×36, ein geflachtes Scrim-Bitmap, ein Schein. Während `.nav-repeat` findet keine Arbeit statt.
 - **Platzhalter**: `FormattedText` (Titelumbruch, gedrehter Code) wird **pro Kachel bei Änderung** von Titel, Größe oder System erzeugt und gecacht, nie in `Render`.
 - **Messung**: FPS-Overlay bzw. `RendererDiagnostics` im QA-Lauf mit 1000 Demo-Spielen und mit einer Bibliothek ohne Cover.
+- **Stand M3 (gemessen headless, Skia auf der CPU in der Dev-VM, `DesignPreviewTests.Library_1000_perf`, Bericht `perf-library.txt`)**: Bei 1000 Spielen ohne Cover sind 64 Kacheln realisiert. In 118 Bewegungen wurden nur 16 Kacheln gebaut, weil der Zeilen-Presenter selbst der Container ist und an Ort und Stelle recycelt wird. Die Fokusebene ist nur so groß wie Kegel, Ring und Brettstück. Die Brettebene zeichnet nur neu, wenn sich die realisierten Zeilen ändern. Der Regalspiegel wird einmal pro Liste gerastert (unter 5 ms) und bei Bewegungen nie. Messwerte bei 1080p: Bewegung nach unten im eingeschwungenen Zustand Layout Median ≈ 1 ms (erster Besuch einer Zeile p95 ≈ 15–20 ms); Frame nach einer Bewegung ≈ 9–20 ms CPU-Raster; Standbild ≈ 2 ms. **Grenzen der Messung**: Headless wartet `CaptureRenderedFrame` laufende Transitions ab (Hebung 140 ms). Mit Bewegung „voll“ misst es deshalb ≈ 150 ms statt der Arbeit. Gemessen wird daher mit Bewegung „aus“. Die ersten ≈ 60 Bewegungen nach dem Öffnen kosten Median ≈ 25 ms Layout (Aufwärmen). Eine GPU-fps-Messung auf echter Hardware steht aus.
 
 ---
 
@@ -921,6 +935,8 @@ Gezeichnet in `CoverArt.DrawPlaceholder`, Seitenverhältnis 0,72 (B/H) hochkant,
 - **Text-Cache**: `FormattedText` für Titel und Code entsteht in `OnPropertyChanged` (Titel, Bounds-Bucket, System) und wird im Feld gehalten.
 - Umbruch nur an Leerzeichen und nach Bindestrichen, nie im Wort; die Größe sinkt nur, wenn ein einzelnes Wort breiter als die Zeile ist (× 0,88, ≥ 13 px). Mehr als 4 Zeilen: die vierte Zeile endet mit „…“ (M2-QA). `ShowBadge` und die Badge-Pille entfallen; auf Start trägt keine Schachtel eine Favoriten-Marke.
 - Der Platzhalter wird nicht abgedunkelt, denn Dimmen ist dem Status vorbehalten.
+- **Bedruckter Rücken (M3)**: Ab 28 px Bandbreite trägt das Band wie ein echter Rücken oben den Code, darunter den Haupttitel (vor „ – “/„: “) von unten nach oben und am Fuß das Jahr (Archivo Condensed, Text auf Farbe, ≥ 15 px). Dazu kommt eine 1-px-Falzlinie zur Front. Der Titel steht **ganz oder gar nicht**: Reicht der Platz nicht, entfällt zuerst das Jahr, dann der Titel. Es gibt nie „Banjo-K…“.
+- **Schmale Hüllen (M1-Rest, M3)**: Passt ein Wort in Archivo Expanded nicht in die Zeile (Wii/Switch), wird der Titel in derselben Größe in **Archivo Condensed** gesetzt, statt die Plakatschrift auf 13 px schrumpfen zu lassen. Die Untergrenze ist dann 15 px.
 
 ### 10.3 Fehlende Metadaten
 
@@ -1000,7 +1016,7 @@ Texte für Leerzustände benennen, was fehlt, und die Lösung, z. B. „Kein Emu
 
 ### 11.4 Fachformat (Slot-Aspekt) ohne Neuberechnung beim Browsen
 
-- **Quelle**: Core speichert beim Cover-Download bzw. -Import Breite und Höhe (Header-Lesen, kein Decode). Die Systemseite berechnet beim Laden den **Median** der vorhandenen Maße und setzt den Slot-Aspekt, *bevor* das Grid gebaut wird. Gibt es weniger als 8 Maße, gelten die Startwerte.
+- **Quelle** (umgesetzt in M3: Schema 2, `games.cover_w`/`cover_h`, `ImageHeader` für PNG/JPEG/WebP/GIF/BMP, Nachtrag älterer Cover beim Start und bei jedem Cover-Lauf; die Bibliothek nutzt den Median im Systemfach): Core speichert beim Cover-Download bzw. -Import Breite und Höhe (Header-Lesen, kein Decode). Die Systemseite berechnet beim Laden den **Median** der vorhandenen Maße und setzt den Slot-Aspekt, *bevor* das Grid gebaut wird. Gibt es weniger als 8 Maße, gelten die Startwerte.
 - **Startwerte** (H/B): NES 1,38 · SNES 1,00 · N64 0,90 · GB/GBC/GBA 1,00 · NDS 0,90 · 3DS 0,86 · GC/Wii/Wii U 1,40 · Switch 1,62 · PS1 1,00 · PS2 1,42 · PSP 1,72 · MD/SMS 1,40 · Saturn 1,00 · Dreamcast 1,00 · GG 1,25 · Arcade 1,40 · PC 1,40 · sonst 1,25.
 - Die gemischte Bibliothek bleibt bei 1 : 1,25.
 

@@ -462,5 +462,6 @@
   "library.view.shelf": "Regal",
   "library.view.list": "Liste",
   "library.prevShelf": "Voriges Fach",
-  "library.nextShelf": "Nächstes Fach"
+  "library.nextShelf": "Nächstes Fach",
+  "library.location.empty": "Noch keine Spiele"
 }

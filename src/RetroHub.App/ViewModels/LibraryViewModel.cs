@@ -128,14 +128,31 @@ public sealed partial class LibraryViewModel : PageViewModel
 
     public bool IsGridView => !IsListView;
 
-    public override IReadOnlyList<HintItem> Hints =>
-    [
-        new(NavAction.Accept, Loc.T("hint.open")),
-        new(NavAction.PageLeft, Loc.T("hint.shelf")),
-        new(NavAction.View, IsListView ? Loc.T("hint.gridView") : Loc.T("hint.listView")),
-        new(NavAction.Favorite, Loc.T("hint.favorite")),
-        new(NavAction.Search, Loc.T("hint.search")),
-    ];
+    /// <summary>The whole library is empty (not just the filter): the page shows the empty shelf and "Ordner hinzufügen".</summary>
+    [ObservableProperty] public partial bool IsLibraryEmpty { get; private set; }
+
+    /// <summary>Games exist, but none matches search/filter.</summary>
+    public bool IsNoMatch => IsEmpty && !IsLibraryEmpty;
+
+    partial void OnIsLibraryEmptyChanged(bool value) { OnPropertyChanged(nameof(IsNoMatch)); RaiseHintsChanged(); }
+    partial void OnIsEmptyChanged(bool value) { OnPropertyChanged(nameof(IsNoMatch)); RaiseHintsChanged(); }
+
+    /// <summary>Hints name what works here (M2 QA): an empty library has one way out, a list without matches the search.</summary>
+    public override IReadOnlyList<HintItem> Hints => IsLibraryEmpty
+        ? [new(NavAction.Accept, Loc.T("home.addFolder")), new(NavAction.Menu, Loc.T("hint.menu"))]
+        : IsEmpty
+            ? [new(NavAction.Search, Loc.T("hint.search")), new(NavAction.PageLeft, Loc.T("hint.shelf")), new(NavAction.Menu, Loc.T("hint.menu"))]
+            :
+            [
+                new(NavAction.Accept, Loc.T("hint.open")),
+                new(NavAction.PageLeft, Loc.T("hint.shelf")),
+                new(NavAction.View, IsListView ? Loc.T("hint.gridView") : Loc.T("hint.listView")),
+                new(NavAction.Favorite, Loc.T("hint.favorite")),
+                new(NavAction.Search, Loc.T("hint.search")),
+            ];
+
+    [RelayCommand] private void AddFolder() => Ctx.Navigator.Navigate(PageKey.Imports, ImportsRequest.AddFolder);
+    [RelayCommand] private void OpenImports() => Ctx.Navigator.Navigate(PageKey.Imports);
 
     partial void OnSearchTextChanged(string value)
     {
@@ -236,6 +253,7 @@ public sealed partial class LibraryViewModel : PageViewModel
         _total = total;
         UpdateLocation(); // the collection count lives in the footer's location sentence (DESIGN 7.0)
         UpdatePreview();
+        IsLibraryEmpty = total == 0;
         IsEmpty = Items.Count == 0;
         EmptyText = total == 0 ? Loc.T("library.emptyLibrary") : Loc.T("library.noMatches");
         IsLoaded = true;
@@ -398,7 +416,7 @@ public sealed partial class LibraryViewModel : PageViewModel
         var n = Items.Count;
         if (n == 0)
         {
-            Location = Loc.T("library.location.none");
+            Location = _total == 0 ? Loc.T("library.location.empty") : Loc.T("library.location.none");
             return;
         }
         var pos = Math.Clamp(FocusIndex + 1, 1, n);

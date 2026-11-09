@@ -219,5 +219,6 @@
   "library.view.shelf": "Shelf",
   "library.view.list": "List",
   "library.prevShelf": "Previous shelf",
-  "library.nextShelf": "Next shelf"
+  "library.nextShelf": "Next shelf",
+  "library.location.empty": "No games yet"
 }

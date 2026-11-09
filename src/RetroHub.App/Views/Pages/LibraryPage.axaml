@@ -76,7 +76,7 @@
   <Grid RowDefinitions="64,32,*">
     <!-- ===== ticker (system filter) + tools ===== -->
     <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="{DynamicResource RhPageInsetX}">
-      <Button Name="ShoulderLeft" Theme="{StaticResource RhGhostButton}" Classes="shoulder" Margin="-6,0,6,0" Command="{Binding PreviousChipCommand}"
+      <Button Name="ShoulderLeft" Theme="{StaticResource RhGhostButton}" IsVisible="{Binding !IsLibraryEmpty}" Classes="shoulder" Margin="-6,0,6,0" Command="{Binding PreviousChipCommand}"
               ToolTip.Tip="{l:T library.prevShelf}">
         <c:ButtonGlyph Action="PageLeft" />
       </Button>
@@ -125,12 +125,12 @@
           </TextBox>
         </Border>
       </Panel>
-      <Button Name="ShoulderRight" Grid.Column="2" Theme="{StaticResource RhGhostButton}" Classes="shoulder" Margin="6,0,24,0" Command="{Binding NextChipCommand}"
+      <Button Name="ShoulderRight" Grid.Column="2" Theme="{StaticResource RhGhostButton}" IsVisible="{Binding !IsLibraryEmpty}" Classes="shoulder" Margin="6,0,24,0" Command="{Binding NextChipCommand}"
               ToolTip.Tip="{l:T library.nextShelf}">
         <c:ButtonGlyph Action="PageRight" />
       </Button>
       <!-- tools: 44 high, frameless, focus = inversion -->
-      <StackPanel Name="Tools" Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+      <StackPanel Name="Tools" Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding !IsLibraryEmpty}">
         <Button Name="SearchToggle" Theme="{StaticResource RhGhostButton}" Height="44" MinHeight="44" Width="44" Padding="0"
                 ToolTip.Tip="{l:T hint.search}" AutomationProperties.Name="{l:T hint.search}">
           <c:RhIcon Data="{StaticResource Icon.Search}" Width="22" Height="22" />
@@ -224,11 +224,28 @@
       </Grid>
     </Grid>
 
-    <!-- empty state: line drawing + one sentence + the way out -->
-    <StackPanel Grid.Row="2" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Margin="0,0,0,80">
-      <c:RhIcon Data="{StaticResource Icon.Library}" Width="64" Height="64" Foreground="{DynamicResource RhText2Brush}" HorizontalAlignment="Center" StrokeThickness="1.5" />
-      <TextBlock Text="{Binding EmptyText}" Classes="h2" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,8,0,0" />
-      <TextBlock Text="{l:T library.emptyHint}" Classes="read" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="520" />
+    <!-- an empty library (DESIGN 10.3 "Keine Spiele"): the empty shelf drawing on a board, one sentence, the way out -->
+    <StackPanel Grid.Row="2" IsVisible="{Binding IsLibraryEmpty}" Margin="{DynamicResource RhPageInsetX}" VerticalAlignment="Center" Spacing="0">
+      <c:EmptyShelfDrawing Width="200" Height="200" HorizontalAlignment="Left" Margin="40,0,0,0" />
+      <c:ShelfBoard Height="10" Margin="-200,0,-200,0" />
+      <TextBlock Classes="poster-s" Text="{l:T home.empty.title}" Margin="0,40,0,0" />
+      <TextBlock Classes="read-l" Text="{l:T home.empty.text}" Margin="0,12,0,0" />
+      <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,28,0,0">
+        <Button Name="EmptyAddFolder" Theme="{StaticResource RhPrimaryButton}" MinWidth="280" MinHeight="64" Command="{Binding AddFolderCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <c:RhIcon Data="{StaticResource Icon.Folder}" Width="24" Height="24" />
+            <TextBlock Text="{l:T home.addFolder}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button MinHeight="64" Padding="28,0" Command="{Binding OpenImportsCommand}">
+          <TextBlock Text="{l:T home.openImports}" VerticalAlignment="Center" />
+        </Button>
+      </StackPanel>
+    </StackPanel>
+    <!-- nothing matches search/filter: one sentence and the hint, the search stays open -->
+    <StackPanel Grid.Row="2" IsVisible="{Binding IsNoMatch}" Margin="{DynamicResource RhPageInsetX}" VerticalAlignment="Top" Spacing="12">
+      <TextBlock Text="{Binding EmptyText}" Classes="poster-s" Margin="0,64,0,0" />
+      <TextBlock Text="{l:T library.emptyHint}" Classes="read-l" MaxWidth="760" HorizontalAlignment="Left" TextWrapping="Wrap" />
     </StackPanel>
   </Grid>
 </p:PageBase>

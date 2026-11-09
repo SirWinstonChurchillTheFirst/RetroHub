@@ -296,6 +296,7 @@ public partial class LibraryPage : PageBase
             SetSearchOpen(true);
             return FocusVisible(Search);
         }
+        if (_vm is { IsLoaded: true, IsLibraryEmpty: true }) return FocusVisible(EmptyAddFolder);
         if (_vm is { IsLoaded: true } && grid.ItemCount == 0)
         {
             SetSearchOpen(true);
