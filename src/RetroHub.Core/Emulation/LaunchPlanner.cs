@@ -172,12 +172,17 @@ public sealed class LaunchPlanner : ILaunchPlanner
             && !Portable.EdenSetup.HasProdKeys(_paths.Bios, Path.GetDirectoryName(exe)!))
             problems.Add(new LaunchProblem(LaunchProblemKind.BiosMissing, Portable.EdenSetup.MissingKeysMessage, false));
 
-        // Wii U disc keys (Cemu): a hint, not blocking, for .wux/.wud without a .key next to it while keys.txt holds no key
+        // Wii U disc keys (Cemu): a hint, not blocking, for .wux/.wud without a usable .key next to it while keys.txt
+        // holds no key
         if (exe != null && string.Equals(def.Portable, "cemu", StringComparison.OrdinalIgnoreCase)
-            && Portable.CemuSetup.IsDiscImage(fullPath) && File.Exists(fullPath)
-            && Portable.CemuSetup.FindKeyFile(fullPath!) == null
-            && !Portable.CemuSetup.HasDiscKeys(Portable.CemuSetup.KeysPath(Path.GetDirectoryName(exe)!)))
-            problems.Add(new LaunchProblem(LaunchProblemKind.BiosMissing, Portable.CemuSetup.MissingDiscKeyMessage, false));
+            && Portable.CemuSetup.IsDiscImage(fullPath) && File.Exists(fullPath))
+        {
+            var keyFile = Portable.CemuSetup.FindKeyFile(fullPath!);
+            var usable = keyFile != null && Portable.CemuSetup.ReadKey(keyFile, quiet: true) != null;
+            if (!usable && !Portable.CemuSetup.HasDiscKeys(Portable.CemuSetup.KeysPath(Path.GetDirectoryName(exe)!)))
+                problems.Add(new LaunchProblem(LaunchProblemKind.BiosMissing,
+                    keyFile == null ? Portable.CemuSetup.MissingDiscKeyMessage : Portable.CemuSetup.InvalidDiscKeyMessage(keyFile), false));
+        }
 
         if (exe != null && EmulatorProcesses.IsRunning(exe))
             problems.Add(new LaunchProblem(LaunchProblemKind.AlreadyRunning,

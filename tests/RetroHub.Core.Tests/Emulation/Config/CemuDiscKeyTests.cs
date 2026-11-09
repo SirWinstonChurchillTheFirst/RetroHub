@@ -189,7 +189,50 @@ public sealed class CemuDiscKeyTests : IDisposable
     }
 
     [Fact]
-    public void Launch_plan_hint_only_for_a_disc_image_without_key()
+    public void Single_key_in_a_flat_folder_with_several_images_is_not_used_for_the_other_image()
+    {
+        var a = _t.Touch("games/wiiu/A.wux", "disc");
+        var keyA = _t.Touch("games/wiiu/A.key", KeyA);
+        var b = _t.Touch("games/wiiu/B.wux", "disc");
+
+        Assert.Equal(keyA, CemuSetup.FindKeyFile(a));
+        Assert.Null(CemuSetup.FindKeyFile(b));
+        Launch(b);
+        Assert.False(File.Exists(_keysTxt));
+
+        var hint = Assert.Single(Planner().Plan(Make.Game("wiiu", "games/wiiu/B.wux")).Problems);
+        Assert.Equal(CemuSetup.MissingDiscKeyMessage, hint.Message);
+        Assert.Empty(Planner().Plan(Make.Game("wiiu", "games/wiiu/A.wux")).Problems);
+
+        Launch(a);
+        Assert.Equal($"{Hex(KeyA)} # A.wux {CemuSetup.ImportedComment}\r\n", File.ReadAllText(_keysTxt));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(15)]
+    [InlineData(4096)]
+    public void Launch_plan_hint_for_a_key_file_that_holds_no_usable_key(int size)
+    {
+        _t.Touch("games/wiiu/A.wux", "disc");
+        _t.Touch("games/wiiu/A.key", Enumerable.Range(0, size).Select(i => (byte)(i * 7 + 1)).ToArray());
+        _t.Touch("emulators/cemu/Cemu_2.6/portable/keys.txt", Template);
+
+        var plan = Planner().Plan(Make.Game("wiiu", "games/wiiu/A.wux"));
+        Assert.True(plan.CanLaunch);
+        var hint = Assert.Single(plan.Problems);
+        Assert.False(hint.Blocking);
+        Assert.Equal(CemuSetup.InvalidDiscKeyMessage("A.key"), hint.Message);
+        Assert.Contains("„A.key“", hint.Message);
+
+        // hex text of the wrong length: same hint; a real key line in keys.txt → none
+        _t.Touch("games/wiiu/A.key", "00112233445566778899AABBCCDDEEFF00");
+        Assert.Equal(CemuSetup.InvalidDiscKeyMessage("A.key"), Assert.Single(Planner().Plan(Make.Game("wiiu", "games/wiiu/A.wux")).Problems).Message);
+        File.AppendAllText(_keysTxt, "ffffffffffffffffffffffffffffffff # meine Disc\r\n");
+        Assert.Empty(Planner().Plan(Make.Game("wiiu", "games/wiiu/A.wux")).Problems);
+    }
+
+    private LaunchPlanner Planner()
     {
         var def = new EmulatorDef
         {
@@ -197,13 +240,19 @@ public sealed class CemuDiscKeyTests : IDisposable
             Args = ["{fullscreen}", "-g", "{rom}"], FullscreenArgs = ["-f"],
             DefaultMode = LaunchMode.Fullscreen, Modes = [LaunchMode.Fullscreen, LaunchMode.Windowed],
         };
+        var catalog = new FakeCatalog().Add(def).Add(new SystemDef { Id = "wiiu", Name = "Wii U", Emulators = ["cemu"] });
+        var reg = new EmulatorRegistry(catalog, _t.Paths, _t.Settings);
+        return new LaunchPlanner(catalog, reg, _t.Paths, _t.Settings);
+    }
+
+    [Fact]
+    public void Launch_plan_hint_only_for_a_disc_image_without_key()
+    {
         _t.Touch("games/wiiu/A.wux", "disc");
         _t.Touch("games/wiiu/B/B.wux", "disc");
         _t.Touch("games/wiiu/B/B.key", KeyB);
         _t.Touch("games/wiiu/C/code/c.rpx", "rpx");
-        var catalog = new FakeCatalog().Add(def).Add(new SystemDef { Id = "wiiu", Name = "Wii U", Emulators = ["cemu"] });
-        var reg = new EmulatorRegistry(catalog, _t.Paths, _t.Settings);
-        var planner = new LaunchPlanner(catalog, reg, _t.Paths, _t.Settings);
+        var planner = Planner();
 
         var plan = planner.Plan(Make.Game("wiiu", "games/wiiu/A.wux"));
         Assert.True(plan.CanLaunch, string.Join("; ", plan.Problems.Select(p => p.Message)));

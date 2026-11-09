@@ -97,6 +97,11 @@ public sealed class CemuSetup : PortableSetupBase
         "Namen neben das Abbild (z. B. „Spiel.key“ neben „Spiel.wux“) – RetroHub trägt den Key beim Start in Cemus keys.txt " +
         "(Ordner „portable“ neben der Cemu.exe) ein. RetroHub liefert keine Keys mit.";
 
+    /// <summary>Hint for a .key file next to the image that holds no usable disc key (German, for the launch problems).</summary>
+    public static string InvalidDiscKeyMessage(string keyFile) =>
+        $"Die Datei „{Path.GetFileName(keyFile)}“ neben dem Abbild ist kein gültiger Disc-Key (erwartet: 16 Byte oder 32 Hex-Ziffern). " +
+        "RetroHub kann den Key daher nicht in Cemus keys.txt eintragen, und Cemu kann das Spiel ohne passenden Key nicht entschlüsseln.";
+
     protected override void Configure(PortableContext ctx)
     {
         var dir = ctx.Ensure(Path.Combine(ctx.ExeDir, "portable"));
@@ -118,7 +123,7 @@ public sealed class CemuSetup : PortableSetupBase
 
     /// <summary>
     /// The key file for a disc image: "&lt;same base name&gt;.key" next to it (case-insensitive), else the only .key file
-    /// in that folder, else null. Never throws.
+    /// in that folder when the folder also holds only this one disc image (.wux/.wud), else null. Never throws.
     /// </summary>
     public static string? FindKeyFile(string gamePath)
     {
@@ -132,7 +137,10 @@ public sealed class CemuSetup : PortableSetupBase
                 .ToList();
             var same = keys.FirstOrDefault(f => Path.GetFileNameWithoutExtension(f).Equals(stem, StringComparison.OrdinalIgnoreCase));
             if (same != null) return same;
-            return keys.Count == 1 ? keys[0] : null;
+            if (keys.Count != 1) return null;
+            // several disc images in one folder (e.g. flat games/wiiu/): the single .key belongs to one of them, not
+            // necessarily to this one
+            return Directory.EnumerateFiles(dir).Count(IsDiscImage) == 1 ? keys[0] : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -143,9 +151,9 @@ public sealed class CemuSetup : PortableSetupBase
 
     /// <summary>
     /// The 16-byte key from a .key file: 16 bytes binary, or text holding exactly 32 hex digits (whitespace ignored).
-    /// Anything else → null (logged). Only reads the file.
+    /// Anything else → null (logged unless <paramref name="quiet"/>). Only reads the file.
     /// </summary>
-    public static byte[]? ReadKey(string keyFile)
+    public static byte[]? ReadKey(string keyFile, bool quiet = false)
     {
         try
         {
@@ -153,19 +161,19 @@ public sealed class CemuSetup : PortableSetupBase
             if (!info.Exists) return null;
             if (info.Length == 0 || info.Length > MaxKeyFileSize)
             {
-                Log.Warn($"Cemu: {keyFile} is not a disc key ({info.Length} bytes; expected 16 bytes or 32 hex digits) – ignored");
+                if (!quiet) Log.Warn($"Cemu: {keyFile} is not a disc key ({info.Length} bytes; expected 16 bytes or 32 hex digits) – ignored");
                 return null;
             }
             var bytes = File.ReadAllBytes(keyFile);
             if (bytes.Length == 16) return bytes;
             var text = new string(System.Text.Encoding.UTF8.GetString(bytes).Where(c => !char.IsWhiteSpace(c) && c != '﻿').ToArray());
             if (text.Length == 32 && text.All(Uri.IsHexDigit)) return Convert.FromHexString(text);
-            Log.Warn($"Cemu: {keyFile} is not a disc key ({bytes.Length} bytes; expected 16 bytes or 32 hex digits) – ignored");
+            if (!quiet) Log.Warn($"Cemu: {keyFile} is not a disc key ({bytes.Length} bytes; expected 16 bytes or 32 hex digits) – ignored");
             return null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Log.Warn($"Cemu: could not read {keyFile}", ex);
+            if (!quiet) Log.Warn($"Cemu: could not read {keyFile}", ex);
             return null;
         }
     }
