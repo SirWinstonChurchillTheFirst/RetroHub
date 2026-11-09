@@ -35,6 +35,10 @@ public sealed class AppPaths
     public string Covers => Path.Combine(Artwork, "covers");
     public string Backgrounds => Path.Combine(Artwork, "backgrounds");
     public string Logos => Path.Combine(Artwork, "logos");
+    /// <summary>In-game screenshots (libretro "Named_Snaps"), one folder per system; created on first download.</summary>
+    public string Snaps => Path.Combine(Artwork, "snaps");
+    /// <summary>Title screens (libretro "Named_Titles"), one folder per system; created on first download.</summary>
+    public string Titles => Path.Combine(Artwork, "titles");
     public string Themes => Path.Combine(Root, "themes");
     public string Plugins => Path.Combine(Root, "plugins");
     public string Backups => Path.Combine(Root, "backups");

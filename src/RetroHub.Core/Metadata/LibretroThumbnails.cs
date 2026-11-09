@@ -14,7 +14,25 @@ public static class LibretroThumbnails
 {
     public const string ThumbnailHost = "https://thumbnails.libretro.com";
     public const string BoxartFolder = "Named_Boxarts";
+    public const string SnapFolder = "Named_Snaps";
+    public const string TitleFolder = "Named_Titles";
     private const string ForbiddenChars = "&*/:`<>?\\|\"";
+
+    /// <summary>The thumbnail folder of an artwork kind; libretro has none for backgrounds and logos.</summary>
+    public static string FolderFor(ArtworkKind kind) => kind switch
+    {
+        ArtworkKind.Cover => BoxartFolder,
+        ArtworkKind.Snap => SnapFolder,
+        ArtworkKind.Title => TitleFolder,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "libretro-thumbnails has no folder for this kind"),
+    };
+
+    /// <summary>
+    /// URL of a thumbnail of <paramref name="kind"/> for an already sanitised name (without ".png"). The three folders
+    /// share one naming scheme, so the boxart index of a system also names its snaps and title screens.
+    /// </summary>
+    public static Uri ThumbnailUrl(string libretroName, ArtworkKind kind, string sanitizedName) =>
+        new($"{ThumbnailHost}/{Uri.EscapeDataString(libretroName)}/{FolderFor(kind)}/{Uri.EscapeDataString(sanitizedName)}.png");
 
     /// <summary>Applies libretro's file name rule: each of <c>&amp;*/:`&lt;&gt;?\|"</c> becomes "_".</summary>
     public static string Sanitize(string name)
@@ -33,8 +51,7 @@ public static class LibretroThumbnails
         new($"https://api.github.com/repos/libretro-thumbnails/{Uri.EscapeDataString(RepoName(libretroName))}/git/trees/master?recursive=1");
 
     /// <summary>Boxart URL for an already sanitised thumbnail name (without ".png").</summary>
-    public static Uri BoxartUrl(string libretroName, string sanitizedName) =>
-        new($"{ThumbnailHost}/{Uri.EscapeDataString(libretroName)}/{BoxartFolder}/{Uri.EscapeDataString(sanitizedName)}.png");
+    public static Uri BoxartUrl(string libretroName, string sanitizedName) => ThumbnailUrl(libretroName, ArtworkKind.Cover, sanitizedName);
 
     /// <summary>
     /// Region preference for picking a cover: the ROM's own region first (rank −1), then Europe/Germany (0) &gt; USA (1)

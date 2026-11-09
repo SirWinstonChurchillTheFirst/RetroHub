@@ -42,6 +42,8 @@ public sealed class LocalArtworkFinder
     {
         ArtworkKind.Cover => paths.Covers,
         ArtworkKind.Background => paths.Backgrounds,
+        ArtworkKind.Snap => paths.Snaps,
+        ArtworkKind.Title => paths.Titles,
         _ => paths.Logos,
     };
 
@@ -135,6 +137,8 @@ public sealed class LocalArtworkFinder
     {
         ArtworkKind.Cover => [("media/covers", ""), ("media/box2dfront", ""), ("downloaded_images", "-image"), ("images", "-image"), ("images", "-thumb")],
         ArtworkKind.Background => [("media/fanart", ""), ("images", "-fanart")],
+        ArtworkKind.Snap => [("media/screenshots", ""), ("media/snaps", ""), ("images", "-screenshot")],
+        ArtworkKind.Title => [("media/titlescreens", ""), ("images", "-titlescreen")],
         _ => [("media/marquees", ""), ("images", "-marquee")],
     };
 

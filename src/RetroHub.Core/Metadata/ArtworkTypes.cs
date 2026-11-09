@@ -1,7 +1,21 @@
 namespace RetroHub.Core.Metadata;
 
-/// <summary>The three kinds of artwork a game can have (folders below artwork/).</summary>
-public enum ArtworkKind { Cover, Background, Logo }
+/// <summary>
+/// The kinds of artwork a game can have (folders below artwork/). Cover, Background and Logo are stored in the
+/// library database; <see cref="Snap"/> (an in-game screenshot) and <see cref="Title"/> (the title screen) are pure
+/// files – artwork/snaps|titles/&lt;system&gt;/&lt;rom name&gt;.png, or ES-DE media next to the ROMs – looked up on demand
+/// (<see cref="ArtworkService.FindScreen"/>), shown on the TV of the Start screen (DESIGN 7.1, 10.1).
+/// </summary>
+public enum ArtworkKind { Cover, Background, Logo, Snap, Title }
+
+/// <summary>The two screen pictures of a game (full paths, null = none on disk).</summary>
+public sealed record ScreenArt(string? Snap, string? Title)
+{
+    public static ScreenArt None { get; } = new(null, null);
+
+    /// <summary>The picture for a TV: the snap, else the title screen (DESIGN 10.1).</summary>
+    public string? Best => Snap ?? Title;
+}
 
 /// <summary>Result of <see cref="ArtworkService.ResolveAsync"/>. Counts refer to covers; backgrounds/logos are counted in <see cref="ExtrasFound"/>.</summary>
 /// <param name="LocalFound">Covers found on disk (artwork/covers, next to the ROM, ES-DE/Batocera layouts).</param>

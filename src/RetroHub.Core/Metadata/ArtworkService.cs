@@ -122,6 +122,7 @@ public sealed class ArtworkService : IDisposable
     {
         var sw = Stopwatch.StartNew();
         SweepStaleTemps();
+        InvalidateScreens(); // a scan may have brought new snaps/titles (artwork folders, ES-DE media)
         var list = (games ?? await Task.Run(() => _repo.Query(new GameQuery { IncludeHidden = true, IncludeMissing = true }), ct).ConfigureAwait(false))
             .Where(g => g != null).ToList();
         var finder = new LocalArtworkFinder(_paths, _catalog);
@@ -390,6 +391,103 @@ public sealed class ArtworkService : IDisposable
     internal static bool LooksLikeImage(ReadOnlySpan<byte> head) =>
         (head.Length >= 8 && head[0] == 0x89 && head[1] == 0x50 && head[2] == 0x4E && head[3] == 0x47) ||
         (head.Length >= 3 && head[0] == 0xFF && head[1] == 0xD8 && head[2] == 0xFF);
+
+    // ───────────────────────────── screens: snaps and title screens (Start TV, DESIGN 7.1/10.1) ─────────────────────────────
+
+    private LocalArtworkFinder? _screenFinder;
+    private readonly object _screenGate = new();
+
+    /// <summary>The finder for snaps/titles: directory listings are kept until <see cref="InvalidateScreens"/>.</summary>
+    private LocalArtworkFinder ScreenFinder
+    {
+        get { lock (_screenGate) return _screenFinder ??= new LocalArtworkFinder(_paths, _catalog); }
+    }
+
+    /// <summary>Forgets the cached folder listings of snaps/titles (after a scan or when files were added by hand).</summary>
+    public void InvalidateScreens()
+    {
+        lock (_screenGate) _screenFinder = null;
+    }
+
+    /// <summary>
+    /// Full path of the snap or title screen of <paramref name="game"/> on disk, or null: artwork/snaps|titles/&lt;system
+    /// folder&gt;/ (ROM name, title, normalised title) and ES-DE/Batocera media next to the ROM. No network, never throws.
+    /// </summary>
+    public string? FindScreen(Game game, ArtworkKind kind)
+    {
+        if (kind is not (ArtworkKind.Snap or ArtworkKind.Title)) throw new ArgumentOutOfRangeException(nameof(kind));
+        return ScreenFinder.Find(game, kind);
+    }
+
+    /// <summary>Snap and title screen of <paramref name="game"/> that are on disk (no network).</summary>
+    public ScreenArt FindScreens(Game game) => new(FindScreen(game, ArtworkKind.Snap), FindScreen(game, ArtworkKind.Title));
+
+    /// <summary>
+    /// The screen pictures of ONE game, fetched on demand (the Start stage asks for the game it shows): what is on disk
+    /// first; the missing kinds only when <see cref="AppSettings.OnlineCovers"/> is on – from libretro-thumbnails
+    /// Named_Snaps / Named_Titles under the name the system's boxart index matches (same naming scheme in all three
+    /// folders), else the direct candidates. Saved as artwork/snaps|titles/&lt;system&gt;/&lt;rom name&gt;.png (temp file + move,
+    /// never overwriting); 404s are remembered per kind for 7 days. Network failures are logged, never thrown.
+    /// </summary>
+    public async Task<ScreenArt> FetchScreensAsync(Game game, CancellationToken ct)
+    {
+        var local = FindScreens(game);
+        if ((local.Snap != null && local.Title != null) || !_settings.Current.OnlineCovers || game.Status == GameStatus.Missing) return local;
+        var sys = _catalog.GetSystem(game.SystemId);
+        if (sys?.LibretroName is not { Length: > 0 } libretroName || game.Path.Contains("://", StringComparison.Ordinal)) return local;
+        var stem = ArtworkNames.Stem(game);
+        if (!AppPaths.IsSafeName(stem)) return local;
+        var kinds = new List<ArtworkKind>(2);
+        if (local.Snap == null && !_misses.IsRecentMiss(ScreenMissKey(game.SystemId, ArtworkKind.Snap, stem))) kinds.Add(ArtworkKind.Snap);
+        if (local.Title == null && !_misses.IsRecentMiss(ScreenMissKey(game.SystemId, ArtworkKind.Title, stem))) kinds.Add(ArtworkKind.Title);
+        if (kinds.Count == 0) return local;
+
+        string? snap = local.Snap, title = local.Title;
+        try
+        {
+            IReadOnlyList<string> names;
+            var index = await Indexes.GetAsync(game.SystemId, libretroName, ct).ConfigureAwait(false);
+            if (index?.Match(game) is { } match) names = [match];
+            else names = LibretroThumbnails.DirectCandidates(game);
+
+            foreach (var kind in kinds)
+            {
+                var target = Path.Combine(LocalArtworkFinder.KindRoot(_paths, kind), LocalArtworkFinder.SystemFolder(sys, game.SystemId), stem + ".png");
+                var anyError = false;
+                string? saved = null;
+                foreach (var name in names)
+                {
+                    if (!_settings.Current.OnlineCovers) return new ScreenArt(snap, title);
+                    var r = await DownloadAsync(LibretroThumbnails.ThumbnailUrl(libretroName, kind, name), target, ct).ConfigureAwait(false);
+                    if (r == DownloadResult.NotFound) continue;
+                    if (r == DownloadResult.Error) { anyError = true; continue; }
+                    saved = target;
+                    if (r == DownloadResult.Saved) Log.Info($"{kind} downloaded for '{game.DisplayTitle}': {name}");
+                    break;
+                }
+                if (saved != null)
+                {
+                    if (kind == ArtworkKind.Snap) snap = saved; else title = saved;
+                }
+                else if (!anyError) _misses.AddMiss(ScreenMissKey(game.SystemId, kind, stem));
+            }
+            InvalidateScreens();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            Log.Warn($"Online screen lookup for '{game.DisplayTitle}' failed", ex);
+        }
+        finally
+        {
+            _misses.Save();
+        }
+        return new ScreenArt(snap, title);
+    }
+
+    /// <summary>Miss key of a snap/title (kept apart from the cover's key: a game may have a boxart but no snap).</summary>
+    internal static string ScreenMissKey(string systemId, ArtworkKind kind, string stem) =>
+        ArtworkMissCache.KeyFor($"{systemId}/{(kind == ArtworkKind.Snap ? "snap" : "title")}", stem);
 
     // ───────────────────────────── manual cover (game detail page) ─────────────────────────────
 
