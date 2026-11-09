@@ -290,3 +290,20 @@ den Fenstertitel des Cemu-Prozesses, keine Bildschirmaufnahmen):
 
 Nicht angesehen: das Spielbild selbst (nur Fenstertitel/FPS und Logs). Twilight Princess HD und Hyrule Warriors (ohne
 `.key`) wurden nicht gestartet. Sammlung vorher/nachher (8 Einträge im Ordner „Wii U“, Größe und Änderungszeit): **unverändert**.
+
+## Switch mit Eden: eigene Keys und Firmware – 09.11.2026
+
+Für diesen Test wurden Keys und Firmware (229 Dateien, 19.0.1) einer eigenen Konsole nach `emulators/eden/user/keys` bzw.
+`user/nand/system/Contents/registered` kopiert (Hashes bzw. Dateizahl und Gesamtgröße gleich). Nichts davon liegt im Git.
+
+**Spielstart über RetroHub** („Spiel.nsp“ aus der Sammlung, `--test-quit-after 60`,
+`--test-exit-after-return 5`, eigener RetroHub-Root im Scratchpad; beobachtet über Testbericht, RetroHub-Log, Edens
+`user/log/eden_log.txt` und den Fenstertitel, keine Bildschirmaufnahmen):
+
+| Schritt | Beobachtet |
+|---|---|
+| Plan | Emulator `eden`, Vollbild, startbar, keine Hinweise |
+| Eden | Log „Installed firmware: 19.0.1“, „BootGame“, Patch/Loader-Zeilen für Title <Title-ID>. Fenstertitel nach 8,2 s: „Eden \| v0.2.1 \| … \| <Spieltitel> (64-bit) \| 1.0.0 \| Nvidia“ bis zum Beenden |
+| Beenden | nach 60 s `WM_CLOSE` → Eden „Force stopping EmuThread“ (danach ein vom Spiel gemeldeter „Userspace PANIC“ – Folge des erzwungenen Stopps), keine Rückfrage (`confirmStop=2` blieb in qt-config.ini erhalten). `close-result closed=false` nach 8 s, RetroHub zeigte sich wieder; Eden beendete sich selbst nach ~17 s (Exitcode 0), nichts abgeschossen |
+
+Nicht angesehen: das Spielbild selbst. Die Bildrate wurde nicht gemessen (Eden zeigt sie nicht im Fenstertitel).
