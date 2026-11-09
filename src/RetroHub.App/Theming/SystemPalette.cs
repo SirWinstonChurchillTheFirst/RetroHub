@@ -146,7 +146,26 @@ public static class SystemPalette
     /// <summary>Ids with a hand-set entry in the system table.</summary>
     public static IReadOnlyCollection<string> KnownIds => Defs.Keys;
 
-    public static bool IsKnown(string? id) => id != null && Defs.ContainsKey(id);
+    public static bool IsKnown(string? id) => Normalize(id) is { } n && Defs.ContainsKey(n);
+
+    /// <summary>
+    /// Folder / sniffer / demo ids that name a catalog system under another spelling ("gc", "psx", "md", "genesis" …):
+    /// they resolve to the catalog id before the table, so they never fall back to the custom look.
+    /// </summary>
+    private static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["gc"] = "gamecube", ["ngc"] = "gamecube",
+        ["md"] = "megadrive", ["genesis"] = "megadrive",
+        ["psx"] = "ps1", ["ps"] = "ps1", ["playstation"] = "ps1",
+        ["sms"] = "mastersystem", ["markiii"] = "mastersystem",
+        ["pce"] = "pcengine", ["tg16"] = "pcengine", ["turbografx16"] = "pcengine",
+        ["famicom"] = "nes", ["sfc"] = "snes", ["superfamicom"] = "snes",
+        ["ndsi"] = "nds", ["n3ds"] = "3ds", ["gg"] = "gamegear", ["32x"] = "sega32x", ["mcd"] = "segacd",
+        ["vb"] = "virtualboy", ["ws"] = "wonderswan", ["dc"] = "dreamcast",
+    };
+
+    /// <summary>The catalog id for <paramref name="id"/> (aliases resolved); null stays null.</summary>
+    public static string? Normalize(string? id) => id == null ? null : Aliases.TryGetValue(id, out var canonical) ? canonical : id;
 
     /// <summary>Box format start values, height / width (DESIGN 11.4); unknown systems 1.25.</summary>
     private static readonly Dictionary<string, double> BoxAspects = new(StringComparer.OrdinalIgnoreCase)
@@ -161,17 +180,18 @@ public static class SystemPalette
     /// Typical box format of system <paramref name="id"/> as height / width (DESIGN 11.4 start values): shelf slots on
     /// Start and spine placeholders take it, so a box without a cover has the size of its neighbours with one.
     /// </summary>
-    public static double BoxAspect(string? id) => id != null && BoxAspects.TryGetValue(id, out var a) ? a : 1.25;
+    public static double BoxAspect(string? id) => Normalize(id) is { } n && BoxAspects.TryGetValue(n, out var a) ? a : 1.25;
 
     /// <summary>The look of system <paramref name="id"/>; unknown ids fall back to <see cref="From"/>(<paramref name="accent"/>).</summary>
     public static SystemLook Get(string? id, Color? accent = null)
     {
+        id = Normalize(id);
         lock (Gate)
         {
             if (id != null && Cache.TryGetValue(id, out var look)) return look;
             if (id != null && Defs.TryGetValue(id, out var d))
             {
-                look = new SystemLook(id, d.Housing, d.Motif, d.Texture, d.TextureOpacity, Color.Parse(d.Color), Color.Parse(d.Second));
+                look = new SystemLook(id.ToLowerInvariant(), d.Housing, d.Motif, d.Texture, d.TextureOpacity, Color.Parse(d.Color), Color.Parse(d.Second));
                 Cache[id] = look;
                 return look;
             }

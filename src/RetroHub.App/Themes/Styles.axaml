@@ -40,6 +40,18 @@
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
   </Style>
+  <!-- etikett = the paper label of DESIGN 1.2 as a plain border (demo mode in the header): paper, ink, 15, 8 × 3, R 0 -->
+  <Style Selector="Border.etikett">
+    <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="8,3" />
+  </Style>
+  <Style Selector="Border.etikett > TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
+  </Style>
   <Style Selector="Border.chip.ok">
     <Setter Property="Background" Value="{DynamicResource RhSuccessSoftBrush}" />
   </Style>

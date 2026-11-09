@@ -26,6 +26,34 @@ public class SystemPaletteTests
         Assert.All(catalog, id => Assert.True(SystemPalette.IsKnown(id), id));
     }
 
+    /// <summary>
+    /// M1 QA: the demo catalog and folder/sniffer ids ("gc", "psx", "md") fell back to the custom look (a lavender
+    /// cart for the GameCube). Every id the demo catalog or a sniffer uses must resolve to a hand-set entry.
+    /// </summary>
+    [Theory]
+    [InlineData("gc", "gamecube")]
+    [InlineData("ngc", "gamecube")]
+    [InlineData("psx", "ps1")]
+    [InlineData("md", "megadrive")]
+    [InlineData("genesis", "megadrive")]
+    [InlineData("sms", "mastersystem")]
+    [InlineData("pce", "pcengine")]
+    [InlineData("tg16", "pcengine")]
+    public void Alias_ids_resolve_to_the_catalog_entry(string alias, string id)
+    {
+        Assert.True(SystemPalette.IsKnown(alias), alias);
+        Assert.Same(SystemPalette.Get(id), SystemPalette.Get(alias));
+        Assert.Equal(SystemPalette.BoxAspect(id), SystemPalette.BoxAspect(alias));
+    }
+
+    [Fact]
+    public void Every_demo_system_has_a_hand_set_entry()
+    {
+        var catalog = new RetroHub.App.Services.Demo.DemoCatalog();
+        Assert.NotEmpty(catalog.Systems);
+        Assert.All(catalog.Systems, s => Assert.True(SystemPalette.IsKnown(s.Id), $"demo system '{s.Id}' falls back to the custom look"));
+    }
+
     [Theory]
     [MemberData(nameof(Systems))]
     public void Light_reads_on_the_upper_wall_and_on_the_room(string id)

@@ -50,6 +50,67 @@ public class DesignM1Tests
         Assert.Equal(72, FitText.Choose("Tetris", FontRoles.PosterFace, [72, 56, 40], 764, 2));
     });
 
+    // ===================== M1 QA: placeholder titles in full, never broken inside a word =====================
+
+    /// <summary>
+    /// DESIGN 10.2 "Der Titel steht immer vollständig": breaks only at spaces and after hyphens, the size steps down
+    /// (× 0.88, ≥ 11 px) until every word fits – never "Castlevani / a", "Hyrule Warrior / s" or a cut "…".
+    /// </summary>
+    [Theory]
+    [InlineData("Castlevania", 120)]
+    [InlineData("Hyrule Warriors", 96)]
+    [InlineData("Freshly-Picked Tingle's Rosy Rupeeland", 137)]
+    [InlineData("Professor Layton und das geheimnisvolle Dorf", 137)]
+    [InlineData("The Legend of Zelda", 137)]
+    [InlineData("Pokémon Smaragd-Edition", 96)]
+    public Task Placeholder_titles_break_only_between_words(string title, double width) => UiTest.Run(() =>
+    {
+        var fit = PlaceholderTitle.Fit(title, width, 1000, CoverArt.PlaceholderTitleSize(196), PlaceholderTitle.MaxLines);
+        Assert.False(fit.Trimmed, $"'{title}' trimmed at {width} px");
+        Assert.InRange(fit.Size, PlaceholderTitle.MinSize, CoverArt.PlaceholderTitleSize(196));
+        // joining the lines again (a space, or nothing after a hyphen) gives the title back: no break inside a word
+        var lines = fit.Text.Split('\n');
+        var joined = lines[0];
+        foreach (var line in lines.Skip(1)) joined += joined.EndsWith('-') ? line : " " + line;
+        Assert.Equal(title, joined);
+        foreach (var line in lines)
+        {
+            var w = new FormattedText(line, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, fit.Size, null).Width;
+            Assert.True(w <= width + 0.5, $"'{line}' is {w:0} px wide at {fit.Size} px (line {width})");
+        }
+    });
+
+    [Fact]
+    public void Placeholder_title_size_follows_the_box_width()
+    {
+        Assert.Equal(21, CoverArt.PlaceholderTitleSize(196)); // ≈ 20 px at 196 (DESIGN 10.2: 0.105 × width)
+        Assert.Equal(38, CoverArt.PlaceholderTitleSize(360)); // the stage box on Detail
+        Assert.Equal(13, CoverArt.PlaceholderTitleSize(100));
+        Assert.Equal(14, CoverArt.PlaceholderPad(196));
+        Assert.Equal(24, CoverArt.PlaceholderPad(360));
+    }
+
+    [Fact]
+    public Task Poster_titles_break_after_the_separator() => UiTest.Run(() =>
+    {
+        var text = FitText.Typeset("The Legend of Zelda - A Link to the Past");
+        Assert.Equal("The Legend of Zelda – A Link to the Past", text);
+        var (size, layout) = FitText.ChooseWithBreak(text, FontRoles.PosterFace, [72, 56, 40], 1100, 2);
+        Assert.Equal(72, size);
+        Assert.Equal("The Legend of Zelda –\nA Link to the Past", layout);
+        // a title that fits on one line stays on one line
+        Assert.Equal("Tetris", FitText.ChooseWithBreak("Tetris", FontRoles.PosterFace, [72, 56, 40], 764, 2).Text);
+        Assert.Equal("Castlevania:\nAria of Sorrow", FitText.SeparatorBreak("Castlevania: Aria of Sorrow"));
+    });
+
+    [Theory]
+    [InlineData("Nintendo Wii U", "Nintendo Wii U")]
+    [InlineData("Game Boy Advance", "Game Boy Advance")]
+    [InlineData("Sega Mega Drive", "Sega Mega Drive")]
+    [InlineData("Nintendo 64", "Nintendo 64")]
+    public void Product_names_stay_together_on_posters(string name, string expected) =>
+        Assert.Equal(expected, SystemItemViewModel.KeepTogether(name));
+
     // ===================== boxes: placeholders take the system's box format =====================
 
     [Theory]

@@ -304,10 +304,13 @@
             <c:CoverArt Name="PART_Art" Source="{Binding CoverPath}" Title="{Binding Title}" Badge="{Binding SystemShort}"
                         SystemId="{Binding SystemId}" Accent="{Binding Accent}" IsFavorite="{Binding IsFavorite}" IsMissing="{Binding IsMissing}" />
           </Panel>
-          <!-- caption: 16 px below the 10 px shelf edge, the same two lines under every box (title, label line), so a
-               row of covers and spine placeholders reads as one row; in a system context the code and the bar drop out -->
+          <!-- caption: 16 px below the 10 px shelf edge, in a fixed 66 px slot (the row pitch stays regular): the title
+               (max. 2 lines) and 4 px under its last line the label line. A spine placeholder carries its title on the
+               box, so its caption is only the label line (never the title twice). In a system context the code and
+               the bar drop out. -->
           <StackPanel Grid.Row="1" Margin="0,26,0,0" Spacing="4" Height="66" IsVisible="{TemplateBinding ShowCaption}">
-            <TextBlock Name="PART_Title" Classes="caption" Text="{Binding Title}" TextWrapping="Wrap" MaxLines="2" Height="42" TextTrimming="CharacterEllipsis" />
+            <TextBlock Name="PART_Title" Classes="caption" Text="{Binding Title}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                       IsVisible="{Binding HasCover}" />
             <StackPanel Orientation="Horizontal" Spacing="8" Height="20">
               <Border Name="PART_Bar" Width="3" Height="14" Background="{Binding SystemColorBrush}" VerticalAlignment="Center" />
               <TextBlock Name="PART_Code" Classes="label" Text="{Binding SystemShort}" VerticalAlignment="Center" />
@@ -494,12 +497,13 @@
     <Setter Property="Template">
       <ControlTemplate x:DataType="vm:SystemItemViewModel">
         <!-- the wall stands on a board (drawn by the panel below it); the name sits in the light upper zone at full
-             width, measured 28 → 24 → 20 on word boundaries only (else the code in the spine role); the motif stands
-             on the bottom edge at 72 % of the wall height; maker/year and the count bottom left beside it -->
+             width in ONE poster size (26, max. 3 lines – 4 for the longest names, word boundaries only, product names kept together – else the
+             code in the spine role); the motif stands on the bottom edge at 72 % of the wall height; maker/year and
+             the count bottom left beside it -->
         <Panel>
           <c:SystemWall Name="PART_Wall" SystemId="{Binding Id}" Accent="{Binding Accent}" MotifShare="0.72" MotifInset="12" />
-          <c:FitText Name="PART_Name" Classes="poster" Source="{Binding Name}" FallbackSource="{Binding ShortName}" Sizes="28,24,20" FallbackSize="28"
-                     MaxLines="2" LastResortLines="3" LineFactor="1.08" VerticalAlignment="Top" Margin="20,18,20,0" Foreground="{DynamicResource RhText1Brush}" />
+          <c:FitText Name="PART_Name" Classes="poster" Source="{Binding PosterName}" FallbackSource="{Binding ShortName}" Sizes="26" FallbackSize="28"
+                     MaxLines="3" LastResortLines="4" LineFactor="1.08" VerticalAlignment="Top" Margin="20,18,20,0" Foreground="{DynamicResource RhText1Brush}" />
           <StackPanel Name="PART_Meta" VerticalAlignment="Bottom" HorizontalAlignment="Left" Spacing="0" Margin="20,0,0,14">
             <TextBlock Text="{Binding SubTitle}" Classes="ui" FontSize="15" Foreground="{DynamicResource RhText2Brush}" />
             <TextBlock Text="{Binding CountText}" Classes="number" FontSize="15" Foreground="{DynamicResource RhText1Brush}" />

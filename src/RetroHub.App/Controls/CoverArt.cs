@@ -14,8 +14,10 @@ namespace RetroHub.App.Controls;
 /// never cropped; mixed box formats are intended. <see cref="ArtRect"/> is the rectangle actually covered, read by the
 /// shelf board (contact shadow) and the <see cref="FocusLayer"/> (ring, cone). Loads <see cref="Source"/> lazily
 /// through <see cref="AsyncImageLoader"/> (cancelled when the tile is recycled or detached). Without a cover it draws
-/// the spine placeholder: a two-tone wall in the system's housing, the colour band as a spine with the system code,
-/// the motif silhouette and the full title. Text layouts are built on change, never in <see cref="Render"/>.
+/// the spine placeholder: a wall in the system's housing, the colour band as a spine with the system code, the motif
+/// silhouette top right and the full title anchored bottom left (grid, shelves AND the stage boxes of Start and Detail).
+/// Text layouts are built on change, never in <see cref="Render"/>; text is drawn with grayscale antialiasing (no
+/// colour fringes over textured walls and rotated codes).
 /// No focus visuals here: covers clip.
 /// </summary>
 public sealed class CoverArt : Control
@@ -27,8 +29,7 @@ public sealed class CoverArt : Control
     public static readonly StyledProperty<string?> SystemIdProperty = AvaloniaProperty.Register<CoverArt, string?>(nameof(SystemId));
     /// <summary>Catalog accent: only used for systems without a palette entry (<see cref="SystemPalette.From"/>).</summary>
     public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<CoverArt, Color>(nameof(Accent), Color.Parse("#948A7A"));
-    /// <summary>False = stage variant (Start, Detail): no title in the placeholder (the poster title stands beside it),
-    /// motif at 60 % and the code in Rücken 28.</summary>
+    /// <summary>False = a placeholder without title (band, code and motif only). Since the M1 QA the stages keep the title.</summary>
     public static readonly StyledProperty<bool> ShowTitleProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(ShowTitle), true);
     /// <summary>Legacy (v0): badge pills are gone (DESIGN 10.2).</summary>
     public static readonly StyledProperty<bool> ShowBadgeProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(ShowBadge), true);
@@ -69,6 +70,8 @@ public sealed class CoverArt : Control
         ClipToBoundsProperty.OverrideDefaultValue<CoverArt>(true);
     }
 
+    public CoverArt() => TextOptions.SetTextRenderingMode(this, TextRenderingMode.Antialias);
+
     public string? Source { get => GetValue(SourceProperty); set => SetValue(SourceProperty, value); }
     public string? Title { get => GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
     public string? Badge { get => GetValue(BadgeProperty); set => SetValue(BadgeProperty, value); }
@@ -82,6 +85,9 @@ public sealed class CoverArt : Control
 
     /// <summary>True when a real cover bitmap is shown (tests / diagnostics).</summary>
     public bool HasImage => _bitmap != null;
+
+    /// <summary>Width / height of the loaded cover image; null while none is shown.</summary>
+    public double? ImageAspect => _bitmap is { Size: { Width: > 0, Height: > 0 } s } ? s.Width / s.Height : null;
 
     /// <summary>The covered rectangle in local coordinates (contain, bottom-aligned, centred).</summary>
     public Rect ArtRect => _artRect;
@@ -246,10 +252,10 @@ public sealed class CoverArt : Control
         if (art.Width < 60) return;
         if (IsFavorite)
         {
-            // on a placeholder the marker sits bottom left beside the spine band (the title owns the top left)
+            // on a placeholder the marker sits top left beside the spine band (the title owns the bottom)
             var placeholder = _bitmap == null && !Fill;
-            var left = placeholder ? Math.Max(6, Math.Round(art.Width * 0.16)) + 6 : 6;
-            var box = placeholder ? new Rect(art.X + left, art.Bottom - 32, 26, 26) : new Rect(art.X + left, art.Y + 6, 26, 26);
+            var left = placeholder ? BandWidth(art.Width) + 6 : 6;
+            var box = new Rect(art.X + left, art.Y + 6, 26, 26);
             ctx.DrawRectangle(MarkerGround, null, new RoundedRect(box, 2));
             using (ctx.PushTransform(Matrix.CreateScale(0.75, 0.75) * Matrix.CreateTranslation(box.X + 4, box.Y + 4)))
                 ctx.DrawGeometry(FavoriteBrush, null, StarGeometry);
@@ -266,19 +272,30 @@ public sealed class CoverArt : Control
     /// <summary>Tiles narrower than this get one wall tone (a 38/62 split inside a small box reads as a grey card).</summary>
     public const double SplitMinWidth = 200;
 
-    /// <summary>Title size of the placeholder (Archivo Expanded): fixed per tile width, never shrunk per title.</summary>
-    public static double PlaceholderTitleSize(double width) => Math.Clamp(Math.Round(width * 0.115), 18, 24);
+    /// <summary>
+    /// Start size of the placeholder title (Archivo Expanded, DESIGN 10.2): 0.105 × box width (≈ 20 px at 196, ≈ 38 px
+    /// on the 360-px stage box); <see cref="PlaceholderTitle"/> steps it down only when a word or the lines do not fit.
+    /// </summary>
+    public static double PlaceholderTitleSize(double width) => Math.Clamp(Math.Round(width * 0.105), 13, 40);
+
+    /// <summary>Inner margin of the placeholder text: 14 px at 196, 24 px on the stage boxes.</summary>
+    public static double PlaceholderPad(double w) => Math.Clamp(Math.Round(w * 0.0714), 10, 24);
+
+    /// <summary>Spine band width: 16 % of the box width.</summary>
+    private static double BandWidth(double w) => Math.Max(6, Math.Round(w * 0.16));
+
+    /// <summary>Texture strength on placeholders, relative to the system's wall strength (boxes read as material).</summary>
+    private const double PlaceholderTextureFactor = 2.0;
 
     private void DrawPlaceholder(DrawingContext ctx, Rect r)
     {
         var look = SystemPalette.Get(SystemId, Accent);
         EnsureText(r, look);
         var w = r.Width;
-        var stage = !ShowTitle;
         using (ctx.PushClip(new RoundedRect(r, 2)))
         {
-            // ground: one tone in small tiles, the wall's 38/62 split from 200 px; texture 8 % (shared brush, offset
-            // per title so neighbours differ)
+            // ground: one tone in small tiles, the wall's 38/62 split from 200 px; the system texture (shared brush,
+            // offset per title so neighbours differ)
             var split = w >= SplitMinWidth ? Math.Round(r.Height * 0.38) : 0;
             if (split > 0) ctx.FillRectangle(look.WallHiBrush, new Rect(r.X, r.Y, w, split));
             ctx.FillRectangle(split > 0 ? look.WallBrush : look.WallHiBrush, new Rect(r.X, r.Y + split, w, r.Height - split));
@@ -287,17 +304,18 @@ public sealed class CoverArt : Control
                 var hash = Hash(Title ?? "");
                 var ox = hash % (uint)Math.Max(1, tex.Size.Width);
                 var oy = (hash >> 8) % (uint)Math.Max(1, tex.Size.Height);
-                using (ctx.PushOpacity(0.08 / 0.07 * look.TextureOpacity))
+                using (ctx.PushOpacity(Math.Min(0.3, look.TextureOpacity * PlaceholderTextureFactor)))
                 using (ctx.PushTransform(Matrix.CreateTranslation(r.X - ox, r.Y - oy)))
                     ctx.FillRectangle(tex.Brush, new Rect(ox, oy, w, r.Height));
             }
-            // the motif (real category shape, details cut out in the ground tone) in colour at 18 %, standing flush
-            // bottom right: 45 % of the height in the shelf, 60 % on the stages (no title there)
-            var motif = Math.Round(r.Height * (stage ? 0.60 : 0.45));
-            MotifCatalog.Draw(ctx, look, new Rect(r.Right - motif, r.Bottom - motif, motif, motif), 0.18, silhouette: true,
-                cutout: split > 0 ? look.WallBrush : look.WallHiBrush, alignRight: true);
-            // spine band: 16 % of the width, full colour, code −90°
-            var band = Math.Max(6, Math.Round(w * 0.16));
+            if (split > 0) ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y + split, w, 1));
+            // the motif silhouette in colour at 18 %, 45 % of the height, TOP right (the title is anchored at the bottom)
+            var band = BandWidth(w);
+            var pad = PlaceholderPad(w);
+            var motif = Math.Round(Math.Min(r.Height * 0.45, (w - band) * 0.8));
+            MotifCatalog.Draw(ctx, look, new Rect(r.Right - motif - Math.Round(pad * 0.5), r.Y + Math.Round(pad * 0.75), motif, motif), 0.18,
+                silhouette: true, cutout: look.WallHiBrush, alignRight: true);
+            // spine band: full colour, code −90°
             ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, band, r.Height));
             if (_codeText is { } code)
             {
@@ -305,16 +323,20 @@ public sealed class CoverArt : Control
                     ctx.DrawText(code, new Point(0, 0));
             }
             ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y, w, 1));
+            // title and subtitle: left after the band, anchored at the bottom with the inner margin
             if (_titleText is { } title)
             {
-                var pad = PlaceholderPad(w);
-                ctx.DrawText(title, new Point(r.X + band + pad, r.Y + pad));
-                if (_subText is { } sub) ctx.DrawText(sub, new Point(r.X + band + pad, r.Y + pad + Math.Ceiling(title.Height) + SubGap));
+                var x = r.X + band + pad;
+                var bottom = r.Bottom - pad;
+                if (_subText is { } sub)
+                {
+                    ctx.DrawText(sub, new Point(x, bottom - sub.Height));
+                    bottom -= Math.Ceiling(sub.Height) + SubGap;
+                }
+                ctx.DrawText(title, new Point(x, bottom - title.Height));
             }
         }
     }
-
-    private static double PlaceholderPad(double w) => Math.Clamp(Math.Round(w * 0.082), 10, 16);
 
     private void EnsureText(Rect r, SystemLook look)
     {
@@ -322,45 +344,36 @@ public sealed class CoverArt : Control
         if (_textKey == key && (_titleText != null || !ShowTitle || string.IsNullOrEmpty(Title))) return;
         _textKey = key;
         var w = r.Width;
-        var band = Math.Max(6, Math.Round(w * 0.16));
+        var band = BandWidth(w);
         var pad = PlaceholderPad(w);
-        // the title (DESIGN 10.2): top left after the band, one size per tile width (never shrunk per title),
-        // word wrap, at most 4 lines; the stage variants (Start, Detail) carry no title – the poster stands beside them
+        // the title (DESIGN 10.2): bottom left after the band, in full – wrapped only at spaces and hyphens, the size
+        // stepped down (× 0.88, never below 11 px) until every word and all lines fit; the subtitle in Atkinson below
         _titleText = null;
         _subText = null;
         if (ShowTitle && !string.IsNullOrEmpty(Title))
         {
-            var size = PlaceholderTitleSize(w);
-            var maxWidth = Math.Max(1, w - band - pad - 6);
-            // "Hyrule Warriors - Zeit der Verheerung": the main title in the poster role, the subtitle below it in the
-            // UI role (Text 2) - never a lone "-" line followed by an ellipsis
-            var (main, subtitle) = SplitTitle(Title);
-            // one size per tile width; only when a single word would break inside, two small steps down (never < 16)
-            var longest = main.Split([' ', '-', '/'], StringSplitOptions.RemoveEmptyEntries).OrderByDescending(s => s.Length).FirstOrDefault() ?? "";
-            bool Overflows(double sz) => longest.Length > 0 &&
-                new FormattedText(longest, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, sz, PaperBrush).Width > maxWidth;
-            for (var step = 0; step < 2 && size - 2 >= 16 && Overflows(size); step++)
-                size -= 2;
-            // a word that still does not fit breaks inside and a cut last line ends in a character ellipsis
-            // ("geheimnisvo…"), never an ellipsis in place of a whole word and never a silent cut
-            var trimming = Overflows(size) ? TextTrimming.CharacterEllipsis : TextTrimming.WordEllipsis;
+            var maxWidth = Math.Max(1, w - band - pad - Math.Max(6, Math.Round(pad * 0.5)));
             var budget = Math.Max(1, r.Height * 0.62);
-            _titleText = new FormattedText(main, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, PaperBrush)
+            var (main, subtitle) = SplitTitle(Title);
+            var fit = PlaceholderTitle.Fit(main, maxWidth, budget, PlaceholderTitleSize(w), PlaceholderTitle.MaxLines);
+            _titleText = new FormattedText(fit.Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, fit.Size, PaperBrush)
             {
-                MaxTextWidth = maxWidth,
-                MaxTextHeight = budget,
-                MaxLineCount = 4,
-                LineHeight = Math.Round(size * 1.1),
-                Trimming = trimming,
+                LineHeight = Math.Round(fit.Size * PlaceholderTitle.LineFactor),
             };
+            if (fit.Trimmed)
+            {
+                _titleText.MaxTextWidth = maxWidth;
+                _titleText.MaxLineCount = PlaceholderTitle.MaxLines;
+                _titleText.Trimming = TextTrimming.CharacterEllipsis;
+            }
             if (subtitle != null)
             {
-                var subSize = Math.Clamp(Math.Round(w * 0.08), 15, 18);
+                var subSize = Math.Clamp(Math.Round(w * 0.068), 12, 24);
                 var subLine = Math.Round(subSize * 1.2);
                 var room = budget - Math.Ceiling(_titleText.Height) - SubGap;
-                var lines = (int)Math.Min(3, Math.Floor(room / subLine));
+                var lines = (int)Math.Min(w >= 300 ? 3 : 2, Math.Floor(room / subLine));
                 if (lines >= 1)
-                    _subText = new FormattedText(subtitle, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.UiFace, subSize, SubBrush)
+                    _subText = new FormattedText(FitText.Typeset(subtitle), CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.ReadMediumFace, subSize, SubBrush)
                     {
                         MaxTextWidth = maxWidth,
                         MaxLineCount = lines,
@@ -369,7 +382,7 @@ public sealed class CoverArt : Control
                     };
             }
         }
-        var codeSize = ShowTitle ? Math.Max(7, w * 0.09) : Math.Min(28, Math.Max(7, w * 0.11));
+        var codeSize = Math.Min(28, Math.Max(7, w * 0.09));
         _codeText = string.IsNullOrEmpty(Badge) ? null :
             new FormattedText(Badge, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, codeSize, look.TextOnColorBrush)
             {
@@ -379,7 +392,7 @@ public sealed class CoverArt : Control
             };
     }
 
-    private const double SubGap = 6;
+    private const double SubGap = 4;
     private static readonly IImmutableSolidColorBrush SubBrush = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
 
     /// <summary>Main title and subtitle at the first " - ", " – " or ": " (both parts non-empty); else the whole title.</summary>
@@ -402,6 +415,97 @@ public sealed class CoverArt : Control
         foreach (var c in s) { h ^= c; h *= 16777619u; }
         return h;
     }
+}
+
+/// <summary>
+/// Line breaking of placeholder titles (DESIGN 10.2 "Der Titel steht immer vollständig"): breaks ONLY at spaces and
+/// after hyphens; when a single word is wider than the line or the lines exceed the count/height, the size steps
+/// down by × 0.88 to at least <see cref="MinSize"/>. Only when even that fails, the caller trims with a character
+/// ellipsis. Results are cached per (text, width, height, size) – the grid recycles tiles while browsing.
+/// </summary>
+public static class PlaceholderTitle
+{
+    public const double MinSize = 11;
+    public const int MaxLines = 5;
+    public const double LineFactor = 1.08;
+
+    public readonly record struct Result(string Text, double Size, int Lines, bool Trimmed);
+
+    private static readonly Dictionary<(string, int, int, int, int), Result> Cache = new();
+
+    public static Result Fit(string text, double maxWidth, double maxHeight, double startSize, int maxLines)
+    {
+        var key = (text, (int)maxWidth, (int)maxHeight, (int)Math.Round(startSize * 10), maxLines);
+        lock (Cache)
+            if (Cache.TryGetValue(key, out var hit)) return hit;
+        var result = Compute(text, maxWidth, maxHeight, startSize, maxLines);
+        lock (Cache)
+        {
+            if (Cache.Count > 4096) Cache.Clear();
+            Cache[key] = result;
+        }
+        return result;
+    }
+
+    private static Result Compute(string text, double maxWidth, double maxHeight, double startSize, int maxLines)
+    {
+        var tokens = Tokens(text);
+        var size = Math.Max(MinSize, startSize);
+        while (true)
+        {
+            if (Wrap(tokens, size, maxWidth) is { } lines && lines.Count <= maxLines
+                && lines.Count * Math.Round(size * LineFactor) <= maxHeight + 0.5)
+                return new Result(string.Join('\n', lines), size, lines.Count, false);
+            if (size <= MinSize) break;
+            size = Math.Max(MinSize, Math.Floor(size * 0.88 * 2) / 2);
+        }
+        return new Result(text, MinSize, maxLines, true);
+    }
+
+    /// <summary>Words with their joiner: a space before it, or nothing (the part after a hyphen).</summary>
+    private static List<(string Text, bool Space)> Tokens(string text)
+    {
+        var list = new List<(string, bool)>();
+        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var first = true;
+            var start = 0;
+            for (var i = 0; i < word.Length; i++)
+            {
+                // a break after a hyphen inside a word ("Smaragd-|Edition"), never before a leading/trailing one
+                if (word[i] != '-' || i == 0 || i == word.Length - 1) continue;
+                list.Add((word[start..(i + 1)], first));
+                first = false;
+                start = i + 1;
+            }
+            list.Add((word[start..], first));
+        }
+        return list;
+    }
+
+    /// <summary>Greedy lines at <paramref name="size"/>; null when one token alone is wider than the line.</summary>
+    private static List<string>? Wrap(List<(string Text, bool Space)> tokens, double size, double maxWidth)
+    {
+        var lines = new List<string>();
+        var current = "";
+        foreach (var (word, space) in tokens)
+        {
+            if (Measure(word, size) > maxWidth + 0.5) return null;
+            if (current.Length == 0) { current = word; continue; }
+            var candidate = space ? current + " " + word : current + word;
+            if (Measure(candidate, size) <= maxWidth + 0.5) current = candidate;
+            else
+            {
+                lines.Add(current);
+                current = word;
+            }
+        }
+        if (current.Length > 0) lines.Add(current);
+        return lines;
+    }
+
+    private static double Measure(string s, double size) =>
+        new FormattedText(s, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, null).Width;
 }
 
 internal static class VisualRootExtensions

@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.VisualTree;
 using RetroHub.App.Input;
 using RetroHub.App.Theming;
@@ -11,7 +13,7 @@ namespace RetroHub.App.Controls;
 
 /// <summary>
 /// Focus visuals of boxes on a shelf (DESIGN 8.1), drawn by ONE pair of layers per grid/shelf instead of by the tiles:
-/// <see cref="Back"/> (behind the rows: light cone from above) and <see cref="Front"/> (above the rows: lit board
+/// <see cref="Back"/> (behind the rows: light cone from above, a pre-rendered bitmap per light colour) and <see cref="Front"/> (above the rows: lit board
 /// piece, stronger contact shadow, chamfered ring). Both live in the scroll content, so they scroll along; covers
 /// keep clipping. On focus the tile's <see cref="CoverArt.ArtRect"/> is translated into the layer and the visuals are
 /// set for the target rectangle AFTER the lift (×1.06 from bottom centre), so they never trail the scale animation.
@@ -185,23 +187,55 @@ public sealed class FocusLayer
         Front.InvalidateVisual();
     }
 
-    // ===== shared, cached brushes (one per light colour) =====
-    private static readonly Dictionary<uint, IBrush> ConeBrushes = new();
+    // ===== shared, cached brushes and the pre-rendered cone (one per light colour) =====
+    private static readonly Dictionary<uint, Bitmap> ConeBitmaps = new();
     private static readonly IBrush FocusContact = new ImmutableLinearGradientBrush(
         [new ImmutableGradientStop(0, Color.FromArgb(0xB3, 0, 0, 0)), new ImmutableGradientStop(1, Color.FromArgb(0, 0, 0, 0))],
         startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
 
-    private static IBrush ConeBrush(Color light)
+    /// <summary>Cone geometry (DESIGN 8.2, M1 QA): bottom 1.15 × box width, top 0.5 ×, starting 96 px above the box.</summary>
+    public const double ConeBottomWidth = 1.15, ConeTopWidth = 0.5, ConeAbove = 96, ConePeakAlpha = 0.12;
+
+    private const int ConeW = 160, ConeH = 96;
+
+    /// <summary>
+    /// The light cone as a small premultiplied bitmap, rendered once per light colour: alpha 0 at the top rising to
+    /// <see cref="ConePeakAlpha"/> at the bottom (the light lands on the board), a trapezoid from
+    /// <see cref="ConeTopWidth"/> to the full width with a soft horizontal edge (no BlurEffect, no per-frame work).
+    /// </summary>
+    internal static Bitmap ConeBitmap(Color light)
     {
         var key = light.ToUInt32();
-        lock (ConeBrushes)
+        lock (ConeBitmaps)
         {
-            if (ConeBrushes.TryGetValue(key, out var b)) return b;
-            b = new ImmutableLinearGradientBrush(
-                [new ImmutableGradientStop(0, ColorUtil.WithAlpha(light, 0x24)), new ImmutableGradientStop(1, ColorUtil.WithAlpha(light, 0))],
-                startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
-            ConeBrushes[key] = b;
-            return b;
+            if (ConeBitmaps.TryGetValue(key, out var cached)) return cached;
+            var wb = new WriteableBitmap(new PixelSize(ConeW, ConeH), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+            var pixels = new byte[ConeW * ConeH * 4];
+            var topHalf = ConeTopWidth / ConeBottomWidth / 2 * ConeW;
+            var falloff = ConeW * 0.07; // ≈ 12 px at a 196-px box
+            for (var y = 0; y < ConeH; y++)
+            {
+                var t = (y + 0.5) / ConeH;
+                var half = topHalf + (ConeW / 2.0 - topHalf) * t;
+                var vertical = ConePeakAlpha * t * t * (3 - 2 * t); // smooth rise toward the board
+                for (var x = 0; x < ConeW; x++)
+                {
+                    var dx = Math.Abs(x + 0.5 - ConeW / 2.0);
+                    var e = Math.Clamp((half - dx) / falloff, 0, 1);
+                    e = e * e * (3 - 2 * e);
+                    var a = vertical * e;
+                    var i = (y * ConeW + x) * 4;
+                    pixels[i] = (byte)Math.Round(light.B * a);
+                    pixels[i + 1] = (byte)Math.Round(light.G * a);
+                    pixels[i + 2] = (byte)Math.Round(light.R * a);
+                    pixels[i + 3] = (byte)Math.Round(255 * a);
+                }
+            }
+            using (var fb = wb.Lock())
+                for (var y = 0; y < ConeH; y++)
+                    System.Runtime.InteropServices.Marshal.Copy(pixels, y * ConeW * 4, fb.Address + y * fb.RowBytes, ConeW * 4);
+            ConeBitmaps[key] = wb;
+            return wb;
         }
     }
 
@@ -210,27 +244,18 @@ public sealed class FocusLayer
         if (!_visible || NavRepeatTracker.Current?.IsActive == true) return; // no cone while a direction is held
         var t = _target;
         // the cone never paints over the header above the boxes (poster title, ticker): it starts at most 24 px above
-        // the rows and is clipped to the scroll viewport
+        // the rows; it is clipped to the grid content and the scroll viewport
         var limit = _watched.TranslatePoint(new Point(0, 0), Back) is { } w ? w.Y - 24 : double.NegativeInfinity;
-        Rect? clip = null;
+        var clip = new Rect(Back.Bounds.Size);
         if (_viewport != null && _viewport.TranslatePoint(new Point(0, 0), Back) is { } v)
-        {
-            clip = new Rect(v, _viewport.Bounds.Size);
-            limit = Math.Max(limit, v.Y);
-        }
-        var top = Math.Max(t.Top - 120, limit);
-        if (top >= t.Bottom) return;
-        var geo = new StreamGeometry();
-        using (var g = geo.Open())
-        {
-            g.BeginFigure(new Point(t.Center.X - t.Width * 0.3, top), true);
-            g.LineTo(new Point(t.Center.X + t.Width * 0.3, top));
-            g.LineTo(new Point(t.Center.X + t.Width * 0.65, t.Bottom));
-            g.LineTo(new Point(t.Center.X - t.Width * 0.65, t.Bottom));
-            g.EndFigure(true);
-        }
-        using (clip is { } c ? ctx.PushClip(c) : default(DrawingContext.PushedState?))
-            ctx.DrawGeometry(ConeBrush(LightColor), null, geo);
+            clip = clip.Intersect(new Rect(v, _viewport.Bounds.Size));
+        var top = Math.Max(clip.Top, limit);
+        clip = new Rect(clip.X, top, clip.Width, Math.Max(0, clip.Bottom - top));
+        var dest = new Rect(t.Center.X - t.Width * ConeBottomWidth / 2, t.Top - ConeAbove, t.Width * ConeBottomWidth, t.Height + ConeAbove);
+        if (clip.Height <= 0 || dest.Top >= t.Bottom) return;
+        var bmp = ConeBitmap(LightColor);
+        using (ctx.PushClip(clip))
+            ctx.DrawImage(bmp, new Rect(0, 0, ConeW, ConeH), dest);
     }
 
     private void RenderFront(DrawingContext ctx)

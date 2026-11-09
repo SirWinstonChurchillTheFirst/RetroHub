@@ -90,7 +90,8 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </StackPanel>
-          <Border Grid.Column="4" Classes="chip warn" IsVisible="{Binding ShowDemoChip}" ToolTip.Tip="{l:T shell.demo.tip}" VerticalAlignment="Center" Margin="24,0,0,0">
+          <!-- demo mode: a paper label ("Etikett": paper, ink, Etikett 15, 8 × 3, R 0) – Bernstein stays reserved (DESIGN 2.2) -->
+          <Border Grid.Column="4" Classes="etikett" IsVisible="{Binding ShowDemoChip}" ToolTip.Tip="{l:T shell.demo.tip}" VerticalAlignment="Center" Margin="24,0,0,0">
             <TextBlock Text="{Binding DemoText}" />
           </Border>
           <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="24" VerticalAlignment="Center" Margin="24,0,0,0">
@@ -101,18 +102,21 @@
         </Grid>
 
         <c:PageHost Name="Pages" Grid.Row="1" />
-        <!-- the room fades in behind the footer (allowed translucency, DESIGN 4.6) -->
-        <Border Grid.Row="1" Height="40" VerticalAlignment="Bottom" IsHitTestVisible="False">
+        <!-- the room fades in behind the footer (allowed translucency, DESIGN 4.6): 56 px, eased, reaching the footer's
+             own tone at its top edge, so content runs out softly instead of being cut at the footer -->
+        <Border Grid.Row="1" Height="56" VerticalAlignment="Bottom" IsHitTestVisible="False">
           <Border.Background>
             <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
               <GradientStop Offset="0" Color="#0014120F" />
-              <GradientStop Offset="1" Color="#F514120F" />
+              <GradientStop Offset="0.35" Color="#7014120F" />
+              <GradientStop Offset="0.7" Color="#D414120F" />
+              <GradientStop Offset="1" Color="#FA14120F" />
             </LinearGradientBrush>
           </Border.Background>
         </Border>
 
         <!-- ============ Footer: location sentence + context hints ============ -->
-        <Border Name="HintBar" Grid.Row="2" Background="#F514120F">
+        <Border Name="HintBar" Grid.Row="2" Background="#FA14120F">
           <Grid ColumnDefinitions="*,Auto" Margin="48,0,40,0">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="0">
               <TextBlock Text="{Binding LocationParent}" FontSize="16" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />

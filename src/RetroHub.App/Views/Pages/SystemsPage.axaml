@@ -7,7 +7,7 @@
             x:Class="RetroHub.App.Views.Pages.SystemsPage"
             x:DataType="vm:SystemsViewModel">
   <!--
-    Konsolen (M1.5): the painted walls stand on boards (ShelfGridPanel: 8 px between walls, 48 px between rows),
+    Konsolen (M1.5): the painted walls stand on boards (ShelfGridPanel: 16 px between walls, so each reads as its own panel, 48 px between rows),
     no KPI heading – the count is in the footer. The spine shelf with the turning front follows in M5 (DESIGN 7.4).
   -->
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
@@ -15,7 +15,7 @@
       <ItemsControl Name="Cards" ItemsSource="{Binding Systems}" ClipToBounds="False" Margin="0,24,0,0">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <c:ShelfGridPanel MinItemWidth="268" ItemHeight="240" ColumnSpacing="8" RowGap="48" />
+            <c:ShelfGridPanel MinItemWidth="268" ItemHeight="240" ColumnSpacing="16" RowGap="48" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>

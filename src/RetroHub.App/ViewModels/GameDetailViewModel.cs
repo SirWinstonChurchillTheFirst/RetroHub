@@ -29,7 +29,7 @@ public sealed record ProblemItem(string Text, bool IsBlocking, string? Url = nul
 {
     public bool HasUrl => !string.IsNullOrEmpty(Url);
 
-    private static readonly System.Text.RegularExpressions.Regex UrlPattern = new(@"https?://\S+", System.Text.RegularExpressions.RegexOptions.Compiled);
+    private static readonly global::System.Text.RegularExpressions.Regex UrlPattern = new(@"https?://\S+", global::System.Text.RegularExpressions.RegexOptions.Compiled);
 
     /// <summary>"RetroArch ist nicht installiert. Entpacke … Download: https://…" → ("RetroArch ist nicht installiert.", url).</summary>
     public static ProblemItem From(string message, bool blocking)
@@ -132,9 +132,10 @@ public sealed partial class GameDetailViewModel : PageViewModel
     /// <summary>
     /// "Rollenspiel von Game Freak, 2004. Ein Spieler. Europa." (DESIGN 3.2): missing parts drop out with their
     /// punctuation; region tags become words ("EUR" → "Europa"); a language ("Englisch") is only mentioned beside genre,
-    /// developer or year – never as the only fact. Nothing known: the system name ("Game Boy Advance.").
+    /// developer or year – never as the only fact. Nothing known: the system name ("Game Boy Advance."), or nothing when
+    /// <paramref name="systemName"/> is null (the detail page names the system in its label already).
     /// </summary>
-    internal static string BuildMetaSentence(Core.Library.Game g, string systemName)
+    internal static string BuildMetaSentence(Core.Library.Game g, string? systemName)
     {
         var first = !string.IsNullOrEmpty(g.Genre) && !string.IsNullOrEmpty(g.Developer) ? Loc.T("detail.meta.by", g.Genre!, g.Developer!)
             : !string.IsNullOrEmpty(g.Developer) ? Loc.T("detail.meta.byOnly", g.Developer!)
@@ -148,7 +149,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
             if (Fmt.RegionWord(g.Region) is { } region) parts.Add(region + ".");
             else if (first.Length > 0) parts.Add(Fmt.SentenceStart(g.Region!.Trim().TrimEnd('.')) + ".");
         }
-        return parts.Count > 0 ? string.Join(" ", parts) : systemName + ".";
+        return parts.Count > 0 ? string.Join(" ", parts) : systemName != null ? systemName + "." : "";
     }
 
     /// <summary>"46 Std. in 41 Sitzungen gespielt, zuletzt heute." – the play time starts the sentence ("Unter 1 Min. …").</summary>
@@ -199,7 +200,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
             if (g.Players != null) facts.Add(new FactItem(Loc.T("detail.players"), g.Players == 1 ? Loc.T("detail.onePlayer") : Loc.T("detail.manyPlayers", g.Players)));
             if (!string.IsNullOrEmpty(g.Region)) facts.Add(new FactItem(Loc.T("detail.region"), g.Region!));
             Facts = facts;
-            MetaSentence = BuildMetaSentence(g, Game.SystemName);
+            MetaSentence = BuildMetaSentence(g, null); // the system label above the title already names the system
             PlaySentence = BuildPlaySentence(g);
             PlayTime = Fmt.PlayTime(g.PlaySeconds);
             LastPlayed = Fmt.LastPlayed(g.LastPlayedUtc);
@@ -245,9 +246,20 @@ public sealed partial class GameDetailViewModel : PageViewModel
         SelectedMode = list.FirstOrDefault(m => m.Mode == current) ?? list[0];
     }
 
+    /// <summary>The game's full path in a launcher message replaced by its file name.</summary>
+    private string ShortenPath(string message)
+    {
+        if (string.IsNullOrEmpty(FileName)) return message;
+        if (!string.IsNullOrEmpty(FilePath)) message = message.Replace(FilePath, FileName, StringComparison.OrdinalIgnoreCase);
+        // a resolved spelling of the same file ("E:\…\name.sfc", "\\server\…\name.sfc")
+        return global::System.Text.RegularExpressions.Regex.Replace(message,
+            @"(?:[A-Za-z]:|\\\\)[^:\r\n]*?[\\/]" + global::System.Text.RegularExpressions.Regex.Escape(FileName), FileName.Replace("$", "$$"));
+    }
+
     private void ApplyPlan(LaunchPlan plan)
     {
-        Problems = plan.Problems.OrderByDescending(p => p.Blocking).Select(p => ProblemItem.From(p.Message, p.Blocking)).ToList();
+        // the status line names the file, never its full path (the path belongs in the file info)
+        Problems = plan.Problems.OrderByDescending(p => p.Blocking).Select(p => ProblemItem.From(ShortenPath(p.Message), p.Blocking)).ToList();
         HasProblems = Problems.Count > 0;
         CanPlay = plan.CanLaunch;
         // a sentence, no "A · B" chain: "Startet mit RetroArch (snes9x) im Vollbild."

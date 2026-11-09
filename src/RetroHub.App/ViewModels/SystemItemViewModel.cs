@@ -21,6 +21,22 @@ public sealed partial class SystemItemViewModel : ObservableObject
     public SystemDef Def { get; }
     public string Id => Def.Id;
     public string Name => Def.Name;
+    /// <summary>The name for posters: product names that belong together never break apart ("Wii U", "Game Boy").</summary>
+    public string PosterName => KeepTogether(Def.Name);
+
+    private static readonly string[] Pairs = ["Game Boy", "Mega Drive", "Master System", "Game Gear", "Virtual Boy", "Neo Geo", "Mega-CD", "PC Engine"];
+
+    /// <summary>
+    /// Joins name parts that must stay on one line with a no-break space: the fixed pairs above and a short last
+    /// one-character token ("Wii U", "PlayStation 2").
+    /// </summary>
+    public static string KeepTogether(string name)
+    {
+        foreach (var pair in Pairs) name = name.Replace(pair, pair.Replace(' ', ' '), StringComparison.Ordinal);
+        var last = name.LastIndexOf(' ');
+        if (last > 0 && name.Length - last - 1 == 1) name = name[..last] + ' ' + name[(last + 1)..];
+        return name;
+    }
     public string ShortName => string.IsNullOrEmpty(Def.ShortName) ? Def.Id.ToUpperInvariant() : Def.ShortName;
     public string Manufacturer => Def.Manufacturer;
     /// <summary>"Nintendo, 2001" (a sentence part, no "A · B" chains).</summary>

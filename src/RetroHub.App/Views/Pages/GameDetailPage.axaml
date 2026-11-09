@@ -14,11 +14,11 @@
   -->
   <ScrollViewer Name="Scroll" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Spacing="0">
-      <!-- ===== stage ===== -->
+      <!-- ===== stage (a landscape cover widens the box frame to 460, see code-behind) ===== -->
       <Grid Name="Stage" Height="588" ColumnDefinitions="360,56,*" Margin="{DynamicResource RhPageInsetX}">
         <Panel Name="BoxSlot" Width="360" Height="504" VerticalAlignment="Bottom">
           <c:CoverArt Name="DetailBox" Source="{Binding Game.CoverPath}" Title="{Binding Game.Title}" Badge="{Binding Game.SystemShort}"
-                      SystemId="{Binding Game.SystemId}" Accent="{Binding Game.Accent}" IsMissing="{Binding Game.IsMissing}" ShowTitle="False" />
+                      SystemId="{Binding Game.SystemId}" Accent="{Binding Game.Accent}" IsMissing="{Binding Game.IsMissing}" />
         </Panel>
         <StackPanel Grid.Column="2" VerticalAlignment="Bottom" Spacing="0" Margin="0,0,0,44" MaxWidth="1100" HorizontalAlignment="Left">
           <!-- system label: colour bar + name in the system's light -->
@@ -30,8 +30,11 @@
             </StackPanel>
           </Button>
           <c:FitText Name="StageTitle" Classes="poster" Source="{Binding Game.Title}" Sizes="72,56,40" MaxLines="2" LineFactor="1.06" Margin="0,10,0,0" />
-          <TextBlock c:Sentence.Text="{Binding MetaSentence}" Classes="read-l" Margin="0,16,0,0" TextWrapping="Wrap" />
-          <TextBlock c:Sentence.Text="{Binding PlaySentence}" Classes="read-l" TextWrapping="Wrap" />
+          <StackPanel Margin="0,16,0,0" Spacing="0">
+            <TextBlock c:Sentence.Text="{Binding MetaSentence}" Classes="read-l" TextWrapping="Wrap"
+                       IsVisible="{Binding MetaSentence, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock c:Sentence.Text="{Binding PlaySentence}" Classes="read-l" TextWrapping="Wrap" />
+          </StackPanel>
           <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0" IsVisible="{Binding Game.IsMissing}">
             <c:RhIcon Data="{StaticResource Icon.Missing}" Width="20" Height="20" Foreground="{DynamicResource RhDangerBrush}" VerticalAlignment="Center" />
             <TextBlock Text="{l:T tile.missing}" Classes="ui" Foreground="{DynamicResource RhDangerBrush}" VerticalAlignment="Center" />

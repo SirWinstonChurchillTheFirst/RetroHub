@@ -14,6 +14,7 @@ public partial class GameDetailPage : PageBase
         InitializeComponent();
         StageBoard.Casters = [DetailBox];
         Stage.LayoutUpdated += (_, _) => StageBoard.InvalidateVisual();
+        DetailBox.ArtRectChanged += (_, _) => ApplyBoxFrame();
         DataContextChanged += (_, _) =>
         {
             if (_vm != null) _vm.PropertyChanged -= OnVmChanged;
@@ -30,15 +31,28 @@ public partial class GameDetailPage : PageBase
         if (e.PropertyName == nameof(GameDetailViewModel.HasDescription)) ApplyBackLayout();
     }
 
+    /// <summary>Box frame 360 × 504 (DESIGN 7.3); a landscape cover (SNES, N64 …) gets a frame up to 460 wide, so it
+    /// does not stand as a low strip under an empty stage. The text column follows 56 px right of the box.</summary>
+    public const double FrameWidth = 360, WideFrameWidth = 460;
+
+    private void ApplyBoxFrame()
+    {
+        var wide = DetailBox.ImageAspect is > 1.05;
+        var width = wide ? WideFrameWidth : FrameWidth;
+        if (BoxSlot.Width == width) return;
+        BoxSlot.Width = width;
+        Stage.ColumnDefinitions[0].Width = new Avalonia.Controls.GridLength(width);
+    }
+
     /// <summary>Without a description the "Über das Spiel" column drops out and "Start" moves to the page margin (DESIGN 7.3).</summary>
     private void ApplyBackLayout()
     {
         var alone = _vm?.HasDescription != true;
         Grid.SetColumn(StartColumn, alone ? 0 : 2);
         Grid.SetColumnSpan(StartColumn, alone ? 3 : 1);
-        StartColumn.MaxWidth = alone ? 980 : double.PositiveInfinity;
+        StartColumn.MaxWidth = alone ? 1100 : double.PositiveInfinity;
         StartColumn.HorizontalAlignment = alone ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Stretch;
-        StartColumn.Width = alone ? 980 : double.NaN;
+        StartColumn.Width = alone ? 1100 : double.NaN;
     }
 
     /// <summary>File picker for "Cover wählen…" (PNG/JPG/WebP).</summary>

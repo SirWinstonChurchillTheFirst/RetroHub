@@ -28,4 +28,6 @@ public static class FontRoles
     public static readonly Typeface LabelFace = new(Ui, FontStyle.Normal, FontWeight.SemiBold);
     public static readonly Typeface SpineFace = new(Spine, FontStyle.Normal, FontWeight.Bold);
     public static readonly Typeface ReadFace = new(Read, FontStyle.Normal, FontWeight.Normal);
+    /// <summary>Atkinson Medium: subtitles on spine placeholders.</summary>
+    public static readonly Typeface ReadMediumFace = new(Read, FontStyle.Normal, FontWeight.Medium);
 }

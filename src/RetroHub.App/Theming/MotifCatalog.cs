@@ -154,10 +154,11 @@ public static class MotifCatalog
             new(Disc(60, 68, 52, 9), Paint.Color),
             new(Group(Dot(78, 50, 1.2), Dot(84, 64, 1.8), Dot(80, 80, 2.2), Dot(92, 52, 2.4), Dot(96, 70, 2.8), Dot(92, 88, 3)), Paint.Body),
         ],
+        // small disc with a 6 px ring in the second colour inside it (no outline square: it read as a focus ring)
         Motif.MiniDisc =>
         [
             new(Disc(60, 82, 38, 13), Paint.Color),
-            new(P("M30,44 H90 A10,10 0 0 1 100,54 V110 A10,10 0 0 1 90,120 H30 A10,10 0 0 1 20,110 V54 A10,10 0 0 1 30,44 Z"), Paint.Body, 2.5),
+            new(Rings(60, 82, 31, 25), Paint.Body),
         ],
         // disc on a drawer: the drawer front stands clearly in front of the disc
         Motif.Tray =>
@@ -166,13 +167,12 @@ public static class MotifCatalog
             B("M8,86 H112 V120 H8 Z"),
             X("M44,100 H76 V105 H44 Z"),
         ],
-        // slot console: an upright body with a disc half inserted at the top (not a lollipop)
+        // slot console: a thin upright slab with one horizontal slot line on a low foot; no disc, no lit slot
         Motif.Stand =>
         [
-            new(Disc(60, 44, 26, 5), Paint.Color),
-            B("M40,44 H80 V120 H40 Z"),
-            X("M46,44 H74 V48 H46 Z"),
-            new(Dot(60, 108, 3), Paint.Color),
+            B("M46,10 H74 V112 H46 Z"),
+            X("M51,30 H69 V33 H51 Z"),
+            C("M34,112 H86 V120 H34 Z"),
         ],
         // tablet with grips on a stand: plate, cut screen, two dots outside the screen, foot on y 120
         Motif.Tablet =>
@@ -182,12 +182,13 @@ public static class MotifCatalog
             X("M30,38 H90 V92 H30 Z"),
             new(Group(Dot(20, 54, 4.5), Dot(100, 54, 4.5)), Paint.Body),
         ],
-        // a plate half sunk into a U-shaped dock; no detachable side parts
+        // a screen plate standing in a flat block (a generic "device in a stand"): no U-shaped dock arms, no side parts
         Motif.Dock =>
         [
-            B("M26,18 H94 V96 H26 Z"),
-            X("M32,24 H88 V80 H32 Z"),
-            C("M10,68 H34 V96 H86 V68 H110 V120 H10 Z"),
+            B("M20,24 H100 V92 H20 Z"),
+            X("M27,31 H93 V86 H27 Z"),
+            C("M12,84 H108 V120 H12 Z"),
+            X("M48,99 H72 V103 H48 Z"),
         ],
         Motif.TwinLens =>
         [

@@ -71,11 +71,13 @@ public sealed class FitText : TextBlock
         _key = key;
         var sizes = ParseSizes(Sizes);
         var face = new Typeface(FontFamily, FontStyle, FontWeight, FontStretch);
-        var size = Choose(Source ?? "", face, sizes, width, lines);
+        var source = Typeset(Source ?? "");
+        var (size, text) = ChooseWithBreak(source, face, sizes, width, lines);
         var usedLines = lines;
-        if (size == null && LastResortLines > lines && sizes.Length > 0 && Fits(Source ?? "", face, sizes[^1], width, LastResortLines))
+        if (size == null && LastResortLines > lines && sizes.Length > 0 && Fits(source, face, sizes[^1], width, LastResortLines))
         {
             size = sizes[^1];
+            text = source;
             usedLines = LastResortLines;
         }
         if (MaxLines != usedLines && size != null) SetCurrentValue(MaxLinesProperty, usedLines);
@@ -84,7 +86,7 @@ public sealed class FitText : TextBlock
         {
             ChosenSize = s;
             Classes.Set("fit-fallback", false);
-            Apply(Source, s, TextTrimming.None);
+            Apply(text, s, TextTrimming.None);
         }
         else if (!string.IsNullOrEmpty(FallbackSource))
         {
@@ -96,8 +98,43 @@ public sealed class FitText : TextBlock
         {
             ChosenSize = sizes.Length > 0 ? sizes[^1] : FontSize;
             Classes.Set("fit-fallback", false);
-            Apply(Source, ChosenSize, TextTrimming.WordEllipsis);
+            Apply(source, ChosenSize, TextTrimming.WordEllipsis);
         }
+    }
+
+    /// <summary>Poster typesetting: a spaced hyphen between title parts becomes an en dash ("Zelda – A Link").</summary>
+    public static string Typeset(string text) => text.Replace(" - ", " – ", StringComparison.Ordinal);
+
+    /// <summary>
+    /// "The Legend of Zelda –\nA Link to the Past": the title with a forced break after its first " – " or ": "
+    /// (both parts non-empty); null without a separator.
+    /// </summary>
+    public static string? SeparatorBreak(string text)
+    {
+        foreach (var sep in new[] { " – ", ": " })
+        {
+            var i = text.IndexOf(sep, StringComparison.Ordinal);
+            if (i < 2 || i + sep.Length >= text.Length) continue;
+            return text[..i] + sep.TrimEnd() + "\n" + text[(i + sep.Length)..];
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The largest size at which the title fits, preferring (in this order) one line, then the break after the
+    /// separator (never "Zelda – A / Link to the Past"), then plain word wrapping. Null size = nothing fits.
+    /// </summary>
+    public static (double? Size, string Text) ChooseWithBreak(string text, Typeface face, IReadOnlyList<double> sizes, double width, int maxLines)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return (sizes.Count > 0 ? sizes[0] : null, text);
+        var broken = maxLines >= 2 ? SeparatorBreak(text) : null;
+        foreach (var size in sizes)
+        {
+            if (Fits(text, face, size, width, 1)) return (size, text);
+            if (broken != null && Fits(broken, face, size, width, maxLines)) return (size, broken);
+            if (Fits(text, face, size, width, maxLines)) return (size, text);
+        }
+        return (null, text);
     }
 
     private void Apply(string? text, double size, TextTrimming trimming)
