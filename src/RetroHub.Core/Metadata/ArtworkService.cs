@@ -160,6 +160,8 @@ public sealed class ArtworkService : IDisposable
         }
         progress?.Report(new ArtworkProgress("local", candidates.Count, candidates.Count, null));
         if (updates.Count > 0) await Task.Run(() => SaveLocal(updates), ct).ConfigureAwait(false);
+        // covers stored before the size was recorded (schema 2): read their headers once
+        await Task.Run(() => FillCoverSizes(list.Where(g => !string.IsNullOrEmpty(g.CoverPath) && g.CoverWidth == null), ct), ct).ConfigureAwait(false);
 
         // ---------------- online (opt-in) ----------------
         int downloaded = 0, errors = 0, skipped = 0, done = 0, notFound;
@@ -212,8 +214,13 @@ public sealed class ArtworkService : IDisposable
             var fresh = _repo.Get(u.Id);
             if (fresh == null) continue;
             var dirty = false;
-            if (u.Cover != null && NeedsCover(fresh)) { fresh.CoverPath = _paths.ToPortable(u.Cover); dirty = true; }
-            else if (u.ClearCover && !string.IsNullOrEmpty(fresh.CoverPath) && !FileExists(fresh.CoverPath)) { fresh.CoverPath = null; dirty = true; }
+            if (u.Cover != null && NeedsCover(fresh)) { StoreCover(fresh, u.Cover); dirty = true; }
+            else if (u.ClearCover && !string.IsNullOrEmpty(fresh.CoverPath) && !FileExists(fresh.CoverPath))
+            {
+                fresh.CoverPath = null;
+                fresh.CoverWidth = fresh.CoverHeight = null;
+                dirty = true;
+            }
             if (u.Background != null && Needs(fresh.BackgroundPath)) { fresh.BackgroundPath = _paths.ToPortable(u.Background); dirty = true; }
             if (u.Logo != null && Needs(fresh.LogoPath)) { fresh.LogoPath = _paths.ToPortable(u.Logo); dirty = true; }
             if (dirty) changed.Add(fresh);
@@ -282,8 +289,47 @@ public sealed class ArtworkService : IDisposable
     {
         var fresh = _repo.Get(id);
         if (fresh == null || !NeedsCover(fresh)) return;
-        fresh.CoverPath = _paths.ToPortable(fullPath);
+        StoreCover(fresh, fullPath);
         _repo.Upsert(fresh);
+    }
+
+    /// <summary>Sets the cover reference and its pixel size from the file header (no decode; unknown → null).</summary>
+    private void StoreCover(Game game, string fullPath)
+    {
+        game.CoverPath = _paths.ToPortable(fullPath);
+        var size = ImageHeader.TryRead(fullPath);
+        game.CoverWidth = size?.Width;
+        game.CoverHeight = size?.Height;
+    }
+
+    /// <summary>
+    /// Fills the cover pixel size of games whose cover exists but has no stored size (covers stored before schema 2,
+    /// or by another tool). Header reads only; returns the number of games updated. Safe to call any time.
+    /// </summary>
+    public int FillCoverSizes(IEnumerable<Game>? games = null, CancellationToken ct = default)
+    {
+        var list = games ?? _repo.Query(new GameQuery { IncludeHidden = true, IncludeMissing = true });
+        var changed = new List<Game>();
+        foreach (var g in list)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (string.IsNullOrEmpty(g.CoverPath) || g.CoverWidth is > 0 && g.CoverHeight is > 0) continue;
+            string full;
+            try { full = _paths.FromPortable(g.CoverPath); }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { continue; }
+            if (ImageHeader.TryRead(full) is not { } size) continue;
+            var fresh = _repo.Get(g.Id);
+            if (fresh == null || fresh.CoverPath != g.CoverPath) continue;
+            fresh.CoverWidth = size.Width;
+            fresh.CoverHeight = size.Height;
+            changed.Add(fresh);
+        }
+        if (changed.Count > 0)
+        {
+            _repo.UpsertMany(changed);
+            Log.Info($"Artwork: pixel size stored for {changed.Count} covers");
+        }
+        return changed.Count;
     }
 
     internal enum DownloadResult { Saved, AlreadyExists, NotFound, Error }
@@ -525,10 +571,10 @@ public sealed class ArtworkService : IDisposable
             }
         }
         var fresh = _repo.Get(gameId) ?? game;
-        fresh.CoverPath = _paths.ToPortable(final);
+        StoreCover(fresh, final);
         _repo.Upsert(fresh);
         Log.Info($"Cover for '{fresh.DisplayTitle}' set by the user: {fresh.CoverPath}");
-        return fresh.CoverPath;
+        return fresh.CoverPath!;
     }
 
     /// <summary>"Cover entfernen": clears the reference (stored as "" so it is not filled again automatically). Never deletes a file.</summary>
@@ -537,6 +583,7 @@ public sealed class ArtworkService : IDisposable
         var game = _repo.Get(gameId);
         if (game == null) return;
         game.CoverPath = "";
+        game.CoverWidth = game.CoverHeight = null;
         _repo.Upsert(game);
         Log.Info($"Cover for '{game.DisplayTitle}' removed by the user (file kept)");
     }

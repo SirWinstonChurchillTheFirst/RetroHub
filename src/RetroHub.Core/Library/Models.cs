@@ -52,6 +52,12 @@ public sealed class Game
     public Catalog.LaunchMode? LaunchModeOverride { get; set; }
     /// <summary>Portable paths of artwork; null = not found yet.</summary>
     public string? CoverPath { get; set; }
+    /// <summary>
+    /// Pixel size of the cover image, read from its header when the cover is stored (download, import, "Cover wählen");
+    /// null = unknown. The UI derives a system's slot format from these before a grid is built (DESIGN 11.4).
+    /// </summary>
+    public int? CoverWidth { get; set; }
+    public int? CoverHeight { get; set; }
     public string? BackgroundPath { get; set; }
     public string? LogoPath { get; set; }
     public string? Developer { get; set; }

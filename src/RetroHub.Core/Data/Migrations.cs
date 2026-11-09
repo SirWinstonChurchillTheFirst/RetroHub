@@ -15,6 +15,7 @@ internal static class Migrations
     public static readonly IReadOnlyList<Migration> All =
     [
         new(1, "initial schema (games, folders, sessions, state)", (c, tx) => Exec(c, tx, V1)),
+        new(2, "cover pixel size (games.cover_w, games.cover_h)", (c, tx) => Exec(c, tx, V2)),
     ];
 
     public static int Latest => All[^1].Version;
@@ -67,6 +68,13 @@ internal static class Migrations
     // games.path_key = canonical path upper-cased with invariant (full Unicode) case mapping, like Windows compares
     // file names. COLLATE NOCASE only folds ASCII, so "Pokémon.gba" and "POKÉMON.GBA" would otherwise be two rows.
     // (Changed in V1 before the first release; no database with the older V1 layout exists.)
+    // V2 (design M3): the cover's pixel size from its header, so the UI knows a system's box format before it builds a
+    // grid (DESIGN 11.4). NULL = unknown; ArtworkService fills it when it stores a cover and backfills older rows.
+    private const string V2 = """
+        ALTER TABLE games ADD COLUMN cover_w INTEGER;
+        ALTER TABLE games ADD COLUMN cover_h INTEGER;
+        """;
+
     private const string V1 = """
         CREATE TABLE folders (
             id             INTEGER PRIMARY KEY,

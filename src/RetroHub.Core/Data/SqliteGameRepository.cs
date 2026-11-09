@@ -363,13 +363,13 @@ public sealed class SqliteGameRepository : IGameRepository
         "system_id", "path", "path_key", "title", "title_norm", "sort_title", "sort_key", "search_norm", "kind", "status", "size",
         "file_time_utc", "crc32", "serial", "region", "added_utc", "last_played_utc", "play_seconds", "play_count",
         "favorite", "hidden", "emulator_override", "launch_mode_override", "cover_path", "background_path", "logo_path",
-        "developer", "publisher", "genre", "year", "players", "description", "extra_args", "folder_id",
+        "developer", "publisher", "genre", "year", "players", "description", "extra_args", "folder_id", "cover_w", "cover_h",
     ];
 
     private const string SelectColumns =
         "id, system_id, path, title, sort_title, kind, status, size, file_time_utc, crc32, serial, region, added_utc, " +
         "last_played_utc, play_seconds, play_count, favorite, hidden, emulator_override, launch_mode_override, cover_path, " +
-        "background_path, logo_path, developer, publisher, genre, year, players, description, extra_args, folder_id";
+        "background_path, logo_path, developer, publisher, genre, year, players, description, extra_args, folder_id, cover_w, cover_h";
 
     private static readonly string InsertSql =
         $"INSERT INTO games ({string.Join(", ", Columns)}) VALUES ({string.Join(", ", Columns.Select((_, i) => "@p" + i))}) RETURNING id;";
@@ -414,6 +414,8 @@ public sealed class SqliteGameRepository : IGameRepository
             Description = S(28),
             ExtraArgs = S(29),
             FolderId = r.IsDBNull(30) ? null : r.GetInt64(30),
+            CoverWidth = I(31),
+            CoverHeight = I(32),
         };
     }
 
@@ -431,7 +433,7 @@ public sealed class SqliteGameRepository : IGameRepository
             Math.Max(0, g.PlayCount), g.Favorite ? 1 : 0, g.Hidden ? 1 : 0, Db(g.EmulatorOverride),
             g.LaunchModeOverride.HasValue ? (int)g.LaunchModeOverride.Value : DBNull.Value, Db(g.CoverPath), Db(g.BackgroundPath),
             Db(g.LogoPath), Db(g.Developer), Db(g.Publisher), Db(g.Genre), Db(g.Year), Db(g.Players), Db(g.Description),
-            Db(g.ExtraArgs), Db(g.FolderId),
+            Db(g.ExtraArgs), Db(g.FolderId), Db(g.CoverWidth), Db(g.CoverHeight),
         ];
     }
 
@@ -535,6 +537,12 @@ public sealed class SqliteGameRepository : IGameRepository
         m.EmulatorOverride = g.EmulatorOverride ?? old.EmulatorOverride;
         m.LaunchModeOverride = g.LaunchModeOverride ?? old.LaunchModeOverride;
         m.CoverPath = g.CoverPath ?? old.CoverPath;
+        // the size belongs to the cover file: kept with the old cover, taken with a new one
+        if (g.CoverPath == null || g.CoverPath == old.CoverPath)
+        {
+            m.CoverWidth = g.CoverWidth ?? old.CoverWidth;
+            m.CoverHeight = g.CoverHeight ?? old.CoverHeight;
+        }
         m.BackgroundPath = g.BackgroundPath ?? old.BackgroundPath;
         m.LogoPath = g.LogoPath ?? old.LogoPath;
         m.Developer = g.Developer ?? old.Developer;
@@ -566,7 +574,7 @@ public sealed class SqliteGameRepository : IGameRepository
         Favorite = g.Favorite, Hidden = g.Hidden, EmulatorOverride = g.EmulatorOverride, LaunchModeOverride = g.LaunchModeOverride,
         CoverPath = g.CoverPath, BackgroundPath = g.BackgroundPath, LogoPath = g.LogoPath, Developer = g.Developer,
         Publisher = g.Publisher, Genre = g.Genre, Year = g.Year, Players = g.Players, Description = g.Description,
-        ExtraArgs = g.ExtraArgs, FolderId = g.FolderId,
+        ExtraArgs = g.ExtraArgs, FolderId = g.FolderId, CoverWidth = g.CoverWidth, CoverHeight = g.CoverHeight,
     };
 
     // ───────────────────────────── games: reads ─────────────────────────────

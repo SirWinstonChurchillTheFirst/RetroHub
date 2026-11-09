@@ -174,6 +174,7 @@ public sealed class DemoGameRepository : IGameRepository
         EmulatorOverride = g.EmulatorOverride, LaunchModeOverride = g.LaunchModeOverride, CoverPath = g.CoverPath,
         BackgroundPath = g.BackgroundPath, LogoPath = g.LogoPath, Developer = g.Developer, Publisher = g.Publisher, Genre = g.Genre,
         Year = g.Year, Players = g.Players, Description = g.Description, ExtraArgs = g.ExtraArgs, FolderId = g.FolderId,
+        CoverWidth = g.CoverWidth, CoverHeight = g.CoverHeight,
     };
 
     private static LibraryFolder CloneFolder(LibraryFolder f) => new()

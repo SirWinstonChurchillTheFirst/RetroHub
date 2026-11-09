@@ -71,6 +71,14 @@ public sealed partial class AppServices
             settings.Saved += st => created.ConfigureWatcher(st.WatchFolders);
             games.Changed += created.OnRepositoryChanged;
             services = created;
+            // covers stored before schema 2 get their pixel size from the file header once (cheap, off the UI thread);
+            // the library derives a system's box format from it (DESIGN 11.4)
+            var artwork = created.Artwork;
+            _ = Task.Run(() =>
+            {
+                try { artwork.FillCoverSizes(); }
+                catch (Exception ex) { Log.Debug($"Cover size backfill skipped: {ex.Message}"); }
+            });
         }
         catch
         {
