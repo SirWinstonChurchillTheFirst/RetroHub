@@ -13,8 +13,8 @@
     (logical height < 1000) use the ≈1100 values of DESIGN 7.1 (class "compact", set in code-behind).
   -->
   <p:PageBase.Styles>
+    <!-- boxes: height 200, width from the system's box format (GameTile.SlotAspect) -->
     <Style Selector="c|GameTile.shelf">
-      <Setter Property="Width" Value="150" />
       <Setter Property="Height" Value="200" />
     </Style>
     <Style Selector="c|SystemCard.shelf">
@@ -22,7 +22,6 @@
       <Setter Property="Height" Value="200" />
     </Style>
     <Style Selector="StackPanel.compact c|GameTile.shelf">
-      <Setter Property="Width" Value="120" />
       <Setter Property="Height" Value="160" />
     </Style>
     <Style Selector="StackPanel.compact c|SystemCard.shelf">
@@ -31,12 +30,12 @@
     </Style>
     <Style Selector="StackPanel.compact c|Shelf">
       <Setter Property="ItemHeight" Value="160" />
-      <Setter Property="TopGap" Value="24" />
+      <Setter Property="TopGap" Value="32" />
     </Style>
   </p:PageBase.Styles>
   <p:PageBase.Resources>
     <DataTemplate x:Key="ShelfGame" x:DataType="vm:GameItemViewModel">
-      <c:GameTile Classes="shelf" ShowCaption="False" />
+      <c:GameTile Classes="shelf" ShowCaption="False" SlotAspect="{Binding CoverAspect}" />
     </DataTemplate>
     <DataTemplate x:Key="ShelfSystem" x:DataType="vm:SystemItemViewModel">
       <c:SystemCard Classes="shelf" />
@@ -44,7 +43,7 @@
   </p:PageBase.Resources>
 
   <ScrollViewer Name="Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
-    <StackPanel Name="Content" Spacing="0">
+    <StackPanel Name="PageContent" Spacing="0">
       <!-- ===== stage: text | box | screen, all standing on the stage board ===== -->
       <Grid Name="Stage" Height="488" ColumnDefinitions="*,52,Auto,52,Auto" Margin="{DynamicResource RhPageInsetX}" IsVisible="{Binding HasContinue}">
         <StackPanel Name="TextColumn" VerticalAlignment="Bottom" Spacing="0" Margin="0,0,0,32">
@@ -91,7 +90,7 @@
       <c:ShelfBoard Name="StageBoard" Height="24" />
 
       <!-- ===== shelves: paper labels on the boards instead of headings, "Alle anzeigen" as a spine ===== -->
-      <StackPanel Name="Shelves" Spacing="8" Margin="0,8,0,48">
+      <StackPanel Name="Shelves" Spacing="0" Margin="0,0,0,48">
         <c:Shelf Header="{l:T home.shelf.recent}" ItemsSource="{Binding RecentlyPlayed}" ItemTemplate="{StaticResource ShelfGame}"
                  ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}"
                  ActionLabel="{l:T home.showAll}" ActionCommand="{Binding ShowLibraryCommand}" IsVisible="{Binding HasRecentlyPlayed}" />

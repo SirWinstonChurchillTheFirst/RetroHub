@@ -377,6 +377,7 @@
   "library.location.search": "Suche „{0}“",
   "library.location.none": "Keine Treffer",
 
+  "screen.noSignal": "Kein Signal",
   "error.unexpected": "Unerwarteter Fehler – Details stehen im Protokoll.",
   "gamescreen.fullscreen": "Vollbild",
   "gamescreen.fullscreenExit": "Vollbild aus",

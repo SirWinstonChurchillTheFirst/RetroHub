@@ -21,6 +21,28 @@ public class GameTile : Button
 
     public bool ShowCaption { get => GetValue(ShowCaptionProperty); set => SetValue(ShowCaptionProperty, value); }
 
+    /// <summary>
+    /// Box format height / width of the slot (0 = off). With a fixed <see cref="Layoutable.Height"/> and no width the
+    /// tile is as wide as the system's box (Start shelves, DESIGN 7.1: height 200, width from the format), so covers
+    /// and spine placeholders of a board share one top line per format and nothing is shrunk into a portrait slot.
+    /// </summary>
+    public static readonly StyledProperty<double> SlotAspectProperty = AvaloniaProperty.Register<GameTile, double>(nameof(SlotAspect));
+
+    public double SlotAspect { get => GetValue(SlotAspectProperty); set => SetValue(SlotAspectProperty, value); }
+
+    static GameTile() => AffectsMeasure<GameTile>(SlotAspectProperty);
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        if (SlotAspect > 0 && !double.IsNaN(Height) && double.IsNaN(Width))
+        {
+            var size = new Size(Math.Round(Height / SlotAspect), Height);
+            base.MeasureOverride(size);
+            return size;
+        }
+        return base.MeasureOverride(availableSize);
+    }
+
     protected override Type StyleKeyOverride => typeof(GameTile);
 
     /// <summary>The cover of this tile (null until the template is applied, or for templates without one).</summary>

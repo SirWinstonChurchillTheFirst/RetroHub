@@ -2,6 +2,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using RetroHub.App.Localization;
 using RetroHub.App.Theming;
 
 namespace RetroHub.App.Controls;
@@ -25,11 +26,11 @@ public sealed class TvScreen : Control
     public const double ScanOpacity = 0.18;
 
     private FormattedText? _code;
-    private (string?, string?) _codeKey;
+    private (string?, string?, int) _codeKey;
 
     static TvScreen()
     {
-        AffectsRender<TvScreen>(SystemIdProperty, AccentProperty, CodeProperty);
+        AffectsRender<TvScreen>(SystemIdProperty, AccentProperty, CodeProperty, BoundsProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<TvScreen>(false);
         ClipToBoundsProperty.OverrideDefaultValue<TvScreen>(true);
     }
@@ -52,20 +53,37 @@ public sealed class TvScreen : Control
         var look = SystemPalette.Get(SystemId, Accent);
         using (context.PushClip(inner))
         {
-            SystemWall.Draw(context, this, inner, look, band: 8, motifShare: 0.5, motifInset: Math.Round(inner.Width * 0.08));
-            if (EnsureCode(look) is { } code)
-                context.DrawText(code, new Point(inner.X + Math.Round(inner.Width * 0.05), inner.Y + 8 + Math.Round(inner.Height * 0.05)));
+            // "Kein Signal" (DESIGN 7.1): the system's wall as a test card – the motif stands centred on the bottom at
+            // 50 % of the height, top left an OSD in the system's light: code (Rücken 28) and "Kein Signal" below
+            SystemWall.Draw(context, this, inner, look, band: 8, motifShare: 0, motifInset: 0);
+            var motif = Math.Round(inner.Height * 0.5);
+            MotifCatalog.Draw(context, look, new Rect(inner.Center.X - motif / 2, inner.Bottom - motif, motif, motif));
+            EnsureText(look);
+            var x = inner.X + Math.Round(inner.Width * 0.05);
+            var y = inner.Y + 8 + Math.Round(inner.Height * 0.05);
+            if (_code is { } code)
+            {
+                context.DrawText(code, new Point(x, y));
+                y += Math.Round(code.Height) + 2;
+            }
+            if (_noSignal is { } text) context.DrawText(text, new Point(x, y));
             TextureFill.Draw(context, this, inner, Texture.Scan, ScanOpacity);
         }
     }
 
-    private FormattedText? EnsureCode(SystemLook look)
+    private FormattedText? _noSignal;
+
+    private void EnsureText(SystemLook look)
     {
-        var key = (Code, look.Id);
-        if (_codeKey == key) return _code;
+        var key = (Code, look.Id, (int)Bounds.Height);
+        if (_codeKey == key && _noSignal != null) return;
         _codeKey = key;
+        var size = Math.Clamp(Math.Round(Bounds.Height * 0.067), 18, 28);
         _code = string.IsNullOrEmpty(Code) ? null
-            : new FormattedText(Code, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, 28, look.LightBrush);
-        return _code;
+            : new FormattedText(Code, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, size, look.LightBrush);
+        _noSignal = new FormattedText(Loc.T("screen.noSignal"), Loc.Culture, FlowDirection.LeftToRight, FontRoles.UiFace,
+            Math.Max(15, Math.Round(size * 0.72)), NoSignalBrush);
     }
+
+    private static readonly IImmutableSolidColorBrush NoSignalBrush = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
 }

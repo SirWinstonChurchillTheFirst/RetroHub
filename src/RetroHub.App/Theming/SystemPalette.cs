@@ -148,6 +148,21 @@ public static class SystemPalette
 
     public static bool IsKnown(string? id) => id != null && Defs.ContainsKey(id);
 
+    /// <summary>Box format start values, height / width (DESIGN 11.4); unknown systems 1.25.</summary>
+    private static readonly Dictionary<string, double> BoxAspects = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["nes"] = 1.38, ["snes"] = 1.00, ["n64"] = 0.90, ["gb"] = 1.00, ["gbc"] = 1.00, ["gba"] = 1.00,
+        ["nds"] = 0.90, ["3ds"] = 0.86, ["gamecube"] = 1.40, ["wii"] = 1.40, ["wiiu"] = 1.40, ["switch"] = 1.62,
+        ["ps1"] = 1.00, ["ps2"] = 1.42, ["psp"] = 1.72, ["megadrive"] = 1.40, ["mastersystem"] = 1.40,
+        ["saturn"] = 1.00, ["dreamcast"] = 1.00, ["gamegear"] = 1.25, ["arcade"] = 1.40, ["pc"] = 1.40,
+    };
+
+    /// <summary>
+    /// Typical box format of system <paramref name="id"/> as height / width (DESIGN 11.4 start values): shelf slots on
+    /// Start and spine placeholders take it, so a box without a cover has the size of its neighbours with one.
+    /// </summary>
+    public static double BoxAspect(string? id) => id != null && BoxAspects.TryGetValue(id, out var a) ? a : 1.25;
+
     /// <summary>The look of system <paramref name="id"/>; unknown ids fall back to <see cref="From"/>(<paramref name="accent"/>).</summary>
     public static SystemLook Get(string? id, Color? accent = null)
     {

@@ -50,6 +50,32 @@ public class DesignM1Tests
         Assert.Equal(72, FitText.Choose("Tetris", FontRoles.PosterFace, [72, 56, 40], 764, 2));
     });
 
+    // ===================== boxes: placeholders take the system's box format =====================
+
+    [Theory]
+    [InlineData("Hyrule Warriors - Zeit der Verheerung", "Hyrule Warriors", "Zeit der Verheerung")]
+    [InlineData("Castlevania: Aria of Sorrow", "Castlevania", "Aria of Sorrow")]
+    [InlineData("240p Test Suite", "240p Test Suite", null)]
+    [InlineData("Tetris -", "Tetris -", null)]
+    public void Placeholder_titles_split_into_title_and_subtitle(string title, string main, string? sub)
+    {
+        var (m, s) = CoverArt.SplitTitle(title);
+        Assert.Equal(main, m);
+        Assert.Equal(sub, s);
+    }
+
+    [Fact]
+    public void A_placeholder_has_the_box_format_of_its_system()
+    {
+        // DESIGN 11.4 start values (height / width): SNES square, NES and Switch portrait, unknown 0.72 (10.2)
+        var slot = new Avalonia.Rect(0, 0, 200, 250);
+        Assert.Equal(new Avalonia.Rect(0, 50, 200, 200), CoverArt.Compute(slot, null, false, CoverArt.PlaceholderAspectFor("snes")));
+        var nes = CoverArt.Compute(slot, null, false, CoverArt.PlaceholderAspectFor("nes"));
+        Assert.Equal(250, nes.Height);
+        Assert.Equal(Math.Round(250 / 1.38), nes.Width);
+        Assert.Equal(CoverArt.PlaceholderAspect, CoverArt.PlaceholderAspectFor("my-own-system"));
+    }
+
     // ===================== meta sentences =====================
 
     private static Game G(Action<Game>? set = null)

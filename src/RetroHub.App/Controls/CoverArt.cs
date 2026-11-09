@@ -39,8 +39,15 @@ public sealed class CoverArt : Control
     /// <summary>Status "Datei fehlt": cover dimmed to 0.45 plus the Missing icon top right (dimming = status only).</summary>
     public static readonly StyledProperty<bool> IsMissingProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(IsMissing));
 
-    /// <summary>Width/height of the placeholder box (DESIGN 10.2: 0.72, portrait).</summary>
+    /// <summary>Width/height of a placeholder box of an unknown system (DESIGN 10.2: 0.72, portrait).</summary>
     public const double PlaceholderAspect = 0.72;
+
+    /// <summary>
+    /// Width/height of the placeholder of system <paramref name="systemId"/>: the system's typical box format
+    /// (<see cref="SystemPalette.BoxAspect"/>), so a spine placeholder stands as tall as its neighbours with covers.
+    /// </summary>
+    public static double PlaceholderAspectFor(string? systemId) =>
+        SystemPalette.IsKnown(systemId) ? 1 / SystemPalette.BoxAspect(systemId) : PlaceholderAspect;
 
     private static readonly IImmutableSolidColorBrush PaperBrush = new ImmutableSolidColorBrush(SystemPalette.Paper);
     private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
@@ -51,6 +58,7 @@ public sealed class CoverArt : Control
     private Rect _artRect;
     // placeholder text cache (built on change, never in Render)
     private FormattedText? _titleText;
+    private FormattedText? _subText;
     private FormattedText? _codeText;
     private (string? Title, string? Code, string? System, int W, int H) _textKey;
 
@@ -98,7 +106,7 @@ public sealed class CoverArt : Control
             var wanted = AsyncImageLoader.Bucket(Bounds.Width * Scaling);
             if (Source != null && wanted > _requestedWidth) RequestImage();
         }
-        else if (change.Property == FillProperty) UpdateArtRect();
+        else if (change.Property == FillProperty || change.Property == SystemIdProperty) UpdateArtRect();
         if (change.Property == TitleProperty || change.Property == BadgeProperty || change.Property == SystemIdProperty
             || change.Property == BoundsProperty || change.Property == SourceProperty || change.Property == ShowTitleProperty)
             _textKey = default; // rebuilt lazily on the next placeholder layout (see EnsureText)
@@ -176,18 +184,18 @@ public sealed class CoverArt : Control
 
     private void UpdateArtRect()
     {
-        var r = Compute(new Rect(Bounds.Size), _bitmap?.Size, Fill);
+        var r = Compute(new Rect(Bounds.Size), _bitmap?.Size, Fill, PlaceholderAspectFor(SystemId));
         if (r == _artRect) return;
         _artRect = r;
         ArtRectChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Contain + bottom-aligned + centred (image aspect, or the placeholder's 0.72).</summary>
-    public static Rect Compute(Rect slot, Size? image, bool fill = false)
+    /// <summary>Contain + bottom-aligned + centred (image aspect, or the placeholder's aspect).</summary>
+    public static Rect Compute(Rect slot, Size? image, bool fill = false, double placeholderAspect = PlaceholderAspect)
     {
         if (slot.Width <= 0 || slot.Height <= 0) return default;
         if (fill) return slot;
-        var aspect = image is { Width: > 0, Height: > 0 } s ? s.Width / s.Height : PlaceholderAspect;
+        var aspect = image is { Width: > 0, Height: > 0 } s ? s.Width / s.Height : placeholderAspect;
         var w = slot.Width;
         var h = w / aspect;
         if (h > slot.Height)
@@ -301,6 +309,7 @@ public sealed class CoverArt : Control
             {
                 var pad = PlaceholderPad(w);
                 ctx.DrawText(title, new Point(r.X + band + pad, r.Y + pad));
+                if (_subText is { } sub) ctx.DrawText(sub, new Point(r.X + band + pad, r.Y + pad + Math.Ceiling(title.Height) + SubGap));
             }
         }
     }
@@ -318,26 +327,46 @@ public sealed class CoverArt : Control
         // the title (DESIGN 10.2): top left after the band, one size per tile width (never shrunk per title),
         // word wrap, at most 4 lines; the stage variants (Start, Detail) carry no title – the poster stands beside them
         _titleText = null;
+        _subText = null;
         if (ShowTitle && !string.IsNullOrEmpty(Title))
         {
             var size = PlaceholderTitleSize(w);
             var maxWidth = Math.Max(1, w - band - pad - 6);
+            // "Hyrule Warriors - Zeit der Verheerung": the main title in the poster role, the subtitle below it in the
+            // UI role (Text 2) - never a lone "-" line followed by an ellipsis
+            var (main, subtitle) = SplitTitle(Title);
             // one size per tile width; only when a single word would break inside, two small steps down (never < 16)
-            var longest = Title.Split([' ', '-', '/'], StringSplitOptions.RemoveEmptyEntries).OrderByDescending(s => s.Length).FirstOrDefault() ?? "";
+            var longest = main.Split([' ', '-', '/'], StringSplitOptions.RemoveEmptyEntries).OrderByDescending(s => s.Length).FirstOrDefault() ?? "";
             bool Overflows(double sz) => longest.Length > 0 &&
                 new FormattedText(longest, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, sz, PaperBrush).Width > maxWidth;
             for (var step = 0; step < 2 && size - 2 >= 16 && Overflows(size); step++)
                 size -= 2;
             // a word that still does not fit breaks inside (never an ellipsis in place of a whole first line)
             var trimming = Overflows(size) ? TextTrimming.None : TextTrimming.WordEllipsis;
-            _titleText = new FormattedText(Title, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, PaperBrush)
+            var budget = Math.Max(1, r.Height * 0.62);
+            _titleText = new FormattedText(main, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, PaperBrush)
             {
                 MaxTextWidth = maxWidth,
-                MaxTextHeight = Math.Max(1, r.Height * 0.62),
+                MaxTextHeight = budget,
                 MaxLineCount = 4,
                 LineHeight = Math.Round(size * 1.1),
                 Trimming = trimming,
             };
+            if (subtitle != null)
+            {
+                var subSize = Math.Clamp(Math.Round(w * 0.08), 15, 18);
+                var subLine = Math.Round(subSize * 1.2);
+                var room = budget - Math.Ceiling(_titleText.Height) - SubGap;
+                var lines = (int)Math.Min(3, Math.Floor(room / subLine));
+                if (lines >= 1)
+                    _subText = new FormattedText(subtitle, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.UiFace, subSize, SubBrush)
+                    {
+                        MaxTextWidth = maxWidth,
+                        MaxLineCount = lines,
+                        LineHeight = subLine,
+                        Trimming = TextTrimming.WordEllipsis,
+                    };
+            }
         }
         var codeSize = ShowTitle ? Math.Max(7, w * 0.09) : Math.Min(28, Math.Max(7, w * 0.11));
         _codeText = string.IsNullOrEmpty(Badge) ? null :
@@ -347,6 +376,23 @@ public sealed class CoverArt : Control
                 MaxLineCount = 1,
                 Trimming = TextTrimming.CharacterEllipsis,
             };
+    }
+
+    private const double SubGap = 6;
+    private static readonly IImmutableSolidColorBrush SubBrush = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
+
+    /// <summary>Main title and subtitle at the first " - ", " – " or ": " (both parts non-empty); else the whole title.</summary>
+    public static (string Main, string? Sub) SplitTitle(string title)
+    {
+        foreach (var sep in new[] { " - ", " – ", ": " })
+        {
+            var i = title.IndexOf(sep, StringComparison.Ordinal);
+            if (i < 2) continue;
+            var main = title[..i].Trim();
+            var sub = title[(i + sep.Length)..].Trim();
+            if (main.Length > 0 && sub.Length > 0) return (main, sub);
+        }
+        return (title, null);
     }
 
     private static uint Hash(string s)

@@ -57,7 +57,8 @@ public sealed class SystemWall : Control
         context.FillRectangle(LightEdge, new Rect(r.X, r.Y + split, r.Width, 1));
         if (motifShare > 0)
         {
-            var size = r.Height * motifShare;
+            // never wider than 46 % of the wall, so the name above and maker/count bottom left stay free
+            var size = Math.Round(Math.Min(r.Height * motifShare, r.Width * 0.46));
             var box = new Rect(r.Right - motifInset - size, r.Bottom - size, size, size);
             MotifCatalog.Draw(context, look, box);
         }

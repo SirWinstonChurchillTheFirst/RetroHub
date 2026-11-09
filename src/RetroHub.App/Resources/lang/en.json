@@ -195,5 +195,6 @@
   "detail.sentence.once": "{0} played in one session, last {1}.",
   "detail.sentence.played": "{0} played in {1} sessions, last {2}.",
   "detail.section.about": "About the game",
-  "detail.section.start": "Start"
+  "detail.section.start": "Start",
+  "screen.noSignal": "No signal"
 }

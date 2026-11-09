@@ -43,7 +43,7 @@ public partial class HomePage : PageBase
         Stage.ColumnDefinitions[3].Width = new GridLength(gap);
         StageTitle.Sizes = compact ? "56,40" : "72,56,40";
         TextColumn.Margin = new Thickness(0, 0, 0, compact ? 24 : 32);
-        Shelves.Margin = new Thickness(0, compact ? 0 : 8, 0, 48);
+        Shelves.Margin = new Thickness(0, 0, 0, 48);
     }
 
     public override bool FocusDefault() => FocusVisible(PlayButton);

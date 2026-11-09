@@ -304,11 +304,10 @@
             <c:CoverArt Name="PART_Art" Source="{Binding CoverPath}" Title="{Binding Title}" Badge="{Binding SystemShort}"
                         SystemId="{Binding SystemId}" Accent="{Binding Accent}" IsFavorite="{Binding IsFavorite}" IsMissing="{Binding IsMissing}" />
           </Panel>
-          <!-- caption: 16 px below the 10 px shelf edge. A spine placeholder carries its title itself, so the caption
-               keeps only the label line (no title twice); in a system context the code and the bar drop out too. -->
+          <!-- caption: 16 px below the 10 px shelf edge, the same two lines under every box (title, label line), so a
+               row of covers and spine placeholders reads as one row; in a system context the code and the bar drop out -->
           <StackPanel Grid.Row="1" Margin="0,26,0,0" Spacing="4" Height="66" IsVisible="{TemplateBinding ShowCaption}">
-            <TextBlock Name="PART_Title" Classes="caption" Text="{Binding Title}" TextWrapping="Wrap" MaxLines="2" Height="42" TextTrimming="CharacterEllipsis"
-                       IsVisible="{Binding HasCover}" />
+            <TextBlock Name="PART_Title" Classes="caption" Text="{Binding Title}" TextWrapping="Wrap" MaxLines="2" Height="42" TextTrimming="CharacterEllipsis" />
             <StackPanel Orientation="Horizontal" Spacing="8" Height="20">
               <Border Name="PART_Bar" Width="3" Height="14" Background="{Binding SystemColorBrush}" VerticalAlignment="Center" />
               <TextBlock Name="PART_Code" Classes="label" Text="{Binding SystemShort}" VerticalAlignment="Center" />
@@ -635,7 +634,7 @@
     <Setter Property="Template">
       <ControlTemplate>
         <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-          <Grid Name="PART_Host" RowDefinitions="*,24,40" Margin="{TemplateBinding TopGap, Converter={x:Static c:Shelf.TopMargin}}">
+          <Grid Name="PART_Host" RowDefinitions="*,24,4" Margin="{TemplateBinding TopGap, Converter={x:Static c:Shelf.TopMargin}}">
             <StackPanel Orientation="Horizontal" Spacing="{TemplateBinding ItemSpacing}" VerticalAlignment="Bottom" Margin="{TemplateBinding ItemsMargin}">
               <ItemsControl Name="PART_Items" ItemsSource="{TemplateBinding ItemsSource}" ItemTemplate="{TemplateBinding ItemTemplate}" VerticalAlignment="Bottom">
                 <ItemsControl.ItemsPanel>
