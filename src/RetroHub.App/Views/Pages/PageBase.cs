@@ -32,8 +32,18 @@ public abstract class PageBase : UserControl, IPageView
                 page.Context.Navigator.Navigate(PageKey.System, system.Id);
                 e.Handled = true;
                 break;
+            case Controls.SystemSpine { DataContext: SystemItemViewModel spine }:
+                page.Context.Navigator.Navigate(PageKey.System, spine.Id);
+                e.Handled = true;
+                break;
         }
     }
+
+    /// <summary>
+    /// Page-specific directional navigation before the shell's spatial search (e.g. the shelves of Start with their
+    /// anchors and remembered positions). Return true when the move was handled.
+    /// </summary>
+    public virtual bool MoveFocus(RetroHub.App.Input.NavAction action, Control focused) => false;
 
     /// <summary>Focus target when the page is shown (keyboard/controller). Return false to use the first focusable element.</summary>
     public virtual bool FocusDefault() => false;

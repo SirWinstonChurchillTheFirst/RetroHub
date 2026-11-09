@@ -1,5 +1,16 @@
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Styling;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using RetroHub.App.Controls;
+using RetroHub.App.Input;
+using RetroHub.App.Theming;
+using RetroHub.App.ViewModels;
 
 namespace RetroHub.App.Views.Pages;
 
@@ -9,20 +20,61 @@ public partial class HomePage : PageBase
     public const double CompactBelowHeight = 860;
 
     private bool? _compact;
+    private HomeViewModel? _vm;
+    private readonly FocusLayer _stageFocus;
+    private int _dwell;
+    private int _swap;
+    private (Shelf Shelf, Control Item, int Index, int Count)? _pending;
 
     public HomePage()
     {
         InitializeComponent();
-        // box and screen cast their contact shadows on the stage board
-        StageBoard.Casters = [StageBox, Screen];
+        // box and TV cast their contact shadows on the stage board
+        StageBoard.Casters = [StageBox.Art ?? (Control)StageBox, Screen];
+        StageBox.TemplateApplied += (_, _) => StageBoard.Casters = [StageBox.Art ?? (Control)StageBox, Screen];
         SizeChanged += (_, e) => ApplyLayout(e.NewSize);
         Stage.LayoutUpdated += (_, _) => StageBoard.InvalidateVisual();
+        // the stage box gets the object focus like a box on a shelf: lift, cone (inside the stage), lit board piece, ring
+        _stageFocus = new FocusLayer(BoxSlot, BoxSlot) { BoardFront = ShelfBoard.StageHeight, ConeHeadroom = 56, ConeOutsideBounds = true };
+        BoxSlot.Children.Insert(0, _stageFocus.Back);
+        BoxSlot.Children.Add(_stageFocus.Front);
+
+        PlayButton.Click += (_, _) => _vm?.StagePrimaryCommand.Execute(null);
+        DetailsButton.Click += (_, _) => _vm?.StageDetailsCommand.Execute(null);
+        FavoriteButton.Click += (_, _) => _vm?.StageFavoriteCommand.Execute(null);
+        ImportsButton.Click += (_, _) => _vm?.ShowImportsCommand.Execute(null);
+
+        foreach (var shelf in ShelfList.Children.OfType<Shelf>()) shelf.ItemFocused += OnShelfItemFocused;
+        NavRepeatTracker.AnyChanged += OnRepeatChanged;
+        DetachedFromVisualTree += (_, _) => NavRepeatTracker.AnyChanged -= OnRepeatChanged;
+        AttachedToVisualTree += (_, _) =>
+        {
+            NavRepeatTracker.AnyChanged -= OnRepeatChanged;
+            NavRepeatTracker.AnyChanged += OnRepeatChanged;
+        };
     }
 
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (_vm != null) _vm.PropertyChanged -= OnVmChanged;
+        _vm = DataContext as HomeViewModel;
+        if (_vm == null) return;
+        _vm.PropertyChanged += OnVmChanged;
+        ShowStage(_vm.Stage, animate: false);
+    }
+
+    private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(HomeViewModel.Stage) && _vm != null) ShowStage(_vm.Stage, animate: true);
+    }
+
+    // ===================== layout (DESIGN 7.1 and its ≈1100 values) =====================
+
     /// <summary>
-    /// DESIGN 7.1: 1920×1080 logical → stage board at y 560, screen 560×420, box frame 300×420, text column 764,
-    /// shelf boxes 200 high. ≈1100 px window (logical 1375×875) → board at y 464, screen 400×300, box 214×300,
-    /// shelf boxes 160 high anchored at y 520, so the first label sits fully above the footer fade.
+    /// 1920×1080 logical → stage board at page y 488, TV 560 wide, box frame 300×420, text column 764, shelf boxes 200
+    /// high anchored at page y 560, the next shelf from y 840. ≈1100 px window (logical 1375×875) → board at y 392, TV 400,
+    /// box 214×300, shelf boxes 160 anchored at y 448, the next shelf from y 676.
     /// </summary>
     private void ApplyLayout(Size size)
     {
@@ -30,21 +82,144 @@ public partial class HomePage : PageBase
         var compact = size.Height < CompactBelowHeight;
         if (_compact == compact) return;
         _compact = compact;
-        Shelves.Classes.Set("compact", compact);
-        var stage = compact ? 392.0 : 488.0;
-        Stage.Height = stage;
-        EmptyStage.Height = stage;
+        Root.Classes.Set("compact", compact);
+        var board = compact ? 392.0 : 488.0;
+        Stage.Height = board;
+        StageBoard.Margin = new Thickness(0, board, 0, 0);
         BoxSlot.Width = compact ? 214 : 300;
         BoxSlot.Height = compact ? 300 : 420;
-        Screen.Width = compact ? 400 : 560;
-        Screen.Height = compact ? 300 : 420;
+        StageBox.Width = BoxSlot.Width;
+        StageBox.Height = BoxSlot.Height;
+        EmptyDrawing.Width = EmptyDrawing.Height = compact ? 180 : 240;
+        var tv = compact ? 400.0 : 560.0;
+        Screen.Width = tv;
+        Screen.Height = PixelScreen.SetHeightFor(tv);
         var gap = compact ? 40 : 52;
         Stage.ColumnDefinitions[1].Width = new GridLength(gap);
         Stage.ColumnDefinitions[3].Width = new GridLength(gap);
         StageTitle.Sizes = compact ? "56,40" : "72,56,40";
         TextColumn.Margin = new Thickness(0, 0, 0, compact ? 24 : 32);
-        Shelves.Margin = new Thickness(0, 0, 0, 48);
+        _stageFocus.ConeHeadroom = compact ? 40 : 56;
+        var shelvesTop = board + 24 + 8;
+        var anchor = compact ? 24.0 : 40.0;
+        var item = compact ? 160.0 : 200.0;
+        var spacing = compact ? 40.0 : 52.0;
+        Shelves.Margin = new Thickness(0, shelvesTop, 0, 0);
+        Shelves.AnchorY = anchor;
+        ShelfList.Spacing = spacing;
+        // the next shelf peeks in with the top of its boxes only (≈ a quarter): band, code, the top of a cover
+        var peek = Math.Round(item * (compact ? 0.24 : 0.27));
+        ShelfFade.Margin = new Thickness(0, shelvesTop + anchor + item + Shelf.BoardHeight + Shelf.BelowBoard + spacing + peek, 0, 0);
     }
 
     public override bool FocusDefault() => FocusVisible(PlayButton);
+
+    // ===================== stage follows the focus (dwell) =====================
+
+    private void OnShelfItemFocused(Shelf shelf, Control item, int index, int count)
+    {
+        // the "Alle anzeigen" spine is not a subject; it keeps what the stage shows
+        if (item.DataContext is not (GameItemViewModel or SystemItemViewModel)) { _pending = null; ++_dwell; return; }
+        var dataCount = count - (shelf.ActionLabel != null ? 1 : 0);
+        _pending = (shelf, item, index, dataCount);
+        var version = ++_dwell;
+        if (NavRepeatTracker.Current?.IsActive == true) return; // resumes when the repeat ends
+        StartDwell(version);
+    }
+
+    private void StartDwell(int version) =>
+        _ = Task.Delay(Motion.Dwell).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        {
+            if (version != _dwell || _pending is not { } p || _vm == null) return;
+            if (NavRepeatTracker.Current?.IsActive == true) return;
+            if (!p.Item.IsKeyboardFocusWithin) return; // the focus went on (e.g. up to the stage)
+            switch (p.Item.DataContext)
+            {
+                case GameItemViewModel g: _vm.Present(g, p.Shelf.Header ?? "", p.Index, p.Count); break;
+                case SystemItemViewModel s: _vm.Present(s, p.Shelf.Header ?? "", p.Index, p.Count); break;
+            }
+        }), TaskScheduler.Default);
+
+    private void OnRepeatChanged(bool active)
+    {
+        // after a held direction only one dwell, and only when the target differs from what is shown
+        if (active || _pending is not { } p || _vm?.Stage is not { } stage) return;
+        if (ReferenceEquals(p.Item.DataContext, stage.Game) && stage.Kind == StageKind.Game) return;
+        if (p.Item.DataContext is SystemItemViewModel s && ReferenceEquals(stage.System, s)) return;
+        StartDwell(++_dwell);
+    }
+
+    // ===================== stage swap (DESIGN 9.2: text 120 ms out, 180 ms in with 8 px; box and TV 180 ms) =====================
+
+    private void ShowStage(StageState? stage, bool animate)
+    {
+        var old = TextColumn.DataContext as StageState;
+        var version = ++_swap;
+        if (stage == null) return;
+        if (!animate || stage.SameSubject(old) || old == null || !Motion.Enabled)
+        {
+            Fade(TextColumn, 1, TimeSpan.Zero);
+            Fade(BoxSlot, 1, TimeSpan.Zero);
+            Apply(stage);
+            return;
+        }
+        var outTime = TimeSpan.FromMilliseconds(Motion.AllowsMovement ? 120 : 80);
+        Fade(TextColumn, 0, outTime);
+        Fade(BoxSlot, 0, outTime);
+        _ = Task.Delay(outTime).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        {
+            if (version != _swap) return;
+            Apply(stage);
+            if (TextColumn.RenderTransform is TranslateTransform tt)
+            {
+                tt.Transitions = null;
+                tt.X = Motion.AllowsMovement ? 8 : 0;
+                tt.Transitions = [new DoubleTransition { Property = TranslateTransform.XProperty, Duration = TimeSpan.FromMilliseconds(180), Easing = new CubicEaseOut() }];
+                tt.X = 0;
+            }
+            Fade(TextColumn, 1, TimeSpan.FromMilliseconds(180));
+            Fade(BoxSlot, 1, TimeSpan.FromMilliseconds(180));
+        }), TaskScheduler.Default);
+    }
+
+    /// <summary>Opacity via a transition of the given duration (zero = at once).</summary>
+    private static void Fade(Control c, double to, TimeSpan duration)
+    {
+        c.Transitions = duration == TimeSpan.Zero ? null : [new DoubleTransition { Property = OpacityProperty, Duration = duration }];
+        c.Opacity = to;
+    }
+    private void Apply(StageState stage)
+    {
+        var focusWasInText = TextColumn.IsKeyboardFocusWithin || BoxSlot.IsKeyboardFocusWithin;
+        TextColumn.DataContext = stage;
+        StageBox.DataContext = stage.Game;
+        StageBox.IsVisible = stage.Game != null && !stage.IsEmpty;
+        EmptyDrawing.IsVisible = stage.IsEmpty;
+
+        // a focused button that disappeared with the subject (Details of a game → a system): back to the primary action
+        if (focusWasInText && TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is Control { IsEffectivelyVisible: false })
+            PlayButton.Focus(NavigationMethod.Directional);
+    }
+
+    // ===================== directional navigation =====================
+
+    public override bool MoveFocus(NavAction action, Control focused)
+    {
+        if (IsInside(focused, Shelves))
+        {
+            if (Shelves.Move(action, focused)) return true;
+            // up from the first shelf: the stage's primary action
+            if (action == NavAction.Up) return FocusVisible(PlayButton);
+            return false;
+        }
+        if (IsInside(focused, Stage) && action == NavAction.Down && Shelves.IsVisible && Shelves.Shelves.Count > 0)
+            return Shelves.FocusShelf(Shelves.ActiveIndex);
+        return false;
+    }
+
+    private static bool IsInside(Visual v, Visual root)
+    {
+        for (Visual? x = v; x != null; x = x.GetVisualParent()) if (x == root) return true;
+        return false;
+    }
 }

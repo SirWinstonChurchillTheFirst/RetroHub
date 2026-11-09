@@ -26,6 +26,13 @@ public sealed class FolderItemViewModel(LibraryFolder folder, AppServices servic
 }
 
 /// <summary>One group of scan issues (duplicates / unknown / errors).</summary>
+/// <summary>Navigation arguments for the imports page.</summary>
+public enum ImportsRequest
+{
+    /// <summary>Open the folder picker on arrival (empty Start: "Ordner hinzufügen").</summary>
+    AddFolder,
+}
+
 public sealed record IssueGroup(string Title, IReadOnlyList<ScanIssue> Items, int Total, bool IsError)
 {
     public bool HasMore => Total > Items.Count;
@@ -79,6 +86,9 @@ public sealed partial class ImportsViewModel : PageViewModel
         Title = Loc.T("nav.imports");
         LoadFolders();
         UpdateCoverHint();
+        // "Ordner hinzufügen" on an empty Start: open the folder picker right away
+        if (argument is ImportsRequest.AddFolder && !isBack)
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = AddFolderAsync(), Avalonia.Threading.DispatcherPriority.Background);
     }
 
     private void LoadFolders()

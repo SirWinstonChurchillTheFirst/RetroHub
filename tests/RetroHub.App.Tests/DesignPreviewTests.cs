@@ -1,4 +1,5 @@
 using System.Net;
+using Avalonia.Controls;
 using Avalonia.Headless;
 using RetroHub.App.Services;
 using RetroHub.App.ViewModels;
@@ -45,11 +46,32 @@ public class DesignPreviewTests
     [Fact]
     public Task Demo_library() => Run("demo", null, ShortSizes);
 
+    /// <summary>An empty library (fresh scratch root, real services): the switched-off TV and the empty shelf.</summary>
+    [Fact]
+    public Task Empty_library() => Run("empty", EmptyRoot(), ShortSizes);
+
+    // ===================== filters (RETROHUB_DESIGN_ONLY, ";"-separated tokens) =====================
+    // sizes "1920x1080", variants "preview|nocovers|demo|empty", pages "start|states|bibliothek|detail|konsolen|
+    // systemseite|emulatoren|einstellungen", "specimen". Each kind of token only filters when at least one is given.
+
+    private static string[] OnlyTokens => (Environment.GetEnvironmentVariable("RETROHUB_DESIGN_ONLY") ?? "")
+        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen"];
+    private static readonly string[] VariantTokens = ["preview", "nocovers", "demo", "empty"];
+
+    private static bool Wants(string token, string[] kind)
+    {
+        var given = OnlyTokens.Where(kind.Contains).ToList();
+        return given.Count == 0 || given.Contains(token);
+    }
+
     /// <summary>Specimen sheet: font roles, icons, controller glyphs, textures, walls – to look at, not to assert.</summary>
     [Fact]
     public Task Specimen_sheet() => UiTest.Run(() =>
     {
         Assert.SkipWhen(string.IsNullOrEmpty(DesignDir), "RETROHUB_DESIGN_DIR is not set (design previews only on request)");
+        Assert.SkipWhen(OnlyTokens.Length > 0 && !OnlyTokens.Contains("specimen"), "filtered out (RETROHUB_DESIGN_ONLY)");
         var outDir = Path.Combine(DesignDir!, "shots", Milestone);
         Directory.CreateDirectory(outDir);
         TestSupport.CreateContext();
@@ -124,6 +146,16 @@ public class DesignPreviewTests
         using var services = CreateReal(root);
         foreach (var g in services.Games.Query(new GameQuery { IncludeHidden = true }))
             services.Artwork!.ClearCover(g.Id);
+        return root;
+    }
+
+    /// <summary>A fresh root with an empty library (recreated every run).</summary>
+    private static string EmptyRoot()
+    {
+        var root = Path.Combine(DesignDir!, "preview-root-empty");
+        if (Directory.Exists(root)) Directory.Delete(root, true);
+        Directory.CreateDirectory(root);
+        PrepareSettings(root);
         return root;
     }
 
@@ -226,12 +258,13 @@ public class DesignPreviewTests
     private static Task Run(string variant, string? root, (int W, int H)[] sizes) => UiTest.Run(() =>
     {
         Assert.SkipWhen(string.IsNullOrEmpty(DesignDir), "RETROHUB_DESIGN_DIR is not set (design previews only on request)");
+        Assert.SkipWhen(!Wants(variant, VariantTokens), "variant filtered out (RETROHUB_DESIGN_ONLY)");
         var outDir = Path.Combine(DesignDir!, "shots", Milestone);
         Directory.CreateDirectory(outDir);
-        if (root == null) root = variant == "preview" ? PreviewRoot() : variant == "nocovers" ? NoCoversRoot() : null;
-        // RETROHUB_DESIGN_ONLY="1920x1080;1100x700" restricts the sizes (quick iterations)
-        var only = Environment.GetEnvironmentVariable("RETROHUB_DESIGN_ONLY");
-        if (!string.IsNullOrEmpty(only)) sizes = sizes.Where(s => only.Split(';').Contains($"{s.W}x{s.H}")).ToArray();
+        if (root == null) root = variant == "preview" ? PreviewRoot() : variant == "nocovers" ? NoCoversRoot() : variant == "empty" ? EmptyRoot() : null;
+        // RETROHUB_DESIGN_ONLY="1920x1080;1100x700;start" restricts sizes/pages/variants (quick iterations)
+        var sizeTokens = OnlyTokens.Where(s => System.Text.RegularExpressions.Regex.IsMatch(s, @"^\d+x\d+$")).ToList();
+        if (sizeTokens.Count > 0) sizes = sizes.Where(s => sizeTokens.Contains($"{s.W}x{s.H}")).ToArray();
         foreach (var (w, h) in sizes)
         {
             var ctx = root == null
@@ -245,37 +278,50 @@ public class DesignPreviewTests
             {
                 TestSupport.Pump(() => vm.CurrentPage is HomeViewModel { IsLoaded: true }, 8000);
                 var prefix = Path.Combine(outDir, $"{variant}-{w}x{h}");
-                Save(window, prefix + "-1-start.png", 1200);
+                if (Wants("start", PageTokens)) Save(window, prefix + "-1-start.png", 1400);
+                if (Wants("states", PageTokens)) StartStates(window, vm, prefix);
 
-                vm.Navigator.Navigate(PageKey.Library);
-                TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true }, 8000);
-                Save(window, prefix + "-2-bibliothek.png", 1200);
+                if (Wants("bibliothek", PageTokens))
+                {
+                    vm.Navigator.Navigate(PageKey.Library);
+                    TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true }, 8000);
+                    Save(window, prefix + "-2-bibliothek.png", 1200);
+                }
 
                 var pick = PickGame(ctx);
-                if (pick != null)
+                if (pick != null && Wants("detail", PageTokens))
                 {
                     vm.Navigator.Navigate(PageKey.GameDetail, pick);
                     TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel { Game: not null }, 8000);
                     Save(window, prefix + "-3-detail.png", 1200);
                 }
 
-                vm.Navigator.Navigate(PageKey.Systems);
-                TestSupport.Pump(() => vm.CurrentPage is SystemsViewModel { Systems.Count: > 0 }, 8000);
-                Save(window, prefix + "-4-konsolen.png", 600);
+                if (Wants("konsolen", PageTokens))
+                {
+                    vm.Navigator.Navigate(PageKey.Systems);
+                    TestSupport.Pump(() => vm.CurrentPage is SystemsViewModel { Systems.Count: > 0 }, 8000);
+                    Save(window, prefix + "-4-konsolen.png", 600);
+                }
 
-                if (pick != null)
+                if (pick != null && Wants("systemseite", PageTokens))
                 {
                     vm.Navigator.Navigate(PageKey.System, pick.SystemId);
                     TestSupport.Pump(() => vm.CurrentPage is SystemViewModel { Games.Count: > 0 }, 8000);
                     Save(window, prefix + "-5-systemseite.png", 1200);
                 }
 
-                vm.Navigator.Navigate(PageKey.Emulators);
-                TestSupport.Pump(() => vm.CurrentPage is EmulatorsViewModel, 8000);
-                Save(window, prefix + "-6-emulatoren.png", 600);
+                if (Wants("emulatoren", PageTokens))
+                {
+                    vm.Navigator.Navigate(PageKey.Emulators);
+                    TestSupport.Pump(() => vm.CurrentPage is EmulatorsViewModel, 8000);
+                    Save(window, prefix + "-6-emulatoren.png", 600);
+                }
 
-                vm.Navigator.Navigate(PageKey.Settings);
-                Save(window, prefix + "-7-einstellungen.png", 600);
+                if (Wants("einstellungen", PageTokens))
+                {
+                    vm.Navigator.Navigate(PageKey.Settings);
+                    Save(window, prefix + "-7-einstellungen.png", 600);
+                }
             }
             finally
             {
@@ -285,6 +331,41 @@ public class DesignPreviewTests
         }
     });
 
+    /// <summary>
+    /// Start in the focus states that matter (DESIGN 7.1), driven like a controller: a box on the first shelf after the
+    /// dwell (the stage follows), the next shelf with the row glided to the anchor, the "Konsolen" shelf with a spine
+    /// turned to its front, and back up on "Spielen" (the stage keeps the browsed game).
+    /// </summary>
+    private static void StartStates(MainWindow window, MainViewModel vm, string prefix)
+    {
+        if (vm.CurrentPage is not HomeViewModel home || home.IsLibraryEmpty) return;
+        vm.Navigator.Navigate(PageKey.Home);
+        TestSupport.Settle(300);
+        Control? Focused() => window.FocusManager?.GetFocusedElement() as Control;
+        window.Execute(Input.NavAction.Down);              // first shelf, first box
+        window.Execute(Input.NavAction.Right);             // its second box
+        window.Execute(Input.NavAction.Right);
+        Save(window, prefix + "-1b-start-regal.png", 1400);
+        window.Execute(Input.NavAction.Down);              // the next shelf glides up to the anchor
+        for (var i = 0; i < 4; i++) window.Execute(Input.NavAction.Right);
+        Save(window, prefix + "-1c-start-regal2.png", 1400);
+        for (var i = 0; i < 6 && Focused() is not Controls.SystemSpine; i++)
+        {
+            window.Execute(Input.NavAction.Down);
+            TestSupport.Settle(60);
+        }
+        if (Focused() is Controls.SystemSpine)
+        {
+            window.Execute(Input.NavAction.Right);
+            Save(window, prefix + "-1d-start-konsolen.png", 1400);
+        }
+        for (var i = 0; i < 6 && Focused() is not Button { Name: "PlayButton" }; i++)
+        {
+            window.Execute(Input.NavAction.Up);
+            TestSupport.Settle(60);
+        }
+        Save(window, prefix + "-1e-start-zurueck.png", 1000);
+    }
     /// <summary>The detail/system subject: the last played game, else one with a cover, else the first.</summary>
     private static GameItemViewModel? PickGame(UiContext ctx)
     {

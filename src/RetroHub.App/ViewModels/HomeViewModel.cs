@@ -1,18 +1,30 @@
-using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RetroHub.App.Input;
 using RetroHub.App.Localization;
 using RetroHub.App.Theming;
+using RetroHub.Core.Catalog;
 using RetroHub.Core.Library;
+using RetroHub.Core.Metadata;
 
 namespace RetroHub.App.ViewModels;
 
-/// <summary>Dashboard: "Weiterspielen" hero, stats, shelves (recently played, favourites, recently added, platforms).</summary>
+/// <summary>
+/// Start ("Der Fernseher im Regal", DESIGN 7.1): the stage (TV + box + text) and the shelves below it. The stage shows
+/// the game to continue until a shelf item has been focused for <see cref="Motion.Dwell"/> (the view calls
+/// <see cref="Present(GameItemViewModel, string, int, int)"/>); it then keeps that subject while the focus goes up to its
+/// actions, so "Spielen" plays what the TV shows. Entering the page again shows the game to continue.
+/// </summary>
 public sealed partial class HomeViewModel : PageViewModel
 {
     private int _version;
+    private int _presentVersion;
+    private int _screenVersion;
+    private CancellationTokenSource? _screenCts;
+
+    /// <summary>Most items per shelf (DESIGN 7.1).</summary>
+    public const int RecentMax = 11, FavoritesMax = 16, AddedMax = 12;
 
     public HomeViewModel(UiContext ctx) : base(ctx)
     {
@@ -22,17 +34,16 @@ public sealed partial class HomeViewModel : PageViewModel
 
     public override PageKey Key => PageKey.Home;
 
+    /// <summary>The game to continue (last played; without any play the newest game), null in an empty library.</summary>
     [ObservableProperty] public partial GameItemViewModel? Continue { get; private set; }
     [ObservableProperty] public partial bool HasContinue { get; private set; }
     [ObservableProperty] public partial bool IsLibraryEmpty { get; private set; }
     [ObservableProperty] public partial bool IsLoaded { get; private set; }
-    [ObservableProperty] public partial string ContinueMeta { get; private set; } = "";
-    [ObservableProperty] public partial string Greeting { get; private set; } = "";
 
-    [ObservableProperty] public partial string StatGames { get; private set; } = "–";
-    [ObservableProperty] public partial string StatPlatforms { get; private set; } = "–";
-    [ObservableProperty] public partial string StatPlayTime { get; private set; } = "–";
-    [ObservableProperty] public partial string StatFavorites { get; private set; } = "–";
+    /// <summary>What the stage shows (subject, texts, primary action).</summary>
+    [ObservableProperty] public partial StageState? Stage { get; private set; }
+    /// <summary>The TV picture of the stage subject: snap → title screen (null = "Kein Signal").</summary>
+    [ObservableProperty] public partial string? StageScreen { get; private set; }
 
     [ObservableProperty] public partial IReadOnlyList<GameItemViewModel> RecentlyPlayed { get; private set; } = [];
     [ObservableProperty] public partial IReadOnlyList<GameItemViewModel> Favorites { get; private set; } = [];
@@ -42,10 +53,12 @@ public sealed partial class HomeViewModel : PageViewModel
     public bool HasRecentlyPlayed => RecentlyPlayed.Count > 0;
     public bool HasFavorites => Favorites.Count > 0;
     public bool HasRecentlyAdded => RecentlyAdded.Count > 0;
+    public bool HasPlatforms => Platforms.Count > 0;
 
     partial void OnRecentlyPlayedChanged(IReadOnlyList<GameItemViewModel> value) => OnPropertyChanged(nameof(HasRecentlyPlayed));
     partial void OnFavoritesChanged(IReadOnlyList<GameItemViewModel> value) => OnPropertyChanged(nameof(HasFavorites));
     partial void OnRecentlyAddedChanged(IReadOnlyList<GameItemViewModel> value) => OnPropertyChanged(nameof(HasRecentlyAdded));
+    partial void OnPlatformsChanged(IReadOnlyList<SystemItemViewModel> value) => OnPropertyChanged(nameof(HasPlatforms));
 
     public override IReadOnlyList<HintItem> Hints =>
     [
@@ -58,8 +71,12 @@ public sealed partial class HomeViewModel : PageViewModel
     public override void OnNavigatedTo(object? argument, bool isBack)
     {
         Title = Loc.T("nav.home");
+        // a fresh visit shows the game to continue again; coming back keeps what was on the stage
+        if (!isBack && Stage is { Kind: StageKind.Game or StageKind.System }) _resetStage = true;
         _ = LoadAsync();
     }
+
+    private bool _resetStage;
 
     private sealed record Snapshot(Game? Last, IReadOnlyList<Game> Recent, IReadOnlyList<Game> Favs, IReadOnlyList<Game> Added, LibraryStats Stats);
 
@@ -69,46 +86,161 @@ public sealed partial class HomeViewModel : PageViewModel
         var repo = Ctx.Services.Games;
         var snap = await UiContext.Background(() =>
         {
-            var recent = repo.Query(new GameQuery { Sort = GameSort.LastPlayed, Limit = 16 }).Where(g => g.LastPlayedUtc != null).Take(12).ToList();
-            var favs = repo.Query(new GameQuery { Favorite = true, Sort = GameSort.LastPlayed, Limit = 16 });
-            var added = repo.Query(new GameQuery { Sort = GameSort.Added, Limit = 12 });
-            return new Snapshot(recent.FirstOrDefault(), recent, favs, added, repo.Stats());
+            var recent = repo.Query(new GameQuery { Sort = GameSort.LastPlayed, Limit = RecentMax + 4 }).Where(g => g.LastPlayedUtc != null).Take(RecentMax + 1).ToList();
+            var favs = repo.Query(new GameQuery { Favorite = true, Sort = GameSort.LastPlayed, Limit = FavoritesMax });
+            var added = repo.Query(new GameQuery { Sort = GameSort.Added, Limit = AddedMax });
+            return new Snapshot(recent.FirstOrDefault() ?? added.FirstOrDefault(), recent, favs, added, repo.Stats());
         }, "Loading the dashboard");
         if (snap == null || version != _version) return;
 
         var items = Ctx.Items;
-        var previous = Continue;
         Continue = snap.Last != null ? items.Get(snap.Last) : null;
         HasContinue = Continue != null;
-        // TV light of the game to continue, above the stage board; the glow sits at its box (right)
-        if (Continue != previous || Backdrop.Kind != BackdropKind.TvLight)
-            Backdrop = Continue != null
-                ? new BackdropSpec(BackdropKind.TvLight, Continue.CoverPath, Continue.SystemId, Continue.Accent, Continue.Id, StageShare: 0.55, GlowX: 0.80, GlowY: 0.33, GhostX: 0.80)
-                : new BackdropSpec(BackdropKind.TvLight, StageShare: 0.55);
-        ContinueMeta = Continue == null ? "" : BuildContinueMeta(Continue.SystemName, Continue.LastPlayedText, Continue.PlayTimeText);
-        Location = Continue == null ? null : Loc.T("home.location"); // "Start › Weiterspielen"
+        IsLibraryEmpty = snap.Stats.GameCount == 0;
         // Lists are only replaced when their content changed: a new list rebuilds the shelf, which drops the keyboard /
         // controller focus of its tiles (refreshes happen often, e.g. while a scan runs). The items are shared
         // instances (GameItemCache), so unchanged shelves still show updated favourites/play times.
-        RecentlyPlayed = Keep(RecentlyPlayed, items.GetAll(snap.Recent.Skip(snap.Last != null ? 1 : 0)));
+        var played = snap.Last?.LastPlayedUtc != null;
+        RecentlyPlayed = Keep(RecentlyPlayed, items.GetAll(snap.Recent.Skip(played ? 1 : 0).Take(RecentMax)));
         Favorites = Keep(Favorites, items.GetAll(snap.Favs));
         RecentlyAdded = Keep(RecentlyAdded, items.GetAll(snap.Added));
-        Greeting = GreetingText(DateTime.Now.Hour); // no uppercase overlines (DESIGN 3.2)
 
         var stats = snap.Stats;
-        StatGames = stats.GameCount.ToString("N0", Loc.Culture);
-        StatPlatforms = stats.SystemCount.ToString("N0", Loc.Culture);
-        StatPlayTime = Fmt.PlayTimeShort(stats.TotalPlaySeconds);
-        StatFavorites = stats.FavoriteCount.ToString("N0", Loc.Culture);
-        IsLibraryEmpty = stats.GameCount == 0;
-
         var platforms = Ctx.Services.Catalog.Systems
             .Where(s => stats.GamesPerSystem.GetValueOrDefault(s.Id) > 0)
             .OrderByDescending(s => stats.PlaySecondsPerSystem.GetValueOrDefault(s.Id))
             .ThenBy(s => s.SortOrder)
             .ToList();
         Platforms = SystemItemViewModel.Reconcile(Platforms, platforms, stats);
+
+        // the stage: keep a browsed subject (a refresh must not yank it away), else the game to continue
+        if (_resetStage || Stage == null || Stage.Kind is StageKind.Continue or StageKind.Empty
+            || (Stage.Game != null && !ReferenceEquals(Ctx.Items.TryGet(Stage.Game.Id), Stage.Game)))
+        {
+            _resetStage = false;
+            PresentContinue();
+        }
+        else if (Stage.Game != null) RefreshMeta();
         IsLoaded = true;
+    }
+
+    // ===================== stage =====================
+
+    /// <summary>Shows the game to continue (or the empty library) on the stage.</summary>
+    public void PresentContinue()
+    {
+        ++_presentVersion;
+        if (Continue is not { } game)
+        {
+            SetStage(new StageState(StageKind.Empty, "", Loc.T("home.empty.title"), Loc.T("home.empty.text"), null, null, null, default, null, true,
+                Loc.T("home.addFolder")), null);
+            Location = null;
+            return;
+        }
+        var label = game.HasPlayed ? $"{Loc.T("home.continue")}: {game.LastPlayedText}" : Loc.T("home.shelf.added");
+        SetStage(GameStage(StageKind.Continue, game, label), game);
+        Location = Loc.T("home.location");
+    }
+
+    /// <summary>A game focused on a shelf (after the dwell): the stage shows it under the shelf's name.</summary>
+    public void Present(GameItemViewModel game, string shelf, int index, int count)
+    {
+        ++_presentVersion;
+        SetStage(GameStage(StageKind.Game, game, shelf), game);
+        Location = Loc.T("home.location.shelf", shelf, index + 1, count);
+    }
+
+    /// <summary>A system spine focused: "Kein Signal" of that system, its last played game as the box, "Öffnen".</summary>
+    public void Present(SystemItemViewModel system, string shelf, int index, int count)
+    {
+        var version = ++_presentVersion;
+        Location = Loc.T("home.location.shelf", shelf, index + 1, count);
+        var repo = Ctx.Services.Games;
+        _ = PresentSystemAsync(system, version, repo);
+    }
+
+    private async Task PresentSystemAsync(SystemItemViewModel system, int version, IGameRepository repo)
+    {
+        var last = await UiContext.Background(() =>
+            repo.Query(new GameQuery { SystemId = system.Id, Sort = GameSort.LastPlayed, Limit = 1 }).FirstOrDefault(), "Loading the system's last game");
+        if (version != _presentVersion) return;
+        var game = last != null ? Ctx.Items.Get(last) : null;
+        var meta = BuildSystemMeta(system.Def, system.GameCount, game?.HasPlayed == true ? game.Title : null);
+        SetStage(new StageState(StageKind.System, Loc.T("home.shelf.platforms"), system.Name, meta, game, system, system.Id, system.Accent, system.ShortName,
+            IsTvSystem(system.Def), Loc.T("home.open")), null);
+    }
+
+    private StageState GameStage(StageKind kind, GameItemViewModel game, string label)
+    {
+        var sys = Ctx.Services.Catalog.GetSystem(game.SystemId);
+        return new StageState(kind, label, game.Title, BuildStageMeta(game.SystemName, game.Game), game, null, game.SystemId, game.Accent, game.SystemShort,
+            IsTvSystem(sys), Loc.T("detail.play"));
+    }
+
+    private void RefreshMeta()
+    {
+        if (Stage is { Game: { } g } s && s.IsGame) Stage = s with { Meta = BuildStageMeta(g.SystemName, g.Game) };
+    }
+
+    /// <summary>Systems whose picture was made for a TV (home consoles): near-4:3 snaps fill the frame.</summary>
+    internal static bool IsTvSystem(SystemDef? sys) => sys == null || sys.Category is SystemCategory.Console or SystemCategory.Arcade;
+
+    private void SetStage(StageState stage, GameItemViewModel? screenGame)
+    {
+        if (Stage != null && Stage.SameSubject(stage) && Stage == stage) return;
+        var sameSubject = Stage?.SameSubject(stage) == true;
+        Stage = stage;
+        if (sameSubject) return;
+        // the TV: what is on disk at once, the rest on demand (only with online covers); the room light follows
+        _screenCts?.Cancel();
+        var version = ++_screenVersion;
+        StageScreen = null;
+        UpdateBackdrop(stage, null);
+        if (screenGame == null || Ctx.Services.Artwork is not { } artwork) return;
+        var cts = _screenCts = new CancellationTokenSource();
+        var game = screenGame.Game;
+        _ = Task.Run(async () =>
+        {
+            var local = artwork.FindScreens(game);
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyScreen(version, stage, local.Best));
+            if (local.Snap != null || !Ctx.Services.Settings.Current.OnlineCovers) return;
+            var fetched = await artwork.FetchScreensAsync(game, cts.Token).ConfigureAwait(false);
+            if (fetched.Best != local.Best) Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyScreen(version, stage, fetched.Best));
+        }, cts.Token).ContinueWith(t => { if (t.IsFaulted) Core.Logging.Log.Warn("Stage screen lookup failed", t.Exception); }, TaskScheduler.Default);
+    }
+
+    private void ApplyScreen(int version, StageState stage, string? path)
+    {
+        if (version != _screenVersion) return;
+        StageScreen = path;
+        UpdateBackdrop(stage, path);
+    }
+
+    /// <summary>The room light (DESIGN 2.5): snap → title screen → cover → the system's wall; the glow sits at the TV.</summary>
+    private void UpdateBackdrop(StageState stage, string? screen)
+    {
+        var image = screen ?? stage.Game?.CoverPath;
+        if (stage.IsSystem) image = null; // a system on the stage: its wall
+        var spec = stage.IsEmpty
+            ? new BackdropSpec(BackdropKind.TvLight, StageShare: 0.55)
+            : new BackdropSpec(BackdropKind.TvLight, image, stage.SystemId, stage.Accent, stage.Game?.Id ?? 0, StageShare: 0.55, GlowX: 0.80, GlowY: 0.33, GhostX: 0.62);
+        if (Backdrop != spec) Backdrop = spec;
+    }
+
+    // ===================== sentences =====================
+
+    /// <summary>"Game Boy Advance. 46 Std. in 41 Sitzungen gespielt, zuletzt heute." / "… Noch nie gespielt. Seit 25.09.2026 in der Sammlung."</summary>
+    internal static string BuildStageMeta(string systemName, Game game) => $"{systemName}. {GameDetailViewModel.BuildPlaySentence(game)}";
+
+    /// <summary>"Handheld von Nintendo, 2001. 7 Spiele, zuletzt Pokémon Smaragd-Edition." – parts without data fall away.</summary>
+    internal static string BuildSystemMeta(SystemDef def, int games, string? lastGame)
+    {
+        var first = Fmt.Category(def.Category);
+        if (!string.IsNullOrEmpty(def.Manufacturer)) first = Loc.T("detail.meta.by", first, def.Manufacturer);
+        if (def.Year is { } y) first = $"{first}, {y}";
+        var count = games == 1 ? Loc.T("systems.oneGame") : Loc.T("systems.games", games);
+        var second = lastGame != null ? Loc.T("home.system.last", count, lastGame) : count + ".";
+        return $"{first}. {second}";
     }
 
     /// <summary>"Game Boy Advance. 46 Std. gespielt, zuletzt heute." – every sentence starts upper case ("Unter 1 Min.").</summary>
@@ -118,13 +250,30 @@ public sealed partial class HomeViewModel : PageViewModel
     private static IReadOnlyList<GameItemViewModel> Keep(IReadOnlyList<GameItemViewModel> current, IReadOnlyList<GameItemViewModel> fresh) =>
         current.Count == fresh.Count && current.SequenceEqual(fresh) ? current : fresh;
 
-    private static string GreetingText(int hour) => hour switch
+    // ===================== commands =====================
+
+    /// <summary>"Spielen" (a game on the stage) or "Öffnen" (a system), "Ordner hinzufügen" in an empty library.</summary>
+    [RelayCommand]
+    private Task StagePrimary()
     {
-        < 5 => Loc.T("home.greeting.night"),
-        < 11 => Loc.T("home.greeting.morning"),
-        < 18 => Loc.T("home.greeting.day"),
-        _ => Loc.T("home.greeting.evening"),
-    };
+        switch (Stage)
+        {
+            case { IsGame: true, Game: { } g }: return Ctx.Launch.LaunchAsync(g);
+            case { IsSystem: true, System: { } s }: Ctx.Navigator.Navigate(PageKey.System, s.Id); break;
+            case { IsEmpty: true }: Ctx.Navigator.Navigate(PageKey.Imports, ImportsRequest.AddFolder); break;
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>"Details" of the stage game (also the box on the stage).</summary>
+    [RelayCommand]
+    private void StageDetails()
+    {
+        if (Stage?.Game is { } g) Ctx.Navigator.Navigate(PageKey.GameDetail, g);
+    }
+
+    [RelayCommand]
+    private Task StageFavorite() => Stage is { IsGame: true, Game: { } g } ? Ctx.ToggleFavoriteAsync(g) : Task.CompletedTask;
 
     [RelayCommand]
     private Task PlayContinue() => Continue != null ? Ctx.Launch.LaunchAsync(Continue) : Task.CompletedTask;
@@ -136,6 +285,8 @@ public sealed partial class HomeViewModel : PageViewModel
     }
 
     [RelayCommand] private void ShowLibrary() => Ctx.Navigator.Navigate(PageKey.Library);
+    [RelayCommand] private void ShowRecent() => Ctx.Navigator.Navigate(PageKey.Library, LibraryRequest.RecentlyPlayed);
+    [RelayCommand] private void ShowAdded() => Ctx.Navigator.Navigate(PageKey.Library, LibraryRequest.RecentlyAdded);
     [RelayCommand] private void ShowFavorites() => Ctx.Navigator.Navigate(PageKey.Library, LibraryRequest.FavoritesOnly);
     [RelayCommand] private void ShowSystems() => Ctx.Navigator.Navigate(PageKey.Systems);
     [RelayCommand] private void ShowImports() => Ctx.Navigator.Navigate(PageKey.Imports);

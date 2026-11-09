@@ -7,105 +7,135 @@
             x:Class="RetroHub.App.Views.Pages.HomePage"
             x:DataType="vm:HomeViewModel">
   <!--
-    Start (M1.5): the TV (interim "Kein Signal" screen, M2 brings the snaps) and the box of the game to continue stand
-    on the stage board; the text block is anchored bottom left and its title is measured (72/56/40, two lines).
-    Below, shelves with paper labels and an "Alle anzeigen" spine at the end of each board. Narrow windows
-    (logical height < 1000) use the ≈1100 values of DESIGN 7.1 (class "compact", set in code-behind).
+    Start "Der Fernseher im Regal" (DESIGN 7.1, M2). Nothing scrolls: the STAGE (text | box | TV) stands on the stage
+    board at y 488 of the page (1920×1080 logical: window y 560); the SHELVES live in their own clipped area below it
+    and glide so that the active shelf's boxes start at the vertical anchor (window y 632), the next shelf peeks in.
+    The stage follows the focus: a shelf item that keeps the focus for the dwell time (220 ms) is shown on the stage.
+    Narrow windows (logical height < 860) use the ≈1100 values (class "compact", set in code-behind).
   -->
   <p:PageBase.Styles>
-    <!-- boxes: height 200, width from the system's box format (GameTile.SlotAspect) -->
     <Style Selector="c|GameTile.shelf">
       <Setter Property="Height" Value="200" />
     </Style>
-    <Style Selector="c|SystemCard.shelf">
-      <Setter Property="Width" Value="200" />
+    <Style Selector="c|SystemSpine.shelf">
       <Setter Property="Height" Value="200" />
     </Style>
-    <Style Selector="StackPanel.compact c|GameTile.shelf">
+    <Style Selector="Panel.compact c|GameTile.shelf">
       <Setter Property="Height" Value="160" />
     </Style>
-    <Style Selector="StackPanel.compact c|SystemCard.shelf">
-      <Setter Property="Width" Value="160" />
+    <Style Selector="Panel.compact c|SystemSpine.shelf">
       <Setter Property="Height" Value="160" />
+      <Setter Property="SpineWidth" Value="56" />
+      <Setter Property="FrontWidth" Value="160" />
     </Style>
-    <Style Selector="StackPanel.compact c|Shelf">
+    <Style Selector="c|Shelf">
+      <Setter Property="ItemHeight" Value="200" />
+      <Setter Property="TopGap" Value="40" />
+      <Setter Property="AnchorX" Value="144" />
+    </Style>
+    <Style Selector="Panel.compact c|Shelf">
       <Setter Property="ItemHeight" Value="160" />
-      <Setter Property="TopGap" Value="32" />
+      <Setter Property="TopGap" Value="24" />
+      <Setter Property="AnchorX" Value="112" />
+    </Style>
+    <!-- the stage text: the label line in the light colour, the title measured, the sentence with Archivo numbers -->
+    <Style Selector="TextBlock.stage-label">
+      <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="18" />
     </Style>
   </p:PageBase.Styles>
   <p:PageBase.Resources>
     <DataTemplate x:Key="ShelfGame" x:DataType="vm:GameItemViewModel">
-      <c:GameTile Classes="shelf" ShowCaption="False" SlotAspect="{Binding CoverAspect}" />
+      <c:GameTile Classes="shelf" ShowCaption="False" SlotAspect="{Binding CoverAspect}" FitToImage="True" VerticalAlignment="Bottom" />
     </DataTemplate>
     <DataTemplate x:Key="ShelfSystem" x:DataType="vm:SystemItemViewModel">
-      <c:SystemCard Classes="shelf" />
+      <c:SystemSpine Classes="shelf" VerticalAlignment="Bottom" />
     </DataTemplate>
   </p:PageBase.Resources>
 
-  <ScrollViewer Name="Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
-    <StackPanel Name="PageContent" Spacing="0">
-      <!-- ===== stage: text | box | screen, all standing on the stage board ===== -->
-      <Grid Name="Stage" Height="488" ColumnDefinitions="*,52,Auto,52,Auto" Margin="{DynamicResource RhPageInsetX}" IsVisible="{Binding HasContinue}">
-        <StackPanel Name="TextColumn" VerticalAlignment="Bottom" Spacing="0" Margin="0,0,0,32">
-          <TextBlock Classes="label accent" FontSize="18">
-            <Run Text="{l:T home.continue}" /><Run Text=": " /><Run Text="{Binding Continue.LastPlayedText}" />
-          </TextBlock>
-          <c:FitText Name="StageTitle" Classes="poster" Source="{Binding Continue.Title}" Sizes="72,56,40" MaxLines="2" LineFactor="1.06" Margin="0,12,0,0" />
-          <TextBlock c:Sentence.Text="{Binding ContinueMeta}" Classes="read-l" Margin="0,12,0,0" TextWrapping="Wrap" HorizontalAlignment="Left" />
-          <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,28,0,0">
-            <Button Name="PlayButton" Theme="{StaticResource RhPrimaryButton}" Command="{Binding PlayContinueCommand}" MinWidth="280" MinHeight="64">
-              <StackPanel Orientation="Horizontal" Spacing="12">
-                <c:RhIcon Data="{StaticResource Icon.Play}" Filled="True" Width="24" Height="24" />
-                <TextBlock Text="{l:T detail.play}" VerticalAlignment="Center" />
-              </StackPanel>
-            </Button>
-            <Button Command="{Binding OpenContinueCommand}" MinHeight="64" Padding="28,0">
-              <TextBlock Text="{l:T home.details}" VerticalAlignment="Center" />
-            </Button>
-          </StackPanel>
+  <Panel Name="Root">
+    <!-- the stage board first: the stage box's lit board piece and the contact shadows lie on top of it -->
+    <c:ShelfBoard Name="StageBoard" Height="24" VerticalAlignment="Top" Margin="0,488,0,0" />
+
+    <!-- ===== stage: text | box | TV, all standing on the stage board ===== -->
+    <Grid Name="Stage" Height="488" VerticalAlignment="Top" ColumnDefinitions="*,52,Auto,52,Auto" Margin="{DynamicResource RhPageInsetX}">
+      <StackPanel Name="TextColumn" VerticalAlignment="Bottom" Margin="0,0,0,32" x:DataType="vm:StageState">
+        <StackPanel.RenderTransform>
+          <TranslateTransform />
+        </StackPanel.RenderTransform>
+        <TextBlock Name="StageLabel" Classes="stage-label" Text="{Binding Label}" Foreground="{Binding LabelBrush}" IsVisible="{Binding !IsEmpty}" />
+        <c:FitText Name="StageTitle" Classes="poster" Source="{Binding Title}" Sizes="72,56,40" MaxLines="2" LineFactor="1.06" Margin="0,12,0,0" />
+        <TextBlock Name="StageMeta" c:Sentence.Text="{Binding Meta}" Classes="read-l" Margin="0,12,0,0" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="760" />
+        <StackPanel Name="Actions" Orientation="Horizontal" Spacing="16" Margin="0,28,0,0">
+          <Button Name="PlayButton" Theme="{StaticResource RhPrimaryButton}" MinWidth="280" MinHeight="64">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <c:RhIcon Data="{StaticResource Icon.Play}" Filled="True" Width="24" Height="24" IsVisible="{Binding IsGame}" />
+              <c:RhIcon Data="{StaticResource Icon.Folder}" Width="24" Height="24" IsVisible="{Binding IsEmpty}" />
+              <TextBlock Text="{Binding PrimaryLabel}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Name="DetailsButton" MinHeight="64" Padding="28,0" IsVisible="{Binding IsGame}">
+            <TextBlock Text="{l:T home.details}" VerticalAlignment="Center" />
+          </Button>
+          <Button Name="FavoriteButton" Theme="{StaticResource RhIconButton}" Width="64" Height="64" IsVisible="{Binding IsGame}"
+                  ToolTip.Tip="{l:T home.favorite}" AutomationProperties.Name="{l:T home.favorite}">
+            <Panel>
+              <c:RhIcon Data="{StaticResource Icon.Favorite}" Width="28" Height="28" IsVisible="{Binding !Game.IsFavorite}" />
+              <c:RhIcon Data="{StaticResource Icon.Favorite}" Filled="True" Width="28" Height="28" Foreground="{DynamicResource RhFavoriteBrush}"
+                        IsVisible="{Binding Game.IsFavorite}" />
+            </Panel>
+          </Button>
+          <Button Name="ImportsButton" MinHeight="64" Padding="28,0" IsVisible="{Binding IsEmpty}">
+            <TextBlock Text="{l:T home.openImports}" VerticalAlignment="Center" />
+          </Button>
         </StackPanel>
-        <!-- the box stands on the board (contain, bottom-aligned); a placeholder carries its title like on the shelves -->
-        <Panel Name="BoxSlot" Grid.Column="2" Width="300" Height="420" VerticalAlignment="Bottom">
-          <c:CoverArt Name="StageBox" Source="{Binding Continue.CoverPath}" Title="{Binding Continue.Title}" Badge="{Binding Continue.SystemShort}"
-                      SystemId="{Binding Continue.SystemId}" Accent="{Binding Continue.Accent}" />
-        </Panel>
-        <!-- the TV: the light of the room has a visible source -->
-        <!-- without a cover the box already shows the system's wall: the screen is then switched off (never two walls) -->
-        <c:TvScreen Name="Screen" Grid.Column="4" Width="560" Height="420" VerticalAlignment="Bottom"
-                    SystemId="{Binding Continue.SystemId}" Accent="{Binding Continue.Accent}" Code="{Binding Continue.SystemShort}"
-                    IsOff="{Binding !Continue.HasCover}" />
-      </Grid>
+      </StackPanel>
 
-      <!-- ===== empty library ===== -->
-      <Grid Name="EmptyStage" Height="488" Margin="{DynamicResource RhPageInsetX}" IsVisible="{Binding !HasContinue}">
-        <StackPanel VerticalAlignment="Bottom" Spacing="12" Margin="0,0,0,32" MaxWidth="820" HorizontalAlignment="Left">
-          <TextBlock Text="{l:T home.empty.title}" Classes="poster" TextWrapping="Wrap" />
-          <TextBlock Text="{l:T home.empty.text}" Classes="read-l" />
-          <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,16,0,0">
-            <Button Theme="{StaticResource RhPrimaryButton}" Command="{Binding ShowImportsCommand}" Content="{l:T home.importGames}" />
-            <Button Command="{Binding ShowLibraryCommand}" Content="{l:T home.openLibrary}" MinHeight="56" />
-          </StackPanel>
-        </StackPanel>
-      </Grid>
+      <!-- the box stands on the board (contain, bottom-aligned); focusable: confirm opens the game -->
+      <Panel Name="BoxSlot" Grid.Column="2" Width="300" Height="420" VerticalAlignment="Bottom" ClipToBounds="False">
+        <c:GameTile Name="StageBox" ShowCaption="False" x:DataType="vm:GameItemViewModel" />
+        <c:EmptyShelfDrawing Name="EmptyDrawing" IsVisible="False" Width="240" Height="240" VerticalAlignment="Bottom" HorizontalAlignment="Center" />
+      </Panel>
 
-      <!-- the stage board, edge to edge; the TV light ends here (RoomBackdrop); box and screen cast contact shadows -->
-      <c:ShelfBoard Name="StageBoard" Height="24" />
+      <!-- the TV: the room light has a visible source (snap → title screen → "Kein Signal" → off) -->
+      <c:PixelScreen Name="Screen" Grid.Column="4" Width="560" Height="451" VerticalAlignment="Bottom"
+                     PicturePath="{Binding StageScreen}" SystemId="{Binding Stage.SystemId}" Accent="{Binding Stage.Accent}"
+                     Code="{Binding Stage.Code}" IsTvSystem="{Binding Stage.IsTvSystem}" IsOff="{Binding Stage.IsEmpty}" />
+    </Grid>
 
-      <!-- ===== shelves: paper labels on the boards instead of headings, "Alle anzeigen" as a spine ===== -->
-      <StackPanel Name="Shelves" Spacing="0" Margin="0,0,0,48">
-        <c:Shelf Header="{l:T home.shelf.recent}" ItemsSource="{Binding RecentlyPlayed}" ItemTemplate="{StaticResource ShelfGame}"
+    <!-- ===== shelves: paper labels on the boards instead of headings, "Alle anzeigen" as a spine ===== -->
+    <c:ShelfViewport Name="Shelves" Margin="0,520,0,0" AnchorY="40">
+      <StackPanel Name="ShelfList" Spacing="52">
+        <c:Shelf Name="RecentShelf" Header="{l:T home.shelf.recent}" ItemsSource="{Binding RecentlyPlayed}" ItemTemplate="{StaticResource ShelfGame}"
                  ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}"
-                 ActionLabel="{l:T home.showAll}" ActionCommand="{Binding ShowLibraryCommand}" IsVisible="{Binding HasRecentlyPlayed}" />
-        <c:Shelf Header="{l:T home.shelf.favorites}" ItemsSource="{Binding Favorites}" ItemTemplate="{StaticResource ShelfGame}"
+                 ActionLabel="{l:T home.showAll}" ActionCommand="{Binding ShowRecentCommand}" IsVisible="{Binding HasRecentlyPlayed}" />
+        <c:Shelf Name="FavoritesShelf" Header="{l:T home.shelf.favorites}" ItemsSource="{Binding Favorites}" ItemTemplate="{StaticResource ShelfGame}"
                  ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}"
                  ActionLabel="{l:T home.showAll}" ActionCommand="{Binding ShowFavoritesCommand}" IsVisible="{Binding HasFavorites}" />
-        <c:Shelf Header="{l:T home.shelf.added}" ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource ShelfGame}"
+        <c:Shelf Name="AddedShelf" Header="{l:T home.shelf.added}" ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource ShelfGame}"
                  ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}"
-                 ActionLabel="{l:T home.showAll}" ActionCommand="{Binding ShowLibraryCommand}" IsVisible="{Binding HasRecentlyAdded}" />
-        <c:Shelf Header="{l:T home.shelf.platforms}" ItemsSource="{Binding Platforms}" ItemTemplate="{StaticResource ShelfSystem}"
+                 ActionLabel="{l:T home.showAll}" ActionCommand="{Binding ShowAddedCommand}" IsVisible="{Binding HasRecentlyAdded}" />
+        <c:Shelf Name="SystemsShelf" Header="{l:T home.shelf.platforms}" ItemsSource="{Binding Platforms}" ItemTemplate="{StaticResource ShelfSystem}"
                  ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}"
-                 ActionLabel="{l:T home.allPlatforms}" ActionCommand="{Binding ShowSystemsCommand}" ItemSpacing="8" />
+                 ActionLabel="{l:T home.allPlatforms}" ActionCommand="{Binding ShowSystemsCommand}" ItemSpacing="8" IsVisible="{Binding HasPlatforms}" />
+        <!-- an empty library still has its board: empty, with the label "Noch leer" (DESIGN 7.4) -->
+        <c:Shelf Name="EmptyShelf" Header="{l:T home.shelf.empty}" ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}"
+                 IsVisible="{Binding IsLibraryEmpty}" />
       </StackPanel>
+    </c:ShelfViewport>
+    <!-- the shelf that peeks in from below shows only the top of its boxes (bands, codes of covers – never a half
+         title): a short gradient, then the room; a flat-tone overlay, no opacity mask. Its top is set in code. -->
+    <StackPanel Name="ShelfFade" VerticalAlignment="Top" IsHitTestVisible="False">
+      <Border Height="24">
+        <Border.Background>
+          <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Color="#0014120F" Offset="0" />
+            <GradientStop Color="#FF14120F" Offset="1" />
+          </LinearGradientBrush>
+        </Border.Background>
+      </Border>
+      <Border Height="600" Background="#14120F" />
     </StackPanel>
-  </ScrollViewer>
+  </Panel>
 </p:PageBase>

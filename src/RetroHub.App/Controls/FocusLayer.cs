@@ -77,6 +77,15 @@ public sealed class FocusLayer
     /// <summary>Light colour of ring, cone and board piece; null = the user's light colour (Bernstein).</summary>
     public Color? Light { get; set; }
 
+    /// <summary>
+    /// How far the cone may reach above the watched content (the grid: 24 px so it never paints over the poster title;
+    /// a Start shelf: the free gap above its boxes). The cone may draw that far above the layer's own bounds.
+    /// </summary>
+    public double ConeHeadroom { get; set; } = 24;
+
+    /// <summary>The cone may paint above the back layer's bounds (Start shelves: the layer spans only the row).</summary>
+    public bool ConeOutsideBounds { get; set; }
+
     private Color LightColor => Light ?? ThemeManager.CurrentAccent;
 
     private void OnGotFocus(object? sender, FocusChangedEventArgs e)
@@ -193,8 +202,13 @@ public sealed class FocusLayer
         [new ImmutableGradientStop(0, Color.FromArgb(0xB3, 0, 0, 0)), new ImmutableGradientStop(1, Color.FromArgb(0, 0, 0, 0))],
         startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
 
-    /// <summary>Cone geometry (DESIGN 8.2, M1 QA): bottom 1.15 × box width, top 0.5 ×, starting 96 px above the box.</summary>
-    public const double ConeBottomWidth = 1.15, ConeTopWidth = 0.5, ConeAbove = 96, ConePeakAlpha = 0.12;
+    /// <summary>
+    /// Cone geometry (DESIGN 8.2; M2: the M1 cone was nearly invisible – it faded in toward the board, where the box
+    /// covers it, and was cut hard at the clip): bottom 1.4 × box width, top 0.6 ×. The bitmap has two halves drawn
+    /// separately: the upper half fades in from the dark over the free space above the box (≤ 96 px, never beyond the
+    /// headroom, so no hard edge), the lower half is the steady beam beside the box down to the board.
+    /// </summary>
+    public const double ConeBottomWidth = 1.4, ConeTopWidth = 0.6, ConeAbove = 96, ConePeakAlpha = 0.26;
 
     private const int ConeW = 160, ConeH = 96;
 
@@ -217,7 +231,8 @@ public sealed class FocusLayer
             {
                 var t = (y + 0.5) / ConeH;
                 var half = topHalf + (ConeW / 2.0 - topHalf) * t;
-                var vertical = ConePeakAlpha * t * t * (3 - 2 * t); // smooth rise toward the board
+                var rise = Math.Clamp(t / 0.5, 0, 1); // upper half: fades in from the dark; lower half: steady beam
+                var vertical = ConePeakAlpha * rise * rise * (3 - 2 * rise);
                 for (var x = 0; x < ConeW; x++)
                 {
                     var dx = Math.Abs(x + 0.5 - ConeW / 2.0);
@@ -245,17 +260,24 @@ public sealed class FocusLayer
         var t = _target;
         // the cone never paints over the header above the boxes (poster title, ticker): it starts at most 24 px above
         // the rows; it is clipped to the grid content and the scroll viewport
-        var limit = _watched.TranslatePoint(new Point(0, 0), Back) is { } w ? w.Y - 24 : double.NegativeInfinity;
-        var clip = new Rect(Back.Bounds.Size);
+        var limit = _watched.TranslatePoint(new Point(0, 0), Back) is { } w ? w.Y - ConeHeadroom : double.NegativeInfinity;
+        var clip = ConeOutsideBounds
+            ? new Rect(0, -ConeHeadroom, Back.Bounds.Width, Back.Bounds.Height + ConeHeadroom)
+            : new Rect(Back.Bounds.Size);
         if (_viewport != null && _viewport.TranslatePoint(new Point(0, 0), Back) is { } v)
             clip = clip.Intersect(new Rect(v, _viewport.Bounds.Size));
         var top = Math.Max(clip.Top, limit);
         clip = new Rect(clip.X, top, clip.Width, Math.Max(0, clip.Bottom - top));
-        var dest = new Rect(t.Center.X - t.Width * ConeBottomWidth / 2, t.Top - ConeAbove, t.Width * ConeBottomWidth, t.Height + ConeAbove);
-        if (clip.Height <= 0 || dest.Top >= t.Bottom) return;
+        if (clip.Height <= 0) return;
+        var above = Math.Max(16, Math.Min(ConeAbove, t.Top - clip.Top));
+        var x = t.Center.X - t.Width * ConeBottomWidth / 2;
+        var width = t.Width * ConeBottomWidth;
         var bmp = ConeBitmap(LightColor);
         using (ctx.PushClip(clip))
-            ctx.DrawImage(bmp, new Rect(0, 0, ConeW, ConeH), dest);
+        {
+            ctx.DrawImage(bmp, new Rect(0, 0, ConeW, ConeH / 2), new Rect(x, t.Top - above, width, above));
+            ctx.DrawImage(bmp, new Rect(0, ConeH / 2, ConeW, ConeH / 2), new Rect(x, t.Top, width, t.Height));
+        }
     }
 
     private void RenderFront(DrawingContext ctx)

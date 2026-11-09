@@ -634,12 +634,17 @@
 
   <!-- ================= Shelf (a board with boxes and a paper label) ================= -->
   <!-- No "Alle anzeigen ›" link (DESIGN 1.3): the way into the library is a spine standing at the end of the board. -->
+  <!-- The board and the label stay; only the track (boxes + focus layers) glides to the horizontal anchor. The label is
+       drawn above the track, so a lit board piece never covers it. -->
   <ControlTheme x:Key="{x:Type c:Shelf}" TargetType="c:Shelf">
+    <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Template">
       <ControlTemplate>
-        <ScrollViewer Name="PART_Scroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-          <Grid Name="PART_Host" RowDefinitions="*,24,4" Margin="{TemplateBinding TopGap, Converter={x:Static c:Shelf.TopMargin}}">
-            <StackPanel Orientation="Horizontal" Spacing="{TemplateBinding ItemSpacing}" VerticalAlignment="Bottom" Margin="{TemplateBinding ItemsMargin}">
+        <Grid Name="PART_Host" RowDefinitions="Auto,24,4">
+          <c:ShelfBoard Grid.Row="1" Height="24" />
+          <c:ShelfTrack Name="PART_Track" Grid.RowSpan="3" Margin="{TemplateBinding ItemsMargin}">
+            <StackPanel Name="PART_Row" Orientation="Horizontal" Spacing="{TemplateBinding ItemSpacing}" VerticalAlignment="Top"
+                        HorizontalAlignment="Left" Height="{TemplateBinding ItemHeight}">
               <ItemsControl Name="PART_Items" ItemsSource="{TemplateBinding ItemsSource}" ItemTemplate="{TemplateBinding ItemTemplate}" VerticalAlignment="Bottom">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
@@ -651,13 +656,13 @@
                       Height="{TemplateBinding ItemHeight}" VerticalAlignment="Bottom"
                       IsVisible="{TemplateBinding ActionLabel, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </StackPanel>
-            <c:ShelfBoard Grid.Row="1" Height="24" />
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" Margin="{TemplateBinding LabelMargin}">
-              <c:ShelfLabel Text="{TemplateBinding Header}" Height="24" />
-              <TextBlock Text="{TemplateBinding SubHeader}" Classes="meta" VerticalAlignment="Center" />
-            </StackPanel>
-          </Grid>
-        </ScrollViewer>
+          </c:ShelfTrack>
+          <Border Grid.Row="0" Height="{TemplateBinding ItemHeight}" IsHitTestVisible="False" />
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" Margin="{TemplateBinding LabelMargin}" IsHitTestVisible="False">
+            <c:ShelfLabel Text="{TemplateBinding Header}" Height="24" />
+            <TextBlock Text="{TemplateBinding SubHeader}" Classes="meta" VerticalAlignment="Center" />
+          </StackPanel>
+        </Grid>
       </ControlTemplate>
     </Setter>
   </ControlTheme>

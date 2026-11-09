@@ -611,6 +611,8 @@ public partial class MainWindow : Window
             if (Pages.Current != null) FocusPage(Pages.Current, true);
             return true;
         }
+        // pages with their own directional logic (Start: shelves with anchors and remembered positions)
+        if (Pages.Current is PageBase pb && v is Control fc && IsInside(v, pb) && pb.MoveFocus(action, fc)) return true;
         // the cover grid navigates by item/row itself (rows may be virtualized away)
         var grid = v.FindAncestorOfType<CoverGrid>(includeSelf: true);
         if (grid != null && grid.Move(action)) return true;

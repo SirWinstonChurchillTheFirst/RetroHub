@@ -30,10 +30,24 @@ public class GameTile : Button
 
     public double SlotAspect { get => GetValue(SlotAspectProperty); set => SetValue(SlotAspectProperty, value); }
 
-    static GameTile() => AffectsMeasure<GameTile>(SlotAspectProperty);
+    /// <summary>
+    /// With a fixed height: once the cover is loaded the tile takes the IMAGE's width (Start shelves, DESIGN 7.1:
+    /// "Breite nach Bild"), so a portrait box in a square system slot leaves no gap. Until then the system's format.
+    /// </summary>
+    public static readonly StyledProperty<bool> FitToImageProperty = AvaloniaProperty.Register<GameTile, bool>(nameof(FitToImage));
+
+    public bool FitToImage { get => GetValue(FitToImageProperty); set => SetValue(FitToImageProperty, value); }
+
+    static GameTile() => AffectsMeasure<GameTile>(SlotAspectProperty, FitToImageProperty);
 
     protected override Size MeasureOverride(Size availableSize)
     {
+        if (FitToImage && Art?.ImageAspect is { } ia && !double.IsNaN(Height) && double.IsNaN(Width))
+        {
+            var fit = new Size(Math.Round(Height * Math.Clamp(ia, 0.4, 2.5)), Height);
+            base.MeasureOverride(fit);
+            return fit;
+        }
         if (SlotAspect > 0 && !double.IsNaN(Height) && double.IsNaN(Width))
         {
             var size = new Size(Math.Round(Height / SlotAspect), Height);
@@ -59,7 +73,11 @@ public class GameTile : Button
         if (Art != null) Art.ArtRectChanged += OnArtRectChanged;
     }
 
-    private void OnArtRectChanged(object? sender, EventArgs e) => ArtChanged?.Invoke(this, EventArgs.Empty);
+    private void OnArtRectChanged(object? sender, EventArgs e)
+    {
+        if (FitToImage) InvalidateMeasure();
+        ArtChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <summary>
     /// The cover's covered rectangle in this tile's coordinates, from layout bounds (ignores the lift transform);

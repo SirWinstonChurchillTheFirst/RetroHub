@@ -9,10 +9,14 @@ using RetroHub.Core.Library;
 namespace RetroHub.App.ViewModels;
 
 /// <summary>Navigation arguments for the library page.</summary>
-public sealed record LibraryRequest(bool Favorites = false, bool FocusSearch = false, string? SystemId = null)
+public sealed record LibraryRequest(bool Favorites = false, bool FocusSearch = false, string? SystemId = null, GameSort? Sort = null)
 {
     public static readonly LibraryRequest FavoritesOnly = new(Favorites: true);
     public static readonly LibraryRequest Search = new(FocusSearch: true);
+    /// <summary>The "Alle" spine of the shelf "Zuletzt gespielt": the whole library by last play (not saved as the user's sort).</summary>
+    public static readonly LibraryRequest RecentlyPlayed = new(Sort: GameSort.LastPlayed);
+    /// <summary>The "Alle" spine of "Neu in der Sammlung": by date added.</summary>
+    public static readonly LibraryRequest RecentlyAdded = new(Sort: GameSort.Added);
 }
 
 /// <summary>A filter chip ("Alle", "GBA 7").</summary>
@@ -125,6 +129,7 @@ public sealed partial class LibraryViewModel : PageViewModel
             _suppressReload = true;
             FavoritesOnly = req.Favorites;
             if (req.SystemId != null) SelectedSystemId = req.SystemId;
+            if (req.Sort is { } sort && SortOptions.FirstOrDefault(o => o.Sort == sort) is { } option) SelectedSort = option;
             _suppressReload = false;
             if (req.FocusSearch) FocusSearchRequested?.Invoke();
         }
