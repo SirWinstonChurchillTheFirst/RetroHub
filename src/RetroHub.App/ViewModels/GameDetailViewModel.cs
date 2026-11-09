@@ -44,27 +44,34 @@ public sealed record ProblemItem(string Text, bool IsBlocking, string? Url = nul
 }
 
 /// <summary>
-/// One place on the "Ausleihkarte" (DESIGN 7.3): a stamp of a session (date + duration), the entry stamp (the day the
-/// game came into the collection) or an empty place waiting for the next stamp (dashed outline).
+/// One place of "Gespielt" (DESIGN 7.3, M4 QA): a rubber stamp of a session (date + duration), the entry stamp (the
+/// day the game came into the collection) or an empty place waiting for the next stamp (a dashed baseline).
+/// <paramref name="Index"/> tilts the stamps alternately (-1.5 / +1 degrees), like stamps pressed by hand.
 /// </summary>
-public sealed record CardPlace(string Date, string Note, CardPlaceKind Kind)
+public sealed record CardPlace(string Date, string Note, CardPlaceKind Kind, int Index = 0)
 {
     public bool IsStamp => Kind != CardPlaceKind.Empty;
     public bool IsEmpty => Kind == CardPlaceKind.Empty;
     public bool IsEntry => Kind == CardPlaceKind.Entry;
     public bool IsSession => Kind == CardPlaceKind.Session;
+    /// <summary>The static tilt of the stamp in degrees (a RenderTransform, no per-frame cost).</summary>
+    public double Angle => Kind == CardPlaceKind.Empty ? 0 : Index % 2 == 0 ? -1.5 : 1;
+    public Avalonia.Media.ITransform Tilt => new Avalonia.Media.RotateTransform(Angle);
 }
 
 public enum CardPlaceKind { Session, Entry, Empty }
+
+/// <summary>An other version of the game on the shelf ("Englisch (NTSC)"), offered under "Auch im Regal".</summary>
+public sealed record VariantOption(GameItemViewModel Game, string Label);
 
 /// <summary>One line of the file info overlay ("Ordner", the path in Cascadia Mono).</summary>
 public sealed record InfoLine(string Label, string Value, bool Mono = false);
 
 /// <summary>The overlays of the detail page (DESIGN 7.3).</summary>
-public enum DetailSheet { None, More, FileInfo, Description, Cover, Screens }
+public enum DetailSheet { None, More, FileInfo, Description, Cover, Screens, Variants }
 
 /// <summary>Where the focus is on the detail page: the footer names the action of the focused element.</summary>
-public enum DetailFocus { Play, Solve, Favorite, More, Box, System, Row, File, Screen, ReadMore, Neighbour, Sheet }
+public enum DetailFocus { Play, Solve, Favorite, More, Box, System, Row, File, Variants, Screen, ReadMore, Neighbour, Sheet }
 
 /// <summary>A label/value pair in the metadata list.</summary>
 public sealed record FactItem(string Label, string Value)
@@ -145,6 +152,15 @@ public sealed partial class GameDetailViewModel : PageViewModel
     [ObservableProperty] public partial IReadOnlyList<GameItemViewModel> NeighboursAfter { get; private set; } = [];
     [ObservableProperty] public partial bool HasNeighbours { get; private set; }
 
+    /// <summary>
+    /// The same game in other versions on the shelf (same title without region/version tags): folded out of the
+    /// neighbours like the Start shelves fold them, named in one row of "Start" ("Auch im Regal: Deutsch, Englisch
+    /// (NTSC)") - three identical covers beside the gap read as a duplication bug (M4 QA).
+    /// </summary>
+    [ObservableProperty] public partial IReadOnlyList<VariantOption> Variants { get; private set; } = [];
+    [ObservableProperty] public partial bool HasVariants { get; private set; }
+    [ObservableProperty] public partial string VariantsText { get; private set; } = "";
+
     public const int NeighbourCount = 4;
 
     // ===================== overlays =====================
@@ -158,8 +174,19 @@ public sealed partial class GameDetailViewModel : PageViewModel
     partial void OnSheetChanged(DetailSheet value)
     {
         OnPropertyChanged(nameof(IsSheetOpen));
+        // the dim reaches under the header too (no seam at its lower edge; the header's content stays above it)
+        HeaderDim = value switch
+        {
+            DetailSheet.None => default,
+            DetailSheet.Cover or DetailSheet.Screens => SheetDimDeep,
+            _ => SheetDim,
+        };
         RaiseHintsChanged();
     }
+
+    /// <summary>Raum-Tief 72 % (menus and text overlays) and 94 % (the cover and the screens large).</summary>
+    public static readonly Avalonia.Media.Color SheetDim = Avalonia.Media.Color.FromArgb(0xB8, 0x0A, 0x09, 0x08),
+        SheetDimDeep = Avalonia.Media.Color.FromArgb(0xF0, 0x0A, 0x09, 0x08);
 
     /// <summary>Shoulder left/right: the view jumps to the previous/next section (Bühne, Über das Spiel, Start).</summary>
     public event Action<int>? SectionRequested;
@@ -179,7 +206,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
         get
         {
             if (IsSheetOpen)
-                return Sheet is DetailSheet.More or DetailSheet.FileInfo
+                return Sheet is DetailSheet.More or DetailSheet.FileInfo or DetailSheet.Variants
                     ? [new(NavAction.Accept, Loc.T("hint.select")), new(NavAction.Back, Loc.T("hint.close"))]
                     : [new(NavAction.Back, Loc.T("hint.close"))];
             var accept = _focus switch
@@ -192,6 +219,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
                 DetailFocus.System => Loc.T("hint.open"),
                 DetailFocus.Row => Loc.T("hint.change"),
                 DetailFocus.File => Loc.T("hint.fileInfo"),
+                DetailFocus.Variants => Loc.T("hint.open"),
                 DetailFocus.Screen => Loc.T("hint.view"),
                 DetailFocus.ReadMore => Loc.T("hint.readMore"),
                 DetailFocus.Neighbour => Loc.T("hint.open"),
@@ -298,10 +326,8 @@ public sealed partial class GameDetailViewModel : PageViewModel
             var sessions = s.Games.Sessions(gameId, CardSize);
             // the shelf the box was pulled from: the same system in title order, the box's neighbours left and right
             var shelf = s.Games.Query(new GameQuery { SystemId = game.SystemId, Sort = GameSort.Title });
-            var at = shelf.ToList().FindIndex(x => x.Id == game.Id);
-            var before = at < 0 ? [] : shelf.Skip(Math.Max(0, at - NeighbourCount)).Take(at - Math.Max(0, at - NeighbourCount)).ToList();
-            var after = at < 0 ? [] : shelf.Skip(at + 1).Take(NeighbourCount).ToList();
-            return (Game: game, Choices: choices, Plan: plan, Stats: stats, Sessions: sessions, Before: before, After: after);
+            var around = ShelfAround(shelf, game, NeighbourCount);
+            return (Game: game, Choices: choices, Plan: plan, Stats: stats, Sessions: sessions, Before: around.Before, After: around.After, Variants: around.Variants);
         }, "Loading the game");
         if (version != _version) return;
         if (data.Game == null)
@@ -320,7 +346,8 @@ public sealed partial class GameDetailViewModel : PageViewModel
             Location = Loc.T("detail.location", Game.SystemName, g.DisplayTitle);
             IsTvSystem = def == null || def.Category is SystemCategory.Console or SystemCategory.Arcade;
             // TV light of the game above the stage board; the glow sits at the box (left)
-            Backdrop = new BackdropSpec(BackdropKind.TvLight, Game.CoverPath, g.SystemId, Game.Accent, g.Id, StageShare: 0.63, GlowX: 0.16, GlowY: 0.38, GhostX: 0.82);
+            Backdrop = new BackdropSpec(BackdropKind.TvLight, Game.CoverPath, g.SystemId, Game.Accent, g.Id, StageShare: 0.63, GlowX: 0.16, GlowY: 0.38, GhostX: 0.88,
+                GhostShare: 0.4, GhostAlpha: 0.04); // no picture: a small, faint motif standing on the board, no watermark (M4 QA)
             Description = string.IsNullOrWhiteSpace(g.Description) ? Loc.T("detail.noDescription") : g.Description!;
             HasDescription = !string.IsNullOrWhiteSpace(g.Description);
             var facts = new List<FactItem>();
@@ -347,12 +374,9 @@ public sealed partial class GameDetailViewModel : PageViewModel
             NeighboursBefore = data.Before.Select(Ctx.Items.Get).ToList();
             NeighboursAfter = data.After.Select(Ctx.Items.Get).ToList();
             HasNeighbours = NeighboursBefore.Count + NeighboursAfter.Count > 0;
-            // namesakes on the shelf (translations, BS chapters) say their region in the label line, like in the library;
-            // only ever ADDED here: the shelf is a part of the system, a namesake outside it keeps the library's mark
-            var shelfItems = new List<GameItemViewModel>([.. NeighboursBefore, Game, .. NeighboursAfter]);
-            var namesakes = shelfItems.GroupBy(i => HomeViewModel.NormalizeTitle(i.Title)).Where(x => x.Count() > 1).SelectMany(x => x);
-            foreach (var item in namesakes)
-                if (item.Variant.Length == 0) item.Variant = item.RegionText.Length > 0 ? item.RegionText : Loc.T("library.variant.original");
+            Variants = data.Variants.Select(v => new VariantOption(Ctx.Items.Get(v), VariantLabel(v))).OrderBy(v => v.Label, StringComparer.Create(Loc.Culture, true)).ToList();
+            HasVariants = Variants.Count > 0;
+            VariantsText = string.Join(", ", Variants.Select(v => v.Label));
             if (_screensFor != g.Id) SetScreens(null, null);
             HasAbout = HasDescription || HasScreens;
             LoadScreens(g);
@@ -477,6 +501,22 @@ public sealed partial class GameDetailViewModel : PageViewModel
     // ===================== overlays (DESIGN 7.3) =====================
 
     [RelayCommand] private void ShowMore() => Sheet = DetailSheet.More;
+
+    /// <summary>"Auch im Regal": one other version opens at once, several are offered in a list at the row.</summary>
+    [RelayCommand]
+    private void ShowVariants()
+    {
+        if (Variants.Count == 1) OpenVariant(Variants[0]);
+        else if (Variants.Count > 1) Sheet = DetailSheet.Variants;
+    }
+
+    [RelayCommand]
+    private void OpenVariant(VariantOption? variant)
+    {
+        if (variant == null) return;
+        Sheet = DetailSheet.None;
+        Ctx.Navigator.Navigate(PageKey.GameDetail, variant.Game);
+    }
     [RelayCommand] private void ShowFileInfo() => Sheet = DetailSheet.FileInfo;
     [RelayCommand] private void ShowDescription() { if (HasDescription) Sheet = DetailSheet.Description; }
     [RelayCommand] private void ShowCover() { if (Game != null) Sheet = DetailSheet.Cover; }
@@ -550,10 +590,10 @@ public sealed partial class GameDetailViewModel : PageViewModel
     // ===================== Ausleihkarte =====================
 
     /// <summary>
-    /// The card (DESIGN 7.3, M4): <see cref="CardSize"/> places, filled like a library card from the left – the entry
-    /// stamp ("Eingang", the day the game came into the collection) while the card still reaches back that far, then the
-    /// sessions oldest to newest, then empty places waiting for the next stamps. A game never played shows its entry
-    /// stamp and four empty places: the card is there, nothing is invented.
+    /// "Gespielt" (DESIGN 7.3, M4 QA): <see cref="CardSize"/> places, filled from the left – the entry stamp ("Eingang",
+    /// the day the game came into the collection) while the record still reaches back that far, then the sessions
+    /// oldest to newest, then empty places (a dashed baseline each) waiting for the next stamps. A game never played
+    /// shows only its entry stamp and the sentence "Noch kein Eintrag." – four empty boxes read as a loading skeleton.
     /// </summary>
     internal void BuildCard(Core.Library.Game g, IReadOnlyList<PlaySession> recent, DateTime nowUtc)
     {
@@ -561,13 +601,52 @@ public sealed partial class GameDetailViewModel : PageViewModel
         var total = Math.Max(g.PlayCount, recent.Count);
         var shown = recent.Take(CardSize).Reverse().ToList(); // oldest left
         // the entry stamp only while the card reaches back to the start (every session known and room left)
-        if (recent.Count >= total && total < CardSize) places.Add(new CardPlace(StampDate(g.AddedUtc, nowUtc), Loc.T("detail.card.entry"), CardPlaceKind.Entry));
+        if (recent.Count >= total && total < CardSize) places.Add(new CardPlace(StampDate(g.AddedUtc, nowUtc), Loc.T("detail.card.entry"), CardPlaceKind.Entry, places.Count));
         foreach (var session in shown.Skip(Math.Max(0, shown.Count - (CardSize - places.Count))))
-            places.Add(new CardPlace(StampDate(session.StartUtc, nowUtc), StampDuration(session.Seconds), CardPlaceKind.Session));
-        while (places.Count < CardSize) places.Add(new CardPlace("", "", CardPlaceKind.Empty));
-        CardPlaces = places;
+            places.Add(new CardPlace(StampDate(session.StartUtc, nowUtc), StampDuration(session.Seconds), CardPlaceKind.Session, places.Count));
         var stamps = places.Count(p => p.IsSession);
-        CardSentence = total > stamps && stamps > 0 ? Loc.T("detail.card.lastOf", stamps, total) : "";
+        if (stamps > 0)
+            while (places.Count < CardSize) places.Add(new CardPlace("", "", CardPlaceKind.Empty, places.Count));
+        CardPlaces = places;
+        CardSentence = stamps == 0 && total == 0 ? Loc.T("detail.card.none")
+            : total > stamps && stamps > 0 ? Loc.T("detail.card.lastOf", stamps, total) : "";
+    }
+
+    /// <summary>
+    /// The shelf around <paramref name="game"/> (title order), folded like the Start shelves: one box per title without
+    /// region/version tags. Returns up to <paramref name="count"/> other titles on each side and the other versions of
+    /// the game itself (they stand in the same spot of the shelf).
+    /// </summary>
+    internal static (List<Core.Library.Game> Before, List<Core.Library.Game> After, List<Core.Library.Game> Variants) ShelfAround(
+        IReadOnlyList<Core.Library.Game> shelf, Core.Library.Game game, int count)
+    {
+        var own = HomeViewModel.NormalizeTitle(game.Title);
+        var variants = shelf.Where(x => x.Id != game.Id && HomeViewModel.NormalizeTitle(x.Title) == own).ToList();
+        var folded = new List<Core.Library.Game>();
+        var seen = new HashSet<string>();
+        var at = -1;
+        foreach (var x in shelf)
+        {
+            var key = HomeViewModel.NormalizeTitle(x.Title);
+            if (key == own)
+            {
+                if (at < 0) { at = folded.Count; folded.Add(game); seen.Add(key); }
+                continue;
+            }
+            if (seen.Add(key)) folded.Add(x);
+        }
+        if (at < 0) return ([], [], variants);
+        var before = folded.Skip(Math.Max(0, at - count)).Take(at - Math.Max(0, at - count)).ToList();
+        var after = folded.Skip(at + 1).Take(count).ToList();
+        return (before, after, variants);
+    }
+
+    /// <summary>"Deutsch", "Englisch (NTSC)": the region words of a version, the first one leading; else "Original".</summary>
+    internal static string VariantLabel(Core.Library.Game g)
+    {
+        var words = Fmt.Region(g.Region).Split(", ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (words.Length == 0) return Loc.T("library.variant.original");
+        return words.Length == 1 ? words[0] : $"{words[0]} ({string.Join(", ", words.Skip(1))})";
     }
 
     /// <summary>"9. Nov." – with the year when it is not this year ("3. März 2024").</summary>

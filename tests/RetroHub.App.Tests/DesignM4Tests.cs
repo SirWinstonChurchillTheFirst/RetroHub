@@ -51,11 +51,10 @@ public class DesignM4Tests
         var now = new DateTime(2026, 11, 9, 12, 0, 0, DateTimeKind.Utc);
         var game = new Game { SystemId = "gba", Path = "a.gba", Title = "A", AddedUtc = now.AddDays(-30) };
 
-        // never played: the entry stamp and four empty places, nothing invented
+        // never played: only the entry stamp and one sentence - no row of empty boxes (they read as a loading skeleton)
         detail.BuildCard(game, [], now);
-        Assert.Equal([CardPlaceKind.Entry, CardPlaceKind.Empty, CardPlaceKind.Empty, CardPlaceKind.Empty, CardPlaceKind.Empty],
-            detail.CardPlaces.Select(p => p.Kind));
-        Assert.Equal("", detail.CardSentence);
+        Assert.Equal([CardPlaceKind.Entry], detail.CardPlaces.Select(p => p.Kind));
+        Assert.Equal("Noch kein Eintrag.", detail.CardSentence);
 
         // two sessions (the repository gives them newest first): entry, older, newer, then the empty places
         game.PlayCount = 2;
@@ -64,6 +63,8 @@ public class DesignM4Tests
             detail.CardPlaces.Select(p => p.Kind));
         Assert.Equal("unter 1 Min.", detail.CardPlaces[1].Note);
         Assert.Equal("1:12 Std.", detail.CardPlaces[2].Note);
+        // stamps pressed by hand: alternately tilted, the empty places lie flat
+        Assert.Equal([-1.5, 1, -1.5, 0, 0], detail.CardPlaces.Select(p => p.Angle));
 
         // a long history: the last five, no entry stamp, and the sentence says how many there are
         game.PlayCount = 41;
@@ -192,6 +193,26 @@ public class DesignM4Tests
         Assert.DoesNotContain(tiles, t => ((GameItemViewModel)t.DataContext!).Id == detail.Game!.Id);
         window.Close();
     });
+
+    [Fact]
+    public void Shelf_folds_the_versions_of_a_title_out_of_the_neighbours()
+    {
+        Game G(long id, string title, string? region = null) => new() { Id = id, SystemId = "snes", Path = $"{id}.sfc", Title = title, Region = region, AddedUtc = DateTime.UtcNow };
+        var shelf = new List<Game>
+        {
+            G(1, "F-Zero"), G(2, "Super Mario World"), G(3, "Super Mario World (Germany)", "Deutsch"),
+            G(4, "The Legend of Zelda (Germany)", "Deutsch"), G(5, "The Legend of Zelda", "Englisch, NTSC"), G(6, "The Legend of Zelda (France)", "Französisch"),
+            G(7, "Tetris Attack"), G(8, "Yoshi's Island"),
+        };
+        var (before, after, variants) = GameDetailViewModel.ShelfAround(shelf, shelf[4], 4);
+        // one box per title: Mario once, the pulled Zelda's other versions are not its neighbours
+        Assert.Equal([1L, 2L], before.Select(g => g.Id));
+        Assert.Equal([7L, 8L], after.Select(g => g.Id));
+        Assert.Equal([4L, 6L], variants.Select(g => g.Id));
+        TestSupport.CreateContext(); // German texts
+        Assert.Equal("Englisch (NTSC)", GameDetailViewModel.VariantLabel(shelf[4]));
+        Assert.Equal("Deutsch", GameDetailViewModel.VariantLabel(shelf[3]));
+    }
 
     [Fact]
     public Task Missing_file_makes_the_solution_name_the_file_first() => UiTest.Run(() =>

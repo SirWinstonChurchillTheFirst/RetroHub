@@ -42,6 +42,10 @@
 
     <LayoutTransformControl Name="ScaleHost">
       <Grid Name="Shell" RowDefinitions="72,*,56">
+        <!-- the page's tones under the header's content: a ground (Raum while the detail's back is read) and the dim of an
+             open overlay; both follow the current page (code-behind) -->
+        <Border Name="HeaderGround" IsHitTestVisible="False" />
+        <Border Name="HeaderDim" IsHitTestVisible="False" />
         <!-- ============ Header "Kanäle" (drag area; caption buttons keep 170 px free on the right) ============ -->
         <Grid Name="TopBar" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Background="Transparent" Margin="48,0,170,0">
           <StackPanel Name="BrandBar" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Background="Transparent">

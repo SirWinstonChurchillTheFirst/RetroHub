@@ -59,23 +59,45 @@ public sealed class EmptyShelfDrawing : Control
 
 /// <summary>
 /// An outlined, empty place for a box on the empty library's shelf (M2 QA): 1 px paper at 12 %, dashed 4/4, square –
-/// the shelf reads as one waiting to be filled. Not focusable, no fill.
+/// the shelf reads as one waiting to be filled. Not focusable, no fill. <see cref="Aspect"/> (width / height) draws the
+/// place in a box format inside the bounds (contain, standing on the bottom edge, centred): the gap a pulled box left
+/// on "Daneben im Regal" has that box's format (M4 QA). <see cref="Baseline"/> draws only a dashed line at the bottom in
+/// Kante (an empty place on "Gespielt": a line waiting for a stamp, not a box).
 /// </summary>
 public sealed class EmptySlot : Control
 {
     private static readonly IPen Dash = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x1F, 0xF4, 0xEC, 0xDF)), 1,
         new ImmutableDashStyle([4, 4], 0), PenLineCap.Flat, PenLineJoin.Miter);
+    private static readonly IPen BaselineDash = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#3A342B")), 1,
+        new ImmutableDashStyle([4, 4], 0), PenLineCap.Flat, PenLineJoin.Miter);
+
+    public static readonly StyledProperty<double> AspectProperty = AvaloniaProperty.Register<EmptySlot, double>(nameof(Aspect));
+    public static readonly StyledProperty<bool> BaselineProperty = AvaloniaProperty.Register<EmptySlot, bool>(nameof(Baseline));
+
+    /// <summary>Width / height of the outlined place inside the bounds; 0 = the bounds themselves.</summary>
+    public double Aspect { get => GetValue(AspectProperty); set => SetValue(AspectProperty, value); }
+
+    public bool Baseline { get => GetValue(BaselineProperty); set => SetValue(BaselineProperty, value); }
 
     static EmptySlot()
     {
-        AffectsRender<EmptySlot>(BoundsProperty);
+        AffectsRender<EmptySlot>(BoundsProperty, AspectProperty, BaselineProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<EmptySlot>(false);
         FocusableProperty.OverrideDefaultValue<EmptySlot>(false);
     }
 
     public override void Render(DrawingContext ctx)
     {
-        var r = new Rect(Bounds.Size).Deflate(0.5);
+        var size = Bounds.Size;
+        if (size.Width <= 0 || size.Height <= 0) return;
+        if (Baseline)
+        {
+            ctx.DrawLine(BaselineDash, new Point(0, size.Height - 0.5), new Point(size.Width, size.Height - 0.5));
+            return;
+        }
+        var outer = new Rect(size);
+        var r = Aspect > 0 ? CoverArt.Compute(outer, null, false, Aspect) : outer;
+        r = r.Deflate(0.5);
         if (r.Width <= 0 || r.Height <= 0) return;
         ctx.DrawRectangle(null, Dash, r);
     }

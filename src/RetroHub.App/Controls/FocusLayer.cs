@@ -92,6 +92,19 @@ public sealed class FocusLayer
     /// <summary>The cone may paint above the back layer's bounds (Start shelves: the layer spans only the row).</summary>
     public bool ConeOutsideBounds { get; set; }
 
+    /// <summary>
+    /// Strength of the cone (1 = 12 % at its foot). The detail stage takes 0.5: its room is lit by the TV light already,
+    /// a full cone read as a grey roof above the box (M4 QA).
+    /// </summary>
+    public double ConeOpacity { get; set; } = 1;
+
+    /// <summary>
+    /// The lit board piece covers the board front opaquely (Regal hell mixed with 16 % light, DESIGN 4.2) instead of
+    /// tinting it: on the stage board the static 10 px contact shadow lay on the front under the box and the tint
+    /// over it read as no light at all – the box looked sunk into the board (M4 QA).
+    /// </summary>
+    public bool OpaquePiece { get; set; }
+
     private Color LightColor => Light ?? ThemeManager.CurrentAccent;
 
     private void OnGotFocus(object? sender, FocusChangedEventArgs e)
@@ -335,6 +348,7 @@ public sealed class FocusLayer
         var bmp = ConeBitmap(LightColor);
         var srcTop = ConeH * (1 - above / ConeAbove);
         using (ctx.PushClip(clip))
+        using (ctx.PushOpacity(Math.Clamp(ConeOpacity, 0, 1)))
             ctx.DrawImage(bmp, new Rect(0, srcTop, ConeW, ConeH - srcTop), new Rect(x, t.Top - above, width, above));
     }
 
@@ -350,13 +364,20 @@ public sealed class FocusLayer
         // The ring stands on the board top – its legs end there and the light bar closes it: the box stands on the shelf.
         var outer = RingGap + RingWidth;
         var piece = new Rect(t.X - outer, t.Bottom, t.Width + 2 * outer, BoardFront);
-        ctx.FillRectangle(new ImmutableSolidColorBrush(ColorUtil.WithAlpha(light, 0x29)), piece);
+        if (OpaquePiece)
+            // the front under the box replaced by Regal hell + 16 % light (Bernstein ≈ #4C3D26); its 1 px bottom edge stays
+            ctx.FillRectangle(new ImmutableSolidColorBrush(Mix(ShelfBoard.FrontBrush.Color, light, 0.16)), piece.WithHeight(BoardFront - 1));
+        else
+            ctx.FillRectangle(new ImmutableSolidColorBrush(ColorUtil.WithAlpha(light, 0x29)), piece);
         ctx.FillRectangle(FocusContact, new Rect(t.X, t.Bottom + BoardFront, t.Width, 16));
         ctx.FillRectangle(brush, new Rect(piece.X, t.Bottom, piece.Width, 2));
         Chamfer.DrawStandingRing(ctx, t, brush, RingGap, RingWidth);
     }
 
     private const double RingGap = 3, RingWidth = 3;
+
+    private static Color Mix(Color a, Color b, double t) => Color.FromRgb(
+        (byte)Math.Round(a.R + (b.R - a.R) * t), (byte)Math.Round(a.G + (b.G - a.G) * t), (byte)Math.Round(a.B + (b.B - a.B) * t));
 
     private sealed class BackLayer(FocusLayer owner) : Control
     {

@@ -23,6 +23,15 @@ public abstract partial class PageViewModel(UiContext ctx) : ObservableObject
     /// <summary>What the room behind this page shows (TV light, a system wall, or the plain room).</summary>
     [ObservableProperty] public partial BackdropSpec Backdrop { get; protected set; } = BackdropSpec.Room;
 
+    /// <summary>
+    /// A tone laid under the header's content (transparent = the room shows through): the detail page sets Raum while
+    /// its back is read, so the TV light does not hang above the plain back as a lighter band (M4 QA).
+    /// </summary>
+    [ObservableProperty] public partial Avalonia.Media.Color HeaderGround { get; set; }
+
+    /// <summary>The dim of an open overlay, continued under the header's content (no seam at the header's edge, M4 QA).</summary>
+    [ObservableProperty] public partial Avalonia.Media.Color HeaderDim { get; protected set; }
+
     /// <summary>The page part of the footer's location sentence ("Pokémon Smaragd-Edition", "66 Spiele"); null = title.</summary>
     [ObservableProperty] public partial string? Location { get; protected set; }
 

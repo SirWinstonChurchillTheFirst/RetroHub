@@ -457,14 +457,15 @@
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
           <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource RhLineBrush}" />
           <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
-          <Grid ColumnDefinitions="200,*,Auto" Margin="16,0,8,0">
+          <Grid ColumnDefinitions="200,*,Auto" Margin="16,0,16,0">
             <Border Name="PART_Chip" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="8,4" CornerRadius="2" Margin="-8,0,0,0" Background="Transparent">
               <TextBlock Name="PART_Label" Text="{TemplateBinding Tag}" Foreground="{DynamicResource RhText3Brush}" />
             </Border>
             <ContentControl Grid.Column="1" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding ItemTemplate}"
                             VerticalAlignment="Center" Margin="0,0,16,0" />
-            <c:RhIcon Grid.Column="2" Name="PART_Arrow" Data="{DynamicResource Icon.ArrowRight}" Filled="True" Width="20" Height="20" VerticalAlignment="Center"
-                      Foreground="{DynamicResource RhText2Brush}" />
+            <!-- the "Winkel": the chamfered chevron, 16 px, Text 3 (Papier on focus) - not a filled media triangle (M4 QA) -->
+            <c:RhIcon Grid.Column="2" Name="PART_Arrow" Data="{DynamicResource Icon.ChevronRight}" Width="16" Height="16" StrokeThickness="3" VerticalAlignment="Center"
+                      Foreground="{DynamicResource RhText3Brush}" />
           </Grid>
           <Popup Name="PART_Popup" WindowManagerAddShadowHint="False" IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}"
                  MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="{TemplateBinding MaxDropDownHeight}"
@@ -575,14 +576,15 @@
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
           <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource RhLineBrush}" />
           <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
-          <Grid ColumnDefinitions="200,*,Auto" Margin="16,0,8,0">
+          <Grid ColumnDefinitions="200,*,Auto" Margin="16,0,16,0">
             <Border Name="PART_Chip" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="8,4" CornerRadius="2" Margin="-8,0,0,0" Background="Transparent">
               <TextBlock Name="PART_Label" Text="{TemplateBinding Tag}" Foreground="{DynamicResource RhText3Brush}" />
             </Border>
             <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                               VerticalAlignment="Center" Margin="0,0,16,0" />
-            <c:RhIcon Grid.Column="2" Name="PART_Arrow" Data="{DynamicResource Icon.ArrowRight}" Filled="True" Width="20" Height="20" VerticalAlignment="Center"
-                      Foreground="{DynamicResource RhText2Brush}" />
+            <!-- the "Winkel": the chamfered chevron, 16 px, Text 3 (Papier on focus) - not a filled media triangle (M4 QA) -->
+            <c:RhIcon Grid.Column="2" Name="PART_Arrow" Data="{DynamicResource Icon.ChevronRight}" Width="16" Height="16" StrokeThickness="3" VerticalAlignment="Center"
+                      Foreground="{DynamicResource RhText3Brush}" />
           </Grid>
         </Panel>
       </ControlTemplate>

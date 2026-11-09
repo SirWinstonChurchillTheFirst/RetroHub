@@ -318,6 +318,16 @@ public sealed class CoverArt : Control
     /// <summary>The band of this placeholder: none when the spine is not printed on the front (<see cref="PrintedSpine"/>).</summary>
     private double Band(double w) => PrintedSpine ? BandWidth(w) : 0;
 
+    /// <summary>
+    /// The detail's pulled box (no printed spine, a stage box of 300 px and more) is printed like a box front (M4 QA):
+    /// the title on TOP under the colour band (Plakat 32, 24 px inner margin), the motif as the artwork field below
+    /// (50 % of the height, bottom right). Anchored at the bottom it left the upper third flat and empty.
+    /// </summary>
+    private bool TitleOnTop(Rect r) => !PrintedSpine && r.Height >= 300;
+
+    /// <summary>The colour band across the top of a front without a printed spine.</summary>
+    private static double TopBand(Rect r) => Math.Max(8, Math.Round(r.Height * 0.024));
+
     /// <summary>Texture strength on placeholders, relative to the system's wall strength (boxes read as material).</summary>
     private const double PlaceholderTextureFactor = 2.0;
 
@@ -331,6 +341,13 @@ public sealed class CoverArt : Control
             // ground: one tone in small tiles, the wall's 38/62 split from 200 px; the system texture (shared brush,
             // offset per title so neighbours differ)
             var split = w >= SplitMinWidth ? Math.Round(r.Height * 0.38) : 0;
+            // a front printed with the title on top: the upper tone is the title band and grows with the title
+            if (split > 0 && TitleOnTop(r) && _titleText is { } band0)
+            {
+                var pad0 = PlaceholderPad(w);
+                var textBottom = TopBand(r) + pad0 + Math.Ceiling(band0.Height) + (_subText is { } sub0 ? SubGap + Math.Ceiling(sub0.Height) : 0) + pad0;
+                split = Math.Max(split, Math.Round(textBottom));
+            }
             if (split > 0) ctx.FillRectangle(look.WallHiBrush, new Rect(r.X, r.Y, w, split));
             ctx.FillRectangle(split > 0 ? look.WallBrush : look.WallHiBrush, new Rect(r.X, r.Y + split, w, r.Height - split));
             if (TextureBrushes.Get(look.Texture) is { } tex)
@@ -349,7 +366,7 @@ public sealed class CoverArt : Control
             var pad = PlaceholderPad(w);
             var inset = MotifInset(w);
             var room = split > 0 ? r.Height - split - inset - 2 : r.Height - 2 * inset;
-            var motif = Math.Round(Math.Min(Math.Min(r.Height * 0.45, (w - band) * 0.8), room));
+            var motif = Math.Round(Math.Min(Math.Min(r.Height * (TitleOnTop(r) ? 0.5 : 0.45), (w - band) * 0.8), room));
             if (motif > 8)
                 MotifCatalog.DrawSilhouette(ctx, look, new Rect(r.Right - inset - motif, r.Bottom - inset - motif, motif, motif), 0.18);
             // spine band: full colour, printed like a real spine - code at the top, the title from the foot upwards,
@@ -375,10 +392,18 @@ public sealed class CoverArt : Control
             }
             // a front without a printed spine (the detail's pulled box) wears the wall's colour band on top instead,
             // like the system walls: the box keeps its system colour on the front
-            if (band <= 0) ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, w, Math.Max(8, Math.Round(r.Height * 0.024))));
+            if (band <= 0) ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, w, TopBand(r)));
             ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y, w, 1));
-            // title and subtitle: left after the band, anchored at the bottom with the inner margin
-            if (_titleText is { } title)
+            // title and subtitle: left after the band, anchored at the bottom with the inner margin (the pulled box of
+            // the detail: on top under the colour band, like a printed box front)
+            if (_titleText is { } topTitle && TitleOnTop(r))
+            {
+                var x = r.X + pad;
+                var y = r.Y + TopBand(r) + pad;
+                ctx.DrawText(topTitle, new Point(x, y));
+                if (_subText is { } topSub) ctx.DrawText(topSub, new Point(x, y + Math.Ceiling(topTitle.Height) + SubGap));
+            }
+            else if (_titleText is { } title)
             {
                 var x = r.X + band + pad;
                 var bottom = r.Bottom - pad;
@@ -408,11 +433,19 @@ public sealed class CoverArt : Control
         {
             var maxWidth = Math.Max(1, w - band - pad - Math.Max(6, Math.Round(pad * 0.5)));
             var budget = Math.Max(1, r.Height * 0.62);
+            var onTop = TitleOnTop(r);
+            if (onTop)
+            {
+                // from under the colour band down to above the motif (the title band grows over the 38 % split when
+                // the title needs it; the artwork field below stays the motif's)
+                var top = TopBand(r) + pad;
+                budget = Math.Max(1, r.Height - MotifInset(w) - Math.Round(r.Height * 0.5) - top - pad - 2);
+            }
             var (main, subtitle) = SplitTitle(Title);
             // one size per box height (a whole row alike), at most 4 lines, then a character ellipsis; line height 1.1.
             // A word wider than the line in Archivo Expanded (narrow Wii/Switch cases): the same size in Archivo
             // Condensed - the spine voice - instead of shrinking the poster face to 13 px (M1 leftover)
-            var size = PlaceholderTitleSize(w, r.Height);
+            var size = onTop ? TopTitleSize : PlaceholderTitleSize(w, r.Height);
             var fit = PlaceholderTitle.Fit(main, maxWidth, budget, size, PlaceholderTitle.MaxLines);
             var face = FontRoles.PosterFace;
             if (fit.Size < size)
@@ -473,6 +506,9 @@ public sealed class CoverArt : Control
             if (spineTitle.Width <= withYear) _spineTitle = spineTitle;
         }
     }
+
+    /// <summary>Title size of a box front printed with the title on top (Plakat 32, M4 QA).</summary>
+    public const double TopTitleSize = 32;
 
     /// <summary>A band narrower than this carries only the code (the title would fall below the readable 15 px).</summary>
     public const double SpineTitleMinBand = 28;

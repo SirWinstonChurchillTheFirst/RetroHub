@@ -23,15 +23,33 @@
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="FontSize" Value="18" />
     </Style>
-    <!-- a stamp of the Ausleihkarte: inked frame, date above, duration (or "Eingang") below -->
+    <!-- a stamp of "Gespielt" (M4 QA): a rubber stamp - 2 px frame in Text 3 at 70 %, an inner 1 px rule 3 px inside,
+         date (15, Text 2) over duration (18, Papier), both on 20 px lines, the numbers in Zahl (Archivo SemiExpanded) and
+         the words in the UI face so "unter 1 Min." fits the stamp; tilted by hand (static) -->
     <Style Selector="Border.stamp">
-      <Setter Property="BorderBrush" Value="{DynamicResource RhText3Brush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="BorderBrush" Value="#B3948A7A" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Padding" Value="3" />
       <Setter Property="Height" Value="64" />
     </Style>
-    <Style Selector="Border.stamp.latest">
-      <Setter Property="BorderBrush" Value="{DynamicResource RhText2Brush}" />
+    <Style Selector="Border.stamp-rule">
+      <Setter Property="BorderBrush" Value="#B3948A7A" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="10,0" />
+    </Style>
+    <Style Selector="TextBlock.stamp-date">
+      <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="LineHeight" Value="20" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    </Style>
+    <Style Selector="TextBlock.stamp-note">
+      <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="LineHeight" Value="20" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     </Style>
   </p:PageBase.Styles>
 
@@ -39,7 +57,11 @@
     <ScrollViewer Name="Scroll" HorizontalScrollBarVisibility="Disabled">
       <StackPanel Name="PageContent" Spacing="0">
         <!-- ===== stage: [spine | box] · text column, everything standing on the stage board ===== -->
-        <Grid Name="Stage" Height="588" ColumnDefinitions="Auto,56,*" Margin="{DynamicResource RhPageInsetX}">
+        <!-- one panel for the stage and its board: the box's focus layer lies over both, so the lit board piece is drawn
+             ON the board (M4 QA: drawn in the box slot, the board covered it). ZIndex 1: the board's and the focus
+             shadows fall onto the back, which is room (below the board the TV light ends, DESIGN 2.5) -->
+        <Panel Name="StageHost" ZIndex="1" ClipToBounds="False">
+        <Grid Name="Stage" Height="588" ColumnDefinitions="Auto,56,*" Margin="{DynamicResource RhPageInsetX}" VerticalAlignment="Top">
           <Panel Name="BoxSlot" Width="388" Height="504" VerticalAlignment="Bottom" HorizontalAlignment="Left" ClipToBounds="False">
             <c:GameTile Name="DetailBox" Theme="{StaticResource RhPulledBox}" Padding="28,0,0,0" DataContext="{Binding Game}"
                         AutomationProperties.Name="{l:T hint.cover}" />
@@ -98,9 +120,10 @@
           </StackPanel>
         </Grid>
 
-        <!-- the stage board, edge to edge; the TV light ends here; the box casts its contact shadow on it -->
-        <!-- ZIndex 1: its shadow falls onto the back, which is room (below the board the TV light ends, DESIGN 2.5) -->
-        <c:ShelfBoard Name="StageBoard" Height="24" ZIndex="1" />
+        <!-- the stage board, edge to edge, right under the stage (code-behind keeps its top at Stage.Height); the TV light
+             ends here; the box casts its contact shadow on it -->
+        <c:ShelfBoard Name="StageBoard" Height="24" Margin="0,588,0,0" />
+        </Panel>
 
         <!-- ===== "Rückseite" ===== -->
         <Border Name="BackGround" Background="{DynamicResource RhBaseBrush}" Padding="{DynamicResource RhPageInset}">
@@ -201,6 +224,11 @@
                 <TextBlock c:Sentence.Text="{Binding FileInfo}" Classes="meta" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
+            <!-- the other versions of this game on the shelf (folded out of "Daneben im Regal") -->
+            <Button Name="VariantsRow" Theme="{StaticResource RhInfoRow}" Tag="{l:T detail.variants}" Command="{Binding ShowVariantsCommand}"
+                    IsVisible="{Binding HasVariants}">
+              <TextBlock Text="{Binding VariantsText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </Button>
           </StackPanel>
 
           <!-- Ausleihkarte: the last sessions as stamps, the entry stamp, empty places waiting for the next -->
@@ -219,13 +247,15 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:CardPlace">
                   <Panel Margin="0,0,12,0" Width="132" Height="64">
-                    <c:EmptySlot IsVisible="{Binding IsEmpty}" />
-                    <Border Classes="stamp" IsVisible="{Binding IsStamp}">
-                      <StackPanel Spacing="2" VerticalAlignment="Center">
-                        <TextBlock c:Sentence.Text="{Binding Date}" Classes="label" Foreground="{DynamicResource RhText2Brush}" />
-                        <TextBlock c:Sentence.Text="{Binding Note}" Classes="ui" FontSize="17" IsVisible="{Binding IsSession}" />
-                        <TextBlock Text="{Binding Note}" Classes="label" Foreground="{DynamicResource RhText3Brush}" IsVisible="{Binding IsEntry}" />
-                      </StackPanel>
+                    <c:EmptySlot Baseline="True" IsVisible="{Binding IsEmpty}" />
+                    <Border Classes="stamp" IsVisible="{Binding IsStamp}" RenderTransform="{Binding Tilt}">
+                      <Border Classes="stamp-rule">
+                        <StackPanel Spacing="0" VerticalAlignment="Center">
+                          <TextBlock Classes="stamp-date" c:Sentence.Text="{Binding Date}" />
+                          <TextBlock Classes="stamp-note" c:Sentence.Text="{Binding Note}" IsVisible="{Binding IsSession}" />
+                          <TextBlock Classes="stamp-note" Text="{Binding Note}" Foreground="{DynamicResource RhText2Brush}" IsVisible="{Binding IsEntry}" />
+                        </StackPanel>
+                      </Border>
                     </Border>
                   </Panel>
                 </DataTemplate>
@@ -249,6 +279,15 @@
         <Border Name="BottomSpacer" Height="0" Background="{DynamicResource RhBaseBrush}" />
       </StackPanel>
     </ScrollViewer>
+    <!-- free scrolling inside the back: the content fades out under the header instead of being cut (DESIGN 8.4) -->
+    <Border Name="TopFade" Height="12" VerticalAlignment="Top" IsHitTestVisible="False" IsVisible="False">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+          <GradientStop Offset="0" Color="#FF14120F" />
+          <GradientStop Offset="1" Color="#0014120F" />
+        </LinearGradientBrush>
+      </Border.Background>
+    </Border>
 
     <!-- ===== overlays: the page dims (room-deep, no blur); header and footer stay ===== -->
     <Panel Name="SheetLayer" IsVisible="{Binding IsSheetOpen}" Focusable="True" Background="Transparent">
@@ -258,7 +297,7 @@
               BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="{DynamicResource RhRadiusPanel}" Padding="0,28,0,24"
               BoxShadow="{DynamicResource RhPanelShadow}" ClipToBounds="False">
         <Panel>
-          <Border Height="1" VerticalAlignment="Top" Margin="0,-28,0,0" Background="{DynamicResource RhLightEdgeBrush}" />
+          <Border Name="SheetEdge" Height="1" VerticalAlignment="Top" Margin="0,-28,0,0" Background="{DynamicResource RhLightEdgeBrush}" />
           <StackPanel Spacing="0">
             <TextBlock Name="SheetTitle" Classes="h2" Margin="36,0,36,16" TextWrapping="Wrap" />
             <!-- Mehr -->
@@ -294,15 +333,30 @@
                 </StackPanel>
               </Button>
             </StackPanel>
-            <!-- Dateiinfo: label / value lines, path and CRC in Cascadia Mono -->
+            <!-- Auch im Regal: the other versions, each opens its detail -->
+            <ItemsControl Name="VariantRows" ItemsSource="{Binding Variants}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:VariantOption">
+                  <Button Theme="{StaticResource RhSheetRow}" Command="{Binding $parent[p:PageBase].((vm:GameDetailViewModel)DataContext).OpenVariantCommand}"
+                          CommandParameter="{Binding}">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                      <Border Width="3" Height="14" Background="{Binding Game.SystemColorBrush}" VerticalAlignment="Center" />
+                      <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <!-- Dateiinfo: label / value lines, labels in Text 3, values in Papier, path and CRC in Cascadia Mono -->
             <ItemsControl Name="FileLines" ItemsSource="{Binding FileLines}" Margin="36,0,36,8">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:InfoLine">
-                  <Grid ColumnDefinitions="140,*" Margin="0,0,0,12">
-                    <TextBlock Text="{Binding Label}" Classes="ui" Foreground="{DynamicResource RhText3Brush}" />
+                  <Grid ColumnDefinitions="160,*" Margin="0,0,0,12">
+                    <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource RhFontUi}" FontWeight="Medium" FontSize="18" LineHeight="24"
+                               Foreground="{DynamicResource RhText3Brush}" />
                     <TextBlock Grid.Column="1" Text="{Binding Value}" Classes="ui" TextWrapping="Wrap" IsVisible="{Binding !Mono}" />
-                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontFamily="Cascadia Mono, Consolas, monospace" FontSize="15" LineHeight="22"
-                               Foreground="{DynamicResource RhText2Brush}" TextWrapping="Wrap" IsVisible="{Binding Mono}" />
+                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontFamily="Cascadia Mono, Consolas, monospace" FontSize="15" LineHeight="24"
+                               Foreground="{DynamicResource RhText1Brush}" TextWrapping="Wrap" IsVisible="{Binding Mono}" />
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -331,7 +385,7 @@
       </Grid>
 
       <!-- Bildschirme: title screen and snap side by side, large -->
-      <Grid Name="ScreensView" RowDefinitions="*,Auto,Auto" Margin="0,40,0,0">
+      <Grid Name="ScreensView" RowDefinitions="*,Auto,Auto,Auto" Margin="0,40,0,0">
         <StackPanel Name="LargeSets" Orientation="Horizontal" Spacing="48" HorizontalAlignment="Center" VerticalAlignment="Bottom">
           <c:PixelScreen Name="TitleLarge" PicturePath="{Binding TitleScreen}" SystemId="{Binding Game.SystemId}" Accent="{Binding Game.Accent}"
                          Code="{Binding Game.SystemShort}" IsTvSystem="{Binding IsTvSystem}" IsVisible="{Binding HasTitleScreen}" />
@@ -339,7 +393,12 @@
                          Code="{Binding Game.SystemShort}" IsTvSystem="{Binding IsTvSystem}" IsVisible="{Binding HasSnapScreen}" />
         </StackPanel>
         <c:ShelfBoard Name="ScreensLargeBoard" Grid.Row="1" Height="24" />
-        <Panel Grid.Row="2" Height="64" />
+        <!-- the captions under the board, as on the back -->
+        <StackPanel Name="LargeCaptions" Grid.Row="2" Orientation="Horizontal" Spacing="48" HorizontalAlignment="Center" Margin="0,12,0,0">
+          <TextBlock Name="TitleLargeCaption" Classes="caption" Text="{l:T detail.screen.title}" IsVisible="{Binding HasTitleScreen}" />
+          <TextBlock Name="SnapLargeCaption" Classes="caption" Text="{l:T detail.screen.snap}" IsVisible="{Binding HasSnapScreen}" />
+        </StackPanel>
+        <Panel Grid.Row="3" Height="40" />
       </Grid>
     </Panel>
   </Panel>

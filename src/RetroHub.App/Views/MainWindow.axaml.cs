@@ -408,14 +408,24 @@ public partial class MainWindow : Window
     {
         if (_watched != null) _watched.PropertyChanged -= OnWatchedPageChanged;
         _watched = page;
-        if (page == null) return;
+        if (page == null) { ApplyHeaderTones(null); return; }
         page.PropertyChanged += OnWatchedPageChanged;
         Backdrop.Show(page.Backdrop);
+        ApplyHeaderTones(page);
     }
 
     private void OnWatchedPageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(PageViewModel.Backdrop) && sender is PageViewModel p) Backdrop.Show(p.Backdrop);
+        if (sender is not PageViewModel p) return;
+        if (e.PropertyName == nameof(PageViewModel.Backdrop)) Backdrop.Show(p.Backdrop);
+        else if (e.PropertyName is nameof(PageViewModel.HeaderGround) or nameof(PageViewModel.HeaderDim)) ApplyHeaderTones(p);
+    }
+
+    /// <summary>The page's ground and overlay dim under the header's content (transparent = the room shows through).</summary>
+    private void ApplyHeaderTones(PageViewModel? page)
+    {
+        HeaderGround.Background = page == null || page.HeaderGround.A == 0 ? null : new ImmutableSolidColorBrush(page.HeaderGround);
+        HeaderDim.Background = page == null || page.HeaderDim.A == 0 ? null : new ImmutableSolidColorBrush(page.HeaderDim);
     }
 
     /// <summary>The stage board of the current page (named "StageBoard") ends the TV light; its top in window DIPs.</summary>

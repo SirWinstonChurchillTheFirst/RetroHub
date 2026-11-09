@@ -31,20 +31,26 @@ public partial class GameDetailPage : PageBase
     public GameDetailPage()
     {
         InitializeComponent();
-        // the pulled box is an object like a box on a shelf: lift, cone (inside the stage), lit board piece, ring
-        _boxFocus = new FocusLayer(BoxSlot, BoxSlot) { BoardFront = ShelfBoard.StageHeight, ConeHeadroom = 56, ConeOutsideBounds = true };
-        BoxSlot.Children.Insert(0, _boxFocus.Back);
-        BoxSlot.Children.Add(_boxFocus.Front);
+        // the pulled box is an object like a box on a shelf: lift, cone, lit board piece, ring. The layers lie over the
+        // stage AND its board (M4 QA: inside the box slot the board covered the lit piece - the box looked sunk in); the
+        // piece covers the board front opaquely, the cone is half as strong (the room is lit by the TV light already)
+        _boxFocus = new FocusLayer(StageHost, BoxSlot) { BoardFront = ShelfBoard.StageHeight, ConeHeadroom = 56, ConeOpacity = 0.5, OpaquePiece = true };
+        StageHost.Children.Insert(0, _boxFocus.Back);
+        StageHost.Children.Add(_boxFocus.Front);
         DetailBox.TemplateApplied += (_, _) =>
         {
             StageBoard.Casters = Casters();
-            if (DetailBox.Art != null) DetailBox.Art.ArtRectChanged += (_, _) => { ApplyBoxFrame(); StageBoard.InvalidateVisual(); };
+            if (DetailBox.Art != null) DetailBox.Art.ArtRectChanged += (_, _) => { ApplyBoxFrame(); StageBoard.InvalidateVisual(); UpdateGap(); };
             ApplySpine();
         };
         Stage.LayoutUpdated += (_, _) => StageBoard.InvalidateVisual();
+        TextColumn.SizeChanged += (_, _) => Dispatcher.UIThread.Post(ApplyStageHeight, DispatcherPriority.Loaded);
+        Scroll.ScrollChanged += (_, _) => OnScrolled();
         ScreensBoard.Casters = [TitleSet, SnapSet];
         ScreenSets.LayoutUpdated += (_, _) => ScreensBoard.InvalidateVisual();
         CoverBoard.Casters = [CoverLarge];
+        // the large cover's contact shadow follows its picture (M4 QA: drawn for the placeholder's square before the load)
+        CoverLarge.ArtRectChanged += (_, _) => CoverBoard.InvalidateVisual();
         ScreensLargeBoard.Casters = [TitleLarge, SnapLarge];
         LargeSets.LayoutUpdated += (_, _) => ScreensLargeBoard.InvalidateVisual();
         DescriptionText.SizeChanged += (_, _) => UpdateReadMore();
@@ -72,7 +78,7 @@ public partial class GameDetailPage : PageBase
         ScreensView.PointerPressed += (_, _) => _vm?.CloseSheetCommand.Execute(null);
 
         SizeChanged += (_, e) => ApplyLayout(e.NewSize);
-        SheetLayer.SizeChanged += (_, _) => SizeSheetViews();
+        SheetLayer.SizeChanged += (_, _) => { SizeSheetViews(); PlaceSheet(_vm?.Sheet ?? DetailSheet.None); };
         PageContent.AddHandler(GotFocusEvent, OnContentGotFocus, RoutingStrategies.Bubble, handledEventsToo: true);
         SheetLayer.AddHandler(GotFocusEvent, (_, _) => _vm?.SetFocus(DetailFocus.Sheet), RoutingStrategies.Bubble, handledEventsToo: true);
 
@@ -85,6 +91,7 @@ public partial class GameDetailPage : PageBase
             }
             _vm = DataContext as GameDetailViewModel;
             if (_vm == null) return;
+            UpdateHeaderGround();
             _vm.PickImage = PickImageAsync;
             _vm.PropertyChanged += OnVmChanged;
             _vm.SectionRequested += OnSectionRequested;
@@ -144,7 +151,6 @@ public partial class GameDetailPage : PageBase
         if (_appliedCompact == _compact) return;
         _appliedCompact = _compact;
         Root.Classes.Set("compact", _compact);
-        Stage.Height = _compact ? 398 : 588;
         Stage.ColumnDefinitions[1].Width = new GridLength(_compact ? 64 : 56);
         StageTitle.Sizes = _compact ? "56,40" : "72,56,40";
         TextColumn.Margin = new Thickness(0, 0, 0, _compact ? 32 : 44);
@@ -160,6 +166,7 @@ public partial class GameDetailPage : PageBase
         ScreenSets.Height = setHeight;
         ApplySpine();
         ApplyBoxFrame(force: true);
+        ApplyStageHeight();
         ApplyBackLayout();
     }
 
@@ -183,16 +190,44 @@ public partial class GameDetailPage : PageBase
 
     private void ApplyBoxFrame(bool force = false)
     {
-        var wide = DetailBox.Art?.ImageAspect is > 1.05;
+        var aspect = DetailBox.Art?.ImageAspect;
+        var wide = aspect is > 1.05;
         var frame = _compact ? (wide ? 360 : 240) : (wide ? WideFrameWidth : FrameWidth);
         var width = SpineWidth + frame;
-        var height = _compact ? 336 : 504;
+        var height = _compact ? 336.0 : 504.0;
+        // a landscape box is only as high as its picture: the stage below can then follow it (ApplyStageHeight)
+        if (wide) height = Math.Min(height, Math.Round(frame / aspect!.Value));
         if (!force && BoxSlot.Width == width && BoxSlot.Height == height) return;
         BoxSlot.Width = width;
         BoxSlot.Height = height;
         DetailBox.Width = width;
         DetailBox.Height = height;
+        ApplyStageHeight();
     }
+
+    /// <summary>
+    /// The stage is as high as its content (M4 QA): a portrait box keeps the board at window y 660 (≈1100: 470); a
+    /// landscape box (377 high at 1920) left ≈ 210 px of empty room above it while the back started below the fold.
+    /// There the board sits <see cref="StageHeadroom"/> above the taller of box and text column, at least at window y
+    /// 560 (≈1100: 420), so the back moves up with it.
+    /// </summary>
+    private void ApplyStageHeight()
+    {
+        var full = _compact ? 398.0 : 588.0;
+        var h = full;
+        if (DetailBox.Art?.ImageAspect is > 1.05)
+        {
+            var text = TextColumn.DesiredSize.Height; // includes its bottom margin above the board
+            var content = Math.Max(BoxSlot.Height, text);
+            h = Math.Clamp(Math.Ceiling(StageHeadroom + content), _compact ? 348 : 488, full);
+        }
+        if (Stage.Height == h) return;
+        Stage.Height = h;
+        StageBoard.Margin = new Thickness(0, h, 0, 0);
+    }
+
+    /// <summary>Free room above the box (or the text column) on a stage that follows its content.</summary>
+    private double StageHeadroom => _compact ? 64 : 88;
 
     /// <summary>
     /// The back (DESIGN 7.3, M4) in two stacks: "Über das Spiel" and "Daneben im Regal" left, "Start" with the
@@ -227,6 +262,9 @@ public partial class GameDetailPage : PageBase
         StartSection.MaxWidth = _compact ? 1100 : double.PositiveInfinity;
         StartSection.HorizontalAlignment = _compact ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Stretch;
         StartSection.Width = _compact ? 1100 : double.NaN;
+        // the neighbour shelf ends where the start rows end (M4 QA: at 1100 its edge ran 130 px further)
+        ShelfSection.Width = _compact ? 1100 : double.NaN;
+        ShelfSection.HorizontalAlignment = _compact ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Stretch;
         Dispatcher.UIThread.Post(FillNeighbours, DispatcherPriority.Loaded);
     }
 
@@ -252,9 +290,10 @@ public partial class GameDetailPage : PageBase
     // ===================== Daneben im Regal =====================
 
     /// <summary>
-    /// The shelf the box was pulled from: as many neighbours as fit the column, the gap (a dashed place as wide as one
-    /// box) where this box stood, roughly in the middle. All boxes of one system share its box format (no FitToImage),
-    /// so the count is known before the covers load.
+    /// The shelf the box was pulled from: as many neighbours as fit the column, the gap (a dashed place in the pulled
+    /// box's own format, standing on the shelf edge) where this box stood, roughly in the middle. All boxes of one system
+    /// share its box format (no FitToImage), so the count is known before the covers load. The shelf is one system:
+    /// the captions drop the code like the library's compartment (bar, variant, year stay).
     /// </summary>
     private void FillNeighbours()
     {
@@ -278,6 +317,7 @@ public partial class GameDetailPage : PageBase
         items.AddRange(after.Take(right));
         var focusedItem = (TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control)?.DataContext;
         NeighbourRow.Children.Clear();
+        _gap = null;
         // each box keeps its caption under the board like in the library (namesakes differ in their label line)
         NeighbourRow.Height = height + CaptionBlock;
         NeighbourBoard.Margin = new Thickness(0, height, 0, 16);
@@ -295,6 +335,8 @@ public partial class GameDetailPage : PageBase
                     Width = slot,
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom,
                 };
+                tile.Classes.Add("no-code");
+                if (!game.HasLabelDetail) tile.Classes.Add("bare");
                 tile.TemplateApplied += (_, _) =>
                 {
                     if (tile.Art != null) tile.Art.ArtRectChanged += (_, _) => NeighbourBoard.InvalidateVisual();
@@ -306,13 +348,23 @@ public partial class GameDetailPage : PageBase
             }
             else
             {
-                NeighbourRow.Children.Add(new EmptySlot { Width = slot, Height = height, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top });
+                _gap = new EmptySlot { Width = slot, Height = height, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+                NeighbourRow.Children.Add(_gap);
+                UpdateGap();
             }
         }
         NeighbourBoard.Casters = tiles.Select(t => (Control)(t.Art ?? (Control)t)).ToList();
     }
 
     private static readonly object GapMarker = new();
+    private EmptySlot? _gap;
+
+    /// <summary>The gap has the pulled box's format: its picture's aspect, else the placeholder's (M4 QA).</summary>
+    private void UpdateGap()
+    {
+        if (_gap == null) return;
+        _gap.Aspect = DetailBox.Art?.ImageAspect ?? 1 / Math.Clamp(SystemPalette.BoxAspect(_vm?.Game?.SystemId), 0.6, 1.8);
+    }
 
     /// <summary>The caption under a box (GameTile: 24 = board 12 + gap 12, then the 66 px title and label block).</summary>
     private const double CaptionBlock = 90;
@@ -349,6 +401,7 @@ public partial class GameDetailPage : PageBase
                 _ when x == SystemButton => DetailFocus.System,
                 _ when x == EmulatorBox || x == ModeBox => DetailFocus.Row,
                 _ when x == FileRow => DetailFocus.File,
+                _ when x == VariantsRow => DetailFocus.Variants,
                 _ when x == TitleScreenButton || x == SnapScreenButton => DetailFocus.Screen,
                 _ when x == ReadMoreButton => DetailFocus.ReadMore,
                 GameTile when x.GetVisualParent() == NeighbourRow => DetailFocus.Neighbour,
@@ -367,10 +420,11 @@ public partial class GameDetailPage : PageBase
     }
 
     /// <summary>
-    /// Scrolls so that <paramref name="focused"/> (in the back) is visible with 40 px to spare – and never cuts the
-    /// stage's text in half: the top edge stops above the system label, just above the actions (the title has gone
-    /// up, "Spielen" stays in reach) or anywhere from there down. Room below the back makes the cut above the actions
-    /// reachable on a short page.
+    /// Scrolls so that <paramref name="focused"/> (in the back) is visible with 40 px to spare. Over the stage the page
+    /// rests only at three stops (M4 QA: in between, slivers of the box and the buttons hung under the header): the top
+    /// (0), the whole action row in view (<see cref="ActionsStop"/>: the title has gone up, "Spielen" stays in reach) and
+    /// the board flush under the header (<see cref="BoardStop"/>); below it the back scrolls freely. Room below the back
+    /// makes a stop reachable on a short page.
     /// </summary>
     private void ShowBack(Control? focused)
     {
@@ -379,27 +433,79 @@ public partial class GameDetailPage : PageBase
         if (viewport <= 0) return;
         var top = focused.TranslatePoint(new Point(0, 0), PageContent)?.Y ?? 0;
         var bottom = focused.TranslatePoint(new Point(0, focused.Bounds.Height), PageContent)?.Y ?? 0;
-        var labelCut = Math.Max(0, (SystemButton.TranslatePoint(new Point(0, 0), PageContent)?.Y ?? 0) - 24);
-        var actionsCut = Math.Max(0, (Actions.TranslatePoint(new Point(0, 0), PageContent)?.Y ?? 0) - 14);
+        var actions = ActionsStop;
+        var board = BoardStop;
         var offset = Scroll.Offset.Y;
         double target;
         if (bottom + 40 > offset + viewport)
         {
             var want = bottom + 40 - viewport;
-            target = want <= labelCut ? want : want <= actionsCut ? actionsCut : want;
+            target = want <= actions ? actions : want <= board ? board : want;
         }
         else if (top - 40 < offset)
         {
             var want = Math.Max(0, top - 40);
-            target = want >= actionsCut ? want : want >= labelCut ? labelCut : want;
+            target = want >= board ? want : want >= actions ? actions : 0;
         }
         else return;
-        // the cut above the actions must be reachable: room below the back when the page is too short for it
+        ScrollTo(target);
+    }
+
+    /// <summary>The action row (64) whole under the header, 24 px above it.</summary>
+    private double ActionsStop => Math.Max(0, (Actions.TranslatePoint(new Point(0, 0), PageContent)?.Y ?? 0) - 24);
+
+    /// <summary>The stage board's lower edge flush under the header: the back fills the page.</summary>
+    private double BoardStop => Math.Max(ActionsStop, Stage.Height + StageBoard.Height);
+
+    private void ScrollTo(double target)
+    {
+        // the stop must be reachable: room below the back when the page is too short for it
+        var viewport = Scroll.Viewport.Height;
         var content = PageContent.Bounds.Height - BottomSpacer.Height;
         BottomSpacer.Height = Math.Max(0, Math.Ceiling(target + viewport - content));
         var version = ++_scrollVersion;
         Dispatcher.UIThread.Post(() => { if (version == _scrollVersion) Scroll.Offset = new Vector(0, target); }, DispatcherPriority.Loaded);
     }
+
+    private DispatcherTimer? _snapTimer;
+
+    /// <summary>
+    /// After free scrolling (wheel, scroll bar) the page settles on the nearest stop when it came to rest over the stage;
+    /// inside the back the header gets the room's tone and the 12 px fade (DESIGN 8.4) softens the cut.
+    /// </summary>
+    private void OnScrolled()
+    {
+        UpdateHeaderGround();
+        _snapTimer ??= new DispatcherTimer(TimeSpan.FromMilliseconds(180), DispatcherPriority.Background, (_, _) =>
+        {
+            _snapTimer!.Stop();
+            SnapToStop();
+        });
+        _snapTimer.Stop();
+        _snapTimer.Start();
+    }
+
+    private void SnapToStop()
+    {
+        var y = Scroll.Offset.Y;
+        var actions = ActionsStop;
+        var board = BoardStop;
+        double target;
+        if (y > 0.5 && y < actions - 0.5) target = y < actions / 2 ? 0 : actions;
+        else if (y > actions + 0.5 && y < board - 0.5) target = y - actions < (board - actions) / 2 ? actions : board;
+        else return;
+        ScrollTo(target);
+    }
+
+    /// <summary>Reading the back: the header on Raum (no lighter TV-light band above the plain back) and the top fade.</summary>
+    private void UpdateHeaderGround()
+    {
+        var inBack = Scroll.Offset.Y >= BoardStop - 0.5 && Scroll.Offset.Y > 0;
+        TopFade.IsVisible = inBack;
+        if (_vm != null) _vm.HeaderGround = inBack ? RoomColor : default;
+    }
+
+    private static readonly Color RoomColor = Color.Parse("#14120F");
 
     /// <summary>What has to be visible for a focused element: a lifted box with its board, a screen with its caption.</summary>
     private Control? FocusTarget(Visual v)
@@ -434,24 +540,34 @@ public partial class GameDetailPage : PageBase
     private void ApplySheet()
     {
         var sheet = _vm?.Sheet ?? DetailSheet.None;
-        var panel = sheet is DetailSheet.More or DetailSheet.FileInfo or DetailSheet.Description;
+        var panel = sheet is DetailSheet.More or DetailSheet.FileInfo or DetailSheet.Description or DetailSheet.Variants;
+        // Mehr and "Auch im Regal" are lists that hang at their button (M4 QA: a centred 680 px card for four short
+        // items read as a stock modal); file info and the description stay a centred sheet
+        var list = sheet is DetailSheet.More or DetailSheet.Variants;
         SheetPanel.IsVisible = panel;
         MoreRows.IsVisible = sheet == DetailSheet.More;
+        VariantRows.IsVisible = sheet == DetailSheet.Variants;
         FileLines.IsVisible = sheet == DetailSheet.FileInfo;
         DescriptionScroll.IsVisible = sheet == DetailSheet.Description;
         SheetFolderButton.IsVisible = sheet == DetailSheet.FileInfo;
-        SheetButtons.IsVisible = sheet != DetailSheet.More;
+        SheetButtons.IsVisible = !list;
+        SheetTitle.IsVisible = !list;
         SheetTitle.Text = sheet switch
         {
-            DetailSheet.More => Loc.T("detail.more"),
             DetailSheet.FileInfo => Loc.T("detail.fileInfo"),
             DetailSheet.Description => _vm?.Game?.Title ?? "",
             _ => "",
         };
+        var pad = list ? 8.0 : 28.0;
+        SheetPanel.Padding = new Thickness(0, pad, 0, list ? 8 : 24);
+        SheetEdge.Margin = new Thickness(0, -pad, 0, 0);
+        SheetPanel.Width = list ? 420 : sheet == DetailSheet.FileInfo ? 760 : 680;
+        PlaceSheet(sheet);
         CoverView.IsVisible = sheet == DetailSheet.Cover;
         ScreensView.IsVisible = sheet == DetailSheet.Screens;
-        // the cover overlay dims the page almost completely (the box is the only thing to look at)
-        SheetScrim.Background = new ImmutableSolidColorBrush(Color.FromArgb(sheet is DetailSheet.Cover or DetailSheet.Screens ? (byte)0xF0 : (byte)0xB8, 0x0A, 0x09, 0x08));
+        // the cover overlay dims the page almost completely (the box is the only thing to look at); the header gets
+        // the same dim from the page model, so the two meet without a seam
+        SheetScrim.Background = new ImmutableSolidColorBrush(sheet is DetailSheet.Cover or DetailSheet.Screens ? GameDetailViewModel.SheetDimDeep : GameDetailViewModel.SheetDim);
         if (sheet == DetailSheet.None)
         {
             var back = _sheetOpener;
@@ -472,11 +588,44 @@ public partial class GameDetailPage : PageBase
         var target = _vm.Sheet switch
         {
             DetailSheet.More => MoreRows.Children.OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible),
+            DetailSheet.Variants => VariantRows.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible),
             DetailSheet.FileInfo or DetailSheet.Description => SheetCloseButton,
             _ => null,
         };
         if (target != null) target.Focus(NavigationMethod.Directional);
         else SheetLayer.Focus(NavigationMethod.Directional);
+    }
+
+    /// <summary>
+    /// A list hangs at its button: left = the button's left, top = its bottom + 8 (above the button when there is no
+    /// room below). The other sheets stand centred.
+    /// </summary>
+    private void PlaceSheet(DetailSheet sheet)
+    {
+        var anchor = sheet switch
+        {
+            DetailSheet.More => (Control)MoreButton,
+            DetailSheet.Variants => VariantsRow,
+            _ => null,
+        };
+        if (anchor == null || anchor.TranslatePoint(new Point(0, 0), Root) is not { } at)
+        {
+            SheetPanel.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+            SheetPanel.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
+            SheetPanel.Margin = default;
+            return;
+        }
+        var layer = Root.Bounds.Size;
+        // the variants list starts under the row's value column (label 200 + inset 16)
+        var x = anchor == VariantsRow ? at.X + 216 - 28 : at.X;
+        x = Math.Clamp(x, 16, Math.Max(16, layer.Width - SheetPanel.Width - 16));
+        var rows = sheet == DetailSheet.More ? MoreRows.Children.Count(c => c.IsVisible) : _vm?.Variants.Count ?? 0;
+        var height = rows * 56 + 16 + 2;
+        var below = at.Y + anchor.Bounds.Height + 8;
+        var y = below + height <= layer.Height - 64 ? below : Math.Max(16, at.Y - 8 - height);
+        SheetPanel.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+        SheetPanel.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+        SheetPanel.Margin = new Thickness(x, y, 0, 0);
     }
 
     /// <summary>The large views fill the page: the cover up to the board, the two screens side by side.</summary>
@@ -486,15 +635,19 @@ public partial class GameDetailPage : PageBase
         if (size.Width <= 0) return;
         var count = (_vm?.HasTitleScreen == true ? 1 : 0) + (_vm?.HasSnapScreen == true ? 1 : 0);
         if (count == 0) return;
-        var maxH = size.Height - 40 - 24 - 64 - 24;
-        var w = Math.Floor((size.Width - 2 * 96 - (count - 1) * 48) / count);
+        // board 24, captions 12 + 21, 40 below, 24 above: at most 720 wide each (M4 QA: 840 px slabs read as monitor frames)
+        var maxH = size.Height - 40 - 24 - 33 - 40 - 24;
+        var w = Math.Min(MaxLargeScreen, Math.Floor((size.Width - 2 * 96 - (count - 1) * 48) / count));
         while (w > 200 && PixelScreen.SetHeightFor(w) > maxH) w -= 8;
         foreach (var s in new[] { TitleLarge, SnapLarge })
         {
             s.Width = w;
             s.Height = PixelScreen.SetHeightFor(w);
         }
+        TitleLargeCaption.Width = SnapLargeCaption.Width = w;
     }
+
+    private const double MaxLargeScreen = 720;
 
     // ===================== directional navigation =====================
 

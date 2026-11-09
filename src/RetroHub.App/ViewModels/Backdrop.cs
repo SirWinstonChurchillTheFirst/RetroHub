@@ -18,6 +18,7 @@ public enum BackdropKind
 /// board's top edge sits (share of the window height; below it the room is plain); <paramref name="GlowX"/>/
 /// <paramref name="GlowY"/> = centre of the glow at the source (the TV / the box), relative to the window;
 /// <paramref name="GhostX"/> = horizontal centre of the motif outline shown when the game has no picture;
+/// <paramref name="GhostShare"/>/<paramref name="GhostAlpha"/> = its size (share of the stage height) and strength;
 /// <paramref name="AccentBoard"/> = a plain room whose boards carry the user's light at 22 % (library "Alle", DESIGN 2.5.6).
 /// </summary>
 public sealed record BackdropSpec(
@@ -30,7 +31,9 @@ public sealed record BackdropSpec(
     double GlowX = 0.75,
     double GlowY = 0.33,
     double GhostX = 0.82,
-    bool AccentBoard = false)
+    bool AccentBoard = false,
+    double GhostShare = 0.8,
+    double GhostAlpha = 0.07)
 {
     public static readonly BackdropSpec Room = new(BackdropKind.Room);
 }

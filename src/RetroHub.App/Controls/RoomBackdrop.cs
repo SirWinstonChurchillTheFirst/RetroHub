@@ -264,8 +264,9 @@ public sealed class RoomBackdrop : Panel
         _glowBrush.GradientOrigin = _glowBrush.Center;
         _glowBrush.RadiusX = new RelativeScalar(r, RelativeUnit.Absolute);
         _glowBrush.RadiusY = new RelativeScalar(r, RelativeUnit.Absolute);
-        // the motif outline stands on the stage board, right, 80 % of the stage height
-        var size = Math.Round(stage * 0.8);
+        // the motif outline stands on the stage board, right, 80 % of the stage height (the detail: 40 %, M4 QA)
+        var size = Math.Round(stage * _target.GhostShare);
+        _ghost.Alpha = _target.GhostAlpha;
         _ghost.Width = size;
         _ghost.Height = size;
         _ghost.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
@@ -537,9 +538,18 @@ internal sealed class MotifGhost : Control
         set { if (_look == value) return; _look = value; InvalidateVisual(); }
     }
 
+    private double _alpha = 0.07;
+
+    /// <summary>Strength of the outline (7 %; the detail stage 4 %).</summary>
+    public double Alpha
+    {
+        get => _alpha;
+        set { if (_alpha == value) return; _alpha = value; InvalidateVisual(); }
+    }
+
     public override void Render(DrawingContext context)
     {
         if (_look == null || Bounds.Width <= 0) return;
-        MotifCatalog.DrawOutline(context, _look, new Rect(Bounds.Size), 0.07, 1.5);
+        MotifCatalog.DrawOutline(context, _look, new Rect(Bounds.Size), Alpha, 1.5);
     }
 }
