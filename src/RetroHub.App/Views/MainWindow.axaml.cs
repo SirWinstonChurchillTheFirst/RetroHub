@@ -79,6 +79,9 @@ public partial class MainWindow : Window
         vm.Ctx.Services.Input.ActionRaised += a => Dispatcher.UIThread.Post(() =>
         {
             if (!vm.Ctx.Services.Settings.Current.ControllerEnabled) return; // setting "Mit Controller bedienen"
+            // SDL delivers pad events in the background too: only steer RetroHub while it is the active window
+            // (otherwise the pad would navigate RetroHub while the user plays or works in another program).
+            if (!IsActive) return;
             _pointerMode = false;
             Execute(a);
         });

@@ -138,6 +138,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         try
         {
+            // "Ordner überwachen": new/changed files in a library folder → quiet incremental scan.
+            void Hook()
+            {
+                var w = Ctx.Services.Watcher;
+                if (w == null) return;
+                w.FoldersChanged -= OnFoldersChanged;
+                w.FoldersChanged += OnFoldersChanged;
+            }
+            Ctx.Services.WatcherChanged += () => Dispatcher.UIThread.Post(Hook);
+            Hook();
+
             if (!Ctx.Services.Settings.Current.ScanOnStartup) return null;
             Log.Info("Start-up library scan");
             return ((ImportsViewModel)GetPage(PageKey.Imports)).RunScanAsync(quiet: true);
@@ -148,6 +159,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return null;
         }
     }
+
+    private void OnFoldersChanged(IReadOnlyList<long> folderIds) => Dispatcher.UIThread.Post(() =>
+    {
+        // A game is running: do not compete for the disk; the next change or the next start will pick it up.
+        if (Ctx.Services.Sessions.Current != null) return;
+        Log.Info($"Library folders changed ({folderIds.Count}) – quiet scan");
+        _ = ((ImportsViewModel)GetPage(PageKey.Imports)).RunScanAsync(quiet: true);
+    });
 
     [RelayCommand]
     private void Navigate(NavItemViewModel? item)

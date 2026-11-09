@@ -108,8 +108,12 @@ public sealed partial class AppServices : IDisposable
         };
     }
 
+    /// <summary>Disposes the extra resources of the real services (watcher, session service); see AppServices.Real.cs.</summary>
+    partial void DisposeReal();
+
     public void Dispose()
     {
+        DisposeReal();
         try { Input.Dispose(); } catch (Exception ex) { Log.Warn("Input source dispose failed", ex); }
         try { Games.Dispose(); } catch (Exception ex) { Log.Warn("Repository dispose failed", ex); }
     }
