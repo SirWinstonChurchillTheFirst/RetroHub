@@ -337,5 +337,31 @@
   "time.daysAgo": "vor {0} Tagen",
   "time.weeksAgo": "vor {0} Wo.",
 
-  "error.unexpected": "Unerwarteter Fehler – Details stehen im Protokoll."
+  "error.unexpected": "Unerwarteter Fehler – Details stehen im Protokoll.",
+  // ──────── artwork module (feat/artwork): covers, "Cover suchen", "Cover wählen…" ────────
+  "artwork.title": "Cover",
+  "artwork.hint": "Sucht fehlende Cover in artwork/covers/<Konsole>/, neben den Spieldateien und in ES-DE/Batocera-Ordnern (media/covers, downloaded_images). Läuft nach jedem Scan automatisch.",
+  "artwork.onlineOn": "Online-Suche ist an: fehlende Cover werden zusätzlich von thumbnails.libretro.com geladen.",
+  "artwork.onlineOff": "Online-Suche ist aus – nur lokale Bilder (Einstellungen › Cover aus dem Internet laden).",
+  "artwork.find": "Cover suchen",
+  "artwork.preparing": "Suche Cover …",
+  "artwork.progressLocal": "Lokal: {0} von {1}",
+  "artwork.progressOnline": "Online: {0} von {1}",
+  "artwork.done": "Cover-Suche abgeschlossen",
+  "artwork.doneDetail": "{0} lokal gefunden · {1} heruntergeladen · {2} ohne Cover",
+  "artwork.errors": "{0} Abrufe fehlgeschlagen – Details stehen im Protokoll.",
+  "artwork.failed": "Cover-Suche fehlgeschlagen",
+  "artwork.cancelled": "Cover-Suche abgebrochen",
+  "artwork.busy": "Die Cover-Suche läuft bereits.",
+  "artwork.unavailable": "Im Demo-Modus nicht verfügbar.",
+  "artwork.lastResult": "Zuletzt: {0} lokal gefunden · {1} heruntergeladen · {2} ohne Cover",
+  "artwork.choose": "Cover wählen…",
+  "artwork.remove": "Cover entfernen",
+  "artwork.pickTitle": "Cover-Bild wählen",
+  "artwork.pickFilter": "Bilder (PNG, JPG, WebP)",
+  "artwork.chosen": "Cover gespeichert",
+  "artwork.chooseFailed": "Das Bild konnte nicht als Cover übernommen werden.",
+  "artwork.removed": "Cover entfernt",
+  "artwork.removedDetail": "Die Bilddatei selbst bleibt erhalten. Über „Cover wählen…“ kannst du jederzeit ein neues setzen.",
+  "artwork.settings.onlineHint": "Lädt fehlende Cover von thumbnails.libretro.com (Projekt libretro-thumbnails). Dafür wird pro Konsole einmal die Dateiliste von GitHub (api.github.com) abgerufen und 30 Tage zwischengespeichert. Übertragen werden nur Spiel- und Konsolennamen, keine persönlichen Daten. Standardmäßig aus."
 }

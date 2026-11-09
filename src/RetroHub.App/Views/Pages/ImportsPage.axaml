@@ -96,6 +96,30 @@
             </StackPanel>
           </Border>
 
+          <!-- covers (artwork module) -->
+          <Border Classes="glass" Padding="24,22">
+            <StackPanel Spacing="14">
+              <TextBlock Text="{l:T artwork.title}" Classes="h2" />
+              <TextBlock Text="{l:T artwork.hint}" Classes="body" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding CoverOnlineText}" Classes="meta" FontSize="12.5" TextWrapping="Wrap" />
+              <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                <Button Name="CoversButton" Command="{Binding FindCoversCommand}" MinHeight="48">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <c:RhIcon Data="{StaticResource Icon.Search}" Width="17" Height="17" />
+                    <TextBlock Text="{l:T artwork.find}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+                <Button Command="{Binding CancelCoversCommand}" IsVisible="{Binding IsFindingCovers}" Content="{l:T common.cancel}" MinHeight="48" />
+              </StackPanel>
+              <StackPanel Spacing="8" IsVisible="{Binding IsFindingCovers}">
+                <ProgressBar Value="{Binding CoverProgress}" IsIndeterminate="{Binding CoverIndeterminate}" Maximum="100" />
+                <TextBlock Text="{Binding CoverProgressText}" FontSize="13" FontWeight="Medium" />
+                <TextBlock Text="{Binding CoverCurrent}" Classes="meta" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <TextBlock Text="{Binding CoverResultText}" IsVisible="{Binding HasCoverResult}" Classes="meta" FontSize="12.5" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+
           <!-- last report -->
           <Border Classes="glass" Padding="24,22" IsVisible="{Binding HasReport}">
             <StackPanel Spacing="16">

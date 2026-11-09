@@ -8,6 +8,7 @@ using RetroHub.Core.Emulation.Portable;
 using RetroHub.Core.IO;
 using RetroHub.Core.Library;
 using RetroHub.Core.Logging;
+using RetroHub.Core.Metadata;
 
 namespace RetroHub.App.Services;
 
@@ -16,6 +17,9 @@ public sealed partial class AppServices
 {
     /// <summary>Watches the library folders (null in demo mode or when "Ordner überwachen" is off).</summary>
     public FolderWatcher? Watcher { get; private set; }
+
+    /// <summary>Cover lookup (local folders + optional libretro-thumbnails); null in demo mode.</summary>
+    public ArtworkService? Artwork { get; init; }
 
     /// <summary>Set when a broken database was copied aside at startup (shown once to the user).</summary>
     public string? PreservedCorruptDatabase { get; init; }
@@ -55,8 +59,11 @@ public sealed partial class AppServices
                 Sessions = sessions,
                 Input = GamepadInputSource.TryCreate(swapAcceptBack: false),
                 PreservedCorruptDatabase = games.PreservedCorruptFile,
+                Artwork = new ArtworkService(paths, games, catalog, settings),
                 IsDemo = false,
             };
+            // large cover files are decoded once and kept as small JPEGs in data/cache/thumbs
+            AsyncImageLoader.Shared.DiskCacheFolder = paths.Thumbnails;
             created.ConfigureWatcher(s.WatchFolders);
             settings.Saved += st => created.ConfigureWatcher(st.WatchFolders);
             games.Changed += created.OnRepositoryChanged;

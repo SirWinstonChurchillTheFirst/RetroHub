@@ -37,6 +37,20 @@
               </StackPanel>
             </Panel>
           </Button>
+          <!-- cover (artwork module) -->
+          <DockPanel IsVisible="{Binding CanEditCover}">
+            <Button Name="RemoveCoverButton" DockPanel.Dock="Right" Margin="10,0,0,0" Theme="{StaticResource RhIconButton}" Width="44" Height="44"
+                    VerticalAlignment="Center" IsVisible="{Binding HasCover}" Command="{Binding RemoveCoverCommand}"
+                    ToolTip.Tip="{l:T artwork.remove}" AutomationProperties.Name="{l:T artwork.remove}">
+              <c:RhIcon Data="{StaticResource Icon.Close}" Width="15" Height="15" />
+            </Button>
+            <Button Name="ChooseCoverButton" HorizontalAlignment="Stretch" Command="{Binding ChooseCoverCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <c:RhIcon Data="{StaticResource Icon.Folder}" Width="17" Height="17" />
+                <TextBlock Text="{l:T artwork.choose}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </DockPanel>
         </StackPanel>
 
         <!-- right: info -->

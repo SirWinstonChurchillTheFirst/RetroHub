@@ -176,7 +176,8 @@ public sealed class EmulatorRegistryTests : IDisposable
         var settings = new SettingsStore(Path.Combine(_t.Root, "settings.json"));
         var before = Snapshot(Path.Combine(realRoot, "emulators"));
 
-        var reg = new EmulatorRegistry(catalog, paths, settings);
+        // the probed-version cache goes to the temp folder, not to D:\RetroHub\data
+        var reg = new EmulatorRegistry(catalog, paths, settings, Path.Combine(_t.Root, "emulator-versions.json"));
 
         var output = TestContext.Current.TestOutputHelper;
         foreach (var e in reg.All)
@@ -193,7 +194,8 @@ public sealed class EmulatorRegistryTests : IDisposable
             Assert.Contains(core, reg.Get("retroarch")!.InstalledCores);
         // versions as found on 2026-11-09: mGBA FileVersion 0.10.5.0 (its ProductVersion is just "mgba"),
         // melonDS ProductVersion 1.1; DeSmuME/Azahar have no version resource → folder/exe name;
-        // RetroArch has neither (folder "RetroArch-Win64") → null is correct
+        // RetroArch has neither (folder "RetroArch-Win64") → "retroarch.exe --version" (cached) says 1.22.2
+        Assert.Equal("1.22.2", reg.Get("retroarch")!.Version);
         Assert.Equal("0.10.5", reg.Get("mgba")!.Version);
         Assert.Equal("1.1", reg.Get("melonds")!.Version);
         Assert.Equal("0.9.13", reg.Get("desmume")!.Version);

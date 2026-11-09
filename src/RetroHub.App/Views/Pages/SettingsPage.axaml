@@ -230,7 +230,7 @@
           <Grid Classes="row" ColumnDefinitions="*,Auto">
             <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
               <TextBlock Text="{l:T settings.onlineCovers}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.onlineCovers.hint}" Classes="rowHint" />
+              <TextBlock Text="{l:T artwork.settings.onlineHint}" Classes="rowHint" />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding OnlineCovers}" VerticalAlignment="Center" />
           </Grid>

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Avalonia.Media.Imaging;
 using RetroHub.Core.Logging;
 
@@ -7,6 +9,9 @@ namespace RetroHub.App.Services;
 /// Loads cover images off the UI thread: <see cref="Bitmap.DecodeToWidth"/> on the thread pool (only the pixels
 /// needed for the tile width), an in-memory LRU cache by (path, width), de-duplication of concurrent requests,
 /// and cancellation when a tile is recycled before its image arrived. Missing/broken files yield null (placeholder).
+/// With <see cref="DiskCacheFolder"/> set (data/cache/thumbs), large source images (&gt; <see cref="DiskCacheMinBytes"/>)
+/// are decoded once and saved as a downscaled JPEG (quality 90) named after a hash of (path, size, mtime, width); later loads decode
+/// the small file. Core has no image library, so this App-side cache is RetroHub's thumbnail cache.
 /// </summary>
 public sealed class AsyncImageLoader
 {
@@ -21,6 +26,12 @@ public sealed class AsyncImageLoader
     private readonly SemaphoreSlim _decoders = new(Math.Clamp(Environment.ProcessorCount / 2, 2, 4));
 
     public AsyncImageLoader(int capacity) { _capacity = Math.Max(16, capacity); }
+
+    /// <summary>Folder for downscaled copies of large covers; null = memory cache only.</summary>
+    public string? DiskCacheFolder { get; set; }
+
+    /// <summary>Source files at least this big get a disk thumbnail.</summary>
+    public long DiskCacheMinBytes { get; set; } = 256 * 1024;
 
     /// <summary>Decode widths are bucketed so nearby tile sizes share cache entries.</summary>
     public static int Bucket(double pixelWidth) => pixelWidth <= 0 ? 256 : (int)(Math.Ceiling(pixelWidth / 64.0) * 64);
@@ -70,12 +81,7 @@ public sealed class AsyncImageLoader
         await _decoders.WaitAsync().ConfigureAwait(false);
         try
         {
-            var bitmap = await Task.Run(() =>
-            {
-                if (!File.Exists(path)) return null;
-                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 64 * 1024);
-                return Bitmap.DecodeToWidth(stream, width, BitmapInterpolationMode.HighQuality);
-            }).ConfigureAwait(false);
+            var bitmap = await Task.Run(() => Decode(path, width)).ConfigureAwait(false);
             lock (_gate)
             {
                 _inflight.Remove(key);
@@ -105,6 +111,58 @@ public sealed class AsyncImageLoader
         finally
         {
             _decoders.Release();
+        }
+    }
+
+    private Bitmap? Decode(string path, int width)
+    {
+        var info = new FileInfo(path);
+        if (!info.Exists) return null;
+        var thumb = ThumbPath(info, width);
+        if (thumb != null && File.Exists(thumb))
+        {
+            try
+            {
+                using var cached = new FileStream(thumb, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 64 * 1024);
+                return new Bitmap(cached);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug($"Thumbnail {thumb} unreadable, decoding the original: {ex.Message}");
+            }
+        }
+        Bitmap bitmap;
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 64 * 1024))
+            bitmap = Bitmap.DecodeToWidth(stream, width, BitmapInterpolationMode.HighQuality);
+        if (thumb != null) SaveThumb(bitmap, thumb);
+        return bitmap;
+    }
+
+    /// <summary>Disk thumbnail path for a large file, or null (no cache folder / small file).</summary>
+    internal string? ThumbPath(FileInfo source, int width)
+    {
+        var folder = DiskCacheFolder;
+        if (folder == null || source.Length < DiskCacheMinBytes) return null;
+        var id = $"{source.FullName.ToLowerInvariant()}|{source.Length}|{source.LastWriteTimeUtc.Ticks}|{width}";
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(id)), 0, 12).ToLowerInvariant();
+        return Path.Combine(folder, hash + ".jpg");
+    }
+
+    private static void SaveThumb(Bitmap bitmap, string thumb)
+    {
+        // the SafeFile suffix: leftovers of a killed process are swept from data/ at start-up
+        var tmp = thumb + "." + Environment.CurrentManagedThreadId + RetroHub.Core.IO.SafeFile.TempSuffix;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(thumb)!);
+            using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+                bitmap.Save(fs, new JpegBitmapEncoderOptions { Quality = 90 });
+            File.Move(tmp, thumb, overwrite: true);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug($"Saving thumbnail {thumb} failed: {ex.Message}");
+            try { File.Delete(tmp); } catch (Exception) { /* best effort */ }
         }
     }
 

@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RetroHub.App.Input;
 using RetroHub.App.Localization;
+using RetroHub.App.Services;
 using RetroHub.Core.Catalog;
 using RetroHub.Core.Emulation;
 using RetroHub.Core.Library;
@@ -64,6 +65,13 @@ public sealed partial class GameDetailViewModel : PageViewModel
     [ObservableProperty] public partial bool CanPlay { get; private set; }
     [ObservableProperty] public partial string PlanSummary { get; private set; } = "";
     [ObservableProperty] public partial bool HasProblems { get; private set; }
+    /// <summary>The game has a cover reference ("Cover entfernen" is offered).</summary>
+    [ObservableProperty] public partial bool HasCover { get; private set; }
+    /// <summary>Covers can be chosen (real services; the demo has no artwork service).</summary>
+    public bool CanEditCover => Ctx.Services.Artwork != null;
+
+    /// <summary>Set by the view: shows the image picker and returns the chosen file (null = cancelled).</summary>
+    public Func<Task<string?>>? PickImage { get; set; }
 
     public override IReadOnlyList<HintItem> Hints =>
     [
@@ -139,6 +147,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
             PlayCount = g.PlayCount == 0 ? Loc.T("detail.neverStarted") : g.PlayCount == 1 ? Loc.T("detail.startedOnce") : Loc.T("detail.startedTimes", g.PlayCount);
             Added = Fmt.Date(g.AddedUtc);
             FilePath = g.Path;
+            HasCover = !string.IsNullOrEmpty(g.CoverPath);
             FileInfo = string.Join(" · ", new[] { Fmt.Size(g.Size), g.Crc32 != null ? "CRC32 " + g.Crc32 : null, g.Serial }.Where(x => !string.IsNullOrEmpty(x)));
 
             // emulator choices: "Automatisch" (system default order) + every configured choice with its install state
@@ -246,4 +255,41 @@ public sealed partial class GameDetailViewModel : PageViewModel
     }
 
     [RelayCommand] private void Back() => Ctx.Navigator.GoBack();
+
+    /// <summary>"Cover wählen…": file picker → copied to artwork/covers/&lt;system&gt;/&lt;rom name&gt;.&lt;ext&gt; → CoverPath.</summary>
+    [RelayCommand]
+    private async Task ChooseCoverAsync()
+    {
+        var artwork = Ctx.Services.Artwork;
+        var item = Game;
+        if (artwork == null || item == null || PickImage == null) return;
+        string? file;
+        try { file = await PickImage(); }
+        catch (Exception ex) { Log.Warn("Image picker failed", ex); return; }
+        if (file == null) return;
+        var stored = await UiContext.Background(() => artwork.SetUserCover(item.Id, file), "Setting the cover");
+        if (stored == null)
+        {
+            Ctx.Toasts.Show(Loc.T("artwork.chooseFailed"), ToastKind.Error);
+            return;
+        }
+        AsyncImageLoader.Shared.ResetFailures();
+        HasCover = true;
+        Ctx.Toasts.Show(Loc.T("artwork.chosen"), ToastKind.Success, stored);
+        await LoadAsync(item.Id);
+    }
+
+    /// <summary>"Cover entfernen": only clears the reference; the image file is never deleted.</summary>
+    [RelayCommand]
+    private async Task RemoveCoverAsync()
+    {
+        var artwork = Ctx.Services.Artwork;
+        var item = Game;
+        if (artwork == null || item == null) return;
+        var ok = await UiContext.Background(() => { artwork.ClearCover(item.Id); return true; }, "Removing the cover");
+        if (!ok) return;
+        HasCover = false;
+        Ctx.Toasts.Show(Loc.T("artwork.removed"), ToastKind.Info, Loc.T("artwork.removedDetail"));
+        await LoadAsync(item.Id);
+    }
 }

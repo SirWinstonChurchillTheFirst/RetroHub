@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using RetroHub.Core.Catalog;
 using RetroHub.Core.Config;
+using RetroHub.Core.IO;
 using RetroHub.Core.Logging;
 
 namespace RetroHub.Core.Emulation;
@@ -17,7 +18,10 @@ namespace RetroHub.Core.Emulation;
 /// <item>All of emulators/** (3 levels) for the exact (wildcard-free) patterns, for unusual folder names.</item>
 /// </list>
 /// Version: FileVersionInfo ProductVersion → FileVersion (without "+hash" suffixes), else a version-like token
-/// from the folder/exe name ("mGBA-0.10.5-win64" → "0.10.5"). RetroArch: <see cref="EmulatorInstall.InstalledCores"/>
+/// from the folder/exe name ("mGBA-0.10.5-win64" → "0.10.5"). RetroArch has no version resource and a version-less
+/// folder ("RetroArch-Win64"), so for it <c>retroarch.exe --version</c> is run once (hidden, stdout/stderr redirected,
+/// 3 s timeout), falling back to the "Version: x.y.z" string inside the binary; the result is cached by exe path + size +
+/// mtime in data/cache/emulator-versions.json (<see cref="EmulatorVersionCache"/>). RetroArch: <see cref="EmulatorInstall.InstalledCores"/>
 /// = cores/*_libretro.dll next to the exe. Detection is read-only and never throws (unreadable folders are skipped).
 /// </summary>
 public sealed class EmulatorRegistry : IEmulatorRegistry
@@ -30,16 +34,19 @@ public sealed class EmulatorRegistry : IEmulatorRegistry
     private readonly AppPaths _paths;
     private readonly SettingsStore _settings;
     private readonly object _gate = new();
+    private readonly EmulatorVersionCache _versions;
     private IReadOnlyList<EmulatorInstall> _all = [];
     private Dictionary<string, EmulatorInstall> _byId = new(StringComparer.OrdinalIgnoreCase);
 
     public event Action? Changed;
 
-    public EmulatorRegistry(ICatalog catalog, AppPaths paths, SettingsStore settings)
+    /// <param name="versionCacheFile">Where probed versions are cached; default data/cache/emulator-versions.json.</param>
+    public EmulatorRegistry(ICatalog catalog, AppPaths paths, SettingsStore settings, string? versionCacheFile = null)
     {
         _catalog = catalog;
         _paths = paths;
         _settings = settings;
+        _versions = new EmulatorVersionCache(versionCacheFile ?? Path.Combine(paths.Cache, "emulator-versions.json"));
         Scan();
     }
 
@@ -120,6 +127,7 @@ public sealed class EmulatorRegistry : IEmulatorRegistry
             foreach (var e in list) byId.TryAdd(e.Def.Id, e);
             Volatile.Write(ref _byId, byId);
             Volatile.Write(ref _all, list);
+            _versions.Save();
             Log.Info($"Emulators: {list.Count(e => e.ExePath != null)}/{list.Count} installed ({sw.ElapsedMilliseconds} ms): " +
                      string.Join(", ", list.Where(e => e.ExePath != null).Select(e => $"{e.Def.Id} {e.Version}".TrimEnd())));
         }
@@ -165,7 +173,8 @@ public sealed class EmulatorRegistry : IEmulatorRegistry
             Def = def,
             ExePath = exe,
             UserConfigured = user,
-            Version = ReadVersion(exe, _paths.Emulators),
+            Version = ReadVersion(exe, _paths.Emulators)
+                      ?? (def.Kind == EmulatorKind.RetroArch ? _versions.GetOrProbe(exe, EmulatorVersionProbe.RetroArch) : null),
             InstalledCores = def.Kind == EmulatorKind.RetroArch ? Cores(exe) : [],
         };
     }
@@ -325,5 +334,206 @@ public sealed class EmulatorRegistry : IEmulatorRegistry
             Log.Warn($"Cannot list RetroArch cores next to {exe}", ex);
             return [];
         }
+    }
+}
+
+/// <summary>
+/// Version probes for exes without a version resource. Only used for emulators known to answer a version switch
+/// without side effects (RetroArch prints "Version: 1.22.2 (Git …)" to stdout and exits; verified to write no files).
+/// </summary>
+internal static partial class EmulatorVersionProbe
+{
+    public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(3);
+
+    [GeneratedRegex(@"(?:Version:\s*v?|--\s*v)(\d+\.\d+(?:\.\d+){0,2})", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex VersionLine();
+
+    [GeneratedRegex(@"RetroArch(?:-WIMP)?/(\d+\.\d+(?:\.\d+){0,2})", RegexOptions.CultureInvariant)]
+    private static partial Regex UserAgentToken();
+
+    /// <summary>RetroArch: "--version" output, else the version string embedded in the binary.</summary>
+    public static string? RetroArch(string exe) => FromProcess(exe, "--version") ?? FromBinary(exe);
+
+    /// <summary>
+    /// "Version: 1.22.2 (Git 69a4f0e) Nov 20 2025" → "1.22.2"; old builds: "RetroArch: Frontend for libretro -- v1.9.0 -- …" → "1.9.0".
+    /// </summary>
+    public static string? ParseVersionOutput(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var m = VersionLine().Match(text);
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
+    /// <summary>Runs the exe hidden with redirected output and a hard timeout (the whole process tree is killed then).</summary>
+    public static string? FromProcess(string exe, string args)
+    {
+        if (!LooksLikeExe(exe)) return null;
+        try
+        {
+            var psi = new ProcessStartInfo(exe, args)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = true,
+                WorkingDirectory = Path.GetDirectoryName(exe)!,
+            };
+            using var p = Process.Start(psi);
+            if (p == null) return null;
+            p.StandardInput.Close();
+            var stdout = p.StandardOutput.ReadToEndAsync();
+            var stderr = p.StandardError.ReadToEndAsync();
+            if (!p.WaitForExit(Timeout))
+            {
+                try { p.Kill(entireProcessTree: true); }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { _ = ex; }
+                Log.Warn($"'{exe} {args}' did not exit within {Timeout.TotalSeconds:0} s – killed");
+                return null;
+            }
+            var all = (stdout.Wait(1000) ? stdout.Result : "") + "\n" + (stderr.Wait(1000) ? stderr.Result : "");
+            var v = ParseVersionOutput(all);
+            Log.Debug($"'{Path.GetFileName(exe)} {args}' → {v ?? "(no version)"}");
+            return v;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            Log.Debug($"Version probe '{exe} {args}' failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>Scans the binary for "Version: x.y.z" / "RetroArch-WIMP/x.y.z" (ASCII); the most frequent hit wins.</summary>
+    public static string? FromBinary(string exe)
+    {
+        try
+        {
+            var info = new FileInfo(exe);
+            if (!info.Exists || info.Length > 256L * 1024 * 1024) return null;
+            return FromBinaryText(System.Text.Encoding.Latin1.GetString(File.ReadAllBytes(exe)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OutOfMemoryException)
+        {
+            Log.Debug($"Reading {exe} for a version string failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    internal static string? FromBinaryText(string text)
+    {
+        var best = VersionLine().Matches(text).Select(m => m.Groups[1].Value)
+            .Concat(UserAgentToken().Matches(text).Select(m => m.Groups[1].Value))
+            .GroupBy(v => v).OrderByDescending(g => g.Count()).ThenByDescending(g => g.Key.Length).FirstOrDefault();
+        return best?.Key;
+    }
+
+    /// <summary>A real PE file (starts with "MZ", at least 4 KB) — test fakes and placeholders are never executed.</summary>
+    internal static bool LooksLikeExe(string path)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            if (!info.Exists || info.Length < 4096) return false;
+            Span<byte> head = stackalloc byte[2];
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            return fs.Read(head) == 2 && head[0] == (byte)'M' && head[1] == (byte)'Z';
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { _ = ex; return false; }
+    }
+}
+
+/// <summary>
+/// data/cache/emulator-versions.json: probed versions keyed by the full exe path (lower-case), valid while size and
+/// mtime are unchanged. A probe that found nothing is cached too, so a version-less exe is not executed on every start.
+/// Never throws.
+/// </summary>
+internal sealed class EmulatorVersionCache
+{
+    internal sealed record Entry(long Size, long Mtime, string? Version);
+
+    private static readonly System.Text.Json.JsonSerializerOptions Json = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+    };
+
+    private readonly string _file;
+    private readonly object _gate = new();
+    private Dictionary<string, Entry>? _map;
+    private bool _dirty;
+
+    public EmulatorVersionCache(string file) { _file = file; }
+
+    /// <summary>Probes run by this instance (tests: a cached exe is not executed again).</summary>
+    public int Probes { get; private set; }
+
+    public string? GetOrProbe(string exe, Func<string, string?> probe)
+    {
+        long size, mtime;
+        try
+        {
+            var info = new FileInfo(exe);
+            if (!info.Exists) return null;
+            size = info.Length;
+            mtime = info.LastWriteTimeUtc.Ticks;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { _ = ex; return null; }
+        // fakes (empty files in tests) are neither probed nor cached
+        if (!EmulatorVersionProbe.LooksLikeExe(exe)) return null;
+
+        var key = Path.GetFullPath(exe).ToLowerInvariant();
+        lock (_gate)
+        {
+            if (Load().TryGetValue(key, out var e) && e.Size == size && e.Mtime == mtime) return e.Version;
+        }
+        string? version = null;
+        try { version = probe(exe); }
+        catch (Exception ex) { Log.Warn($"Version probe for {exe} failed", ex); }
+        lock (_gate)
+        {
+            Probes++;
+            Load()[key] = new Entry(size, mtime, version);
+            _dirty = true;
+        }
+        Log.Info($"Probed the version of {exe}: {version ?? "(none)"}");
+        return version;
+    }
+
+    public void Save()
+    {
+        lock (_gate)
+        {
+            if (!_dirty || _map == null) return;
+            try
+            {
+                SafeFile.WriteAllText(_file, System.Text.Json.JsonSerializer.Serialize(_map, Json));
+                _dirty = false;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Warn($"Could not save {_file}", ex);
+            }
+        }
+    }
+
+    private Dictionary<string, Entry> Load()
+    {
+        if (_map != null) return _map;
+        _map = new Dictionary<string, Entry>(StringComparer.Ordinal);
+        try
+        {
+            if (File.Exists(_file))
+            {
+                var raw = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, Entry>>(File.ReadAllText(_file), Json);
+                if (raw != null)
+                    foreach (var (k, v) in raw)
+                        if (v != null) _map[k] = v;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or NotSupportedException)
+        {
+            Log.Warn($"{_file} unreadable, probing again", ex);
+        }
+        return _map;
     }
 }
