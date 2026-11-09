@@ -195,3 +195,40 @@ Gefundene und behobene Fehler:
 - `Foreground.BringToFront` (Rückkehr aus dem Vollbild) nutzt als letzten Ausweg einen synthetischen Alt-Tastendruck;
   in allen Läufen genügte der erste Versuch (`foreground=true`).
 - Ein Fenster, das erst nach dem 60-s-Aufgeben erscheint, bleibt minimiert in der Taskleiste.
+
+## Echte Sammlung (E:\Spiele, nur lesend) – 09.11.2026
+
+Externer Bibliotheksordner `E:\Spiele` (12 Systeme, Ordnernamen wie „Game Boy Advance“, „Nintendo 64“,
+„Wii U“). Vorher/nachher wurden Größe und Änderungszeit aller 128 Dateien/Ordner in der Sammlung verglichen: **unverändert**.
+
+**Scan:** 56 Spiele in 2,9 s, alle dem richtigen System zugeordnet; `Updates/` und `DLC/` (Switch) übersprungen;
+Wii-U-`.key`-Dateien werden still ignoriert. Sprach-Tags wie „(Deutsch)“, „(Englisch, NTSC)“ werden als Region gespeichert
+und unter dem Titel angezeigt („SNES · Deutsch“), damit die neun Fassungen von „A Link to the Past“ unterscheidbar sind.
+
+| System | Spiel | Emulator / Modus | Ergebnis |
+|---|---|---|---|
+| SNES | A Link to the Past (Deutsch/Englisch) | RetroArch snes9x, Vollbild | ✅ Bild (Nintendo-Intro), Rückkehr, Spielstand in `saves/snes` |
+| N64 | Ocarina of Time | RetroArch mupen64plus_next (OpenGL), Vollbild | ✅ läuft (RetroArch-Log, interner RetroArch-Screenshot zeigt das N64-Logo; im Fenstermodus Titelbild sichtbar). Die Bildschirmaufnahme selbst sieht OpenGL-Vollbild nicht |
+| GBA | The Minish Cap | mGBA, eingebettet | ✅ Bild im Host, Tastaturfokus auf dem Spiel |
+| NDS | Phantom Hourglass | melonDS, eingebettet | ✅ Bild im Host |
+| 3DS | A Link Between Worlds, Ocarina of Time 3D | Azahar, eingebettet | ✅ 60 FPS, Bild im Host (die Dumps sind entschlüsselt) |
+| GameCube | The Wind Waker | Dolphin 2609b, Vollbild | ✅ nach Fix (s. u.), Fenstertitel „Direct3D 11 … (GZLP01)“, Vordergrund, Rückkehr |
+| Wii | Skyward Sword | Dolphin, Vollbild | ✅ Bild (Wii-Remote-Hinweis), Rückkehr |
+| Wii U | The Wind Waker HD (.wux) | Cemu 2.6, Vollbild | ❌ Cemu: „Could not decrypt title. Make sure that keys.txt contains the correct disc key“ – die Disc-Keys liegen als `.key` neben den Dumps, sind aber nicht in Cemus keys.txt |
+| Switch | – | – | nicht testbar (kein Emulator installiert) |
+
+**Gefundene und behobene Fehler:**
+- Dolphin öffnete das Vollbild auf dem **Zweitmonitor**, während RetroHub sich auf dem Hauptmonitor versteckte.
+  Neu: `MonitorPlacement` holt das Emulatorfenster bei der Vollbild-Übergabe auf RetroHubs Monitor (Log:
+  „is on another monitor (-1920,468 1920x1080) – moving it…“; danach Dolphin 2560×1440 auf dem Hauptmonitor).
+- Eingebettete Emulatoren zeigten ihre **Menü-/Statusleisten** (mGBA, melonDS, Azahar). Der Host ist jetzt nur so groß wie
+  das Bild, die Leisten liegen außerhalb und werden abgeschnitten („Eigenes Fenster“ zeigt das volle Emulatorfenster).
+- RetroArch legte Spielstände externer Spiele in `saves/<Spielordner>` ab; jetzt direkt `saves/<System>`.
+- Cemu schrieb ohne Rezept nach `%APPDATA%\Cemu`; jetzt portabel (`emulators/cemu/Cemu_2.6/portable`).
+- Weitergeleitete Startanfragen derselben Millisekunde wurden zufällig sortiert (flackernder Test).
+
+**Bekannt / offen:**
+- Cemu: zeigt eine Fehlermeldung statt sich zu beenden; „Beenden“ in RetroHub greift erst, wenn Cemu reagiert – der
+  Testtreiber hat RetroHub nach 90 s abgebrochen, der Neustart hat die Sitzung per Absturz-Wiederherstellung verbucht (90 s).
+- Dolphin zeigt auf der Emulatoren-Seite keine Version („Version unbekannt“).
+- Bildschirmaufnahmen (GDI) sehen OpenGL-/D3D-Vollbild teils nicht; für Tests: Fenstermodus oder RetroArch-eigene Screenshots.
