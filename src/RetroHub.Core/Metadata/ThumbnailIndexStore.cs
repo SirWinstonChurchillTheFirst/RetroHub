@@ -67,7 +67,7 @@ public sealed class ThumbnailIndexStore
     {
         await Task.Yield();
         var cached = ReadCache(systemId, libretroName);
-        if (cached != null && _now() - cached.FetchedUtc < MaxAge) return new ThumbnailIndex(cached.Boxarts);
+        if (cached != null && _now() - cached.FetchedUtc < MaxAge) return new ThumbnailIndex(cached.Boxarts, cached.Truncated);
 
         var fetched = await FetchAsync(libretroName, ct).ConfigureAwait(false);
         if (fetched != null)
@@ -75,12 +75,12 @@ public sealed class ThumbnailIndexStore
             var file = new CacheFile(libretroName, _now(), fetched.Value.Truncated, fetched.Value.Names);
             try { SafeFile.WriteAllText(CacheFileFor(systemId), JsonSerializer.Serialize(file, Json)); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Warn($"Could not cache the thumbnail index of {systemId}", ex); }
-            return new ThumbnailIndex(fetched.Value.Names);
+            return new ThumbnailIndex(fetched.Value.Names, fetched.Value.Truncated);
         }
         if (cached != null)
         {
             Log.Info($"Using the stale thumbnail index of {systemId} from {cached.FetchedUtc:yyyy-MM-dd}");
-            return new ThumbnailIndex(cached.Boxarts);
+            return new ThumbnailIndex(cached.Boxarts, cached.Truncated);
         }
         return null;
     }

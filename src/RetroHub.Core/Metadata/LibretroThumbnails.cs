@@ -115,8 +115,10 @@ public sealed partial class ThumbnailIndex
     private readonly Dictionary<string, List<Entry>> _byKey = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<Entry>> _byLooseKey = new(StringComparer.Ordinal);
 
-    public ThumbnailIndex(IEnumerable<string> names)
+    /// <param name="truncated">GitHub cut the listing short (very large repositories): a name missing from it may still exist.</param>
+    public ThumbnailIndex(IEnumerable<string> names, bool truncated = false)
     {
+        Truncated = truncated;
         _names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var raw in names)
         {
@@ -129,6 +131,9 @@ public sealed partial class ThumbnailIndex
     }
 
     public int Count => _names.Count;
+
+    /// <summary>The listing is incomplete: "no match" does not mean "no boxart".</summary>
+    public bool Truncated { get; }
     public IEnumerable<string> Names => _names;
 
     public bool Contains(string sanitizedName) => _names.Contains(sanitizedName);
@@ -189,8 +194,25 @@ public static class ArtworkNames
 {
     public static readonly string[] ImageExtensions = [".png", ".jpg", ".jpeg", ".webp"];
 
-    /// <summary>The ROM file name without extension ("Advance Wars (USA).gba" → "Advance Wars (USA)"); for URLs the last segment.</summary>
+    /// <summary>
+    /// The name a game's artwork is stored and looked up under: normally the ROM file name without extension
+    /// ("Advance Wars (USA).gba" → "Advance Wars (USA)"). PC games (exe/shortcut) and ROMs with a meaningless file name
+    /// ("game.iso", "disc1.bin") use their title instead: exe names such as "Game", "Launcher" or "start" are shared by
+    /// many games, and artwork/covers/pc/Game.png must never become every such game's cover.
+    /// </summary>
     public static string Stem(Game game)
+    {
+        var file = FileStem(game);
+        // titles may contain ':' or '?' ("Hades: Battle out of Hell"): libretro's rule makes them file-name safe
+        var title = LibretroThumbnails.Sanitize(game.Title?.Trim() ?? "");
+        if (string.IsNullOrEmpty(title) || TitleParser.IsMeaningless(title) || !AppPaths.IsSafeName(title)) return file;
+        if (game.Kind is GameKind.Executable or GameKind.Shortcut) return title;
+        return TitleParser.IsMeaningless(TitleParser.Parse(file, isFileName: false).Title) ? title : file;
+    }
+
+    /// <summary>The file name without extension exactly ("Game.exe" → "Game"); for URLs the last segment.
+    /// Used for images that sit next to the file (where the file name is specific) and for ES-DE/Batocera media.</summary>
+    public static string FileStem(Game game)
     {
         var p = game.Path ?? "";
         if (p.Contains("://", StringComparison.Ordinal))

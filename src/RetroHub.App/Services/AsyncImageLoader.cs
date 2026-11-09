@@ -10,7 +10,7 @@ namespace RetroHub.App.Services;
 /// needed for the tile width), an in-memory LRU cache by (path, width), de-duplication of concurrent requests,
 /// and cancellation when a tile is recycled before its image arrived. Missing/broken files yield null (placeholder).
 /// With <see cref="DiskCacheFolder"/> set (data/cache/thumbs), large source images (&gt; <see cref="DiskCacheMinBytes"/>)
-/// are decoded once and saved as a downscaled JPEG (quality 90) named after a hash of (path, size, mtime, width); later loads decode
+/// are decoded once and saved as a downscaled JPEG (quality 90; PNG when the image has transparent pixels) named after a hash of (path, size, mtime, width); later loads decode
 /// the small file. Core has no image library, so this App-side cache is RetroHub's thumbnail cache.
 /// </summary>
 public sealed class AsyncImageLoader
@@ -118,45 +118,61 @@ public sealed class AsyncImageLoader
     {
         var info = new FileInfo(path);
         if (!info.Exists) return null;
-        var thumb = ThumbPath(info, width);
-        if (thumb != null && File.Exists(thumb))
+        var thumbBase = ThumbBase(info, width);
+        if (thumbBase != null)
         {
-            try
+            foreach (var ext in ThumbExtensions)
             {
-                using var cached = new FileStream(thumb, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 64 * 1024);
-                return new Bitmap(cached);
-            }
-            catch (Exception ex)
-            {
-                Log.Debug($"Thumbnail {thumb} unreadable, decoding the original: {ex.Message}");
+                var thumb = thumbBase + ext;
+                if (!File.Exists(thumb)) continue;
+                try
+                {
+                    using var cached = new FileStream(thumb, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 64 * 1024);
+                    return new Bitmap(cached);
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug($"Thumbnail {thumb} unreadable, decoding the original: {ex.Message}");
+                }
             }
         }
         Bitmap bitmap;
         using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 64 * 1024))
             bitmap = Bitmap.DecodeToWidth(stream, width, BitmapInterpolationMode.HighQuality);
-        if (thumb != null) SaveThumb(bitmap, thumb);
+        if (thumbBase != null) SaveThumb(bitmap, thumbBase);
         return bitmap;
     }
 
-    /// <summary>Disk thumbnail path for a large file, or null (no cache folder / small file).</summary>
-    internal string? ThumbPath(FileInfo source, int width)
+    private static readonly string[] ThumbExtensions = [".jpg", ".png"];
+
+    /// <summary>Disk thumbnail path for a large file without extension (".jpg" opaque / ".png" with alpha), or null (no cache folder / small file).</summary>
+    internal string? ThumbBase(FileInfo source, int width)
     {
         var folder = DiskCacheFolder;
         if (folder == null || source.Length < DiskCacheMinBytes) return null;
         var id = $"{source.FullName.ToLowerInvariant()}|{source.Length}|{source.LastWriteTimeUtc.Ticks}|{width}";
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(id)), 0, 12).ToLowerInvariant();
-        return Path.Combine(folder, hash + ".jpg");
+        return Path.Combine(folder, hash);
     }
 
-    private static void SaveThumb(Bitmap bitmap, string thumb)
+    /// <summary>
+    /// Saves the decoded bitmap: JPEG (small) when it is fully opaque, else PNG — JPEG has no alpha channel, so
+    /// covers with transparent corners/edges (common in libretro-thumbnails boxarts) would turn black.
+    /// </summary>
+    private static void SaveThumb(Bitmap bitmap, string thumbBase)
     {
+        var opaque = IsOpaque(bitmap);
+        var thumb = thumbBase + (opaque ? ".jpg" : ".png");
         // the SafeFile suffix: leftovers of a killed process are swept from data/ at start-up
         var tmp = thumb + "." + Environment.CurrentManagedThreadId + RetroHub.Core.IO.SafeFile.TempSuffix;
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(thumb)!);
             using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
-                bitmap.Save(fs, new JpegBitmapEncoderOptions { Quality = 90 });
+            {
+                if (opaque) bitmap.Save(fs, new JpegBitmapEncoderOptions { Quality = 90 });
+                else bitmap.Save(fs, new PngBitmapEncoderOptions());
+            }
             File.Move(tmp, thumb, overwrite: true);
         }
         catch (Exception ex)
@@ -164,6 +180,28 @@ public sealed class AsyncImageLoader
             Log.Debug($"Saving thumbnail {thumb} failed: {ex.Message}");
             try { File.Delete(tmp); } catch (Exception) { /* best effort */ }
         }
+    }
+
+    /// <summary>True when every pixel has alpha 255 (unknown pixel formats count as "may be transparent").</summary>
+    internal static bool IsOpaque(Bitmap bitmap)
+    {
+        if (bitmap.AlphaFormat == Avalonia.Platform.AlphaFormat.Opaque) return true;
+        var fmt = bitmap.Format;
+        if (fmt == null || (fmt.Value != Avalonia.Platform.PixelFormat.Bgra8888 && fmt.Value != Avalonia.Platform.PixelFormat.Rgba8888)) return false;
+        var size = bitmap.PixelSize;
+        var stride = size.Width * 4;
+        var buffer = new byte[stride * size.Height];
+        var handle = System.Runtime.InteropServices.GCHandle.Alloc(buffer, System.Runtime.InteropServices.GCHandleType.Pinned);
+        try { bitmap.CopyPixels(new Avalonia.PixelRect(size), handle.AddrOfPinnedObject(), buffer.Length, stride); }
+        catch (Exception ex)
+        {
+            Log.Debug($"Reading thumbnail pixels failed: {ex.Message}");
+            return false;
+        }
+        finally { handle.Free(); }
+        for (var i = 3; i < buffer.Length; i += 4)
+            if (buffer[i] != 255) return false;
+        return true;
     }
 
     /// <summary>Forget failures (e.g. after new covers were imported).</summary>

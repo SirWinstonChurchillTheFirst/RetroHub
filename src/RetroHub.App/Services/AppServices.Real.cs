@@ -121,6 +121,8 @@ public sealed partial class AppServices
     partial void DisposeReal()
     {
         try { Watcher?.Dispose(); } catch (Exception ex) { Log.Warn("Watcher dispose failed", ex); }
+        // releases the cover downloader's HttpClient (a run still going fails its remaining requests quietly)
+        try { Artwork?.Dispose(); } catch (Exception ex) { Log.Warn("Artwork service dispose failed", ex); }
         if (Sessions is IDisposable d)
         {
             try { d.Dispose(); } catch (Exception ex) { Log.Warn("Session service dispose failed", ex); }

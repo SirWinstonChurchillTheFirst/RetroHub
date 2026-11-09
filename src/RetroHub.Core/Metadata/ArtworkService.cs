@@ -231,6 +231,8 @@ public sealed class ArtworkService : IDisposable
         if (!AppPaths.IsSafeName(stem)) return OnlineResult.NotFound;
         var missKey = ArtworkMissCache.KeyFor(g.SystemId, stem);
         if (_misses.IsRecentMiss(missKey)) return OnlineResult.RecentMiss;
+        // the user may switch "Cover aus dem Internet laden" off while a run is going: from then on no request at all
+        if (!_settings.Current.OnlineCovers) return OnlineResult.Skipped;
 
         try
         {
@@ -239,13 +241,14 @@ public sealed class ArtworkService : IDisposable
             if (index != null)
             {
                 var match = index.Match(g);
-                if (match == null)
+                if (match != null) names = [match];
+                else if (index.Truncated) names = LibretroThumbnails.DirectCandidates(g); // incomplete listing: ask directly
+                else
                 {
                     Log.Debug($"No libretro boxart matches '{stem}' ({g.SystemId})");
                     _misses.AddMiss(missKey);
                     return OnlineResult.NotFound;
                 }
-                names = [match];
             }
             else names = LibretroThumbnails.DirectCandidates(g);
 
@@ -253,6 +256,7 @@ public sealed class ArtworkService : IDisposable
             var anyError = false;
             foreach (var name in names)
             {
+                if (!_settings.Current.OnlineCovers) return OnlineResult.Skipped;
                 var r = await DownloadAsync(LibretroThumbnails.BoxartUrl(libretroName, name), target, ct).ConfigureAwait(false);
                 if (r == DownloadResult.NotFound) continue;
                 if (r == DownloadResult.Error) { anyError = true; continue; }

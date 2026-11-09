@@ -37,6 +37,7 @@ public sealed partial class ImportsViewModel : PageViewModel
 {
     private CancellationTokenSource? _scanCts;
     private CancellationTokenSource? _coverCts;
+    private bool _coverRerunPending;
 
     public ImportsViewModel(UiContext ctx) : base(ctx)
     {
@@ -186,9 +187,13 @@ public sealed partial class ImportsViewModel : PageViewModel
         if (artwork == null) return;
         if (IsFindingCovers || artwork.IsRunning)
         {
-            if (!quiet) Ctx.Toasts.Show(Loc.T("artwork.busy"), ToastKind.Info);
+            // a scan finished while covers are being looked up: its new games may not be part of the running
+            // pass (the library was read at its start) → one more quiet pass once the current one is done
+            if (quiet) _coverRerunPending = true;
+            else Ctx.Toasts.Show(Loc.T("artwork.busy"), ToastKind.Info);
             return;
         }
+        _coverRerunPending = false;
         IsFindingCovers = true;
         CoverIndeterminate = true;
         CoverProgress = 0;
@@ -217,6 +222,7 @@ public sealed partial class ImportsViewModel : PageViewModel
         }
         catch (OperationCanceledException)
         {
+            _coverRerunPending = false; // the user cancelled: do not start again on our own
             if (!quiet) Ctx.Toasts.Show(Loc.T("artwork.cancelled"), ToastKind.Info);
         }
         catch (Exception ex)
@@ -229,6 +235,11 @@ public sealed partial class ImportsViewModel : PageViewModel
             IsFindingCovers = false;
             _coverCts?.Dispose();
             _coverCts = null;
+        }
+        if (_coverRerunPending)
+        {
+            _coverRerunPending = false;
+            await RunCoverSearchAsync(quiet: true);
         }
     }
 

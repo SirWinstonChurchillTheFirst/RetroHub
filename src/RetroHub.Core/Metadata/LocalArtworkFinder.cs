@@ -85,10 +85,15 @@ public sealed class LocalArtworkFinder
         if (game.Path.Contains("://", StringComparison.Ordinal)) return null; // steam:// and other URLs
         var romDir = Path.GetDirectoryName(_paths.FromPortable(game.Path));
         if (string.IsNullOrEmpty(romDir)) return null;
+        // images next to the file carry the exact file name ("Launcher.png" next to "Launcher.exe" is specific there)
+        var fileStem = ArtworkNames.FileStem(game);
         var here = Index(romDir);
         if (kind == ArtworkKind.Cover && here != null)
         {
-            if (here.ByName.TryGetValue(stem, out var hit)) return hit;
+            if (here.ByName.TryGetValue(fileStem, out var hit)) return hit;
+            if (!stem.Equals(fileStem, StringComparison.OrdinalIgnoreCase) && IsOwnFolderGame(game, sys)
+                && !folders.Contains(Path.GetFileName(romDir), StringComparer.OrdinalIgnoreCase)
+                && here.ByName.TryGetValue(stem, out hit)) return hit;
             // cover.png in a shared system folder (games/pc/cover.png) would match every game there
             if (IsOwnFolderGame(game, sys) && !folders.Contains(Path.GetFileName(romDir), StringComparer.OrdinalIgnoreCase))
                 foreach (var n in new[] { "cover", "folder", "boxart", "box" })
@@ -97,7 +102,7 @@ public sealed class LocalArtworkFinder
         foreach (var (sub, suffix) in Layouts(kind))
         {
             var d = Index(Path.Combine(romDir, sub));
-            if (d != null && d.ByName.TryGetValue(stem + suffix, out var hit)) return hit;
+            if (d != null && d.ByName.TryGetValue(fileStem + suffix, out var hit)) return hit;
         }
         return null;
     }
