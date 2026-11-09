@@ -14,7 +14,7 @@
   </p:PageBase.Resources>
   <Panel>
     <c:CoverGrid Name="Covers" ItemsSource="{Binding Games}" ItemTemplate="{StaticResource GridTile}" ItemWidth="176" Spacing="28" RowSpacing="24"
-                 CoverAspect="1.25" CaptionHeight="92" MaxStretch="1.15" ContentPadding="{DynamicResource RhGridInset}">
+                 CoverAspect="{Binding SlotAspect}" CaptionHeight="92" MaxStretch="1.15" ContentPadding="{DynamicResource RhGridInset}">
       <c:CoverGrid.Header>
         <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,48">
           <StackPanel Spacing="6">

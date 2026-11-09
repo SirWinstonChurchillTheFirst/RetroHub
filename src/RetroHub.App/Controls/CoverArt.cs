@@ -341,8 +341,9 @@ public sealed class CoverArt : Control
                 new FormattedText(longest, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, sz, PaperBrush).Width > maxWidth;
             for (var step = 0; step < 2 && size - 2 >= 16 && Overflows(size); step++)
                 size -= 2;
-            // a word that still does not fit breaks inside (never an ellipsis in place of a whole first line)
-            var trimming = Overflows(size) ? TextTrimming.None : TextTrimming.WordEllipsis;
+            // a word that still does not fit breaks inside and a cut last line ends in a character ellipsis
+            // ("geheimnisvo…"), never an ellipsis in place of a whole word and never a silent cut
+            var trimming = Overflows(size) ? TextTrimming.CharacterEllipsis : TextTrimming.WordEllipsis;
             var budget = Math.Max(1, r.Height * 0.62);
             _titleText = new FormattedText(main, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, PaperBrush)
             {

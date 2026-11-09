@@ -85,6 +85,11 @@ public sealed partial class SystemViewModel : PageViewModel
     [ObservableProperty] public partial string FoldersText { get; private set; } = "";
     [ObservableProperty] public partial string ExtensionsText { get; private set; } = "";
     [ObservableProperty] public partial bool IsEmpty { get; private set; }
+    /// <summary>
+    /// Slot format of the grid (height / width): the system's box format (DESIGN 7.5, 11.4 start values), set before
+    /// the games so the grid is built once in its final format. Stored cover sizes refine it in M3.
+    /// </summary>
+    [ObservableProperty] public partial double SlotAspect { get; private set; } = 1.25;
 
     public override IReadOnlyList<HintItem> Hints =>
     [
@@ -129,6 +134,7 @@ public sealed partial class SystemViewModel : PageViewModel
         else System.Update(data.stats.GamesPerSystem.GetValueOrDefault(systemId), data.stats.PlaySecondsPerSystem.GetValueOrDefault(systemId));
 
         Title = def.Name;
+        SlotAspect = RetroHub.App.Theming.SystemPalette.BoxAspect(systemId);
         Games = Ctx.Items.GetAll(data.games);
         IsEmpty = Games.Count == 0;
         var installed = data.choices.FirstOrDefault(c => services.IsInstalled(c.Install));
