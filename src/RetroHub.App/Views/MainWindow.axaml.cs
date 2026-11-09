@@ -387,6 +387,8 @@ public partial class MainWindow : Window
             app.Resources["RhPageInset"] = new Thickness(margin, 24, margin, 48);
             app.Resources["RhGridInset"] = new Thickness(margin, 48, margin, 64);
             app.Resources["RhPageInsetX"] = new Thickness(margin, 0, margin, 0);
+            app.Resources["RhShelfInset"] = new Thickness(margin, 40, margin, 64);
+            app.Resources["RhListInset"] = new Thickness(margin, 16, 0, 48);
         }
     }
 

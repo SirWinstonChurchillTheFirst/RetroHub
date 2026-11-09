@@ -106,7 +106,62 @@ public static class DemoData
     /// <summary>Kid Icarus is "missing" (moved drive) so the UI can show the honest problem state.</summary>
     private const string MissingTitle = "Kid Icarus: Uprising";
 
+    /// <summary>
+    /// Size of the demo library (design QA: the 1000-game demo of DESIGN 9.5). Null = the 66 hand-written games; more
+    /// adds deterministic, plausible variants (sequels, regional releases, re-releases) without covers – the
+    /// worst case for the grid (every box a generated spine placeholder).
+    /// </summary>
+    public static int? TargetCount { get; set; }
+
+    private static readonly string[] Suffixes =
+    [
+        "2", "3", "II", "Deluxe", "Advance", "Gold", "Turbo", "Legends", "Origins", "Remix", "Special", "Zero", "Plus", "64", "DX",
+        "Returns", "Chronicles", "Tactics", "Party", "World Tour",
+    ];
+
+    private static readonly string[] Regions = ["Europa", "USA", "Japan", "Deutsch", "Englisch"];
+
     public static List<Game> CreateGames(ICatalog catalog)
+    {
+        var games = CreateBaseGames(catalog);
+        if (TargetCount is not { } target || target <= games.Count) return games;
+        var now = DateTime.UtcNow;
+        var baseCount = games.Count;
+        long id = games.Max(g => g.Id) + 1;
+        for (var i = 0; games.Count < target; i++)
+        {
+            var source = games[i % baseCount];
+            var round = i / baseCount;
+            var suffix = Suffixes[(i * 7 + round) % Suffixes.Length];
+            var title = round % 3 == 2 ? source.Title : $"{source.Title} {suffix}";
+            var hash = StableHash(title + i);
+            games.Add(new Game
+            {
+                Id = id++,
+                SystemId = source.SystemId,
+                Path = $"games/{source.SystemId}/{SafeFileName(title)} ({i}){System.IO.Path.GetExtension(source.Path)}",
+                Title = title,
+                Year = source.Year is { } y ? y + 1 + (int)(hash % 4) : null,
+                Developer = source.Developer,
+                Publisher = source.Publisher,
+                Genre = source.Genre,
+                Players = source.Players,
+                Size = source.Size,
+                AddedUtc = now.AddDays(-30 - hash % 400),
+                FileTimeUtc = source.FileTimeUtc,
+                Favorite = hash % 37 == 0,
+                Status = GameStatus.Ok,
+                Kind = source.Kind,
+                Crc32 = (hash * 2654435761u).ToString("X8"),
+                // the same title twice in one system: a regional variant tells them apart
+                Region = round % 3 == 2 ? Regions[(int)(hash % (uint)Regions.Length)] : source.Region,
+                FolderId = 2,
+            });
+        }
+        return games;
+    }
+
+    private static List<Game> CreateBaseGames(ICatalog catalog)
     {
         var now = DateTime.UtcNow;
         var list = new List<Game>(Entries.Length);

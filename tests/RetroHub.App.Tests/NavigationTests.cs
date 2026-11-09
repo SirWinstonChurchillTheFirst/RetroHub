@@ -140,13 +140,28 @@ public class NavigationTests
     public Task Shoulder_buttons_cycle_channels_and_search_opens_library() => UiTest.Run(() =>
     {
         var (window, vm) = Open();
+        Assert.True(window.Execute(NavAction.PageLeft));
+        TestSupport.Settle(50);
+        Assert.Equal(PageKey.Systems, vm.Navigator.Current); // channels 1–3 wrap around (Start has no page-local shoulders)
+        Assert.True(window.Execute(NavAction.PageRight));
+        TestSupport.Settle(50);
+        Assert.Equal(PageKey.Home, vm.Navigator.Current);
         Assert.True(window.Execute(NavAction.PageRight));
         TestSupport.Settle(50);
         Assert.Equal(PageKey.Library, vm.Navigator.Current);
+        TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true });
+
+        // in the library the shoulders are page-local (DESIGN 7.0): they step through the ticker, the channel stays
+        var library = (LibraryViewModel)vm.CurrentPage!;
+        Assert.True(window.Execute(NavAction.PageRight));
+        TestSupport.Pump(() => library.SelectedSystemId != null);
+        Assert.Equal(PageKey.Library, vm.Navigator.Current);
+        Assert.Equal(library.Chips[1].SystemId, library.SelectedSystemId);
         Assert.True(window.Execute(NavAction.PageLeft));
         Assert.True(window.Execute(NavAction.PageLeft));
-        TestSupport.Settle(50);
-        Assert.Equal(PageKey.Systems, vm.Navigator.Current); // channels 1–3 wrap around
+        TestSupport.Pump(() => library.SelectedSystemId == library.Chips[^1].SystemId); // wraps around to the last system
+        Assert.Equal(PageKey.Library, vm.Navigator.Current);
+        library.SelectChipCommand.Execute(library.Chips[0]);
 
         // keys 1/2/3 switch the channel directly and show the channel display
         window.KeyPress(Key.D2, RawInputModifiers.None, PhysicalKey.Digit2, "2");

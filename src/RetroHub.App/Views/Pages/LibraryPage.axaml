@@ -7,13 +7,17 @@
             x:Class="RetroHub.App.Views.Pages.LibraryPage"
             x:DataType="vm:LibraryViewModel">
   <!--
-    Library (M1.5): no picture background, no headline – the count and the position live in the footer. A ticker row
-    (system filter) with icon tools on the right, then the shelf grid (boxes on 10 px shelf edges, one focus layer).
-    The shelf mirror, the wall banner and the preview list follow in M3 (DESIGN 7.2).
+    Library "Das Regal" (DESIGN 7.2, M3). No picture background, no headline: the count and the position live in the
+    footer. Fixed on top: the TICKER (system filter, shoulders step through it) with the tools, and the SHELF MIRROR
+    (one spine per game, bracket = what is in view, mark = focus). Below the shelf grid (boxes on 10 px shelf edges,
+    one focus layer) or the list with its preview. A selected system becomes a compartment: its wall banner heads the
+    grid, the page ground and the board light become its wall and light (RoomBackdrop), the slot format comes from its
+    stored cover sizes.
+    1920×1080 logical: ticker 72–136, bracket 142, mirror 146–158, grid from 168 (first box top 208).
   -->
   <p:PageBase.Resources>
     <DataTemplate x:Key="GridTile" x:DataType="vm:GameItemViewModel">
-      <c:GameTile />
+      <c:GameTile ShowSticker="True" />
     </DataTemplate>
     <DataTemplate x:Key="ListRow" x:DataType="vm:GameItemViewModel">
       <c:GameTile Theme="{StaticResource RhGameRow}" />
@@ -22,55 +26,95 @@
 
   <p:PageBase.Styles>
     <!-- narrow: the tools are icons only -->
-    <Style Selector="StackPanel#Tools.compact TextBlock#SortLabel, StackPanel#Tools.compact TextBlock#FavLabel">
+    <Style Selector="StackPanel#Tools.compact TextBlock.tool-label">
       <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <!-- ticker entry: code chip (6×4, R 2) + count; active = code in paper and the underline; focus = the chip inverts -->
+    <Style Selector="Border.code-chip">
+      <Setter Property="Padding" Value="6,4" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.code-chip">
+      <Setter Property="Transitions">
+        <Transitions><BrushTransition Property="Background" Duration="0:0:0.09" /></Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="TextBlock.code-text">
+      <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    </Style>
+    <Style Selector="Button.ticker:pointerover TextBlock.code-text">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="Button.ticker.selected TextBlock.code-text">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="Button.ticker:focus-visible Border.code-chip">
+      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
+    </Style>
+    <Style Selector="Button.ticker:focus-visible TextBlock.code-text">
+      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
+    </Style>
+    <!-- the shoulder plates at the ticker's ends: a click steps like the shoulder button -->
+    <Style Selector="Button.shoulder">
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Height" Value="44" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- favourites tool on: the star filled in favourite yellow (the status colour, never Bernstein) -->
+    <Style Selector="ToggleButton#FavToggle:checked c|RhIcon#FavIcon">
+      <Setter Property="Filled" Value="True" />
+      <Setter Property="Foreground" Value="{DynamicResource RhFavoriteBrush}" />
+    </Style>
+    <Style Selector="ToggleButton#FavToggle:focus-visible c|RhIcon#FavIcon">
+      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
     </Style>
   </p:PageBase.Styles>
 
-  <Grid RowDefinitions="64,*">
-    <!-- ticker (system filter) + tools. Search is an icon that slides a 360 px field out over the ticker; below
-         1500 px logical width the tools are icons only (class "compact" on Tools, set in code-behind). -->
-    <Grid ColumnDefinitions="*,Auto" Margin="{DynamicResource RhPageInsetX}">
-      <Panel Margin="-10,0,24,0" VerticalAlignment="Center">
+  <Grid RowDefinitions="64,32,*">
+    <!-- ===== ticker (system filter) + tools ===== -->
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="{DynamicResource RhPageInsetX}">
+      <Button Name="ShoulderLeft" Theme="{StaticResource RhGhostButton}" Classes="shoulder" Margin="-6,0,6,0" Command="{Binding PreviousChipCommand}"
+              ToolTip.Tip="{l:T library.prevShelf}">
+        <c:ButtonGlyph Action="PageLeft" />
+      </Button>
+      <Panel Grid.Column="1" VerticalAlignment="Center">
         <ScrollViewer Name="TickerScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
           <ItemsControl Name="Ticker" ItemsSource="{Binding Chips}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="12" />
+                <StackPanel Orientation="Horizontal" Spacing="26" />
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:FilterChip">
-                <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}"
+                <Button Theme="{StaticResource RhTickerItem}" Classes="ticker" Classes.selected="{Binding IsSelected}"
                         Command="{Binding $parent[p:PageBase].((vm:LibraryViewModel)DataContext).SelectChipCommand}" CommandParameter="{Binding}">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="17" LetterSpacing="0.6" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding Count}" Classes="number" FontSize="15" Opacity="0.7" VerticalAlignment="Center" />
-                  </StackPanel>
+                  <!-- code chip and count on one line; the 3 px underline in the system's colour (Bernstein for "Alle")
+                       sits under the code, 6 px below the baseline -->
+                  <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto" Margin="0,7,0,0">
+                    <Border Classes="code-chip">
+                      <TextBlock Classes="code code-text" Text="{Binding Label}" />
+                    </Border>
+                    <TextBlock Grid.Column="1" Classes="number" Text="{Binding Count}" FontSize="15" Foreground="{DynamicResource RhText3Brush}"
+                               VerticalAlignment="Center" Margin="2,1,0,0" />
+                    <Panel Grid.Row="1" Height="3" Margin="6,2,6,0" IsVisible="{Binding IsSelected}">
+                      <Border Background="{Binding MarkBrush}" IsVisible="{Binding !IsAll}" />
+                      <Border Background="{DynamicResource RhAccentBrush}" IsVisible="{Binding IsAll}" />
+                    </Panel>
+                  </Grid>
                 </Button>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </ScrollViewer>
-        <!-- 48 px room fades at the ticker edges (overlays, no OpacityMask) -->
-        <Border Name="FadeLeft" Width="48" HorizontalAlignment="Left" IsHitTestVisible="False" IsVisible="False">
-          <Border.Background>
-            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-              <GradientStop Offset="0" Color="#FF14120F" />
-              <GradientStop Offset="1" Color="#0014120F" />
-            </LinearGradientBrush>
-          </Border.Background>
-        </Border>
-        <Border Name="FadeRight" Width="48" HorizontalAlignment="Right" IsHitTestVisible="False" IsVisible="False">
-          <Border.Background>
-            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-              <GradientStop Offset="0" Color="#0014120F" />
-              <GradientStop Offset="1" Color="#FF14120F" />
-            </LinearGradientBrush>
-          </Border.Background>
-        </Border>
+        <!-- 48 px fades in the page ground at the ticker edges (overlays, no OpacityMask; colours set in code) -->
+        <Border Name="FadeLeft" Width="48" HorizontalAlignment="Left" IsHitTestVisible="False" IsVisible="False" />
+        <Border Name="FadeRight" Width="48" HorizontalAlignment="Right" IsHitTestVisible="False" IsVisible="False" />
         <!-- the search field, slid out over the ticker -->
-        <Border Name="SearchPanel" Width="360" HorizontalAlignment="Right" Background="{DynamicResource RhBaseBrush}" Padding="12,0,0,0" IsVisible="False">
+        <Border Name="SearchPanel" Width="360" HorizontalAlignment="Right" Padding="12,0,0,0" IsVisible="False">
           <TextBox Name="Search" Classes="search" Text="{Binding SearchText}" PlaceholderText="{l:T library.searchPlaceholder}">
             <TextBox.InnerRightContent>
               <Button Theme="{StaticResource RhGhostButton}" Width="32" Height="32" MinHeight="0" Padding="0" Margin="0,0,6,0" Focusable="False"
@@ -81,7 +125,12 @@
           </TextBox>
         </Border>
       </Panel>
-      <StackPanel Name="Tools" Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+      <Button Name="ShoulderRight" Grid.Column="2" Theme="{StaticResource RhGhostButton}" Classes="shoulder" Margin="6,0,24,0" Command="{Binding NextChipCommand}"
+              ToolTip.Tip="{l:T library.nextShelf}">
+        <c:ButtonGlyph Action="PageRight" />
+      </Button>
+      <!-- tools: 44 high, frameless, focus = inversion -->
+      <StackPanel Name="Tools" Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
         <Button Name="SearchToggle" Theme="{StaticResource RhGhostButton}" Height="44" MinHeight="44" Width="44" Padding="0"
                 ToolTip.Tip="{l:T hint.search}" AutomationProperties.Name="{l:T hint.search}">
           <c:RhIcon Data="{StaticResource Icon.Search}" Width="22" Height="22" />
@@ -90,38 +139,93 @@
                 AutomationProperties.Name="{l:T library.sort}">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <c:RhIcon Data="{StaticResource Icon.Sort}" Width="22" Height="22" />
-            <TextBlock Name="SortLabel" Text="{Binding SelectedSort.Label}" VerticalAlignment="Center" />
+            <TextBlock Classes="tool-label" Text="{Binding SelectedSort.Label}" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
         <ToggleButton Name="FavToggle" IsChecked="{Binding FavoritesOnly}" Theme="{StaticResource RhToggleChip}" ToolTip.Tip="{l:T library.favoritesOnly}"
-                      Height="44" Padding="11,0">
+                      Height="44" Padding="11,0" AutomationProperties.Name="{l:T library.favoritesOnly}">
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <c:RhIcon Data="{StaticResource Icon.Star}" Width="22" Height="22" />
-            <TextBlock Name="FavLabel" Text="{l:T library.favorites}" VerticalAlignment="Center" />
+            <c:RhIcon Name="FavIcon" Data="{StaticResource Icon.Star}" Width="22" Height="22" />
+            <TextBlock Classes="tool-label" Text="{l:T library.favorites}" VerticalAlignment="Center" />
           </StackPanel>
         </ToggleButton>
-        <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsGridView}" Command="{Binding ShowGridCommand}" Width="44" Height="44" Padding="0"
-                ToolTip.Tip="{l:T library.gridView}">
-          <c:RhIcon Data="{StaticResource Icon.Grid}" Width="22" Height="22" />
-        </Button>
-        <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsListView}" Command="{Binding ShowListCommand}" Width="44" Height="44" Padding="0"
-                ToolTip.Tip="{l:T library.listView}">
-          <c:RhIcon Data="{StaticResource Icon.List}" Width="22" Height="22" />
+        <!-- one view tool (no second "selected" underline: Bernstein belongs to the ticker's "Alle") -->
+        <Button Name="ViewToggle" Theme="{StaticResource RhGhostButton}" Height="44" MinHeight="44" Padding="11,0" Command="{Binding ToggleViewCommand}"
+                ToolTip.Tip="{l:T library.view}" AutomationProperties.Name="{l:T library.view}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Panel Width="22" Height="22">
+              <c:RhIcon Data="{StaticResource Icon.Grid}" Width="22" Height="22" IsVisible="{Binding IsGridView}" />
+              <c:RhIcon Data="{StaticResource Icon.List}" Width="22" Height="22" IsVisible="{Binding IsListView}" />
+            </Panel>
+            <Panel>
+              <TextBlock Classes="tool-label" Text="{l:T library.view.shelf}" VerticalAlignment="Center" IsVisible="{Binding IsGridView}" />
+              <TextBlock Classes="tool-label" Text="{l:T library.view.list}" VerticalAlignment="Center" IsVisible="{Binding IsListView}" />
+            </Panel>
+          </StackPanel>
         </Button>
       </StackPanel>
     </Grid>
 
-    <!-- shelf grid: 1 : 1.25 slots, boxes stand on 10 px shelf edges -->
-    <c:CoverGrid Name="Covers" Grid.Row="1" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource GridTile}"
-                 IsVisible="{Binding IsGridView}" ItemWidth="176" Spacing="28" RowSpacing="24" CoverAspect="1.25" CaptionHeight="92" MaxStretch="1.15"
-                 ContentPadding="{DynamicResource RhGridInset}" />
-    <!-- list -->
-    <c:CoverGrid Name="Rows" Grid.Row="1" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource ListRow}" ShowBoard="False"
-                 IsVisible="{Binding IsListView}" ItemWidth="4000" MaxStretch="1" Spacing="0" RowSpacing="0" CoverAspect="0" CaptionHeight="64"
-                 ContentPadding="{DynamicResource RhPageInset}" />
+    <!-- ===== shelf mirror: one spine per game; bracket = in view; mark = focus ===== -->
+    <c:ShelfMirror Name="Mirror" Grid.Row="1" Margin="{DynamicResource RhPageInsetX}" VerticalAlignment="Top" Height="24" />
+
+    <!-- ===== shelf grid ===== -->
+    <c:CoverGrid Name="Covers" Grid.Row="2" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource GridTile}"
+                 IsVisible="{Binding IsGridView}" ItemWidth="176" Spacing="28" RowSpacing="24" CoverAspect="{Binding SlotAspect}" CaptionHeight="92"
+                 MaxStretch="1.15" ContentPadding="{DynamicResource RhShelfInset}" HeaderBleed="True">
+      <c:CoverGrid.Header>
+        <!-- the wall banner of a selected system: wall (band, texture), name and sentence left, the motif right standing
+             on a stage board; randlos (the negative margins are set in code from the grid's padding) -->
+        <Panel Name="Banner" Height="200" IsVisible="{Binding IsSystemSelected}" ClipToBounds="True">
+          <c:SystemWall Name="BannerWall" SystemId="{Binding SystemLook.Id, FallbackValue={x:Null}}" Accent="{Binding BannerAccent}" MotifShare="0" />
+          <c:ShelfBoard Name="BannerBoard" Height="24" VerticalAlignment="Bottom" />
+          <Panel Name="BannerContent" Margin="{DynamicResource RhPageInsetX}">
+            <StackPanel Name="BannerText" VerticalAlignment="Bottom" Margin="0,0,280,48">
+              <TextBlock Name="BannerTitle" Classes="poster" Text="{Binding BannerTitle}" TextTrimming="CharacterEllipsis" MaxLines="1" />
+              <TextBlock Name="BannerSentence" Classes="read-l" c:Sentence.Text="{Binding BannerSentence}" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" MaxLines="1" />
+            </StackPanel>
+            <c:MotifView Name="BannerMotif" Width="144" Height="144" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,0,24"
+                         SystemId="{Binding SystemLook.Id, FallbackValue={x:Null}}" Accent="{Binding BannerAccent}" />
+          </Panel>
+        </Panel>
+      </c:CoverGrid.Header>
+    </c:CoverGrid>
+
+    <!-- ===== list (44 %) + preview (56 %) ===== -->
+    <Grid Name="ListView" Grid.Row="2" ColumnDefinitions="44*,56*" IsVisible="{Binding IsListView}">
+      <c:CoverGrid Name="Rows" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource ListRow}" ShowBoard="False"
+                   ItemWidth="4000" MaxStretch="1" Spacing="0" RowSpacing="0" CoverAspect="0" CaptionHeight="64"
+                   ContentPadding="{DynamicResource RhListInset}" />
+      <!-- the preview: the box on a shelf edge, the title, the sentence, Spielen and Details. No TV light. -->
+      <Grid Name="Preview" Grid.Column="1" RowDefinitions="*,Auto" Margin="56,40,0,48" DataContext="{Binding}" IsVisible="{Binding PreviewItem, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <Panel Name="PreviewShelf" ClipToBounds="False">
+          <c:CoverArt Name="PreviewArt" MaxWidth="360" MaxHeight="480" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,0,10"
+                      Source="{Binding PreviewItem.CoverPath, FallbackValue={x:Null}}" Title="{Binding PreviewItem.Title, FallbackValue={x:Null}}"
+                      Badge="{Binding PreviewItem.SystemShort, FallbackValue={x:Null}}" SystemId="{Binding PreviewItem.SystemId, FallbackValue={x:Null}}"
+                      IsMissing="{Binding PreviewItem.IsMissing, FallbackValue=False}" ShowFavorite="False" />
+          <c:ShelfBoard Name="PreviewBoard" Height="10" VerticalAlignment="Bottom" Margin="-56,0,0,0" />
+        </Panel>
+        <StackPanel Grid.Row="1" Margin="0,26,96,0" MaxWidth="900" HorizontalAlignment="Left">
+          <TextBlock Name="PreviewTitle" Classes="poster-s" Text="{Binding PreviewItem.Caption, FallbackValue={x:Null}}" TextWrapping="Wrap" MaxLines="2"
+                     TextTrimming="CharacterEllipsis" />
+          <TextBlock Name="PreviewMeta" Classes="read-l" c:Sentence.Text="{Binding PreviewMeta}" TextWrapping="Wrap" MaxLines="2" TextTrimming="WordEllipsis" Margin="0,12,0,0" />
+          <StackPanel Name="PreviewActions" Orientation="Horizontal" Spacing="16" Margin="0,24,0,0">
+            <Button Name="PreviewPlay" Theme="{StaticResource RhPrimaryButton}" MinWidth="240" MinHeight="64" Command="{Binding PlayPreviewCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <c:RhIcon Data="{StaticResource Icon.Play}" Filled="True" Width="24" Height="24" />
+                <TextBlock Text="{l:T detail.play}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Name="PreviewDetails" MinHeight="64" Padding="28,0" Command="{Binding OpenPreviewCommand}">
+              <TextBlock Text="{l:T home.details}" VerticalAlignment="Center" />
+            </Button>
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+    </Grid>
 
     <!-- empty state: line drawing + one sentence + the way out -->
-    <StackPanel Grid.Row="1" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Margin="0,0,0,80">
+    <StackPanel Grid.Row="2" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Margin="0,0,0,80">
       <c:RhIcon Data="{StaticResource Icon.Library}" Width="64" Height="64" Foreground="{DynamicResource RhText2Brush}" HorizontalAlignment="Center" StrokeThickness="1.5" />
       <TextBlock Text="{Binding EmptyText}" Classes="h2" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,8,0,0" />
       <TextBlock Text="{l:T library.emptyHint}" Classes="read" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="520" />

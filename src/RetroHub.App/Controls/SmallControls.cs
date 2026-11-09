@@ -27,6 +27,19 @@ public class GameTile : Button
     public bool ShowFavorite { get => GetValue(ShowFavoriteProperty); set => SetValue(ShowFavoriteProperty, value); }
 
     /// <summary>
+    /// Height/width of a spine placeholder on this tile (0 = the system's box format). The library sets it in a system
+    /// compartment, where the slot format comes from the system's covers: placeholders then stand like their neighbours.
+    /// </summary>
+    public static readonly StyledProperty<double> PlaceholderFormatProperty = AvaloniaProperty.Register<GameTile, double>(nameof(PlaceholderFormat));
+
+    public double PlaceholderFormat { get => GetValue(PlaceholderFormatProperty); set => SetValue(PlaceholderFormatProperty, value); }
+
+    /// <summary>Show the sticker "Neu" when the game is new (library only; Start carries no badges).</summary>
+    public static readonly StyledProperty<bool> ShowStickerProperty = AvaloniaProperty.Register<GameTile, bool>(nameof(ShowSticker));
+
+    public bool ShowSticker { get => GetValue(ShowStickerProperty); set => SetValue(ShowStickerProperty, value); }
+
+    /// <summary>
     /// Box format height / width of the slot (0 = off). With a fixed <see cref="Layoutable.Height"/> and no width the
     /// tile is as wide as the system's box (Start shelves, DESIGN 7.1: height 200, width from the format), so covers
     /// and spine placeholders of a board share one top line per format and nothing is shrunk into a portrait slot.

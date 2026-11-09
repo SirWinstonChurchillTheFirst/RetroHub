@@ -204,6 +204,24 @@
     </Style>
   </ControlTheme>
 
+  <!-- ticker entry (DESIGN 7.2.1, 8.2): no face of its own; the content (code chip, count, underline) is styled by the
+       page. Focus = inversion of the code chip only, the underline stays. -->
+  <ControlTheme x:Key="RhTickerItem" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Height" Value="44" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter" Background="Transparent" Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}" VerticalContentAlignment="Center" />
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
   <!-- ================= Header channels ("1 Start  2 Bibliothek  3 Konsolen") ================= -->
   <ControlTheme x:Key="RhChannel" TargetType="Button">
     <Setter Property="ClipToBounds" Value="False" />
@@ -303,18 +321,23 @@
           <Panel Name="PART_CoverArea" RenderTransformOrigin="50%,100%" RenderTransform="scale(1)">
             <c:CoverArt Name="PART_Art" Source="{Binding CoverPath}" Title="{Binding Title}" Badge="{Binding SystemShort}"
                         SystemId="{Binding SystemId}" Accent="{Binding Accent}" IsFavorite="{Binding IsFavorite}" IsMissing="{Binding IsMissing}"
-                        ShowFavorite="{TemplateBinding ShowFavorite}" />
+                        ShowFavorite="{TemplateBinding ShowFavorite}" SlotFormat="{TemplateBinding PlaceholderFormat}" Year="{Binding YearText}" />
+            <!-- the sticker "Neu" (library only): over the box's top left corner, lifts with the box -->
+            <c:NewSticker Name="PART_New" IsVisible="{TemplateBinding ShowSticker}" IsNew="{Binding IsNew}" />
           </Panel>
           <!-- caption: 16 px below the 10 px shelf edge, in a fixed 66 px slot (the row pitch stays regular): the title
                (max. 2 lines) and 4 px under its last line the label line. A spine placeholder carries its title on the
                box, so its caption is only the label line (never the title twice). In a system context the code and
                the bar drop out. -->
           <StackPanel Grid.Row="1" Margin="0,26,0,0" Spacing="4" Height="66" IsVisible="{TemplateBinding ShowCaption}">
-            <TextBlock Name="PART_Title" Classes="caption" Text="{Binding Title}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+            <TextBlock Name="PART_Title" Classes="caption" Text="{Binding Caption}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
                        IsVisible="{Binding HasCover}" />
-            <StackPanel Orientation="Horizontal" Spacing="8" Height="20">
+            <!-- label line: bar, code, the variant where a namesake stands in the same list ("Englisch" / "Japan"), year -->
+            <StackPanel Orientation="Horizontal" Spacing="8" Height="20" ClipToBounds="True">
               <Border Name="PART_Bar" Width="3" Height="14" Background="{Binding SystemColorBrush}" VerticalAlignment="Center" />
               <TextBlock Name="PART_Code" Classes="label" Text="{Binding SystemShort}" VerticalAlignment="Center" />
+              <TextBlock Name="PART_Variant" Classes="label" Text="{Binding Variant}" VerticalAlignment="Center"
+                         IsVisible="{Binding Variant, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <TextBlock Classes="number" FontSize="15" Foreground="{DynamicResource RhText3Brush}" Text="{Binding YearText}" VerticalAlignment="Center" />
             </StackPanel>
           </StackPanel>
@@ -366,9 +389,14 @@
           <Border Name="PART_Bar" Width="4" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{Binding SystemColorBrush}" />
           <Grid ColumnDefinitions="*,Auto,40" Margin="24,0,16,0">
             <Border Name="PART_Chip" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="8,4" CornerRadius="2" Background="Transparent" Margin="-8,0,0,0">
-              <TextBlock Name="PART_Title" Classes="ui-l" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+              <!-- no class "ui-l": an app-level class style would win over the focus style below (paper on paper) -->
+              <TextBlock Name="PART_Title" Text="{Binding Caption}" TextTrimming="CharacterEllipsis" FontFamily="{DynamicResource RhFontUi}"
+                         FontWeight="Medium" FontSize="20" LineHeight="26" Foreground="{DynamicResource RhText1Brush}" />
             </Border>
-            <TextBlock Grid.Column="1" Classes="label" Text="{Binding SystemShort}" VerticalAlignment="Center" Margin="24,0,0,0" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="24,0,0,0">
+              <TextBlock Classes="label" Text="{Binding Variant}" IsVisible="{Binding Variant, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <TextBlock Classes="label" Text="{Binding SystemShort}" />
+            </StackPanel>
             <c:RhIcon Grid.Column="2" Data="{DynamicResource Icon.Star}" Filled="True" Width="18" Height="18" IsVisible="{Binding IsFavorite}"
                       Foreground="{DynamicResource RhFavoriteBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" />
           </Grid>

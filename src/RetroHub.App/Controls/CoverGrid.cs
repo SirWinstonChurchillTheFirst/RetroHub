@@ -67,6 +67,14 @@ public sealed class CoverGrid : UserControl
     public static readonly StyledProperty<Control?> HeaderProperty =
         AvaloniaProperty.Register<CoverGrid, Control?>(nameof(Header));
 
+    /// <summary>The header runs edge to edge over the content padding (the library's wall banner, DESIGN 7.2.1).</summary>
+    public static readonly StyledProperty<bool> HeaderBleedProperty =
+        AvaloniaProperty.Register<CoverGrid, bool>(nameof(HeaderBleed));
+
+    /// <summary>Placeholder format (height/width) handed to every tile; 0 = each system's own box format.</summary>
+    public static readonly StyledProperty<double> PlaceholderAspectProperty =
+        AvaloniaProperty.Register<CoverGrid, double>(nameof(PlaceholderAspect));
+
     /// <summary>Draw the 10 px shelf edge (board) and the contact shadows under every row of boxes.</summary>
     public static readonly StyledProperty<bool> ShowBoardProperty =
         AvaloniaProperty.Register<CoverGrid, bool>(nameof(ShowBoard), true);
@@ -93,6 +101,49 @@ public sealed class CoverGrid : UserControl
     /// <summary>Raised after the rows were (re)built (tests, diagnostics).</summary>
     public event Action? RowsRebuilt;
 
+    /// <summary>Raised when the part of the list in view changed (scrolling, rebuild, resize): see <see cref="VisibleRange"/>.</summary>
+    public event Action? ViewportChanged;
+
+    private (int, int) _lastRange = (-2, -2);
+
+    private void RaiseViewportChanged()
+    {
+        var r = VisibleRange();
+        if (r == _lastRange) return;
+        _lastRange = r;
+        try { ViewportChanged?.Invoke(); } catch (Exception ex) { RetroHub.Core.Logging.Log.Warn("ViewportChanged handler failed", ex); }
+    }
+
+    /// <summary>Distance from the top of the scroll content to the first row (padding + header).</summary>
+    private double RowsTop => _content.Margin.Top + _headerHost.Bounds.Height;
+
+    private double RowPitch => _tileHeight + RowSpacing;
+
+    /// <summary>
+    /// First and last item index whose tile is (at least half) in the viewport, from the scroll offset and the regular
+    /// row pitch alone (no realized containers needed); (−1, −1) while empty or unmeasured.
+    /// </summary>
+    public (int First, int Last) VisibleRange()
+    {
+        if (_items.Count == 0 || _columns <= 0 || RowPitch <= 0 || _scroll.Viewport.Height <= 0) return (-1, -1);
+        var top = _scroll.Offset.Y - RowsTop;
+        var bottom = top + _scroll.Viewport.Height;
+        var half = _tileHeight / 2;
+        var firstRow = Math.Max(0, (int)Math.Floor((top + half) / RowPitch));
+        var lastRow = Math.Min(RowCount - 1, (int)Math.Floor((bottom - half) / RowPitch));
+        if (lastRow < firstRow) lastRow = firstRow;
+        return (Math.Min(firstRow * _columns, _items.Count - 1), Math.Min((lastRow + 1) * _columns - 1, _items.Count - 1));
+    }
+
+    /// <summary>Scrolls so the row of <paramref name="index"/> is the top row in view (shelf mirror); the focus stays.</summary>
+    public void ScrollToIndex(int index)
+    {
+        if (_columns <= 0 || index < 0 || index >= _items.Count) return;
+        var row = index / _columns;
+        var y = row == 0 ? 0 : RowsTop + row * RowPitch - 40;
+        _scroll.Offset = _scroll.Offset.WithY(Math.Max(0, y));
+    }
+
     public CoverGrid()
     {
         Focusable = false;
@@ -118,8 +169,12 @@ public sealed class CoverGrid : UserControl
             VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             Content = _content,
         };
+        // the grid brings the focused row into view itself, with the 40 px margin of DESIGN 8.4; the scroll viewer's own
+        // bring-into-view on focus scrolled a few pixels on its own (a compartment banner then lost its colour band)
+        ScrollViewer.SetBringIntoViewOnFocusChange(_scroll, false);
         Content = _scroll;
         _scroll.SizeChanged += (_, _) => UpdateLayoutMetrics();
+        _scroll.ScrollChanged += (_, _) => RaiseViewportChanged();
         _rows.LayoutUpdated += (_, _) => _boards.InvalidateVisual();
         // tunnel: tiles (buttons) or the focus manager must not consume the arrows before the grid sees them
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -140,6 +195,8 @@ public sealed class CoverGrid : UserControl
     public ICommand? ItemInvokedCommand { get => GetValue(ItemInvokedCommandProperty); set => SetValue(ItemInvokedCommandProperty, value); }
     public Control? Header { get => GetValue(HeaderProperty); set => SetValue(HeaderProperty, value); }
     public bool ShowBoard { get => GetValue(ShowBoardProperty); set => SetValue(ShowBoardProperty, value); }
+    public bool HeaderBleed { get => GetValue(HeaderBleedProperty); set => SetValue(HeaderBleedProperty, value); }
+    public double PlaceholderAspect { get => GetValue(PlaceholderAspectProperty); set => SetValue(PlaceholderAspectProperty, value); }
 
     /// <summary>The grid's focus visuals (light colour: null = the user's light colour; a system's light in its context).</summary>
     public FocusLayer FocusVisuals => _focus;
@@ -170,7 +227,8 @@ public sealed class CoverGrid : UserControl
         else if (change.Property == ItemWidthProperty || change.Property == SpacingProperty || change.Property == MaxStretchProperty
                  || change.Property == CoverAspectProperty || change.Property == CaptionHeightProperty || change.Property == RowSpacingProperty)
             UpdateLayoutMetrics(force: true);
-        else if (change.Property == ContentPaddingProperty) { ApplyPadding(); UpdateLayoutMetrics(); }
+        else if (change.Property == ContentPaddingProperty || change.Property == HeaderBleedProperty) { ApplyPadding(); UpdateLayoutMetrics(); }
+        else if (change.Property == PlaceholderAspectProperty) foreach (var presenter in RealizedRows()) presenter.ApplySize();
         else if (change.Property == HeaderProperty) _headerHost.Content = Header;
         else if (change.Property == ItemTemplateProperty) Rebuild(keepFocus: false);
     }
@@ -179,6 +237,8 @@ public sealed class CoverGrid : UserControl
     {
         var p = ContentPadding;
         _content.Margin = p;
+        // a bleeding header covers the padding left, right and above; the padding's top stays as the gap below it
+        _headerHost.Margin = HeaderBleed ? new Thickness(-p.Left, -p.Top, -p.Right, p.Top) : default;
     }
 
     private void OnItemsSourceChanged()
@@ -260,6 +320,7 @@ public sealed class CoverGrid : UserControl
         _rows.ItemsSource = rows;
         RebuildCount++;
         try { RowsRebuilt?.Invoke(); } catch { }
+        Dispatcher.UIThread.Post(RaiseViewportChanged, DispatcherPriority.Loaded);
         if (hadFocus && keep >= 0)
             Dispatcher.UIThread.Post(() => FocusIndex(keep), DispatcherPriority.Loaded);
         else if (_pendingFocus >= 0 && _items.Count > 0)
@@ -408,7 +469,10 @@ public sealed class CoverGrid : UserControl
     private void OnTileGotFocus(object? sender, FocusChangedEventArgs e)
     {
         var idx = IndexOfTile(e.Source as Visual);
-        if (idx >= 0) SelectedIndex = idx;
+        if (idx < 0) return;
+        SelectedIndex = idx;
+        // focus from outside the grid (the ticker above, a header) lands on a tile: keep its row in view
+        if (e.NavigationMethod == NavigationMethod.Directional && TileForIndex(idx) is { } tile) BringRowIntoView(tile);
     }
 
     /// <summary>Item index of the tile containing <paramref name="v"/>, or -1.</summary>
@@ -521,6 +585,7 @@ public sealed class CoverGrid : UserControl
             {
                 child.Width = _grid._tileWidth;
                 child.Height = _grid._tileHeight;
+                if (child is GameTile tile) tile.PlaceholderFormat = _grid.PlaceholderAspect;
             }
         }
     }

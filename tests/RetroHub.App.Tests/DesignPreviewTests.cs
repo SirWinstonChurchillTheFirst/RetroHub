@@ -1,6 +1,7 @@
 using System.Net;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.VisualTree;
 using GameTile = RetroHub.App.Controls.GameTile;
 using RetroHub.App.Services;
 using RetroHub.App.ViewModels;
@@ -47,6 +48,10 @@ public class DesignPreviewTests
     [Fact]
     public Task Demo_library() => Run("demo", null, ShortSizes);
 
+    /// <summary>The 1000-game demo (DESIGN 9.5): no covers at all – every box a generated spine placeholder.</summary>
+    [Fact]
+    public Task Demo_library_1000() => Run("demo1000", null, [(1920, 1080), (2560, 1440)]);
+
     /// <summary>An empty library (fresh scratch root, real services): the switched-off TV and the empty shelf.</summary>
     [Fact]
     public Task Empty_library() => Run("empty", EmptyRoot(), ShortSizes);
@@ -59,7 +64,7 @@ public class DesignPreviewTests
         .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen"];
-    private static readonly string[] VariantTokens = ["preview", "nocovers", "demo", "empty"];
+    private static readonly string[] VariantTokens = ["preview", "nocovers", "demo", "demo1000", "empty", "perf"];
 
     private static bool Wants(string token, string[] kind)
     {
@@ -132,6 +137,8 @@ public class DesignPreviewTests
         CopyDatabase(DbSource, Path.Combine(root, "data", "database"));
         PrepareSettings(root);
         if (Environment.GetEnvironmentVariable("RETROHUB_DESIGN_FETCH_COVERS") == "1") FetchCovers(root);
+        // covers stored before schema 2: their pixel sizes, so the library knows each system's format (DESIGN 11.4)
+        using (var services = CreateReal(root)) services.Artwork!.FillCoverSizes();
         return root;
     }
 
@@ -268,9 +275,11 @@ public class DesignPreviewTests
         if (sizeTokens.Count > 0) sizes = sizes.Where(s => sizeTokens.Contains($"{s.W}x{s.H}")).ToArray();
         foreach (var (w, h) in sizes)
         {
+            Services.Demo.DemoData.TargetCount = variant == "demo1000" ? 1000 : null;
             var ctx = root == null
                 ? TestSupport.CreateContext(s => s.Motion = MotionLevel.Full)
                 : new UiContext(CreateReal(root));
+            Services.Demo.DemoData.TargetCount = null;
             if (root != null) App.InitializeUi(ctx.Services.Settings.Current, null);
             var vm = new MainViewModel(ctx);
             var window = new MainWindow(vm) { Width = w, Height = h };
@@ -279,15 +288,14 @@ public class DesignPreviewTests
             {
                 TestSupport.Pump(() => vm.CurrentPage is HomeViewModel { IsLoaded: true }, 8000);
                 var prefix = Path.Combine(outDir, $"{variant}-{w}x{h}");
-                if (Wants("start", PageTokens)) Save(window, prefix + "-1-start.png", 1400);
-                if (Wants("states", PageTokens)) StartStates(window, vm, prefix);
-
-                if (Wants("bibliothek", PageTokens))
+                if (variant != "demo1000")
                 {
-                    vm.Navigator.Navigate(PageKey.Library);
-                    TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true }, 8000);
-                    Save(window, prefix + "-2-bibliothek.png", 1200);
+                    if (Wants("start", PageTokens)) Save(window, prefix + "-1-start.png", 1400);
+                    if (Wants("states", PageTokens)) StartStates(window, vm, prefix);
                 }
+
+                if (Wants("bibliothek", PageTokens)) LibraryStates(window, vm, prefix, deep: variant == "demo1000");
+                if (variant == "demo1000") continue;
 
                 var pick = PickGame(ctx);
                 if (pick != null && Wants("detail", PageTokens))
@@ -370,6 +378,158 @@ public class DesignPreviewTests
         for (var i = 0; i < 4 && Focused() is not GameTile; i++) window.Execute(Input.NavAction.Right);
         if (Focused() is GameTile) Save(window, prefix + "-1f-start-schachtel.png", 600);
     }
+    /// <summary>
+    /// The library in the states that matter (DESIGN 7.2), driven like a controller: the first box focused; a box
+    /// further in (bracket and mark of the mirror move); the system with the most games through the ticker (banner,
+    /// wall ground, system light, slot format from the cover sizes) with a box focused; the list view with its
+    /// preview; for the 1000-game demo a page deep into the list.
+    /// </summary>
+    private static void LibraryStates(MainWindow window, MainViewModel vm, string prefix, bool deep)
+    {
+        vm.Navigator.Navigate(PageKey.Library);
+        TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true }, 8000);
+        if (vm.CurrentPage is not LibraryViewModel lib) return;
+        if (lib.IsListView) lib.IsListView = false;
+        TestSupport.Settle(400);
+        Save(window, prefix + "-2-bibliothek.png", 1000);
+        if (lib.Items.Count == 0) return;
+        window.Execute(Input.NavAction.Down);
+        window.Execute(Input.NavAction.Right);
+        window.Execute(Input.NavAction.Right);
+        Save(window, prefix + "-2b-bibliothek-fokus.png", 1200);
+        if (deep)
+        {
+            var deepGrid = window.GetVisualDescendants().OfType<Controls.CoverGrid>().First(g => g.Name == "Covers");
+            for (var i = 0; i < 12; i++) { deepGrid.Move(Input.NavAction.PageRight); TestSupport.Settle(40); }
+            window.Execute(Input.NavAction.Right);
+            Save(window, prefix + "-2e-bibliothek-tief.png", 1200);
+        }
+        // the system with the most games, through the ticker (like the shoulder would)
+        var chip = lib.Chips.Where(c => !c.IsAll).OrderByDescending(c => c.Count).FirstOrDefault();
+        if (chip != null)
+        {
+            lib.SelectChipCommand.Execute(chip);
+            TestSupport.Pump(() => lib.SelectedSystemId == chip.SystemId && lib.Items.Count > 0 && lib.Items.All(i => i.SystemId == chip.SystemId), 8000);
+            TestSupport.Settle(300);
+            var grid = window.GetVisualDescendants().OfType<Controls.CoverGrid>().First(g => g.Name == "Covers");
+            grid.FocusIndex(Math.Min(1, lib.Items.Count - 1));
+            Save(window, prefix + "-2c-bibliothek-system.png", 1200);
+            lib.SelectChipCommand.Execute(lib.Chips.First(c => c.IsAll));
+            TestSupport.Pump(() => lib.SelectedSystemId == null, 4000);
+            TestSupport.Settle(300);
+        }
+        // the list with its preview (the view is a saved setting: switched back afterwards)
+        lib.IsListView = true;
+        TestSupport.Settle(400);
+        var rows = window.GetVisualDescendants().OfType<Controls.CoverGrid>().First(g => g.Name == "Rows");
+        rows.FocusIndex(Math.Min(4, lib.Items.Count - 1));
+        Save(window, prefix + "-2d-bibliothek-liste.png", 1200);
+        lib.IsListView = false;
+        TestSupport.Settle(200);
+    }
+
+    /// <summary>
+    /// Layout and render cost of the library with the 1000-game demo (DESIGN 9.5), measured headless: Avalonia's
+    /// headless platform with REAL Skia rasterisation on the CPU (no GPU, no compositor vsync). Per step: one focus
+    /// move (input → layout) and one full rendered frame of the window. Written to shots\&lt;milestone&gt;\perf-library.txt.
+    /// The numbers are an upper bound of the CPU work per frame, not an fps measurement on a real GPU.
+    /// </summary>
+    [Fact]
+    public Task Library_1000_perf() => UiTest.Run(() =>
+    {
+        Assert.SkipWhen(string.IsNullOrEmpty(DesignDir), "RETROHUB_DESIGN_DIR is not set (design previews only on request)");
+        Assert.SkipWhen(!Wants("perf", VariantTokens), "variant filtered out (RETROHUB_DESIGN_ONLY)");
+        var outDir = Path.Combine(DesignDir!, "shots", Milestone);
+        Directory.CreateDirectory(outDir);
+        var report = new System.Text.StringBuilder();
+        report.AppendLine($"Library performance, headless Avalonia 12 + Skia CPU raster, {Environment.ProcessorCount} logical CPUs, {DateTime.Now:yyyy-MM-dd HH:mm}");
+        foreach (var (w, h) in new[] { (1920, 1080), (2560, 1440) })
+        {
+            const int count = 1000;
+            Services.Demo.DemoData.TargetCount = count;
+            var ctx = TestSupport.CreateContext(s => s.Motion = MotionLevel.Full);
+            Services.Demo.DemoData.TargetCount = null;
+            var vm = new MainViewModel(ctx);
+            var window = new MainWindow(vm) { Width = w, Height = h };
+            window.Show();
+            try
+            {
+                TestSupport.Pump(() => vm.CurrentPage is HomeViewModel { IsLoaded: true }, 8000);
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                vm.Navigator.Navigate(PageKey.Library);
+                TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true, Items.Count: > 0 }, 15000);
+                var loadMs = sw.Elapsed.TotalMilliseconds;
+                var grid = window.GetVisualDescendants().OfType<Controls.CoverGrid>().First(g => g.Name == "Covers");
+                TestSupport.Pump(() => grid.TileForIndex(0) != null, 4000);
+                sw.Restart();
+                window.CaptureRenderedFrame();
+                var firstFrame = sw.Elapsed.TotalMilliseconds;
+                TestSupport.Settle(500);
+                window.Execute(Input.NavAction.Right);
+                TestSupport.Settle(300);
+                var mirror = window.GetVisualDescendants().OfType<Controls.ShelfMirror>().First();
+                var rasterBefore = mirror.RasterCount;
+                var lib = (LibraryViewModel)vm.CurrentPage!;
+
+                // 1) focus moves like a held direction: down through the rows, right along one, back up
+                var layout = new List<double>();
+                var frame = new List<double>();
+                var moves = new List<Input.NavAction>();
+                for (var i = 0; i < 40; i++) moves.Add(Input.NavAction.Down);
+                for (var i = 0; i < 6; i++) moves.Add(Input.NavAction.Right);
+                for (var i = 0; i < 20; i++) moves.Add(Input.NavAction.Up);
+                foreach (var move in moves)
+                {
+                    sw.Restart();
+                    window.Execute(move);
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    layout.Add(sw.Elapsed.TotalMilliseconds);
+                    sw.Restart();
+                    window.CaptureRenderedFrame();
+                    frame.Add(sw.Elapsed.TotalMilliseconds);
+                }
+                // 2) paging through the whole list (rows realised and recycled)
+                var page = new List<double>();
+                for (var i = 0; i < 80 && grid.SelectedIndex < lib.Items.Count - grid.Columns; i++)
+                {
+                    sw.Restart();
+                    grid.Move(Input.NavAction.PageRight);
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    window.CaptureRenderedFrame();
+                    page.Add(sw.Elapsed.TotalMilliseconds);
+                }
+                // 3) the shelf mirror: one rasterisation per list, none per move
+                var rasterDuringMoves = mirror.RasterCount - rasterBefore;
+                var spines = Enumerable.Range(0, count).Select(i => new Controls.ShelfMirror.Spine(i % 2 == 0 ? "snes" : "gba", Avalonia.Media.Colors.Red)).ToList();
+                sw.Restart();
+                for (var i = 0; i < 10; i++) Controls.ShelfMirror.Rasterise(spines, (int)(w * 0.9), 12, Theming.SystemPalette.Room).Dispose();
+                var rasterMs = sw.Elapsed.TotalMilliseconds / 10;
+
+                static string Stats(List<double> v)
+                {
+                    if (v.Count == 0) return "-";
+                    var s = v.OrderBy(x => x).ToList();
+                    double P(double q) => s[Math.Min(s.Count - 1, (int)Math.Floor(q * s.Count))];
+                    return $"median {P(0.5):0.0} ms, p95 {P(0.95):0.0} ms, max {s[^1]:0.0} ms (n={s.Count})";
+                }
+                report.AppendLine();
+                report.AppendLine($"{w}x{h}, {lib.Items.Count} games, {grid.Columns} columns, {grid.RowCount} rows, tiles realised: {window.GetVisualDescendants().OfType<GameTile>().Count()}");
+                report.AppendLine($"  load (navigate -> items bound): {loadMs:0} ms; first full frame: {firstFrame:0.0} ms");
+                report.AppendLine($"  focus move, input + layout:       {Stats(layout)}");
+                report.AppendLine($"  focus move, full frame render:    {Stats(frame)}");
+                report.AppendLine($"  page jump + layout + full frame:  {Stats(page)}");
+                report.AppendLine($"  shelf mirror: {rasterDuringMoves} re-rasterisations during {moves.Count + page.Count} moves; one rasterisation of {count} spines at {(int)(w * 0.9)} px: {rasterMs:0.00} ms");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+        File.WriteAllText(Path.Combine(outDir, "perf-library.txt"), report.ToString());
+    });
+
     /// <summary>The detail/system subject: the last played game, else one with a cover, else the first.</summary>
     private static GameItemViewModel? PickGame(UiContext ctx)
     {

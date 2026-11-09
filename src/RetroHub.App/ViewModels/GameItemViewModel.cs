@@ -43,6 +43,29 @@ public sealed partial class GameItemViewModel : ObservableObject
     [ObservableProperty] public partial string MetaText { get; private set; } = "";
     [ObservableProperty] public partial bool HasPlayed { get; private set; }
     [ObservableProperty] public partial double CoverAspect { get; private set; } = 1.4;
+    /// <summary>The title as captions print it: " - " becomes an en dash (DESIGN 3.2, M1 leftover).</summary>
+    [ObservableProperty] public partial string Caption { get; private set; } = "";
+    /// <summary>
+    /// What tells this game apart from a namesake in the same list ("Englisch", "Japan", "Europa"), set by the
+    /// library only where two games of one system share a title; "" otherwise.
+    /// </summary>
+    [ObservableProperty] public partial string Variant { get; set; } = "";
+    /// <summary>The sticker "Neu" (DESIGN 7.2.1): set by the library (added recently, never started, not yet unpacked).</summary>
+    [ObservableProperty] public partial bool IsNew { get; set; }
+    /// <summary>Region/language in German ("Europa", "Englisch"); "" when unknown.</summary>
+    public string RegionText => Fmt.Region(Game.Region);
+
+    private static readonly HashSet<long> Unpacked = [];
+
+    /// <summary>The sticker was unpacked on the first focus: the game is no longer "Neu" in this session.</summary>
+    public void MarkUnpacked()
+    {
+        lock (Unpacked) Unpacked.Add(Id);
+        IsNew = false;
+    }
+
+    /// <summary>True when this game's sticker was unpacked in this session.</summary>
+    public bool WasUnpacked { get { lock (Unpacked) return Unpacked.Contains(Id); } }
 
     public string Initials => Fmt.Initials(Title);
 
@@ -51,6 +74,7 @@ public sealed partial class GameItemViewModel : ObservableObject
         Game = game;
         var sys = _services.Catalog.GetSystem(game.SystemId);
         Title = game.DisplayTitle;
+        Caption = Controls.FitText.Typeset(Title);
         SystemId = game.SystemId;
         SystemName = sys?.Name ?? game.SystemId;
         SystemShort = string.IsNullOrEmpty(sys?.ShortName) ? game.SystemId.ToUpperInvariant() : sys!.ShortName;
@@ -71,6 +95,7 @@ public sealed partial class GameItemViewModel : ObservableObject
         MetaText = game.Year is { } y ? $"{meta} · {y}" : meta;
         CoverAspect = SystemPalette.BoxAspect(game.SystemId);
         OnPropertyChanged(nameof(Initials));
+        OnPropertyChanged(nameof(RegionText));
     }
 
     /// <summary>Sets the favourite flag optimistically (the repository write happens in the caller).</summary>

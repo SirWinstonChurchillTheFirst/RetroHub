@@ -42,6 +42,10 @@ public sealed class CoverArt : Control
     /// state is the filled star button of the stage).
     /// </summary>
     public static readonly StyledProperty<bool> ShowFavoriteProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(ShowFavorite), true);
+    /// <summary>Height/width of the placeholder (0 = the system's box format): a system compartment hands its slot format in.</summary>
+    public static readonly StyledProperty<double> SlotFormatProperty = AvaloniaProperty.Register<CoverArt, double>(nameof(SlotFormat));
+    /// <summary>Release year, printed at the foot of the placeholder's spine ("" / null = none).</summary>
+    public static readonly StyledProperty<string?> YearProperty = AvaloniaProperty.Register<CoverArt, string?>(nameof(Year));
     /// <summary>Status "Datei fehlt": cover dimmed to 0.45 plus the Missing icon top right (dimming = status only).</summary>
     public static readonly StyledProperty<bool> IsMissingProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(IsMissing));
 
@@ -66,12 +70,14 @@ public sealed class CoverArt : Control
     private FormattedText? _titleText;
     private FormattedText? _subText;
     private FormattedText? _codeText;
+    private FormattedText? _spineTitle;
+    private FormattedText? _spineYear;
     private (string? Title, string? Code, string? System, int W, int H) _textKey;
 
     static CoverArt()
     {
         AffectsRender<CoverArt>(TitleProperty, BadgeProperty, AccentProperty, SystemIdProperty, FillProperty, IsFavoriteProperty, IsMissingProperty,
-            ShowTitleProperty, ShowFavoriteProperty);
+            ShowTitleProperty, ShowFavoriteProperty, YearProperty);
         ClipToBoundsProperty.OverrideDefaultValue<CoverArt>(true);
     }
 
@@ -88,6 +94,8 @@ public sealed class CoverArt : Control
     public bool IsFavorite { get => GetValue(IsFavoriteProperty); set => SetValue(IsFavoriteProperty, value); }
     public bool IsMissing { get => GetValue(IsMissingProperty); set => SetValue(IsMissingProperty, value); }
     public bool ShowFavorite { get => GetValue(ShowFavoriteProperty); set => SetValue(ShowFavoriteProperty, value); }
+    public double SlotFormat { get => GetValue(SlotFormatProperty); set => SetValue(SlotFormatProperty, value); }
+    public string? Year { get => GetValue(YearProperty); set => SetValue(YearProperty, value); }
 
     /// <summary>True when a real cover bitmap is shown (tests / diagnostics).</summary>
     public bool HasImage => _bitmap != null;
@@ -118,9 +126,10 @@ public sealed class CoverArt : Control
             var wanted = AsyncImageLoader.Bucket(Bounds.Width * Scaling);
             if (Source != null && wanted > _requestedWidth) RequestImage();
         }
-        else if (change.Property == FillProperty || change.Property == SystemIdProperty) UpdateArtRect();
+        else if (change.Property == FillProperty || change.Property == SystemIdProperty || change.Property == SlotFormatProperty) UpdateArtRect();
         if (change.Property == TitleProperty || change.Property == BadgeProperty || change.Property == SystemIdProperty
-            || change.Property == BoundsProperty || change.Property == SourceProperty || change.Property == ShowTitleProperty)
+            || change.Property == BoundsProperty || change.Property == SourceProperty || change.Property == ShowTitleProperty
+            || change.Property == YearProperty || change.Property == SlotFormatProperty)
             _textKey = default; // rebuilt lazily on the next placeholder layout (see EnsureText)
     }
 
@@ -196,7 +205,7 @@ public sealed class CoverArt : Control
 
     private void UpdateArtRect()
     {
-        var r = Compute(new Rect(Bounds.Size), _bitmap?.Size, Fill, PlaceholderAspectFor(SystemId));
+        var r = Compute(new Rect(Bounds.Size), _bitmap?.Size, Fill, SlotFormat > 0 ? 1 / SlotFormat : PlaceholderAspectFor(SystemId));
         if (r == _artRect) return;
         _artRect = r;
         ArtRectChanged?.Invoke(this, EventArgs.Empty);
@@ -334,12 +343,26 @@ public sealed class CoverArt : Control
             var motif = Math.Round(Math.Min(Math.Min(r.Height * 0.45, (w - band) * 0.8), room));
             if (motif > 8)
                 MotifCatalog.DrawSilhouette(ctx, look, new Rect(r.Right - inset - motif, r.Bottom - inset - motif, motif, motif), 0.18);
-            // spine band: full colour, code −90°
+            // spine band: full colour, printed like a real spine - code at the top, the title from the foot upwards,
+            // the year at the foot (all -90 degrees, read bottom to top); a 1 px fold line where the spine meets the front
             ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, band, r.Height));
+            if (band >= SpineTitleMinBand) ctx.FillRectangle(FoldBrush, new Rect(r.X + band - 1, r.Y, 1, r.Height));
             if (_codeText is { } code)
             {
                 using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(r.X + (band - code.Height) / 2, r.Y + w * 0.08 + code.Width)))
                     ctx.DrawText(code, new Point(0, 0));
+            }
+            var foot = r.Bottom - Math.Round(w * 0.06);
+            if (_spineYear is { } year)
+            {
+                using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(r.X + (band - year.Height) / 2, foot)))
+                    ctx.DrawText(year, new Point(0, 0));
+                foot -= Math.Ceiling(year.Width) + SpineGap;
+            }
+            if (_spineTitle is { } spine)
+            {
+                using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(r.X + (band - spine.Height) / 2, foot)))
+                    ctx.DrawText(spine, new Point(0, 0));
             }
             ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y, w, 1));
             // title and subtitle: left after the band, anchored at the bottom with the inner margin
@@ -374,9 +397,18 @@ public sealed class CoverArt : Control
             var maxWidth = Math.Max(1, w - band - pad - Math.Max(6, Math.Round(pad * 0.5)));
             var budget = Math.Max(1, r.Height * 0.62);
             var (main, subtitle) = SplitTitle(Title);
-            // one size per box height (a whole row alike), ≤ 4 lines, then a character ellipsis; line height 1.1
-            var fit = PlaceholderTitle.Fit(main, maxWidth, budget, PlaceholderTitleSize(w, r.Height), PlaceholderTitle.MaxLines);
-            _titleText = new FormattedText(fit.Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, fit.Size, PaperBrush)
+            // one size per box height (a whole row alike), at most 4 lines, then a character ellipsis; line height 1.1.
+            // A word wider than the line in Archivo Expanded (narrow Wii/Switch cases): the same size in Archivo
+            // Condensed - the spine voice - instead of shrinking the poster face to 13 px (M1 leftover)
+            var size = PlaceholderTitleSize(w, r.Height);
+            var fit = PlaceholderTitle.Fit(main, maxWidth, budget, size, PlaceholderTitle.MaxLines);
+            var face = FontRoles.PosterFace;
+            if (fit.Size < size)
+            {
+                var narrow = PlaceholderTitle.Fit(main, maxWidth, budget, size, PlaceholderTitle.MaxLines, condensed: true);
+                if (narrow.Size > fit.Size) { fit = narrow; face = FontRoles.SpineFace; }
+            }
+            _titleText = new FormattedText(fit.Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, face, fit.Size, PaperBrush)
             {
                 LineHeight = Math.Round(fit.Size * PlaceholderTitle.LineFactor),
             };
@@ -404,7 +436,30 @@ public sealed class CoverArt : Control
                 MaxLineCount = 1,
                 Trimming = TextTrimming.CharacterEllipsis,
             };
+        // the printed spine: title (and year) along the band when it is wide enough to carry 13 px type or more
+        _spineTitle = null;
+        _spineYear = null;
+        if (band >= SpineTitleMinBand && !string.IsNullOrEmpty(Title))
+        {
+            var spineSize = Math.Round(Math.Clamp(band * 0.5, 15, Math.Max(15, Math.Min(codeSize, 20))));
+            if (!string.IsNullOrEmpty(Year))
+                _spineYear = new FormattedText(Year, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, look.TextOnColorBrush);
+            var codeEnd = w * 0.08 + (_codeText?.Width ?? 0) + SpineGap * 2;
+            var length = r.Height - codeEnd - Math.Round(w * 0.06) - (_spineYear != null ? Math.Ceiling(_spineYear.Width) + SpineGap : 0);
+            if (length >= spineSize * 3)
+                _spineTitle = new FormattedText(FitText.Typeset(Title), CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, look.TextOnColorBrush)
+                {
+                    MaxTextWidth = length,
+                    MaxLineCount = 1,
+                    Trimming = TextTrimming.CharacterEllipsis,
+                };
+        }
     }
+
+    /// <summary>A band narrower than this carries only the code (the title would fall below the readable 15 px).</summary>
+    public const double SpineTitleMinBand = 28;
+    private const double SpineGap = 10;
+    private static readonly IImmutableSolidColorBrush FoldBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x40, 0, 0, 0));
 
     private const double SubGap = 4;
     private static readonly IImmutableSolidColorBrush SubBrush = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
@@ -441,6 +496,8 @@ public sealed class CoverArt : Control
 public static class PlaceholderTitle
 {
     public const double MinSize = 13;
+    /// <summary>The condensed fallback never goes below the readable minimum (DESIGN 3.2).</summary>
+    public const double CondensedMinSize = 15;
     public const int MaxLines = 4;
     public const double LineFactor = 1.1;
 
@@ -448,12 +505,14 @@ public static class PlaceholderTitle
 
     private static readonly Dictionary<(string, int, int, int, int), Result> Cache = new();
 
-    public static Result Fit(string text, double maxWidth, double maxHeight, double startSize, int maxLines)
+    /// <param name="condensed">Measure in Archivo Condensed (the spine face) instead of Archivo Expanded.</param>
+    public static Result Fit(string text, double maxWidth, double maxHeight, double startSize, int maxLines, bool condensed = false)
     {
-        var key = (text, (int)maxWidth, (int)maxHeight, (int)Math.Round(startSize * 10), maxLines);
+        var key = (text, (int)maxWidth, (int)maxHeight, (int)Math.Round(startSize * 10) * (condensed ? -1 : 1), maxLines);
         lock (Cache)
             if (Cache.TryGetValue(key, out var hit)) return hit;
-        var result = Compute(text, maxWidth, maxHeight, startSize, maxLines);
+        var face = condensed ? FontRoles.SpineFace : FontRoles.PosterFace;
+        var result = Compute(text, maxWidth, maxHeight, startSize, maxLines, face, condensed ? CondensedMinSize : MinSize);
         lock (Cache)
         {
             if (Cache.Count > 4096) Cache.Clear();
@@ -462,13 +521,13 @@ public static class PlaceholderTitle
         return result;
     }
 
-    private static Result Compute(string text, double maxWidth, double maxHeight, double startSize, int maxLines)
+    private static Result Compute(string text, double maxWidth, double maxHeight, double startSize, int maxLines, Typeface face, double minSize)
     {
         var tokens = Tokens(text);
-        var size = Math.Max(MinSize, startSize);
+        var size = Math.Max(minSize, startSize);
         List<string>? lines;
-        while ((lines = Wrap(tokens, size, maxWidth)) == null && size > MinSize)
-            size = Math.Max(MinSize, Math.Floor(size * 0.88 * 2) / 2);
+        while ((lines = Wrap(tokens, size, maxWidth, face)) == null && size > minSize)
+            size = Math.Max(minSize, Math.Floor(size * 0.88 * 2) / 2);
         lines ??= tokens.Select(t => t.Text).ToList(); // a word wider than the line even at the minimum: one per line
         maxLines = Math.Max(1, Math.Min(maxLines, (int)Math.Floor((maxHeight + 0.5) / Math.Round(size * LineFactor))));
         if (lines.Count <= maxLines) return new Result(string.Join('\n', lines), size, lines.Count, false);
@@ -476,7 +535,7 @@ public static class PlaceholderTitle
         var rest = lines[maxLines - 1];
         for (var i = maxLines; i < lines.Count; i++) rest += (rest.EndsWith('-') ? "" : " ") + lines[i];
         static string Cut(string s) => s.TrimEnd(' ', '-', ',', ':', '.') + "…";
-        while (rest.Length > 1 && Measure(Cut(rest), size) > maxWidth + 0.5) rest = rest[..^1];
+        while (rest.Length > 1 && Measure(Cut(rest), size, face) > maxWidth + 0.5) rest = rest[..^1];
         var kept = lines.Take(maxLines - 1).Append(Cut(rest));
         return new Result(string.Join('\n', kept), size, maxLines, true);
     }
@@ -503,16 +562,16 @@ public static class PlaceholderTitle
     }
 
     /// <summary>Greedy lines at <paramref name="size"/>; null when one token alone is wider than the line.</summary>
-    private static List<string>? Wrap(List<(string Text, bool Space)> tokens, double size, double maxWidth)
+    private static List<string>? Wrap(List<(string Text, bool Space)> tokens, double size, double maxWidth, Typeface face)
     {
         var lines = new List<string>();
         var current = "";
         foreach (var (word, space) in tokens)
         {
-            if (Measure(word, size) > maxWidth + 0.5) return null;
+            if (Measure(word, size, face) > maxWidth + 0.5) return null;
             if (current.Length == 0) { current = word; continue; }
             var candidate = space ? current + " " + word : current + word;
-            if (Measure(candidate, size) <= maxWidth + 0.5) current = candidate;
+            if (Measure(candidate, size, face) <= maxWidth + 0.5) current = candidate;
             else
             {
                 lines.Add(current);
@@ -523,8 +582,8 @@ public static class PlaceholderTitle
         return lines;
     }
 
-    private static double Measure(string s, double size) =>
-        new FormattedText(s, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, size, null).Width;
+    private static double Measure(string s, double size, Typeface face) =>
+        new FormattedText(s, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, face, size, null).Width;
 }
 
 internal static class VisualRootExtensions

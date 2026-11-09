@@ -112,6 +112,10 @@ public static class Fmt
         };
     }
 
+    /// <summary>A region or language tag for a label line: a known region as its German word, a language as it is.</summary>
+    public static string Region(string? region) =>
+        string.IsNullOrWhiteSpace(region) ? "" : RegionWord(region) ?? region.Trim();
+
     /// <summary>Up to two initials of a title ("The Legend of Zelda" → "LZ", "Tetris" → "TE").</summary>
     public static string Initials(string title)
     {

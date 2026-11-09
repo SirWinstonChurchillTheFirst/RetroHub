@@ -100,6 +100,9 @@
   <Thickness x:Key="RhPageInset">96,24,96,48</Thickness>
   <Thickness x:Key="RhGridInset">96,48,96,64</Thickness>
   <Thickness x:Key="RhPageInsetX">96,0,96,0</Thickness>
+  <!-- library (DESIGN 7.2.1): 40 px above the first row (lift, ring, the short cone); the list's left column -->
+  <Thickness x:Key="RhShelfInset">96,40,96,64</Thickness>
+  <Thickness x:Key="RhListInset">96,16,0,48</Thickness>
 
   <!-- ===== Type (DESIGN 3.1; each width in its own folder, Inter as the last fallback) ===== -->
   <FontFamily x:Key="RhFontPoster">avares://RetroHub.App/Assets/Fonts/ArchivoExpanded#Archivo Expanded, fonts:Inter#Inter</FontFamily>

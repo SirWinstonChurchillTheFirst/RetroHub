@@ -173,7 +173,7 @@ public sealed class RoomBackdrop : Panel
                 SetGlow(null, 0);
                 _scrim.IsVisible = false;
                 _grain.IsVisible = false;
-                ThemeManager.SetBoardLight(ThemeManager.NeutralBoardLight);
+                ThemeManager.SetBoardLight(spec.AccentBoard ? ThemeManager.BoardLightFor(ThemeManager.CurrentAccent, 0.22) : ThemeManager.NeutralBoardLight);
                 break;
             case BackdropKind.Wall:
                 SetGround(look?.Wall ?? Room, look: null);

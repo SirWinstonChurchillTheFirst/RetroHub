@@ -65,3 +65,30 @@ public sealed class SystemWall : Control
         if (band > 0) context.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, r.Width, band));
     }
 }
+
+/// <summary>
+/// A system's motif standing alone (DESIGN 6.4.1: the wall banner of the library – motif right, standing on a stage
+/// board). Square, standing on its bottom edge; the cut-outs take the wall tone behind it.
+/// </summary>
+public sealed class MotifView : Control
+{
+    public static readonly StyledProperty<string?> SystemIdProperty = AvaloniaProperty.Register<MotifView, string?>(nameof(SystemId));
+    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<MotifView, Color>(nameof(Accent), Color.Parse("#948A7A"));
+
+    static MotifView()
+    {
+        AffectsRender<MotifView>(SystemIdProperty, AccentProperty);
+        IsHitTestVisibleProperty.OverrideDefaultValue<MotifView>(false);
+    }
+
+    public string? SystemId { get => GetValue(SystemIdProperty); set => SetValue(SystemIdProperty, value); }
+    public Color Accent { get => GetValue(AccentProperty); set => SetValue(AccentProperty, value); }
+
+    public override void Render(DrawingContext context)
+    {
+        var r = new Rect(Bounds.Size);
+        if (r.Width <= 0 || r.Height <= 0 || string.IsNullOrEmpty(SystemId)) return;
+        var look = SystemPalette.Get(SystemId, Accent);
+        MotifCatalog.Draw(context, look, r, alignRight: true);
+    }
+}

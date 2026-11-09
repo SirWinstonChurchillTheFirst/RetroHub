@@ -450,5 +450,17 @@
   "detail.sentence.once": "{0} in einer Sitzung gespielt, zuletzt {1}.",
   "detail.sentence.played": "{0} in {1} Sitzungen gespielt, zuletzt {2}.",
   "detail.section.about": "Über das Spiel",
-  "detail.section.start": "Start"
+  "detail.section.start": "Start",
+  // ──────── library (design M3): shoulders, banner, namesakes, view ────────
+  "hint.shelf": "Fach",
+  "library.banner.hours": "{0} Stunden gespielt",
+  "library.banner.hour": "1 Stunde gespielt",
+  "library.banner.minutes": "{0} Minuten gespielt",
+  "library.banner.never": "noch nicht gespielt",
+  "library.variant.original": "Original",
+  "library.view": "Ansicht",
+  "library.view.shelf": "Regal",
+  "library.view.list": "Liste",
+  "library.prevShelf": "Voriges Fach",
+  "library.nextShelf": "Nächstes Fach"
 }

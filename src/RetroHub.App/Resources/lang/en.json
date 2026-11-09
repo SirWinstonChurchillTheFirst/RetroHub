@@ -207,5 +207,17 @@
   "detail.sentence.played": "{0} played in {1} sessions, last {2}.",
   "detail.section.about": "About the game",
   "detail.section.start": "Start",
-  "screen.noSignal": "No signal"
+  "screen.noSignal": "No signal",
+  // ──────── library (design M3): shoulders, banner, namesakes, view ────────
+  "hint.shelf": "Shelf",
+  "library.banner.hours": "{0} hours played",
+  "library.banner.hour": "1 hour played",
+  "library.banner.minutes": "{0} minutes played",
+  "library.banner.never": "not played yet",
+  "library.variant.original": "Original",
+  "library.view": "View",
+  "library.view.shelf": "Shelf",
+  "library.view.list": "List",
+  "library.prevShelf": "Previous shelf",
+  "library.nextShelf": "Next shelf"
 }
