@@ -107,5 +107,31 @@
     "modes": ["Fullscreen", "Windowed"],
     "downloadUrl": "https://www.mamedev.org/release.html",
     "notes": "Spielname = Name des ROM-Sets (Dateiname ohne Endung). Die Romsets müssen zur MAME-Version passen."
+  },
+  {
+    "id": "cemu",
+    "name": "Cemu",
+    "website": "https://cemu.info/",
+    "license": "MPL-2.0",
+    "exe": ["Cemu.exe"],
+    "systems": ["wiiu"],
+    "args": ["{fullscreen}", "-g", "{rom}"],
+    "fullscreenArgs": ["-f"],
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed"],
+    "downloadUrl": "https://cemu.info/#download",
+    "notes": "Portabel, wenn neben Cemu.exe ein Ordner „portable“ existiert. Für .wux/.wud braucht Cemu die Disc-Keys (keys.txt) – nur eigene Dumps."
+  },
+  {
+    "id": "ryujinx",
+    "name": "Ryujinx (Community-Fork)",
+    "license": "MIT",
+    "exe": ["Ryujinx.exe", "Ryujinx*.exe"],
+    "systems": ["switch"],
+    "args": ["{fullscreen}", "{rom}"],
+    "fullscreenArgs": ["--fullscreen"],
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed"],
+    "notes": "Kein offizieller Download (das Original-Projekt wurde 2024 eingestellt). Braucht eigene Keys/Firmware. Startparameter nicht in RetroHub verifiziert."
   }
 ]

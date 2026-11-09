@@ -214,5 +214,36 @@
     "emulators": ["azahar"],
     "accent": "#CE181E",
     "sortOrder": 150
+  },
+  {
+    "id": "wiiu",
+    "name": "Nintendo Wii U",
+    "shortName": "Wii U",
+    "manufacturer": "Nintendo",
+    "year": 2012,
+    "category": "Console",
+    "folders": ["wiiu"],
+    // .wua = Cemu archive; .wux/.wud = disc images (need the disc key, Cemu reads keys.txt); .rpx = extracted game
+    "extensions": [".wua", ".wux", ".wud", ".rpx"],
+    "aspectRatio": 1.7778,
+    "libretroName": "Nintendo - Wii U",
+    "emulators": ["cemu"],
+    "accent": "#009AC7",
+    "sortOrder": 145
+  },
+  {
+    "id": "switch",
+    "name": "Nintendo Switch",
+    "shortName": "Switch",
+    "manufacturer": "Nintendo",
+    "year": 2017,
+    "category": "Console",
+    "folders": ["switch"],
+    "extensions": [".xci", ".nsp", ".nro"],
+    "aspectRatio": 1.7778,
+    "libretroName": "Nintendo - Nintendo Switch",
+    "emulators": ["ryujinx"],
+    "accent": "#E60012",
+    "sortOrder": 160
   }
 ]

@@ -9,6 +9,8 @@ public static class ScanRules
         "bios", "saves", "savestates", "states", "media", "images", "videos", "manuals", "manual",
         "downloaded_media", "screenshots", "snaps", "covers", "boxart", "marquees",
         "$RECYCLE.BIN", "System Volume Information", "__MACOSX",
+        // update/DLC packages next to a game (e.g. Switch .nsp updates) are not separate games
+        "updates", "update", "dlc",
     };
 
     /// <summary>Extensions that are never games and are skipped without a report (readmes, artwork, saves, configs …).</summary>

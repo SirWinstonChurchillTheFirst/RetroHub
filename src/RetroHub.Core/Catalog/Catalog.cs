@@ -56,6 +56,21 @@ public sealed class Catalog : ICatalog
             foreach (var f in s.Folders)
                 _systemsByFolder.TryAdd(f, s); // uniqueness is enforced by the builder
 
+        // Second level: real-world folder names ("Game Boy Advance", "Nintendo 64", "Sony PlayStation 2") matched
+        // against normalised folder aliases, display names, short names and "manufacturer + name".
+        // A key that would point to two different systems is dropped (never guess).
+        var byName = new Dictionary<string, SystemDef?>(StringComparer.Ordinal);
+        foreach (var s in Systems)
+        {
+            var keys = new List<string>(s.Folders) { s.Name, s.ShortName, $"{s.Manufacturer} {s.Name}", $"{s.Manufacturer} {s.ShortName}" };
+            foreach (var k in keys.Select(NormalizeFolderKey).Where(k => k.Length >= 2).Distinct())
+            {
+                if (byName.TryGetValue(k, out var existing) && existing != null && existing.Id != s.Id) byName[k] = null;
+                else if (!byName.ContainsKey(k)) byName[k] = s;
+            }
+        }
+        _systemsByName = byName.Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => kv.Value!, StringComparer.Ordinal);
+
         var byExt = new Dictionary<string, List<SystemDef>>(StringComparer.OrdinalIgnoreCase);
         foreach (var s in Systems)
             foreach (var e in s.Extensions)
@@ -179,8 +194,24 @@ public sealed class Catalog : ICatalog
     public EmulatorDef? GetEmulator(string id) =>
         string.IsNullOrWhiteSpace(id) ? null : _emulatorsById.GetValueOrDefault(id.Trim());
 
-    public SystemDef? SystemForFolder(string folderName) =>
-        string.IsNullOrWhiteSpace(folderName) ? null : _systemsByFolder.GetValueOrDefault(folderName.Trim());
+    public SystemDef? SystemForFolder(string folderName)
+    {
+        if (string.IsNullOrWhiteSpace(folderName)) return null;
+        return _systemsByFolder.GetValueOrDefault(folderName.Trim())
+               ?? _systemsByName.GetValueOrDefault(NormalizeFolderKey(folderName));
+    }
+
+    private readonly Dictionary<string, SystemDef> _systemsByName;
+
+    /// <summary>Lower-case letters and digits only: "Game Boy Advance" → "gameboyadvance", "Wii U" → "wiiu".</summary>
+    internal static string NormalizeFolderKey(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return "";
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var c in s.Normalize(System.Text.NormalizationForm.FormD))
+            if (char.IsLetterOrDigit(c) && c < 128) sb.Append(char.ToLowerInvariant(c));
+        return sb.ToString();
+    }
 
     /// <summary>All systems listing this extension, in catalog order. Accepts ".ISO", "iso" or "*.iso".</summary>
     public IReadOnlyList<SystemDef> SystemsForExtension(string extension)

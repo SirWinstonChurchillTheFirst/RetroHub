@@ -21,12 +21,13 @@ public sealed class BuiltInCatalogTests : IDisposable
         "nes", "snes", "n64", "gamecube", "wii", "gb", "gbc", "gba", "nds", "3ds", "ps1", "ps2", "psp", "megadrive",
         "dreamcast", "saturn", "atari2600", "arcade", "pc",
         "mastersystem", "gamegear", "segacd", "sega32x", "pcengine", "atari7800", "lynx", "ngp", "wonderswan", "virtualboy", "msx",
+        "wiiu", "switch",
     ];
 
     private static readonly string[] RequiredEmulators =
     [
         "retroarch", "mgba", "melonds", "desmume", "azahar", "dolphin", "pcsx2", "duckstation", "ppsspp", "mame",
-        "flycast", "redream", "native",
+        "flycast", "redream", "native", "cemu", "ryujinx",
     ];
 
     private static readonly HashSet<string> KnownSniffers =
@@ -47,6 +48,36 @@ public sealed class BuiltInCatalogTests : IDisposable
         foreach (var id in RequiredSystems) Assert.True(_catalog.GetSystem(id) != null, $"system {id} missing");
         foreach (var id in RequiredEmulators) Assert.True(_catalog.GetEmulator(id) != null, $"emulator {id} missing");
         Assert.Equal(RequiredSystems.Length, _catalog.Systems.Count);
+    }
+
+    [Theory]
+    // real-world folder names (e.g. a user's collection on another drive) → system via the normalised name map
+    [InlineData("Game Boy Advance", "gba")]
+    [InlineData("Game Boy Color", "gbc")]
+    [InlineData("Game Boy", "gb")]
+    [InlineData("GameCube", "gamecube")]
+    [InlineData("Nintendo GameCube", "gamecube")]
+    [InlineData("NES", "nes")]
+    [InlineData("SNES", "snes")]
+    [InlineData("Nintendo 3DS", "3ds")]
+    [InlineData("Nintendo 64", "n64")]
+    [InlineData("Nintendo DS", "nds")]
+    [InlineData("Nintendo Switch", "switch")]
+    [InlineData("Wii U", "wiiu")]
+    [InlineData("Wii", "wii")]
+    [InlineData("game-boy_advance", "gba")]
+    public void SystemForFolder_MatchesDisplayNames(string folder, string expected)
+    {
+        Assert.Equal(expected, _catalog.SystemForFolder(folder)?.Id);
+    }
+
+    [Theory]
+    [InlineData("The Legend of Zelda")]
+    [InlineData("Hacks & Übersetzungen")]
+    [InlineData("Nintendo")]
+    public void SystemForFolder_DoesNotGuessForUnrelatedOrAmbiguousNames(string folder)
+    {
+        Assert.Null(_catalog.SystemForFolder(folder));
     }
 
     [Fact]
