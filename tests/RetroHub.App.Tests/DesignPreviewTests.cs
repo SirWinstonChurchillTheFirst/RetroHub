@@ -443,11 +443,14 @@ public class DesignPreviewTests
         Directory.CreateDirectory(outDir);
         var report = new System.Text.StringBuilder();
         report.AppendLine($"Library performance, headless Avalonia 12 + Skia CPU raster, {Environment.ProcessorCount} logical CPUs, {DateTime.Now:yyyy-MM-dd HH:mm}");
+        report.AppendLine("Main runs with motion off (no transitions); 'frame' = time of window.CaptureRenderedFrame() after the step (dirty regions rasterised on the CPU).");
         foreach (var (w, h) in new[] { (1920, 1080), (2560, 1440) })
         {
             const int count = 1000;
             Services.Demo.DemoData.TargetCount = count;
-            var ctx = TestSupport.CreateContext(s => s.Motion = MotionLevel.Full);
+            // motion off: the headless capture waits out running transitions (the 140 ms lift), which would hide the
+            // actual work per frame – see the motion comparison at the end of the report
+            var ctx = TestSupport.CreateContext(s => s.Motion = MotionLevel.Off);
             Services.Demo.DemoData.TargetCount = null;
             var vm = new MainViewModel(ctx);
             var window = new MainWindow(vm) { Width = w, Height = h };
@@ -471,6 +474,7 @@ public class DesignPreviewTests
                 var rasterBefore = mirror.RasterCount;
                 var lib = (LibraryViewModel)vm.CurrentPage!;
 
+                var createdBefore = GameTile.Created;
                 // 1) focus moves like a held direction: down through the rows, right along one, back up
                 var layout = new List<double>();
                 var frame = new List<double>();
@@ -478,6 +482,10 @@ public class DesignPreviewTests
                 for (var i = 0; i < 40; i++) moves.Add(Input.NavAction.Down);
                 for (var i = 0; i < 6; i++) moves.Add(Input.NavAction.Right);
                 for (var i = 0; i < 20; i++) moves.Add(Input.NavAction.Up);
+                var downLayout = new List<double>();
+                var frameScroll = new List<double>();
+                var frameStill = new List<double>();
+                var lastOffset = grid.ScrollViewer.Offset.Y;
                 foreach (var move in moves)
                 {
                     sw.Restart();
@@ -485,9 +493,12 @@ public class DesignPreviewTests
                     Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                     window.UpdateLayout();
                     layout.Add(sw.Elapsed.TotalMilliseconds);
+                    if (move == Input.NavAction.Down) downLayout.Add(layout[^1]);
                     sw.Restart();
                     window.CaptureRenderedFrame();
                     frame.Add(sw.Elapsed.TotalMilliseconds);
+                    (Math.Abs(grid.ScrollViewer.Offset.Y - lastOffset) > 0.5 ? frameScroll : frameStill).Add(frame[^1]);
+                    lastOffset = grid.ScrollViewer.Offset.Y;
                 }
                 // 2) paging through the whole list (rows realised and recycled)
                 var page = new List<double>();
@@ -500,7 +511,83 @@ public class DesignPreviewTests
                     window.CaptureRenderedFrame();
                     page.Add(sw.Elapsed.TotalMilliseconds);
                 }
-                // 3) the shelf mirror: one rasterisation per list, none per move
+                var createdDuring = GameTile.Created - createdBefore;
+                // 2a) a move broken down (no scrolling): the grid's focus alone, the view model's focus index alone, the
+                // whole Execute path
+                var parts = new Dictionary<string, List<double>> { ["grid.FocusIndex"] = [], ["vm.FocusIndex"] = [], ["window.Execute"] = [] };
+                var baseIndex = grid.SelectedIndex - grid.SelectedIndex % grid.Columns;
+                for (var i = 0; i < 8; i++)
+                {
+                    sw.Restart(); grid.FocusIndex(baseIndex + (i % 2 == 0 ? 1 : 2)); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                    parts["grid.FocusIndex"].Add(sw.Elapsed.TotalMilliseconds);
+                    window.CaptureRenderedFrame();
+                    sw.Restart(); lib.FocusIndex = baseIndex + (i % 2 == 0 ? 3 : 4); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                    parts["vm.FocusIndex"].Add(sw.Elapsed.TotalMilliseconds);
+                    window.CaptureRenderedFrame();
+                    sw.Restart(); window.Execute(i % 2 == 0 ? Input.NavAction.Right : Input.NavAction.Left); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                    parts["window.Execute"].Add(sw.Elapsed.TotalMilliseconds);
+                    window.CaptureRenderedFrame();
+                }
+                // 2b) one row rebound to other games (what a recycled row costs): DataContext swap + layout + frame
+                var rebind = new List<double>();
+                var rebindFrame = new List<double>();
+                var presenter = grid.RowsControl.GetRealizedContainers().OfType<Panel>().First();
+                for (var i = 0; i < 12; i++)
+                {
+                    var rowIndex = 40 + i * 7;
+                    var row = new Controls.CoverRow(rowIndex, lib.Items.Skip(rowIndex * grid.Columns).Take(grid.Columns).Cast<object>().ToList());
+                    sw.Restart();
+                    presenter.DataContext = row;
+                    window.UpdateLayout();
+                    rebind.Add(sw.Elapsed.TotalMilliseconds);
+                    sw.Restart(); window.CaptureRenderedFrame(); rebindFrame.Add(sw.Elapsed.TotalMilliseconds);
+                }
+                // 3) for scale: a full frame of a flat page (settings) and of the library standing still, same window
+                var still = new List<double>();
+                for (var i = 0; i < 10; i++) { sw.Restart(); window.CaptureRenderedFrame(); still.Add(sw.Elapsed.TotalMilliseconds); }
+                // control: a change of 2 × 20 px (only the mirror's mark moves) – shows whether a capture repaints
+                // just the dirty region or the whole window whenever anything changed
+                var tiny = new List<double>();
+                for (var i = 0; i < 10; i++)
+                {
+                    mirror.FocusIndex = (mirror.FocusIndex + 37) % lib.Items.Count;
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    sw.Restart(); window.CaptureRenderedFrame(); tiny.Add(sw.Elapsed.TotalMilliseconds);
+                }
+                // isolate what a focus move dirties: (a) a row container's ZIndex, (b) the lift of one cover area,
+                // (c) the footer location sentence
+                var probe = new Dictionary<string, List<double>> { ["zindex"] = [], ["lift"] = [], ["footer"] = [] };
+                var realisedRows = grid.RowsControl.GetRealizedContainers().ToList();
+                var someTile = window.GetVisualDescendants().OfType<GameTile>().First(t => t.IsEffectivelyVisible);
+                var area = someTile.GetVisualDescendants().OfType<Panel>().First(x => x.Name == "PART_CoverArea");
+                for (var i = 0; i < 6; i++)
+                {
+                    var c = realisedRows[i % realisedRows.Count];
+                    c.ZIndex = c.ZIndex == 0 ? 1 : 0;
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    sw.Restart(); window.CaptureRenderedFrame(); probe["zindex"].Add(sw.Elapsed.TotalMilliseconds);
+                    area.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse(i % 2 == 0 ? "scale(1.06)" : "scale(1)");
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    TestSupport.Settle(200);
+                    window.CaptureRenderedFrame();
+                    lib.FocusIndex = (lib.FocusIndex + 1) % lib.Items.Count;
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    sw.Restart(); window.CaptureRenderedFrame(); probe["footer"].Add(sw.Elapsed.TotalMilliseconds);
+                }
+                // what one in-view move repaints: the renderer's dirty-rect overlay in a saved frame
+                window.Execute(Input.NavAction.Left);
+                TestSupport.Settle(400);
+                window.CaptureRenderedFrame();
+                window.RendererDiagnostics.DebugOverlays = Avalonia.Rendering.RendererDebugOverlays.DirtyRects;
+                window.Execute(Input.NavAction.Right);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.CaptureRenderedFrame()?.Save(Path.Combine(outDir, $"perf-dirty-{w}x{h}.png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                window.RendererDiagnostics.DebugOverlays = Avalonia.Rendering.RendererDebugOverlays.None;
+                vm.Navigator.Navigate(PageKey.Settings);
+                TestSupport.Settle(600);
+                var flat = new List<double>();
+                for (var i = 0; i < 10; i++) { sw.Restart(); window.CaptureRenderedFrame(); flat.Add(sw.Elapsed.TotalMilliseconds); }
+                // 4) the shelf mirror: one rasterisation per list, none per move
                 var rasterDuringMoves = mirror.RasterCount - rasterBefore;
                 var spines = Enumerable.Range(0, count).Select(i => new Controls.ShelfMirror.Spine(i % 2 == 0 ? "snes" : "gba", Avalonia.Media.Colors.Red)).ToList();
                 sw.Restart();
@@ -519,13 +606,103 @@ public class DesignPreviewTests
                 report.AppendLine($"  load (navigate -> items bound): {loadMs:0} ms; first full frame: {firstFrame:0.0} ms");
                 report.AppendLine($"  focus move, input + layout:       {Stats(layout)}");
                 report.AppendLine($"  focus move, full frame render:    {Stats(frame)}");
+                report.AppendLine($"  ... of which moves down (a new row realised at the bottom): {Stats(downLayout)}");
+                report.AppendLine($"  frame after a move that scrolled the grid:     {Stats(frameScroll)}");
+                report.AppendLine($"  frame after a move inside the view (no scroll): {Stats(frameStill)}");
                 report.AppendLine($"  page jump + layout + full frame:  {Stats(page)}");
+                var bare = new List<double>();
+                for (var i = 0; i < 10; i++)
+                {
+                    var off = grid.ScrollViewer.Offset;
+                    sw.Restart();
+                    grid.ScrollViewer.Offset = off.WithY(off.Y + (i % 2 == 0 ? 1 : -1) * (grid.TileHeight + grid.RowSpacing));
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    bare.Add(sw.Elapsed.TotalMilliseconds);
+                    window.CaptureRenderedFrame();
+                }
+                report.AppendLine($"  bare scroll by one row (offset + layout, no focus change): {Stats(bare)}");
+                // the same down moves twice over the same rows: first visit vs. revisit
+                var visits = new Dictionary<string, List<double>> { ["first visit"] = [], ["revisit"] = [] };
+                grid.FocusIndex(lib.Items.Count / 2);
+                TestSupport.Settle(100);
+                var start = grid.SelectedIndex;
+                foreach (var key in new[] { "first visit", "revisit" })
+                {
+                    grid.FocusIndex(start);
+                    TestSupport.Settle(100);
+                    for (var i = 0; i < 12; i++)
+                    {
+                        sw.Restart(); window.Execute(Input.NavAction.Down); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                        visits[key].Add(sw.Elapsed.TotalMilliseconds);
+                        window.CaptureRenderedFrame();
+                    }
+                }
+                foreach (var (k, v) in visits) report.AppendLine($"  down moves, {k} of the rows: {Stats(v)}");
+                foreach (var (k, v) in parts) report.AppendLine($"  in-view move part {k}: {Stats(v)}");
+                report.AppendLine($"  tiles constructed during the {moves.Count + page.Count} moves: {createdDuring} (recycling)");
+                report.AppendLine($"  one row of {grid.Columns} tiles rebound to unseen games: layout {Stats(rebind)}; its frame {Stats(rebindFrame)}");
+                report.AppendLine($"  frame after a 2 x 20 px change (mirror mark only): {Stats(tiny)}");
+                report.AppendLine($"  frame after a row container's ZIndex toggles: {Stats(probe["zindex"])}");
+                report.AppendLine($"  frame after the footer/mirror follow a new focus index: {Stats(probe["footer"])}");
+                report.AppendLine($"  full frame, library standing still: {Stats(still)}; settings page (flat rows), same window: {Stats(flat)}");
                 report.AppendLine($"  shelf mirror: {rasterDuringMoves} re-rasterisations during {moves.Count + page.Count} moves; one rasterisation of {count} spines at {(int)(w * 0.9)} px: {rasterMs:0.00} ms");
             }
             finally
             {
                 window.Close();
             }
+        }
+        // the placeholder text of a tile never seen before: title fit (expanded, maybe condensed) and the FormattedTexts
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var n = 0;
+            for (var i = 0; i < 200; i++)
+            {
+                var title = $"Unseen Adventure Number {i} Deluxe";
+                var fit = Controls.PlaceholderTitle.Fit(title, 140, 150, 19, Controls.PlaceholderTitle.MaxLines);
+                _ = new Avalonia.Media.FormattedText(fit.Text, System.Globalization.CultureInfo.CurrentUICulture, Avalonia.Media.FlowDirection.LeftToRight,
+                    Theming.FontRoles.PosterFace, fit.Size, null) { LineHeight = 21 }.Height;
+                _ = new Avalonia.Media.FormattedText(title, System.Globalization.CultureInfo.CurrentUICulture, Avalonia.Media.FlowDirection.LeftToRight,
+                    Theming.FontRoles.SpineFace, 15, null) { MaxTextWidth = 150, MaxLineCount = 1, Trimming = Avalonia.Media.TextTrimming.CharacterEllipsis }.Width;
+                n++;
+            }
+            report.AppendLine();
+            report.AppendLine($"placeholder text of an unseen title (fit + title + spine): {sw.Elapsed.TotalMilliseconds / n:0.00} ms per tile");
+        }
+        // in-view moves only (left/right inside one row, no scrolling), with motion on and off: separates the cost of the
+        // running transitions (lift 140 ms, light) from the cost of what is redrawn
+        foreach (var level in new[] { MotionLevel.Full, MotionLevel.Off })
+        {
+            Services.Demo.DemoData.TargetCount = 1000;
+            var ctx = TestSupport.CreateContext(s => s.Motion = level);
+            Services.Demo.DemoData.TargetCount = null;
+            var vm = new MainViewModel(ctx);
+            var window = new MainWindow(vm) { Width = 1920, Height = 1080 };
+            window.Show();
+            try
+            {
+                TestSupport.Pump(() => vm.CurrentPage is HomeViewModel { IsLoaded: true }, 8000);
+                vm.Navigator.Navigate(PageKey.Library);
+                TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true, Items.Count: > 0 }, 15000);
+                TestSupport.Settle(600);
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var frames = new List<double>();
+                var settled = new List<double>();
+                for (var i = 0; i < 14; i++)
+                {
+                    window.Execute(i % 2 == 0 ? Input.NavAction.Right : Input.NavAction.Left);
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    sw.Restart(); window.CaptureRenderedFrame(); frames.Add(sw.Elapsed.TotalMilliseconds);
+                    TestSupport.Settle(250); // transitions done
+                    sw.Restart(); window.CaptureRenderedFrame(); settled.Add(sw.Elapsed.TotalMilliseconds);
+                }
+                var o = frames.OrderBy(x => x).ToList();
+                var q = settled.OrderBy(x => x).ToList();
+                report.AppendLine();
+                report.AppendLine($"in-view moves, motion {level}: first frame after the move median {o[o.Count / 2]:0.0} ms (max {o[^1]:0.0}); a frame 250 ms later median {q[q.Count / 2]:0.0} ms");
+            }
+            finally { window.Close(); }
         }
         File.WriteAllText(Path.Combine(outDir, "perf-library.txt"), report.ToString());
     });

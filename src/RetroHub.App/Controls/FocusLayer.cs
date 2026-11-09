@@ -38,6 +38,12 @@ public sealed class FocusLayer
         _watched = watched;
         Back = new BackLayer(this);
         Front = new FrontLayer(this);
+        foreach (var layer in new[] { Back, Front })
+        {
+            layer.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+            layer.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+            layer.Width = layer.Height = 0;
+        }
         watched.AddHandler(InputElement.GotFocusEvent, OnGotFocus, RoutingStrategies.Bubble, handledEventsToo: true);
         watched.AddHandler(InputElement.LostFocusEvent, OnLostFocus, RoutingStrategies.Bubble, handledEventsToo: true);
         host.LayoutUpdated += (_, _) => { if (_tile != null) Reposition(); };
@@ -185,8 +191,36 @@ public sealed class FocusLayer
         if (_visible && lifted == _target) return;
         _target = lifted;
         _visible = true;
+        PlaceRegion(lifted);
         Back.InvalidateVisual();
         Front.InvalidateVisual();
+    }
+
+    private Rect _region;
+
+    /// <summary>
+    /// The two layers are only as large as the focus visuals around <paramref name="t"/> (cone above, ring, lit board
+    /// piece and contact shadow below), placed by a translate: a focus move then dirties the old and the new spot
+    /// instead of the whole content. With layers as large as the content (a 1000-game grid is 45 000 px tall) every
+    /// move repainted the whole viewport – ≈ 150 ms per move in the headless CPU raster (M3 perf).
+    /// </summary>
+    private void PlaceRegion(Rect t)
+    {
+        var side = Math.Ceiling(t.Width * (ConeBottomWidth - 1) / 2) + 12;
+        var region = new Rect(Math.Floor(t.X - side), Math.Floor(t.Top - ConeAbove - 12),
+            Math.Ceiling(t.Width + 2 * side), Math.Ceiling(t.Height + ConeAbove + 12 + Math.Max(BoardFront, 16) + 12));
+        if (region == _region) return;
+        var resize = region.Size != _region.Size;
+        _region = region;
+        foreach (var layer in new[] { Back, Front })
+        {
+            if (resize)
+            {
+                layer.Width = region.Width;
+                layer.Height = region.Height;
+            }
+            layer.RenderTransform = new TranslateTransform(region.X, region.Y);
+        }
     }
 
     /// <summary>
@@ -283,11 +317,14 @@ public sealed class FocusLayer
         var t = _target;
         // the cone never paints over the header above the boxes (poster title, ticker): it starts at most 24 px above
         // the rows; it is clipped to the grid content and the scroll viewport
-        var limit = _watched.TranslatePoint(new Point(0, 0), Back) is { } w ? w.Y - ConeHeadroom : double.NegativeInfinity;
+        // all in host coordinates; the layer itself is only the region around the box (see PlaceRegion)
+        using var toHost = ctx.PushTransform(Matrix.CreateTranslation(-_region.X, -_region.Y));
+        var host = _host.Bounds.Size;
+        var limit = _watched.TranslatePoint(new Point(0, 0), _host) is { } w ? w.Y - ConeHeadroom : double.NegativeInfinity;
         var clip = ConeOutsideBounds
-            ? new Rect(0, -ConeHeadroom, Back.Bounds.Width, Back.Bounds.Height + ConeHeadroom)
-            : new Rect(Back.Bounds.Size);
-        if (_viewport != null && _viewport.TranslatePoint(new Point(0, 0), Back) is { } v)
+            ? new Rect(0, -ConeHeadroom, host.Width, host.Height + ConeHeadroom)
+            : new Rect(host);
+        if (_viewport != null && _viewport.TranslatePoint(new Point(0, 0), _host) is { } v)
             clip = clip.Intersect(new Rect(v, _viewport.Bounds.Size));
         var top = Math.Max(clip.Top, limit);
         clip = new Rect(clip.X, top, clip.Width, Math.Max(0, clip.Bottom - top));
@@ -306,6 +343,7 @@ public sealed class FocusLayer
     private void RenderFront(DrawingContext ctx)
     {
         if (!_visible) return;
+        using var toHost = ctx.PushTransform(Matrix.CreateTranslation(-_region.X, -_region.Y));
         var t = _target;
         var light = LightColor;
         // lit board piece: front tinted with 12 % light, focus contact shadow, 2 px light on the top edge

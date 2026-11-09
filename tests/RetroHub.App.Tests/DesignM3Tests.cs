@@ -159,6 +159,12 @@ public class DesignM3Tests
         return (window, vm, (LibraryViewModel)vm.CurrentPage!);
     }
 
+    /// <summary>Closes the window even when an assertion fails (an open headless window keeps the focus from later tests).</summary>
+    private sealed class Closer(Window window) : IDisposable
+    {
+        public void Dispose() => window.Close();
+    }
+
     private static T Find<T>(Window window, string name) where T : Control =>
         window.GetVisualDescendants().OfType<T>().First(c => c.Name == name);
 
@@ -166,6 +172,7 @@ public class DesignM3Tests
     public Task Shoulders_open_a_system_compartment_with_banner_wall_and_light() => UiTest.Run(() =>
     {
         var (window, vm, library) = OpenLibrary();
+        using var closer = new Closer(window);
         Assert.Equal(BackdropKind.Room, library.Backdrop.Kind);
         Assert.True(library.Backdrop.AccentBoard); // "Alle": the boards carry the light colour at 22 %
         Assert.Null(library.ContextLight);
@@ -192,13 +199,13 @@ public class DesignM3Tests
         TestSupport.Pump(() => library.SelectedSystemId == null);
         Assert.Equal(BackdropKind.Room, library.Backdrop.Kind);
         Assert.False(Find<Panel>(window, "Banner").IsEffectivelyVisible);
-        window.Close();
     });
 
     [Fact]
     public Task Mirror_follows_list_view_and_focus_without_rasterising_again() => UiTest.Run(() =>
     {
         var (window, _, library) = OpenLibrary();
+        using var closer = new Closer(window);
         var mirror = window.GetVisualDescendants().OfType<ShelfMirror>().First();
         window.CaptureRenderedFrame();
         Assert.Equal(library.Items.Count, mirror.Count);
@@ -216,13 +223,13 @@ public class DesignM3Tests
         Assert.Equal(library.FocusIndex, mirror.FocusIndex);
         Assert.True(mirror.FirstVisible > 0);           // the bracket moved with the scrolled grid
         Assert.InRange(mirror.FocusIndex, mirror.FirstVisible, mirror.LastVisible);
-        window.Close();
     });
 
     [Fact]
     public Task Up_from_the_first_row_reaches_the_active_ticker_entry_and_down_returns() => UiTest.Run(() =>
     {
         var (window, _, library) = OpenLibrary();
+        using var closer = new Closer(window);
         window.Execute(NavAction.Right);
         window.Execute(NavAction.Right);
         Assert.True(window.Execute(NavAction.Up));
@@ -232,13 +239,13 @@ public class DesignM3Tests
         TestSupport.Settle(50);
         var back = (window.FocusManager?.GetFocusedElement() as Control)?.DataContext;
         Assert.Same(library.Items[2], back); // the remembered box, not the first one
-        window.Close();
     });
 
     [Fact]
     public Task Focused_list_row_prints_its_title_in_ink_on_a_paper_chip() => UiTest.Run(() =>
     {
         var (window, _, library) = OpenLibrary();
+        using var closer = new Closer(window);
         library.IsListView = true;
         TestSupport.Settle(200);
         var rows = Find<CoverGrid>(window, "Rows");
@@ -250,13 +257,36 @@ public class DesignM3Tests
         Assert.Equal(SystemPalette.Ink, ((ISolidColorBrush)title.Foreground!).Color);
         Assert.Equal(library.Items[2], library.PreviewItem); // the preview shows the focused game
         library.IsListView = false;
-        window.Close();
+    });
+
+    [Fact]
+    public Task Scrolling_reuses_rows_and_tiles_instead_of_building_new_ones() => UiTest.Run(() =>
+    {
+        // M3 perf: the items control clears a recycled container, which threw away the row presenter and its 8 tiles –
+        // every row scrolled into view built new tiles (2096 in 118 moves of the 1000-game demo)
+        var (window, _, _) = OpenLibrary();
+        using var closer = new Closer(window);
+        var covers = Find<CoverGrid>(window, "Covers");
+        void Pass()
+        {
+            for (var i = 0; i < 4; i++) { covers.Move(NavAction.PageRight); TestSupport.Settle(20); }
+            for (var i = 0; i < 4; i++) { covers.Move(NavAction.PageLeft); TestSupport.Settle(20); }
+        }
+        Pass(); // the first pass may realise rows for the first time
+        var presenters = covers.PresentersCreated;
+        var tiles = GameTile.Created;
+        Pass();
+        Pass();
+        var rebuilds = covers.RebuildCount;
+        Assert.True(covers.PresentersCreated - presenters <= 1, $"{covers.PresentersCreated - presenters} row presenters built in two warm passes (rebuilds {rebuilds})");
+        Assert.True(GameTile.Created - tiles <= covers.Columns, $"{GameTile.Created - tiles} tiles built in two warm passes");
     });
 
     [Fact]
     public Task Grid_reports_the_range_in_view_and_scrolls_to_an_index() => UiTest.Run(() =>
     {
         var (window, _, library) = OpenLibrary();
+        using var closer = new Closer(window);
         var covers = Find<CoverGrid>(window, "Covers");
         var (first, last) = covers.VisibleRange();
         Assert.Equal(0, first);
@@ -266,6 +296,5 @@ public class DesignM3Tests
         var (f2, l2) = covers.VisibleRange();
         Assert.True(f2 > first);
         Assert.Equal(library.Items.Count - 1, l2);
-        window.Close();
     });
 }

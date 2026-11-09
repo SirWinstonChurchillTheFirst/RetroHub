@@ -445,14 +445,13 @@ public sealed class CoverArt : Control
             if (!string.IsNullOrEmpty(Year))
                 _spineYear = new FormattedText(Year, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, look.TextOnColorBrush);
             var codeEnd = w * 0.08 + (_codeText?.Width ?? 0) + SpineGap * 2;
-            var length = r.Height - codeEnd - Math.Round(w * 0.06) - (_spineYear != null ? Math.Ceiling(_spineYear.Width) + SpineGap : 0);
-            if (length >= spineSize * 3)
-                _spineTitle = new FormattedText(FitText.Typeset(Title), CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, look.TextOnColorBrush)
-                {
-                    MaxTextWidth = length,
-                    MaxLineCount = 1,
-                    Trimming = TextTrimming.CharacterEllipsis,
-                };
+            var length = r.Height - codeEnd - Math.Round(w * 0.06);
+            // a spine carries its (main) title whole or not at all – never "Banjo-K…": the year gives way first
+            var spineTitle = new FormattedText(FitText.Typeset(SplitTitle(Title).Main), CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+                FontRoles.SpineFace, spineSize, look.TextOnColorBrush);
+            var withYear = length - (_spineYear != null ? Math.Ceiling(_spineYear.Width) + SpineGap : 0);
+            if (spineTitle.Width <= withYear) _spineTitle = spineTitle;
+            else if (spineTitle.Width <= length) { _spineTitle = spineTitle; _spineYear = null; }
         }
     }
 
@@ -562,7 +561,39 @@ public static class PlaceholderTitle
     }
 
     /// <summary>Greedy lines at <paramref name="size"/>; null when one token alone is wider than the line.</summary>
+    /// <summary>
+    /// Greedy lines at <paramref name="size"/>; null when one token alone is wider than the line. Each WORD is measured
+    /// once (cached) and a candidate line is the sum of its words and spaces – a new row of 8 boxes in the 1000-game
+    /// grid measured hundreds of growing strings before (M3 perf). The finished lines are measured once for real; if
+    /// kerning made one too wide, the exact (slow) wrap decides.
+    /// </summary>
     private static List<string>? Wrap(List<(string Text, bool Space)> tokens, double size, double maxWidth, Typeface face)
+    {
+        var lines = new List<string>();
+        var current = "";
+        var width = 0.0;
+        var space = WordWidth(" ", size, face);
+        foreach (var (word, spaced) in tokens)
+        {
+            var w = WordWidth(word, size, face);
+            if (w > maxWidth + 0.5) return null;
+            if (current.Length == 0) { current = word; width = w; continue; }
+            var candidate = width + (spaced ? space : 0) + w;
+            if (candidate <= maxWidth + 0.5) { current = spaced ? current + " " + word : current + word; width = candidate; }
+            else
+            {
+                lines.Add(current);
+                current = word;
+                width = w;
+            }
+        }
+        if (current.Length > 0) lines.Add(current);
+        foreach (var line in lines)
+            if (Measure(line, size, face) > maxWidth + 0.5) return WrapExact(tokens, size, maxWidth, face);
+        return lines;
+    }
+
+    private static List<string>? WrapExact(List<(string Text, bool Space)> tokens, double size, double maxWidth, Typeface face)
     {
         var lines = new List<string>();
         var current = "";
@@ -580,6 +611,22 @@ public static class PlaceholderTitle
         }
         if (current.Length > 0) lines.Add(current);
         return lines;
+    }
+
+    private static readonly Dictionary<(Typeface, int, string), double> WordWidths = new();
+
+    private static double WordWidth(string word, double size, Typeface face)
+    {
+        var key = (face, (int)Math.Round(size * 10), word);
+        lock (WordWidths)
+            if (WordWidths.TryGetValue(key, out var w)) return w;
+        var measured = Measure(word, size, face);
+        lock (WordWidths)
+        {
+            if (WordWidths.Count > 20000) WordWidths.Clear();
+            WordWidths[key] = measured;
+        }
+        return measured;
     }
 
     private static double Measure(string s, double size, Typeface face) =>

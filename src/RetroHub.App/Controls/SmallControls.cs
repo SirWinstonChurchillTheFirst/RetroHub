@@ -77,6 +77,11 @@ public class GameTile : Button
 
     protected override Type StyleKeyOverride => typeof(GameTile);
 
+    /// <summary>Tiles constructed so far (perf diagnostics: a scrolling grid recycles its tiles).</summary>
+    internal static int Created;
+
+    public GameTile() => Created++;
+
     /// <summary>The cover of this tile (null until the template is applied, or for templates without one).</summary>
     public CoverArt? Art { get; private set; }
 

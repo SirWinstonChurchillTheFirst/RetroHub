@@ -114,6 +114,57 @@ public sealed class CoverGrid : UserControl
         try { ViewportChanged?.Invoke(); } catch (Exception ex) { RetroHub.Core.Logging.Log.Warn("ViewportChanged handler failed", ex); }
     }
 
+    /// <summary>Row presenters constructed so far (tests: scrolling reuses them).</summary>
+    internal int PresentersCreated { get; private set; }
+
+    /// <summary>The rows: an items control whose containers are the row presenters themselves.</summary>
+    private sealed class RowItems(CoverGrid grid) : ItemsControl
+    {
+        protected override Type StyleKeyOverride => typeof(ItemsControl);
+
+        protected override bool NeedsContainerOverride(object? item, int index, out object? recycleKey)
+        {
+            recycleKey = typeof(CoverRowPresenter);
+            return true;
+        }
+
+        protected override Control CreateContainerForItemOverride(object? item, int index, object? recycleKey)
+        {
+            grid.PresentersCreated++;
+            return new CoverRowPresenter(grid);
+        }
+
+        protected override void PrepareContainerForItemOverride(Control container, object? item, int index) => container.DataContext = item;
+
+        // keep the tiles bound while the row waits hidden in the recycle pool (cheaper than unbinding and rebinding)
+        protected override void ClearContainerForItemOverride(Control container) { }
+    }
+
+    private int _boardSignature;
+
+    /// <summary>
+    /// The board layer is redrawn only when the realised rows changed (realised, recycled, resized, moved by the
+    /// header) – not on every layout pass. Before (M3 perf), each focus move re-recorded all shelf edges and the
+    /// compositor repainted the whole viewport: ≈ 140 ms per move in the headless CPU raster instead of a few.
+    /// </summary>
+    private void InvalidateBoardsIfMoved()
+    {
+        var hash = new HashCode();
+        foreach (var container in _rows.GetRealizedContainers())
+        {
+            hash.Add(container.Bounds.Y);
+            hash.Add(container.Bounds.Width);
+            hash.Add((container.DataContext as CoverRow)?.Index ?? -1);
+        }
+        hash.Add(_tileWidth);
+        hash.Add(_tileHeight);
+        hash.Add(_headerHost.Bounds.Height);
+        var signature = hash.ToHashCode();
+        if (signature == _boardSignature) return;
+        _boardSignature = signature;
+        _boards.InvalidateVisual();
+    }
+
     /// <summary>Distance from the top of the scroll content to the first row (padding + header).</summary>
     private double RowsTop => _content.Margin.Top + _headerHost.Bounds.Height;
 
@@ -147,11 +198,13 @@ public sealed class CoverGrid : UserControl
     public CoverGrid()
     {
         Focusable = false;
-        _rows = new ItemsControl
+        // the row presenter IS the container: the virtualizing panel recycles it in place (hidden, kept attached) and
+        // only swaps its DataContext. With a ContentPresenter container the items control cleared the content on
+        // recycling and every row scrolled into view built 8 new tiles (M3 perf: 2096 tiles in 118 moves).
+        _rows = new RowItems(this)
         {
             ItemsPanel = new FuncTemplate<Panel?>(() => new VirtualizingStackPanel { Orientation = Orientation.Vertical, ClipToBounds = false }),
             ClipToBounds = false,
-            ItemTemplate = new FuncDataTemplate<CoverRow>((row, _) => new CoverRowPresenter(this), supportsRecycling: true),
         };
         _headerHost = new ContentControl();
         _outer = new StackPanel { Children = { _headerHost, _rows } };
@@ -175,7 +228,7 @@ public sealed class CoverGrid : UserControl
         Content = _scroll;
         _scroll.SizeChanged += (_, _) => UpdateLayoutMetrics();
         _scroll.ScrollChanged += (_, _) => RaiseViewportChanged();
-        _rows.LayoutUpdated += (_, _) => _boards.InvalidateVisual();
+        _rows.LayoutUpdated += (_, _) => InvalidateBoardsIfMoved();
         // tunnel: tiles (buttons) or the focus manager must not consume the arrows before the grid sees them
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         AddHandler(GotFocusEvent, OnTileGotFocus, RoutingStrategies.Bubble);
@@ -305,8 +358,7 @@ public sealed class CoverGrid : UserControl
     }
 
     private IEnumerable<CoverRowPresenter> RealizedRows() =>
-        _rows.GetRealizedContainers().Select(c => c is ContentPresenter cp ? cp.Child as CoverRowPresenter : (c as ContentControl)?.Content as CoverRowPresenter)
-            .OfType<CoverRowPresenter>();
+        _rows.GetRealizedContainers().OfType<CoverRowPresenter>();
 
     /// <summary>Re-chunks the items into rows of <see cref="Columns"/>.</summary>
     private void Rebuild(bool keepFocus)
@@ -428,6 +480,8 @@ public sealed class CoverGrid : UserControl
         var top = p.Value.Y + _content.Margin.Top - margin;
         var bottom = p.Value.Y + _content.Margin.Top + tile.Bounds.Height + margin;
         var offset = _scroll.Offset;
+        // the first row keeps the header in view (the compartment's banner) whenever both fit
+        if (p.Value.Y <= RowsTop - _content.Margin.Top + 1 && bottom <= _scroll.Viewport.Height) { _scroll.Offset = offset.WithY(0); return; }
         if (top < offset.Y) _scroll.Offset = offset.WithY(Math.Max(0, top));
         else if (bottom > offset.Y + _scroll.Viewport.Height) _scroll.Offset = offset.WithY(bottom - _scroll.Viewport.Height);
     }
@@ -437,12 +491,13 @@ public sealed class CoverGrid : UserControl
         var container = _rows.ContainerFromIndex(rowIndex);
         var presenter = container switch
         {
+            CoverRowPresenter row => row,
             ContentPresenter cp => cp.Child as CoverRowPresenter,
             ContentControl cc => cc.Content as CoverRowPresenter ?? cc.Presenter?.Child as CoverRowPresenter,
             _ => null,
         };
         if (presenter == null) return null;
-        return col < presenter.Children.Count ? presenter.Children[col] as Control : null;
+        return col < presenter.Children.Count && presenter.Children[col].IsVisible ? presenter.Children[col] as Control : null;
     }
 
     /// <summary>The tile control currently showing <paramref name="index"/> (null when virtualized away).</summary>
@@ -522,7 +577,7 @@ public sealed class CoverGrid : UserControl
                 ShelfBoard.Draw(context, new Rect(0, y, width, ShelfBoard.EdgeHeight));
                 foreach (var child in row.Children)
                 {
-                    if (child is not GameTile tile || tile.ArtRectInTile() is not { } art || art.Width <= 0) continue;
+                    if (child is not GameTile { IsVisible: true } tile || tile.ArtRectInTile() is not { } art || art.Width <= 0) continue;
                     context.FillRectangle(ShelfBoard.ContactBrush, new Rect(origin.X + tile.Bounds.X + art.X, y, art.Width, ShelfBoard.EdgeHeight));
                 }
             }
@@ -544,6 +599,12 @@ public sealed class CoverGrid : UserControl
             ClipToBounds = false;
         }
 
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnAttachedToVisualTree(e);
+            ApplySize(); // the tile size may have changed while it waited in the pool
+        }
+
         private void OnTileArtChanged(object? sender, EventArgs e) => _grid._boards.InvalidateVisual();
 
         protected override void OnDataContextChanged(EventArgs e)
@@ -556,10 +617,11 @@ public sealed class CoverGrid : UserControl
         {
             if (DataContext is not CoverRow row) return;
             var template = _grid.ItemTemplate;
-            while (Children.Count > row.Items.Count)
+            // tiles beyond a short (last) row are hidden, not removed: the next full row reuses them
+            for (var i = row.Items.Count; i < Children.Count; i++)
             {
-                if (Children[^1] is GameTile old) old.ArtChanged -= OnTileArtChanged;
-                Children.RemoveAt(Children.Count - 1);
+                Children[i].IsVisible = false;
+                Children[i].DataContext = null;
             }
             for (var i = 0; i < row.Items.Count; i++)
             {
@@ -567,6 +629,7 @@ public sealed class CoverGrid : UserControl
                 if (i < Children.Count)
                 {
                     Children[i].DataContext = item;
+                    Children[i].IsVisible = true;
                     continue;
                 }
                 var tile = template?.Build(item) ?? new TextBlock { Text = item.ToString() };
