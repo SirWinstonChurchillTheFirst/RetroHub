@@ -169,20 +169,40 @@ public sealed class FocusLayer
         }
         var r = art.ArtRect;
         if (r.Width <= 0) return;
-        var tl = art.TranslatePoint(r.TopLeft, _host);
-        var br = art.TranslatePoint(r.BottomRight, _host);
-        if (tl == null || br == null) return;
-        var rect = new Rect(tl.Value, br.Value);
+        // the UNLIFTED rectangle from the layout positions: TranslatePoint would contain the lift transform itself
+        // (M2 QA: the ring was lifted twice – 1.06² – and stood 5–12 px away from the box, the cone showing in the gap)
+        if (LayoutOffset(art, _host) is not { } origin) return;
+        var rect = new Rect(origin.X + r.X, origin.Y + r.Y, r.Width, r.Height);
         // the lift scales from the bottom centre: the rectangle the box will have when the step animation is done
         var lifted = Motion.Current == EffectiveMotion.Full // reduced/off: no lift
             ? new Rect(rect.Center.X - rect.Width * Lift / 2, rect.Bottom - rect.Height * Lift, rect.Width * Lift, rect.Height * Lift)
             : rect;
-        lifted = new Rect(Math.Round(lifted.X / 2) * 2, Math.Round(lifted.Y / 2) * 2, Math.Round(lifted.Width / 2) * 2, Math.Round(lifted.Height / 2) * 2);
+        // on whole pixels, the bottom kept on the board: the 3 px gap of the ring hugs the box
+        var left = Math.Round(lifted.X);
+        var right = Math.Round(lifted.Right);
+        var bottom = Math.Round(lifted.Bottom);
+        lifted = new Rect(left, Math.Round(lifted.Y), right - left, bottom - Math.Round(lifted.Y));
         if (_visible && lifted == _target) return;
         _target = lifted;
         _visible = true;
         Back.InvalidateVisual();
         Front.InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Position of <paramref name="v"/>'s origin in <paramref name="ancestor"/> from the layout bounds alone (render
+    /// transforms such as the lift or a boundary shake are ignored); null when it is not a descendant.
+    /// </summary>
+    internal static Point? LayoutOffset(Visual v, Visual ancestor)
+    {
+        double x = 0, y = 0;
+        for (Visual? c = v; c != null; c = c.GetVisualParent())
+        {
+            if (c == ancestor) return new Point(x, y);
+            x += c.Bounds.X;
+            y += c.Bounds.Y;
+        }
+        return null;
     }
 
     /// <summary>Only keyboard/controller focus shows the object focus (a mouse click does not lift the box).</summary>
@@ -203,19 +223,20 @@ public sealed class FocusLayer
         startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
 
     /// <summary>
-    /// Cone geometry (DESIGN 8.2; M2: the M1 cone was nearly invisible – it faded in toward the board, where the box
-    /// covers it, and was cut hard at the clip): bottom 1.4 × box width, top 0.6 ×. The bitmap has two halves drawn
-    /// separately: the upper half fades in from the dark over the free space above the box (≤ 96 px, never beyond the
-    /// headroom, so no hard edge), the lower half is the steady beam beside the box down to the board.
+    /// Cone geometry (DESIGN 8.1, M2 QA): a short trapezoid that ENDS at the top edge of the lifted box – it never
+    /// fills behind the box (a cone behind the box showed as a flat brown plate inside the ring). Top 0.6 × box width at
+    /// <see cref="ConeAbove"/> px above the box, bottom 1.3 × box width on the box's top edge, light colour 0 → 18 %
+    /// from top to bottom. Clipped to the headroom (grid: 24 px; a Start shelf: up to the stage board).
     /// </summary>
-    public const double ConeBottomWidth = 1.4, ConeTopWidth = 0.6, ConeAbove = 96, ConePeakAlpha = 0.26;
+    public const double ConeBottomWidth = 1.3, ConeTopWidth = 0.6, ConeAbove = 40, ConePeakAlpha = 0.18;
 
-    private const int ConeW = 160, ConeH = 96;
+    private const int ConeW = 160, ConeH = 40;
 
     /// <summary>
-    /// The light cone as a small premultiplied bitmap, rendered once per light colour: alpha 0 at the top rising to
-    /// <see cref="ConePeakAlpha"/> at the bottom (the light lands on the board), a trapezoid from
-    /// <see cref="ConeTopWidth"/> to the full width with a soft horizontal edge (no BlurEffect, no per-frame work).
+    /// The light cone as a small premultiplied bitmap, rendered once per light colour (shared): alpha 0 at the top
+    /// rising to <see cref="ConePeakAlpha"/> at the bottom, a trapezoid from <see cref="ConeTopWidth"/> to the full
+    /// width with a soft horizontal edge (no BlurEffect, no per-frame work). The parts beside the box fade out over
+    /// the last rows, so the cone has no hard horizontal edge next to the ring.
     /// </summary>
     internal static Bitmap ConeBitmap(Color light)
     {
@@ -227,17 +248,19 @@ public sealed class FocusLayer
             var pixels = new byte[ConeW * ConeH * 4];
             var topHalf = ConeTopWidth / ConeBottomWidth / 2 * ConeW;
             var falloff = ConeW * 0.07; // ≈ 12 px at a 196-px box
+            var boxHalf = ConeW / ConeBottomWidth / 2; // the box's half width at the bottom row
             for (var y = 0; y < ConeH; y++)
             {
                 var t = (y + 0.5) / ConeH;
                 var half = topHalf + (ConeW / 2.0 - topHalf) * t;
-                var rise = Math.Clamp(t / 0.5, 0, 1); // upper half: fades in from the dark; lower half: steady beam
-                var vertical = ConePeakAlpha * rise * rise * (3 - 2 * rise);
+                var vertical = ConePeakAlpha * t * t * (3 - 2 * t);
                 for (var x = 0; x < ConeW; x++)
                 {
                     var dx = Math.Abs(x + 0.5 - ConeW / 2.0);
                     var e = Math.Clamp((half - dx) / falloff, 0, 1);
                     e = e * e * (3 - 2 * e);
+                    // beside the box the light fades out over the last third (it falls past the box, not onto a ledge)
+                    if (dx > boxHalf) e *= Math.Clamp((1 - t) / 0.35 + 0.15, 0, 1);
                     var a = vertical * e;
                     var i = (y * ConeW + x) * 4;
                     pixels[i] = (byte)Math.Round(light.B * a);
@@ -269,15 +292,15 @@ public sealed class FocusLayer
         var top = Math.Max(clip.Top, limit);
         clip = new Rect(clip.X, top, clip.Width, Math.Max(0, clip.Bottom - top));
         if (clip.Height <= 0) return;
-        var above = Math.Max(16, Math.Min(ConeAbove, t.Top - clip.Top));
+        // the cone ends at the box's top edge; where the headroom is shorter than the cone, only its lower part shows
+        var above = Math.Min(ConeAbove, t.Top - clip.Top);
+        if (above < 4) return;
         var x = t.Center.X - t.Width * ConeBottomWidth / 2;
         var width = t.Width * ConeBottomWidth;
         var bmp = ConeBitmap(LightColor);
+        var srcTop = ConeH * (1 - above / ConeAbove);
         using (ctx.PushClip(clip))
-        {
-            ctx.DrawImage(bmp, new Rect(0, 0, ConeW, ConeH / 2), new Rect(x, t.Top - above, width, above));
-            ctx.DrawImage(bmp, new Rect(0, ConeH / 2, ConeW, ConeH / 2), new Rect(x, t.Top, width, t.Height));
-        }
+            ctx.DrawImage(bmp, new Rect(0, srcTop, ConeW, ConeH - srcTop), new Rect(x, t.Top - above, width, above));
     }
 
     private void RenderFront(DrawingContext ctx)

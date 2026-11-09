@@ -109,28 +109,50 @@ public class HomeStageTests
     });
 
     [Fact]
-    public Task The_stage_follows_a_focused_box_after_the_dwell_and_keeps_it_for_play() => UiTest.Run(() =>
+    public Task The_stage_follows_a_focused_box_and_returns_to_the_game_to_continue() => UiTest.Run(() =>
     {
         var (window, vm) = Open();
         var home = Assert.IsType<HomeViewModel>(vm.CurrentPage);
         Assert.Equal(StageKind.Continue, home.Stage!.Kind);
         Assert.Same(home.Continue, home.Stage.Game);
+        Assert.Equal(Loc.T("detail.play"), home.Hints[0].Label);
 
         window.Execute(NavAction.Down);
         window.Execute(NavAction.Right);
         TestSupport.Settle(40);
         var tile = Assert.IsType<GameTile>(Focused(window));
         var item = Assert.IsType<GameItemViewModel>(tile.DataContext);
+        // the footer follows the focus at once, the stage after the dwell
+        Assert.Equal(Loc.T("home.location.shelf", Loc.T("home.shelf.recent"), 2, home.RecentlyPlayed.Count), home.Location);
         Assert.True(TestSupport.Pump(() => home.Stage is { Kind: StageKind.Game } s && ReferenceEquals(s.Game, item), 3000), "the stage did not follow the focus");
         Assert.Equal(Loc.T("home.shelf.recent"), home.Stage!.Label);
+        Assert.Equal(Loc.T("hint.open"), home.Hints[0].Label);
+        Assert.Contains(home.Hints, h => h.Action == NavAction.Favorite);
 
-        // up to "Spielen": the stage keeps the browsed game (what the TV shows is what plays)
+        // up to "Spielen": after the dwell the stage shows the game to continue again (Start's main action, M2 QA)
         window.Execute(NavAction.Up);
-        TestSupport.Settle(300);
+        TestSupport.Settle(40);
         Assert.Equal("PlayButton", Focused(window)?.Name);
-        Assert.Same(item, home.Stage!.Game);
+        Assert.Equal(Loc.T("home.location"), home.Location);
+        Assert.True(TestSupport.Pump(() => home.Stage is { Kind: StageKind.Continue } s && ReferenceEquals(s.Game, home.Continue), 3000),
+            "the stage did not return to the game to continue");
+        Assert.Equal(Loc.T("detail.play"), home.Stage!.PrimaryLabel);
+        Assert.Equal(Loc.T("detail.play"), home.Hints[0].Label);
         window.Close();
     });
+
+    [Theory]
+    [InlineData("The Legend of Zelda - A Link to the Past (Germany)", "the legend of zelda - a link to the past")]
+    [InlineData("The Legend of Zelda - A Link to the Past (Rev 1) [!]", "the legend of zelda - a link to the past")]
+    [InlineData("  Tetris  (World) ", "tetris")]
+    public void Start_shelves_fold_region_and_version_variants(string title, string normal)
+    {
+        Assert.Equal(normal, HomeViewModel.NormalizeTitle(title));
+        Core.Library.Game G(string t, string sys) => new() { SystemId = sys, Path = t + ".x", Title = t };
+        var list = HomeViewModel.Distinct([G(title, "snes"), G(normal, "snes"), G(title, "gba"), G("Other", "snes")], 10);
+        Assert.Equal(3, list.Count); // same system + same normalised title once; another system stays
+        Assert.Equal(title, list[0].Title); // the first (newest by the shelf's order) wins
+    }
 
     [Fact]
     public Task A_system_spine_opens_its_front_and_puts_the_system_on_the_stage() => UiTest.Run(() =>
@@ -145,7 +167,9 @@ public class HomeStageTests
         var spine = Assert.IsType<SystemSpine>(Focused(window));
         TestSupport.Settle(100);
         Assert.True(spine.IsOpen);
-        Assert.Equal(spine.FrontWidth, spine.Bounds.Width, 0); // motion off: the front stands at once
+        Assert.Equal(spine.OpenWidth, spine.Bounds.Width, 0); // motion off: the front stands at once, 16 px free on each side
+        Assert.Equal(spine.FrontWidth + 2 * SystemSpine.FrontGap, spine.OpenWidth);
+        Assert.Equal(1, spine.ZIndex); // its ring stands above the neighbouring spines
         var system = Assert.IsType<SystemItemViewModel>(spine.DataContext);
         Assert.True(TestSupport.Pump(() => home.Stage is { Kind: StageKind.System } s && ReferenceEquals(s.System, system), 3000));
         Assert.Equal(system.Name, home.Stage!.Title);

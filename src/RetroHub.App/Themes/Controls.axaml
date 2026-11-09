@@ -302,7 +302,8 @@
         <Grid RowDefinitions="*,Auto" Background="Transparent">
           <Panel Name="PART_CoverArea" RenderTransformOrigin="50%,100%" RenderTransform="scale(1)">
             <c:CoverArt Name="PART_Art" Source="{Binding CoverPath}" Title="{Binding Title}" Badge="{Binding SystemShort}"
-                        SystemId="{Binding SystemId}" Accent="{Binding Accent}" IsFavorite="{Binding IsFavorite}" IsMissing="{Binding IsMissing}" />
+                        SystemId="{Binding SystemId}" Accent="{Binding Accent}" IsFavorite="{Binding IsFavorite}" IsMissing="{Binding IsMissing}"
+                        ShowFavorite="{TemplateBinding ShowFavorite}" />
           </Panel>
           <!-- caption: 16 px below the 10 px shelf edge, in a fixed 66 px slot (the row pitch stays regular): the title
                (max. 2 lines) and 4 px under its last line the label line. A spine placeholder carries its title on the
@@ -645,7 +646,10 @@
           <c:ShelfTrack Name="PART_Track" Grid.RowSpan="3" Margin="{TemplateBinding ItemsMargin}">
             <StackPanel Name="PART_Row" Orientation="Horizontal" Spacing="{TemplateBinding ItemSpacing}" VerticalAlignment="Top"
                         HorizontalAlignment="Left" Height="{TemplateBinding ItemHeight}">
-              <ItemsControl Name="PART_Items" ItemsSource="{TemplateBinding ItemsSource}" ItemTemplate="{TemplateBinding ItemTemplate}" VerticalAlignment="Bottom">
+              <!-- ClipToBounds off (the Fluent theme clips ItemsControl): the lifted box (×1.06) and the ring of a focused
+                   front rise above the row; only the shelf viewport clips -->
+              <ItemsControl Name="PART_Items" ItemsSource="{TemplateBinding ItemsSource}" ItemTemplate="{TemplateBinding ItemTemplate}" VerticalAlignment="Bottom"
+                            ClipToBounds="False">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <StackPanel Orientation="Horizontal" Spacing="{Binding $parent[c:Shelf].ItemSpacing}" />

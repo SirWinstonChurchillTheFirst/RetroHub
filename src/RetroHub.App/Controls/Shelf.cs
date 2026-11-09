@@ -178,7 +178,7 @@ public class Shelf : TemplatedControl
 
     private static double TargetWidth(Control item, bool focused) => item switch
     {
-        SystemSpine s => focused ? s.FrontWidth : s.SpineWidth,
+        SystemSpine s => focused ? s.OpenWidth : s.SpineWidth,
         _ => item.Bounds.Width > 0 ? item.Bounds.Width : item.DesiredSize.Width,
     };
 

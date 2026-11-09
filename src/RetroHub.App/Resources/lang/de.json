@@ -61,6 +61,8 @@
   "home.favorite": "Favorit",
   "home.system.last": "{0}, zuletzt {1}.",
   "home.location.shelf": "{0}, {1} von {2}",
+  "home.location.stage": "Bühne, {0}",
+  "home.location.shelfAll": "{0}, {1}",
   "home.open": "Öffnen",
   "home.openImports": "Importe öffnen",
   "home.addFolder": "Ordner hinzufügen",

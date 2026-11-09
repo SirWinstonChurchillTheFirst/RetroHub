@@ -257,6 +257,44 @@ public static class MotifCatalog
         }
     }
 
+    private static readonly Dictionary<Motif, Geometry> Silhouettes = new();
+
+    /// <summary>
+    /// The motif's outline as ONE geometry: the union of all painted parts (lines widened) minus the cut-outs, in the
+    /// 120 grid. Built once per motif. Drawn with a single fill, it never shows overlapping translucent layers.
+    /// </summary>
+    public static Geometry Silhouette(Motif motif)
+    {
+        lock (Silhouettes)
+        {
+            if (Silhouettes.TryGetValue(motif, out var g)) return g;
+            Geometry? solid = null, cuts = null;
+            foreach (var part in Get(motif).Parts)
+            {
+                var geo = part.Stroke > 0
+                    ? part.Geometry.GetWidenedGeometry(new Pen(Brushes.Black, part.Stroke, lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter))
+                    : part.Geometry;
+                if (part.Paint == Paint.Cut) cuts = cuts == null ? geo : new CombinedGeometry(GeometryCombineMode.Union, cuts, geo);
+                else solid = solid == null ? geo : new CombinedGeometry(GeometryCombineMode.Union, solid, geo);
+            }
+            g = solid == null ? new RectangleGeometry(default) : cuts == null ? solid : new CombinedGeometry(GeometryCombineMode.Exclude, solid, cuts);
+            Silhouettes[motif] = g;
+            return g;
+        }
+    }
+
+    /// <summary>
+    /// The placeholder motif (DESIGN 10.2): the <see cref="Silhouette"/> filled once in the system's colour at
+    /// <paramref name="opacity"/>, standing on the bottom edge of <paramref name="box"/>, right-aligned.
+    /// </summary>
+    public static void DrawSilhouette(DrawingContext ctx, SystemLook look, Rect box, double opacity)
+    {
+        var scale = Math.Min(box.Width, box.Height) / 120.0;
+        using (ctx.PushOpacity(opacity))
+        using (ctx.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(box.Right - 120 * scale, box.Bottom - 120 * scale)))
+            ctx.DrawGeometry(look.ColorBrush, null, Silhouette(look.Motif));
+    }
+
     /// <summary>
     /// Draws the motif of <paramref name="look"/> standing on the bottom edge of <paramref name="box"/> (a square area).
     /// <paramref name="silhouette"/> = one colour (placeholders): every part in "Farbe", cut-outs in

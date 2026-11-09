@@ -53,8 +53,8 @@ public class DesignM1Tests
     // ===================== M1 QA: placeholder titles in full, never broken inside a word =====================
 
     /// <summary>
-    /// DESIGN 10.2 "Der Titel steht immer vollständig": breaks only at spaces and after hyphens, the size steps down
-    /// (× 0.88, ≥ 11 px) until every word fits – never "Castlevani / a", "Hyrule Warrior / s" or a cut "…".
+    /// DESIGN 10.2 (M2 QA): breaks only at spaces and after hyphens – never "Castlevani / a" or "Hyrule Warrior / s";
+    /// the size steps down only for a word wider than the line; more than 4 lines end in a character ellipsis.
     /// </summary>
     [Theory]
     [InlineData("Castlevania", 120)]
@@ -65,14 +65,22 @@ public class DesignM1Tests
     [InlineData("Pokémon Smaragd-Edition", 96)]
     public Task Placeholder_titles_break_only_between_words(string title, double width) => UiTest.Run(() =>
     {
-        var fit = PlaceholderTitle.Fit(title, width, 1000, CoverArt.PlaceholderTitleSize(196), PlaceholderTitle.MaxLines);
-        Assert.False(fit.Trimmed, $"'{title}' trimmed at {width} px");
-        Assert.InRange(fit.Size, PlaceholderTitle.MinSize, CoverArt.PlaceholderTitleSize(196));
-        // joining the lines again (a space, or nothing after a hyphen) gives the title back: no break inside a word
+        var start = CoverArt.PlaceholderTitleSize(width, 200);
+        var fit = PlaceholderTitle.Fit(title, width, 1000, start, PlaceholderTitle.MaxLines);
+        var trimmed = fit.Trimmed;
+        Assert.InRange(fit.Size, PlaceholderTitle.MinSize, start);
         var lines = fit.Text.Split('\n');
+        Assert.InRange(lines.Length, 1, PlaceholderTitle.MaxLines);
+        // joining the lines again (a space, or nothing after a hyphen) gives the title back (or its start before "…"):
+        // no break inside a word
         var joined = lines[0];
         foreach (var line in lines.Skip(1)) joined += joined.EndsWith('-') ? line : " " + line;
-        Assert.Equal(title, joined);
+        if (trimmed)
+        {
+            Assert.EndsWith("…", joined);
+            Assert.StartsWith(joined.TrimEnd('…'), title);
+        }
+        else Assert.Equal(title, joined);
         foreach (var line in lines)
         {
             var w = new FormattedText(line, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, fit.Size, null).Width;
@@ -81,11 +89,17 @@ public class DesignM1Tests
     });
 
     [Fact]
-    public void Placeholder_title_size_follows_the_box_width()
+    public void Placeholder_title_size_is_one_size_per_row()
     {
-        Assert.Equal(21, CoverArt.PlaceholderTitleSize(196)); // ≈ 20 px at 196 (DESIGN 10.2: 0.105 × width)
-        Assert.Equal(38, CoverArt.PlaceholderTitleSize(360)); // the stage box on Detail
-        Assert.Equal(13, CoverArt.PlaceholderTitleSize(100));
+        // shelf boxes 200 high: 0.105 × min(W, 0.72 × 200) clamped to 18…26 – the narrow GC case and the wide DS case alike
+        Assert.Equal(18, CoverArt.PlaceholderTitleSize(143, 200));
+        Assert.Equal(18, CoverArt.PlaceholderTitleSize(222, 200));
+        Assert.Equal(19, CoverArt.PlaceholderTitleSize(196, 245)); // a library slot
+        Assert.Equal(32, CoverArt.PlaceholderTitleSize(300, 420)); // the stage box on Start
+        Assert.Equal(38, CoverArt.PlaceholderTitleSize(360, 504)); // the stage box on Detail
+        Assert.Equal(15, CoverArt.PlaceholderSubSize(143, 160)); // subtitles never below 15 px
+        Assert.False(PlaceholderTitle.Fit("The Legend of Zelda", 137, 1000, 18, PlaceholderTitle.MaxLines).Trimmed);
+        Assert.Equal(18, PlaceholderTitle.Fit("The Legend of Zelda", 137, 1000, 18, PlaceholderTitle.MaxLines).Size); // no step-down for lines
         Assert.Equal(14, CoverArt.PlaceholderPad(196));
         Assert.Equal(24, CoverArt.PlaceholderPad(360));
     }

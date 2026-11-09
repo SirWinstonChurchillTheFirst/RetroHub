@@ -51,6 +51,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         RenderTransformOrigin = new RelativePoint(0.5, 1, RelativeUnit.Relative);
         RenderTransform = new ScaleTransform(1, 1);
         Width = SpineWidth;
+        FocusAdorner = null; // a local value: the theme's 2 px focus rectangle never shows (the chamfered ring is the focus)
     }
 
     // no Button theme: everything is drawn in Render (a theme's background would cover it)
@@ -60,6 +61,12 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
 
     public double SpineWidth { get => GetValue(SpineWidthProperty); set => SetValue(SpineWidthProperty, value); }
     public double FrontWidth { get => GetValue(FrontWidthProperty); set => SetValue(FrontWidthProperty, value); }
+
+    /// <summary>Free space on each side of an open front (M2 QA): ring (3 + 3) and lift 1.03 never touch the neighbours.</summary>
+    public const double FrontGap = 16;
+
+    /// <summary>Width of the item while its front is turned forward: the front plus <see cref="FrontGap"/> on both sides.</summary>
+    public double OpenWidth => FrontWidth + 2 * FrontGap;
 
     /// <summary>The front is (or is becoming) visible.</summary>
     public bool IsOpen => _open;
@@ -108,6 +115,10 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 _open = open;
                 SetWidth(animate: true);
             }
+            // the ring stands above the neighbouring spines (they would cover it: later siblings draw on top)
+            var z = _ringOpacity > 0 ? 1 : 0;
+            ZIndex = z;
+            if (Avalonia.VisualTree.VisualExtensions.GetVisualParent(this) is Avalonia.Controls.Presenters.ContentPresenter container) container.ZIndex = z;
             var lift = visible && Motion.AllowsMovement ? 1.03 : 1.0;
             if (RenderTransform is ScaleTransform st)
             {
@@ -124,7 +135,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
 
     private void SetWidth(bool animate)
     {
-        var target = _open ? FrontWidth : SpineWidth;
+        var target = _open ? OpenWidth : SpineWidth;
         var repeat = NavRepeatTracker.Current?.IsActive == true;
         var d = !animate || Motion.Current != EffectiveMotion.Full ? TimeSpan.Zero : repeat ? Motion.GlideRepeatDuration : Motion.GlideDuration;
         Transitions = d == TimeSpan.Zero ? null :
@@ -177,27 +188,34 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         if (r.Width <= 0 || r.Height <= 0 || _system is not { } s) return;
         EnsureText();
         var look = s.Look;
-        var span = Math.Max(1, FrontWidth - SpineWidth);
+        var span = Math.Max(1, OpenWidth - SpineWidth);
         var t = Math.Clamp((r.Width - SpineWidth) / span, 0, 1); // 0 = spine, 1 = front
-        using (ctx.PushClip(r))
+        // the object itself: the spine, or the front standing FrontGap in from both sides (free space for ring and lift)
+        var pad = Math.Round(FrontGap * t);
+        var area = new Rect(pad, 0, Math.Max(1, r.Width - 2 * pad), r.Height);
+        using (ctx.PushClip(area))
         {
-            if (t < 1) DrawSpine(ctx, r, look, 1 - Math.Clamp((t - 0.0) / 0.5, 0, 1));
+            if (t < 1) DrawSpine(ctx, area, look, 1 - Math.Clamp((t - 0.0) / 0.5, 0, 1));
             if (t > 0)
             {
-                var front = new Rect(0, 0, FrontWidth, r.Height);
+                var front = new Rect(pad, 0, FrontWidth, r.Height);
                 using (ctx.PushOpacity(Math.Clamp(t / 0.5, 0, 1)))
                     SystemWall.Draw(ctx, this, front, look, band: 8, motifShare: 0.72, motifInset: Math.Round(FrontWidth * 0.06));
                 using (ctx.PushOpacity(Math.Clamp((t - 0.6) / 0.4, 0, 1)))
-                    DrawFrontText(ctx, front);
+                using (ctx.PushTransform(Matrix.CreateTranslation(pad, 0)))
+                    DrawFrontText(ctx, new Rect(0, 0, FrontWidth, r.Height));
             }
         }
-        if (_ringOpacity > 0) Chamfer.DrawRing(ctx, r, look.LightBrush, opacity: _ringOpacity);
+        // the chamfered ring in the system's light: 3 px room-deep gap + 3 px light, chamfer 6, around the object
+        if (_ringOpacity > 0) Chamfer.DrawRing(ctx, area, look.LightBrush, opacity: _ringOpacity);
     }
 
-    private void DrawSpine(DrawingContext ctx, Rect r, SystemLook look, double opacity)
+    private void DrawSpine(DrawingContext ctx, Rect area, SystemLook look, double opacity)
     {
         using (ctx.PushOpacity(opacity))
+        using (ctx.PushTransform(Matrix.CreateTranslation(area.X, 0)))
         {
+            var r = new Rect(0, 0, area.Width, area.Height);
             ctx.FillRectangle(look.WallHiBrush, r);
             TextureFill.Draw(ctx, this, r, look.Texture, look.TextureOpacity);
             ctx.FillRectangle(look.ColorBrush, new Rect(0, 0, r.Width, 8));

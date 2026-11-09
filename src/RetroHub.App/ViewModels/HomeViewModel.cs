@@ -10,11 +10,30 @@ using RetroHub.Core.Metadata;
 
 namespace RetroHub.App.ViewModels;
 
+/// <summary>Where the focus is on Start: it decides the footer's location sentence and the hints (DESIGN 7.0).</summary>
+public enum HomeFocus
+{
+    /// <summary>The primary action ("Spielen", "Öffnen", "Ordner hinzufügen").</summary>
+    Primary,
+    Details,
+    Star,
+    Imports,
+    /// <summary>The box on the stage.</summary>
+    StageBox,
+    /// <summary>A game box on a shelf.</summary>
+    ShelfGame,
+    /// <summary>A system spine on the "Konsolen" shelf.</summary>
+    ShelfSystem,
+    /// <summary>The "Alle anzeigen" spine at the end of a shelf.</summary>
+    ShelfAction,
+}
+
 /// <summary>
 /// Start ("Der Fernseher im Regal", DESIGN 7.1): the stage (TV + box + text) and the shelves below it. The stage shows
 /// the game to continue until a shelf item has been focused for <see cref="Motion.Dwell"/> (the view calls
-/// <see cref="Present(GameItemViewModel, string, int, int)"/>); it then keeps that subject while the focus goes up to its
-/// actions, so "Spielen" plays what the TV shows. Entering the page again shows the game to continue.
+/// <see cref="Present(GameItemViewModel, string, int, int)"/>). When the focus comes back to the stage and rests there for
+/// the dwell, the view calls <see cref="ReturnToContinue"/>: Start's main action is always "Spielen" for the game to
+/// continue (M2 QA); a browsed game is played from its box. The footer follows the focus (<see cref="SetFocus"/>).
 /// </summary>
 public sealed partial class HomeViewModel : PageViewModel
 {
@@ -60,13 +79,78 @@ public sealed partial class HomeViewModel : PageViewModel
     partial void OnRecentlyAddedChanged(IReadOnlyList<GameItemViewModel> value) => OnPropertyChanged(nameof(HasRecentlyAdded));
     partial void OnPlatformsChanged(IReadOnlyList<SystemItemViewModel> value) => OnPropertyChanged(nameof(HasPlatforms));
 
-    public override IReadOnlyList<HintItem> Hints =>
-    [
-        new(NavAction.Accept, Loc.T("hint.open")),
-        new(NavAction.Favorite, Loc.T("hint.favorite")),
-        new(NavAction.Search, Loc.T("hint.search")),
-        new(NavAction.Menu, Loc.T("hint.menu")),
-    ];
+    /// <summary>
+    /// Hints of the focused element (M2 QA): confirm says what it does there ("Spielen", "Öffnen", "Details", "Ordner
+    /// hinzufügen"); "Favorit" only where F does something (a game on the stage or on a shelf); the empty library has
+    /// only "Ordner hinzufügen" and "Menü".
+    /// </summary>
+    public override IReadOnlyList<HintItem> Hints
+    {
+        get
+        {
+            var accept = _focus switch
+            {
+                HomeFocus.Primary => Stage?.PrimaryLabel ?? Loc.T("hint.open"),
+                HomeFocus.Details => Loc.T("home.details"),
+                HomeFocus.Star => Stage?.Game?.IsFavorite == true ? Loc.T("hint.unfavorite") : Loc.T("hint.favorite"),
+                HomeFocus.Imports => Loc.T("home.openImports"),
+                _ => Loc.T("hint.open"),
+            };
+            if (IsLibraryEmpty || Stage?.IsEmpty == true) return [new(NavAction.Accept, accept), new(NavAction.Menu, Loc.T("hint.menu"))];
+            var list = new List<HintItem> { new(NavAction.Accept, accept) };
+            if (CanFavorite) list.Add(new(NavAction.Favorite, Loc.T("hint.favorite")));
+            list.Add(new(NavAction.Search, Loc.T("hint.search")));
+            list.Add(new(NavAction.Menu, Loc.T("hint.menu")));
+            return list;
+        }
+    }
+
+    private HomeFocus _focus = HomeFocus.Primary;
+    private (string Shelf, int Index, int Count, string? Action) _shelfPosition;
+
+    /// <summary>The focused element can be a favourite: a game box, or the stage's actions while a game is on the stage.</summary>
+    private bool CanFavorite => _focus switch
+    {
+        HomeFocus.ShelfGame or HomeFocus.StageBox => true,
+        HomeFocus.Primary or HomeFocus.Details or HomeFocus.Star => Stage?.IsGame == true,
+        _ => false,
+    };
+
+    /// <summary>The focus moved (the view reports it): location sentence and hints follow at once, not after the dwell.</summary>
+    public void SetFocus(HomeFocus focus, string? shelf = null, int index = 0, int count = 0, string? action = null)
+    {
+        _focus = focus;
+        _shelfPosition = (shelf ?? "", index, count, action);
+        UpdateLocation();
+        RaiseHintsChanged();
+    }
+
+    /// <summary>The focus rests on the stage again (dwell): back to the game to continue (DESIGN 7.1).</summary>
+    public void ReturnToContinue()
+    {
+        if (Stage is { Kind: StageKind.Game or StageKind.System }) PresentContinue();
+    }
+
+    /// <summary>"Start › Weiterspielen" (actions), "Start › Bühne, Titel" (stage box), "Start › Brett, n von m" (shelf).</summary>
+    private void UpdateLocation()
+    {
+        if (IsLibraryEmpty || Stage?.IsEmpty == true) { Location = null; return; }
+        Location = _focus switch
+        {
+            HomeFocus.StageBox => Loc.T("home.location.stage", Stage?.Game?.Title ?? ""),
+            HomeFocus.ShelfGame or HomeFocus.ShelfSystem => Loc.T("home.location.shelf", _shelfPosition.Shelf, _shelfPosition.Index + 1, _shelfPosition.Count),
+            HomeFocus.ShelfAction => Loc.T("home.location.shelfAll", _shelfPosition.Shelf, _shelfPosition.Action ?? ""),
+            _ => Loc.T("home.location"),
+        };
+    }
+
+    /// <summary>F on the stage's actions toggles the favourite of the game on the stage (the boxes handle it themselves).</summary>
+    public override bool HandleAction(NavAction action)
+    {
+        if (action != NavAction.Favorite || !CanFavorite || Stage is not { IsGame: true, Game: { } g }) return false;
+        _ = Ctx.ToggleFavoriteAsync(g);
+        return true;
+    }
 
     public override void OnNavigatedTo(object? argument, bool isBack)
     {
@@ -86,9 +170,11 @@ public sealed partial class HomeViewModel : PageViewModel
         var repo = Ctx.Services.Games;
         var snap = await UiContext.Background(() =>
         {
-            var recent = repo.Query(new GameQuery { Sort = GameSort.LastPlayed, Limit = RecentMax + 4 }).Where(g => g.LastPlayedUtc != null).Take(RecentMax + 1).ToList();
-            var favs = repo.Query(new GameQuery { Favorite = true, Sort = GameSort.LastPlayed, Limit = FavoritesMax });
-            var added = repo.Query(new GameQuery { Sort = GameSort.Added, Limit = AddedMax });
+            // region/version variants of one game stand on a shelf once (the newest by the shelf's order); the library
+            // and the system page stay complete
+            var recent = Distinct(repo.Query(new GameQuery { Sort = GameSort.LastPlayed, Limit = RecentMax * 3 + 4 }).Where(g => g.LastPlayedUtc != null), RecentMax + 1);
+            var favs = Distinct(repo.Query(new GameQuery { Favorite = true, Sort = GameSort.LastPlayed, Limit = FavoritesMax * 3 }), FavoritesMax);
+            var added = Distinct(repo.Query(new GameQuery { Sort = GameSort.Added, Limit = AddedMax * 4 }), AddedMax);
             return new Snapshot(recent.FirstOrDefault() ?? added.FirstOrDefault(), recent, favs, added, repo.Stats());
         }, "Loading the dashboard");
         if (snap == null || version != _version) return;
@@ -134,12 +220,22 @@ public sealed partial class HomeViewModel : PageViewModel
         {
             SetStage(new StageState(StageKind.Empty, "", Loc.T("home.empty.title"), Loc.T("home.empty.text"), null, null, null, default, null, true,
                 Loc.T("home.addFolder")), null);
-            Location = null;
             return;
         }
         var label = game.HasPlayed ? $"{Loc.T("home.continue")}: {game.LastPlayedText}" : Loc.T("home.shelf.added");
         SetStage(GameStage(StageKind.Continue, game, label), game);
-        Location = Loc.T("home.location");
+    }
+
+    partial void OnStageChanged(StageState? value)
+    {
+        UpdateLocation();
+        RaiseHintsChanged();
+    }
+
+    partial void OnIsLibraryEmptyChanged(bool value)
+    {
+        UpdateLocation();
+        RaiseHintsChanged();
     }
 
     /// <summary>A game focused on a shelf (after the dwell): the stage shows it under the shelf's name.</summary>
@@ -147,14 +243,12 @@ public sealed partial class HomeViewModel : PageViewModel
     {
         ++_presentVersion;
         SetStage(GameStage(StageKind.Game, game, shelf), game);
-        Location = Loc.T("home.location.shelf", shelf, index + 1, count);
     }
 
     /// <summary>A system spine focused: "Kein Signal" of that system, its last played game as the box, "Öffnen".</summary>
     public void Present(SystemItemViewModel system, string shelf, int index, int count)
     {
         var version = ++_presentVersion;
-        Location = Loc.T("home.location.shelf", shelf, index + 1, count);
         var repo = Ctx.Services.Games;
         _ = PresentSystemAsync(system, version, repo);
     }
@@ -246,6 +340,29 @@ public sealed partial class HomeViewModel : PageViewModel
     /// <summary>"Game Boy Advance. 46 Std. gespielt, zuletzt heute." – every sentence starts upper case ("Unter 1 Min.").</summary>
     internal static string BuildContinueMeta(string systemName, string lastPlayed, string playTime) =>
         Loc.T("home.continueMeta", systemName, lastPlayed, Fmt.SentenceStart(playTime));
+
+    /// <summary>
+    /// The games in order, each (system, normalised title) only once – the first one wins (the newest by the query's
+    /// sort): "Zelda (Germany)", "Zelda (Rev 1)" and "Zelda [!]" are one box on a Start shelf.
+    /// </summary>
+    internal static List<Game> Distinct(IEnumerable<Game> games, int max)
+    {
+        var seen = new HashSet<(string, string)>();
+        var list = new List<Game>();
+        foreach (var g in games)
+        {
+            if (!seen.Add((g.SystemId, NormalizeTitle(g.Title)))) continue;
+            list.Add(g);
+            if (list.Count >= max) break;
+        }
+        return list;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex Tags = new(@"\s*[\(\[][^\)\]]*[\)\]]", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>The title without region/version tags ("(Germany)", "(Rev 1)", "[!]"), whitespace folded, case-insensitive.</summary>
+    internal static string NormalizeTitle(string? title) =>
+        string.Join(' ', Tags.Replace(title ?? "", " ").Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
 
     private static IReadOnlyList<GameItemViewModel> Keep(IReadOnlyList<GameItemViewModel> current, IReadOnlyList<GameItemViewModel> fresh) =>
         current.Count == fresh.Count && current.SequenceEqual(fresh) ? current : fresh;

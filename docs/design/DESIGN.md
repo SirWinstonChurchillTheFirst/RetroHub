@@ -285,7 +285,8 @@ Regeln:
 
 | Key | Wert | Verwendung |
 |---|---|---|
-| `RhRadiusNone` | 0 | Bretter, Wände, Rücken, Etiketten, Bildschirm, Banner |
+| `RhRadiusNone` | 0 | Bretter, Wände, Rücken, Etiketten, Gehäuse und Mulde des Bildschirms, Banner |
+| `PixelScreen.TubeRadius` | 6 | **einzige Ausnahme an Objekten:** das Glas der Röhre (M2) |
 | `RhRadiusSmall` (Aliase `RhRadiusChip`, `RhRadiusTile`) | 2 | Cover, Platzhalter, Aufkleber, Papier-Chips |
 | `RhRadiusControl` | 4 | Sekundärbuttons, Eingabefelder, Listenzeilen |
 | `RhRadiusPanel` | 6 | Dialoge, Overlays (Maximum der App) |
@@ -562,28 +563,29 @@ MainWindow
 
 **Bühne (y 72–584, fix)**
 - **Bühnenbrett** bei y 560, randlos über die Fensterbreite. Darauf stehen Schachtel und Bildschirm, beide mit der Unterkante auf y 560.
-- **Bildschirm**: Rahmen 560×420 (4:3) bei x 1264–1824, 2 px Raum-Tief, R 0. Inhalt nach der Kette Snap → Titelbild → **„Kein Signal“** (Wand des Systems mit Farbband, Textur und Motiv auf 50 % Höhe, links oben der Systemcode in Rücken 28 Licht wie ein OSD). Scanlines 18 % über allem im Rahmen. Wechsel: Überblendung 180 ms. Der Schein (2.5) sitzt in der Mitte des Bildschirms.
-- **Schachtel**: Rahmen 300×420 bei x 912–1212, contain, unten bündig, Kontaktschatten auf dem Brett. Querformat-Cover stehen niedriger. Fokussierbar: Bestätigen öffnet das Detail. Fokus nach 8.
+- **Bildschirm** (Stand M2-QA, ersetzt „Rahmen 560×420, 2 px Raum-Tief, R 0“): ein Gerät 560 breit und **468 hoch** bei x 1264–1824. Gehäuse Regal hell #2A2620 mit 1 px Lichtkante oben und 1 px Kante unten; 12 px Gehäuserand, darin eine **12 px tiefe Mulde** in Raum-Tief (R 0) um das Glas **512×384** (4:3, R 6, siehe 4.1); darunter das **Kinn 40** mit einer 6×6-Betriebsleuchte im *Licht* des Systems (aus: Raum) links und einem Lautsprechergitter aus 7 Linien (1 px Raum-Tief, Raster 3 px, 120 breit) rechts; zwei **Füße 64×8** in Raum-Tief bei 12 % von jedem Rand, ihre Unterkante ist die Brettoberkante (y 560). Bei 400 Breite: 9 + 9 + 273 + 9 + 29 + 6 = 335 hoch. Inhalt nach der Kette Snap → Titelbild → **„Kein Signal“** (Wand des Systems mit Farbband, Textur und Motiv auf 50 % Höhe, links oben der Systemcode in Rücken 28 Licht wie ein OSD; das Glas ist dabei um 4 % Papier aufgehellt). Scanlines 18 % über allem im Rahmen. Wechsel: Überblendung 180 ms. Der Schein (2.5) sitzt in der Mitte des Bildschirms.
+- **Schachtel**: Rahmen 300×420 bei x 912–1212, contain, unten bündig, Kontaktschatten auf dem Brett. Querformat-Cover stehen niedriger. Fokussierbar: Bestätigen öffnet das Detail. Fokus nach 8. Keine Favoriten-Marke auf der Schachtel (der Stern-Button zeigt den Zustand).
 - **Textblock** x 96–860, **unten verankert** (die Aktionsreihe endet bei y 528, 32 px über dem Brett; alles darüber stapelt nach oben):
   - Etikett-Zeile in Etikett 18, Licht: „Zuletzt gespielt: heute“. Bei Fokus auf einem Brett steht dort dessen Name („Favoriten“, „Neu in der Sammlung“).
   - Titel in Plakat, **gemessen** (3.2) auf 764 px Breite, maximal 2 Zeilen.
   - Meta-Satz `read-l` mit Zahlen als Archivo-Runs: „Game Boy Advance. **46** Stunden in **41** Sitzungen, zuletzt heute.“ Nie gespielt: „Game Boy Advance. Seit **25.** September in der Sammlung.“
   - Aktionsreihe: **Spielen** 280×64 (gefaste Platte, Bernstein, Tinte, Icon Play 24), **Details** 64 hoch (Regal hell, R 4), **Favorit** 64×64 (nur Icon).
-- **Die Bühne folgt dem Fokus**: Ruht der Fokus `Dwell` (220 ms) auf einer Schachtel im Brett, zeigt die Bühne dieses Spiel. Der Text blendet 120 ms aus und 180 ms mit 8 px x-Versatz ein, Schachtel und Bildschirm überblenden in 180 ms, das Fernsehlicht in 420 ms. Bei Fokus auf einem **Systemrücken** zeigt die Bühne das System: Der Bildschirm zeigt „Kein Signal“ dieses Systems, die Schachtel ist die des zuletzt gespielten Spiels darin, der Titel ist der Systemname, der Satz lautet „Handheld von Nintendo, 2001. **7** Spiele, zuletzt Pokémon Smaragd-Edition.“ und die Primäraktion „Öffnen“. Ohne Brett-Fokus zeigt die Bühne das Weiterspielen-Spiel.
+- **Die Bühne folgt dem Fokus**: Ruht der Fokus `Dwell` (220 ms) auf einer Schachtel im Brett, zeigt die Bühne dieses Spiel. Der Text blendet 120 ms aus und 180 ms mit 8 px x-Versatz ein, Schachtel und Bildschirm überblenden in 180 ms, das Fernsehlicht in 420 ms. Bei Fokus auf einem **Systemrücken** zeigt die Bühne das System: Der Bildschirm zeigt „Kein Signal“ dieses Systems, die Schachtel ist die des zuletzt gespielten Spiels darin, der Titel ist der Systemname, der Satz lautet „Handheld von Nintendo, 2001. **7** Spiele, zuletzt Pokémon Smaragd-Edition.“ und die Primäraktion „Öffnen“. Ohne Brett-Fokus zeigt die Bühne das Weiterspielen-Spiel: **Kommt der Fokus auf die Bühne zurück (Aktionsreihe oder Schachtel) und ruht dort `Dwell` (220 ms), kehrt die Bühne zum Weiterspielen-Spiel zurück** (Etikett „Weiterspielen: gestern“, Primäraktion „Spielen“). Die Hauptaktion von Start ist also immer „Spielen“ für das letzte Spiel; ein gestöbertes Spiel startet man über seine Schachtel (M2-QA).
+- **Fußleiste folgt dem Fokus sofort** (nicht erst nach dem Dwell): Aktionsreihe → „Start › Weiterspielen“, Bühnen-Schachtel → „Start › Bühne, ‹Titel›“, Brett → „Start › ‹Brett›, n von m“, „Alle“-Rücken → „Start › ‹Brett›, Alle anzeigen“. Hinweise: Bestätigen benennt die Aktion des Elements („Spielen“, „Öffnen“, „Details“, „Ordner hinzufügen“); „Favorit“ nur, wo F wirkt (ein Spiel auf Bühne oder Brett); leere Bibliothek nur „Ordner hinzufügen“ und „Menü“.
 - **Erster Fokus**: „Spielen“.
 
 **Bretter (y 600–1024, eigener Bereich mit vertikalem Fokus-Anker)**
-- **Reihenfolge**: Zuletzt gespielt (≤ 11), Favoriten (≤ 16), Neu in der Sammlung (≤ 12), Fächer. Leere Bretter entfallen.
-- **Schachteln**: Höhe 200, Breite nach Bild (contain), Abstand 24, unten bündig. **Keine Bildunterschriften**, denn die Bühne ist die Bildunterschrift. Platzhalter tragen ihren Titel selbst.
+- **Reihenfolge**: Zuletzt gespielt (≤ 11), Favoriten (≤ 16), Neu in der Sammlung (≤ 12), Fächer. Leere Bretter entfallen. **Varianten falten**: Auf den Start-Brettern steht ein Spiel je (System, normalisierter Titel) nur einmal; Regions- und Versionsmarken wie „(Germany)“, „(Rev 1)“, „[!]“ fallen beim Vergleich weg, es bleibt der erste Eintrag in der Ordnung des Bretts. Bibliothek und Systemseite bleiben vollständig.
+- **Schachteln**: Höhe 200, Breite nach Bild (contain), Abstand 24, unten bündig. **Keine Bildunterschriften**, denn die Bühne ist die Bildunterschrift. Platzhalter tragen ihren Titel selbst. Keine Abzeichen auf den Schachteln (auch kein Favoriten-Stern).
 - **Etikett** statt Überschrift: Es hängt links an der Brettfront bei x 96 (Papier, Tinte, Etikett 15, 8×3, R 0). Es gibt keine H2 und keinen „Alle anzeigen ›“-Link.
 - **Ende jedes Bretts**: ein Rücken „Alle“ (72×200, Regal hell, Band in Bernstein, Text „Alle anzeigen“ in Rücken 18 gedreht). Er führt in die Bibliothek mit passendem Filter bzw. passender Sortierung.
-- **Fächer-Brett**: `SystemShelf` (dasselbe Control wie Konsolen, 7.4). Systemrücken 72×200 (Wand hell, 8-px-Band in Farbe, Code −90° in Rücken 22 Papier, Anzahl unten in Zahl 15). Der fokussierte Rücken wird zur **Front** 200×200 (Wand mit Motiv). Eine einzige Objektsprache.
+- **Fächer-Brett**: `SystemShelf` (dasselbe Control wie Konsolen, 7.4). Systemrücken 72×200 (Wand hell, 8-px-Band in Farbe, Code −90° in Rücken 22 Papier, Anzahl unten in Zahl 15). Der fokussierte Rücken wird zur **Front** 200×200 (Wand mit 8-px-Band und Motiv) mit **16 px Luft auf jeder Seite** (Platz 232; der Abstand der Rücken bleibt 8); Ring und Hebung 1,03 nach 8.2, die Front liegt dabei über ihren Nachbarn (ZIndex 1). Eine einzige Objektsprache.
 - **Horizontaler Anker**: Die fokussierte Schachtel steht mit der linken Kante bei x 240 (am Brettanfang bei x 96). Die Reihe gleitet per `TranslateTransform` (Glide 220 ms; unter `.nav-repeat` 90 ms linear).
-- **Vertikaler Anker**: Das fokussierte Brett steht mit der Schachtel-Oberkante bei y 632. Das nächste Brett ragt ab y 908 angeschnitten herein („mehr unten“). Bretter darüber gleiten unter die Bühne, der Bereich ist ab y 600 beschnitten.
+- **Vertikaler Anker**: Das fokussierte Brett steht mit der Schachtel-Oberkante bei y 632. Das nächste Brett ragt ab y 908 angeschnitten herein („mehr unten“). Bretter darüber gleiten unter die Bühne. **Nur der Bretterbereich als Ganzes ist beschnitten**, ab der Unterkante des Bühnenbretts (y 584); Reihen und Schachteln beschneiden nie (die gehobene Schachtel und ihr Ring ragen über die Reihe). Über der aktiven Reihe bleiben 48 px für Hebung (12), Ring (6) und den kurzen Kegel.
 
-**Leere Bibliothek**: Der Bildschirm ist aus (Raum-Tief mit einer 1-px-Linie in Papier 20 % in der Mitte). Statt der Schachtel steht eine Linienzeichnung „leeres Regal“ (Papier 60 %). Text: „Das Regal ist noch leer“ und „Lege Spieldateien in einen Bibliotheksordner und starte einen Scan.“ Buttons: **Ordner hinzufügen** (Bernstein) und **Importe öffnen**.
+**Leere Bibliothek**: Der Bildschirm ist aus (Raum-Tief mit einer 1-px-Linie in Papier 20 % in der Mitte). Statt der Schachtel steht eine Linienzeichnung „leeres Regal“ (Papier 60 %) **direkt auf dem Bühnenbrett** (zwei Buchstützen und eine angelehnte Schachtel, ohne eigenes Brett). Das Brett „Noch leer“ darunter trägt **5 umrissene Plätze** 150×200 (1 px Papier 12 %, gestrichelt 4/4, Abstand 24, ab x 96), es wartet sichtbar auf Spiele. Text: „Das Regal ist noch leer“ und „Lege Spieldateien in einen Bibliotheksordner und starte einen Scan.“ Buttons: **Ordner hinzufügen** (Bernstein) und **Importe öffnen**.
 
-**≈ 1100 px (logisch 1375×875)**: Bühnenbrett bei y 464. Bildschirm 400×300 bei x 879–1279, Schachtel-Rahmen 214×300 bei x 625–839, Textblock x 96–585 (Titel meist 40 oder 56). Bretter: Schachteln 160 hoch, Anker bei y 520, das nächste Brett ab y 752.
+**≈ 1100 px (logisch 1375×875)**: Bühnenbrett bei y 456 (M2-QA; vorher 464: Ring und Hebung stießen ans Brett). Bildschirm 400×300 bei x 879–1279, Schachtel-Rahmen 214×300 bei x 625–839, Textblock x 96–585 (Titel meist 40 oder 56). Bretter: Schachteln 160 hoch, Anker bei y 520 (40 px Luft unter dem Bühnenbrett), das nächste Brett ab y 752, Front 160 mit 16 px Luft je Seite.
 
 ---
 
@@ -786,11 +788,11 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 - Jedes `CoverGrid`, jedes Brett auf Start und jedes `SystemShelf` hat **eine** Fokus-Ebene *im Inhalt des ScrollViewers*, damit sie mitscrollt. Sie besteht aus zwei Teilen:
   - **`FocusBack`** (Canvas *hinter* den Zeilen): Lichtkegel, beleuchtetes Brettstück und Fokus-Kontaktschatten.
   - **`FocusFront`** (Canvas *über* den Zeilen): der gefaste Ring.
-- **Positionierung**: Bei Fokuswechsel rechnet `tile.TranslatePoint(ArtRect)` in die Ebene um. Ring und Kegel werden für das **Zielrechteck nach Hebung** gesetzt (ArtRect × 1,06 von unten Mitte) und erscheinen in Blink (90 ms). Sie laufen der Skalierung nicht hinterher. Wird die fokussierte Kachel recycelt oder verlässt sie den sichtbaren Bereich, wird die Ebene ausgeblendet.
+- **Positionierung**: Bei Fokuswechsel wird `ArtRect` über die **Layout-Positionen** (ohne RenderTransforms) in die Ebene umgerechnet; `TranslatePoint` enthielte die Hebung schon und höbe den Ring doppelt (M2-QA). Ring und Kegel werden für das **Zielrechteck nach Hebung** gesetzt (ArtRect × 1,06 von unten Mitte) und erscheinen in Blink (90 ms). Sie laufen der Skalierung nicht hinterher. Wird die fokussierte Kachel recycelt oder verlässt sie den sichtbaren Bereich, wird die Ebene ausgeblendet.
 - **Z-Reihenfolge**: Die fokussierte Kachel bekommt `ZIndex=1` in ihrem `CoverRowPresenter`, und dessen Zeilencontainer bekommt `ZIndex=1` im `VirtualizingStackPanel`. So überdeckt die nach oben wachsende Schachtel die Bildunterschrift der Zeile darüber und wird nicht von ihr überdeckt. Horizontal wächst sie um 6 px je Seite, das ist weniger als der Abstand (≥ 20). Es entsteht also keine Überlappung mit den Nachbarn.
 - **Geometrie** (gecacht pro Größen-Bucket, auf 2 px gerundet):
   - *Ring*: Achteck um das Zielrechteck. Innen 3 px Raum-Tief (Spalt), außen 3 px Lichtfarbe, Außenfase `RhChamferRing` 6 px. Gezeichnet als zwei Strokes einer `StreamGeometry`.
-  - *Lichtkegel*: Trapez. Oben 0,6 × Coverbreite bei y = Coveroberkante − 120, unten 1,3 × Coverbreite auf der Brettoberkante. Füllung vertikaler LinearGradient Lichtfarbe 14 % → 0. Eine Brush pro Lichtfarbe, geteilt.
+  - *Lichtkegel* (M2-QA): kurzes Trapez, das **an der Oberkante der gehobenen Schachtel endet** und nie hinter der Schachtel liegt. Oben 0,6 × Coverbreite bei Coveroberkante − 40, unten 1,3 × Coverbreite auf der Coveroberkante; Lichtfarbe von 0 (oben) auf 18 % (unten), neben der Schachtel im letzten Drittel ausgeblendet. Ein vorab gerendertes Bitmap pro Lichtfarbe, geteilt; auf die Kopffreiheit beschnitten (Grid 24 px).
   - *Brettstück*: 2 px Lichtfarbe auf der Brettoberkante über die Coverbreite, Front darunter Regal hell gemischt mit 12 % Lichtfarbe.
   - *Fokus-Kontaktschatten*: 16 px #000 70 % → 0 auf Coverbreite.
 - **Lichtfarbe**: in gemischtem Kontext Bernstein (bzw. die gewählte Benutzer-Lichtfarbe), im Systemkontext das *Licht* des Systems.
@@ -801,7 +803,7 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 | Element | Fokus-Darstellung | Zeit |
 |---|---|---|
 | **Schachtel** (Grid, Bretter, Bühne, Detail) | Hebung 1,06 (Ursprung unten Mitte), Kegel, Brettstück, Fokus-Kontaktschatten, gefaster Ring. Bildunterschrift Text 2 → Papier | Ring 90 ms linear; Hebung 140 ms CubicEaseOut |
-| **Systemrücken / Front / Wand-Banner** | Gefaster Ring in Licht, Hebung 1,03. Kein Kegel, die Wand ist selbst die Lichtfläche | wie oben |
+| **Systemrücken / Front / Wand-Banner** | Gefaster Ring in Licht (3 px Raum-Tief-Spalt + 3 px Licht, Fase 6), Hebung 1,03 von unten Mitte, über den Nachbarn (ZIndex 1). Kein Kegel, die Wand ist selbst die Lichtfläche | wie oben |
 | **Primärbutton** (gefaste Platte) | Bernstein bleibt, gefaster Ring 3 px **Papier** mit Raum-Tief-Spalt, Skalierung 1,03 | 90 / 140 ms |
 | **Sekundärbutton, Kopfleisten-Icon, Kanal, Ticker-Eintrag, Tastenkappe, Werkzeug** | **Inversion**: Fläche Papier, Text und Icon Tinte (Ticker: Code-Fläche 6×4, R 2; Unterstrich bleibt) | 90 ms |
 | **Listen-, Auswahl-, Einstellungs-, Emulator-, Ordnerzeile** | Zeile Regal hell, 8-px-Balken links (Farbe des Systems bzw. Bernstein), 1 px Lichtkante oben, Label bzw. Titel in Papier-Chip (Tinte, 8×4, R 2). Im Service-Menü werden die Wert-Pfeile Papier | 90 ms |
@@ -903,10 +905,13 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 Gezeichnet in `CoverArt.DrawPlaceholder`, Seitenverhältnis 0,72 (B/H) hochkant, unten bündig:
 ```
 ┌──┬────────────────┐
-│G │░░░░░░░░░░░░░░░░│  Grund: zweifarbig wie die Wand (Wand hell 38 % / Wand 62 %), Textur des Systems 8 %
+│G │░░░░░░░░░░░░░░░░│  Grund: zweifarbig wie die Wand (Wand hell 38 % / Wand 62 %; unter 200 px Breite einfarbig), Textur 8 %
 │B │░░░░░░░░░░░░░░░░│  Rückenband: 16 % der Breite, volle Farbe, Code −90° in Rücken (0,09 × Breite), Text auf Farbe
-│A │░░░░░░░░░░░░░░░░│  Motiv-Silhouette: Farbe 18 %, 45 % der Höhe, rechts unten
-│  │░░░░░░░░░▟██▙░░░│  Titel: Plakat-Rolle, 0,105 × Breite (≈ 20 px bei 196), Papier, linksbündig,
+│A │░░░░░░░░░░░░░░░░│  Motiv-Silhouette: EINE Geometrie (Teile vereinigt, Aussparungen abgezogen), Farbe 18 %,
+│  │░░░░░░░░░░░░░░░░│    45 % der Höhe, rechts unten mit 14 px Abstand, immer ganz in den unteren 62 %
+│  │░░░░░░░░░▟██▙░░░│  Titel: Plakat-Rolle, clamp(0,105 × min(B, 0,72 × H), 18, 26), Bühnen-Schachteln (H ≥ 300) bis 40;
+│  │░░░░░░░░░░░░░░░░│    eine Größe für alle Schachteln einer Reihe, Zeilenhöhe 1,1; Untertitel Atkinson ≥ 15 px, Text 2;
+│  │░░░░░░░░░░░░░░░░│    Papier, linksbündig,
 │  │Castlevania:░█░░│    unten verankert, 14 px Innenrand, max. 4 Zeilen
 │  │Aria of░░░░░░░░░│  Oben 1 px Lichtkante; R 2; Kontaktschatten wie echte Cover (vom Brett)
 │  │Sorrow░░░░░░░░░░│
@@ -914,7 +919,7 @@ Gezeichnet in `CoverArt.DrawPlaceholder`, Seitenverhältnis 0,72 (B/H) hochkant,
 ```
 - **Variation pro Spiel ohne eigene Brushes**: In `Render` werden `PushClip(ArtRect)` und `PushTransform(Matrix.CreateTranslation(hash(Titel) % Kachelgröße))` gesetzt. Dann wird mit der **geteilten** Textur-Brush gefüllt (der Brush-Ursprung folgt der Transformation). Die Textur selbst kommt hier ohne `TextureFill` aus, weil sie bei 8 % Deckkraft in einem Bild liegt. Moiré ist dort unkritisch, und es wird `MediumQuality` verwendet.
 - **Text-Cache**: `FormattedText` für Titel und Code entsteht in `OnPropertyChanged` (Titel, Bounds-Bucket, System) und wird im Feld gehalten.
-- Der Titel steht immer vollständig (Umbruch an Leerzeichen und Bindestrichen). `ShowBadge` und die Badge-Pille entfallen.
+- Umbruch nur an Leerzeichen und nach Bindestrichen, nie im Wort; die Größe sinkt nur, wenn ein einzelnes Wort breiter als die Zeile ist (× 0,88, ≥ 13 px). Mehr als 4 Zeilen: die vierte Zeile endet mit „…“ (M2-QA). `ShowBadge` und die Badge-Pille entfallen; auf Start trägt keine Schachtel eine Favoriten-Marke.
 - Der Platzhalter wird nicht abgedunkelt, denn Dimmen ist dem Status vorbehalten.
 
 ### 10.3 Fehlende Metadaten

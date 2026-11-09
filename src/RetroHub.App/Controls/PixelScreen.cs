@@ -81,30 +81,39 @@ public sealed class PixelScreen : Panel
     // ===================== geometry =====================
 
     /// <summary>Bezel width of a set <paramref name="width"/> wide (17 at 560, 12 at 400).</summary>
-    public static double BezelFor(double width) => Math.Max(8, Math.Round(width * 0.03));
+    public static double BezelFor(double width) => CabinetFor(width) + RecessFor(width);
 
-    /// <summary>Height of the chin under the picture (speaker grille, two push buttons).</summary>
-    public static double ChinFor(double width) => Math.Max(16, Math.Round(width * 0.075));
+    /// <summary>The cabinet's wall around the recess (12 at 560, 9 at 400).</summary>
+    public static double CabinetFor(double width) => Math.Max(8, Math.Round(width * 0.0214));
 
-    /// <summary>The two feet the set stands on (the cabinet floats this much above the board).</summary>
-    public static double FeetFor(double width) => Math.Max(5, Math.Round(width * 0.016));
+    /// <summary>The room-deep recess around the glass (12 at 560, 9 at 400).</summary>
+    public static double RecessFor(double width) => Math.Max(8, Math.Round(width * 0.0214));
 
-    /// <summary>Corner radius of the tube's glass (DESIGN 4.1: at most 6).</summary>
+    /// <summary>Height of the chin under the recess (power LED, speaker grille): 40 at 560, 29 at 400.</summary>
+    public static double ChinFor(double width) => Math.Max(24, Math.Round(width * 0.0714));
+
+    /// <summary>The two feet the set stands on (8 at 560, 6 at 400); their bottom edge is the board's top.</summary>
+    public static double FeetFor(double width) => Math.Max(5, Math.Round(width * 0.0143));
+
+    /// <summary>Corner radius of the tube's glass (DESIGN 4.1: the only exception to R 0 on objects, 6).</summary>
     public const double TubeRadius = 6;
 
-    /// <summary>Total height of a set <paramref name="width"/> wide: bezel + 4:3 picture + chin + feet (462 at 560, 330 at 400).</summary>
+    /// <summary>
+    /// Total height of a set <paramref name="width"/> wide: cabinet + recess + 4:3 glass + recess + chin + feet
+    /// (468 at 560: 12 + 12 + 384 + 12 + 40 + 8; 335 at 400).
+    /// </summary>
     public static double SetHeightFor(double width)
     {
         var b = BezelFor(width);
-        return b + Math.Round((width - 2 * b) * 3 / 4) + ChinFor(width) + FeetFor(width);
+        return b + Math.Round((width - 2 * b) * 3 / 4) + RecessFor(width) + ChinFor(width) + FeetFor(width);
     }
 
-    /// <summary>The picture rectangle inside a set of <paramref name="size"/> (4:3, below the top bezel).</summary>
+    /// <summary>The picture rectangle inside a set of <paramref name="size"/> (4:3, inside the recess).</summary>
     public static Rect PictureRect(Size size)
     {
         var b = BezelFor(size.Width);
         var w = Math.Max(0, size.Width - 2 * b);
-        var h = Math.Min(Math.Round(w * 3 / 4), Math.Max(0, size.Height - b - ChinFor(size.Width) - FeetFor(size.Width)));
+        var h = Math.Min(Math.Round(w * 3 / 4), Math.Max(0, size.Height - b - RecessFor(size.Width) - ChinFor(size.Width) - FeetFor(size.Width)));
         return new Rect(b, b, w, h);
     }
     /// <summary>The motif box of "Kein Signal": 50 % of the picture height, centred, standing slightly below the middle.</summary>
@@ -179,6 +188,7 @@ public sealed class PixelScreen : Panel
         var version = ++_version;
         var look = string.IsNullOrEmpty(SystemId) ? null : SystemPalette.Get(SystemId, Accent);
         var path = PicturePath;
+        _set.InvalidateVisual(); // the power LED shows the system's light (dark when the set is off)
         if (IsOff || look == null && string.IsNullOrEmpty(path))
         {
             Show(new Picture(PictureKind.Off, null, look, Code, IsTvSystem));
@@ -227,21 +237,22 @@ public sealed class PixelScreen : Panel
     // ===================== layers =====================
 
     private static readonly IImmutableSolidColorBrush RoomDeep = new ImmutableSolidColorBrush(Color.Parse("#0A0908"));
-    private static readonly IImmutableSolidColorBrush Cabinet = new ImmutableSolidColorBrush(Color.Parse("#1D1A16"));
-    private static readonly IImmutableSolidColorBrush Outline = new ImmutableSolidColorBrush(Color.Parse("#2E2A23"));
-    private static readonly IImmutableSolidColorBrush BottomShade = new ImmutableSolidColorBrush(Color.Parse("#141210"));
-    private static readonly IImmutableSolidColorBrush TopLight = new ImmutableSolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xF3, 0xE0));
-    private static readonly IImmutableSolidColorBrush Lip = new ImmutableSolidColorBrush(Color.Parse("#3A342B"));
-    private static readonly IImmutableSolidColorBrush Slot = new ImmutableSolidColorBrush(Color.Parse("#0A0908"));
-    private static readonly IImmutableSolidColorBrush SlotLight = new ImmutableSolidColorBrush(Color.Parse("#34302A"));
+    /// <summary>Cabinet in "Regal hell" (#2A2620): clearly lighter than the room (#14120F), like the boards.</summary>
+    private static readonly IImmutableSolidColorBrush Cabinet = new ImmutableSolidColorBrush(Color.Parse("#2A2620"));
+    private static readonly IImmutableSolidColorBrush TopLight = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
+    private static readonly IImmutableSolidColorBrush Edge = new ImmutableSolidColorBrush(Color.Parse("#3A342B"));
+    private static readonly IImmutableSolidColorBrush LedOff = new ImmutableSolidColorBrush(Color.Parse("#14120F"));
     private static readonly IImmutableSolidColorBrush DarkTube = new ImmutableSolidColorBrush(Color.Parse("#0D0C0A"));
     private static readonly IImmutableSolidColorBrush OffLine = new ImmutableSolidColorBrush(Color.FromArgb(0x33, 0xF4, 0xEC, 0xDF));
     private static readonly IImmutableSolidColorBrush NoSignalBrush = new ImmutableSolidColorBrush(Color.Parse("#F4ECDF"));
+    /// <summary>"Kein Signal" lifts the glass a little: wall + 4 % paper (a lit tube is never as dark as the wall).</summary>
+    private static readonly IImmutableSolidColorBrush GlassLift = new ImmutableSolidColorBrush(Color.FromArgb(0x0A, 0xF4, 0xEC, 0xDF));
 
     /// <summary>
-    /// The cabinet: a warm dark body standing on two feet, an outline in shelf-light, light from above on its top edge,
-    /// the recessed tube (a room-deep frame whose lower lip catches the light) and the chin with a speaker grille and two
-    /// push buttons. Generic set, no brand, no product silhouette.
+    /// The cabinet (M2 QA): a body in shelf-light with a 1 px light edge on top and a 1 px edge line at the bottom, a
+    /// 12 px room-deep recess around the glass, a 40 px chin with a 6 × 6 power LED in the system's light (dark when
+    /// the set is off) and a speaker grille of 7 room-deep lines (1 px, 3 px pitch, 120 px wide), and two 64 × 8 feet
+    /// at 12 % from each edge whose bottom edge is the board's top. Generic set, no brand, no product silhouette.
     /// </summary>
     private sealed class SetLayer(PixelScreen owner) : Control
     {
@@ -251,49 +262,35 @@ public sealed class PixelScreen : Panel
         {
             var size = Bounds.Size;
             if (size.Width <= 0 || size.Height <= 0) return;
-            var feet = FeetFor(size.Width);
-            var body = new Rect(0, 0, size.Width, size.Height - feet);
-            // feet: two dark blocks under the cabinet, standing on the board
-            var fw = Math.Round(size.Width * 0.11);
-            foreach (var fx in new[] { Math.Round(size.Width * 0.08), Math.Round(size.Width * 0.92 - fw) })
-                ctx.FillRectangle(RoomDeep, new Rect(fx, body.Bottom - 1, fw, feet + 1));
-            ctx.FillRectangle(Outline, body);
-            ctx.FillRectangle(Cabinet, body.Deflate(1));
-            ctx.FillRectangle(TopLight, new Rect(1, 1, body.Width - 2, 1));
-            ctx.FillRectangle(BottomShade, new Rect(1, body.Bottom - 3, body.Width - 2, 2));
+            var w = size.Width;
+            var k = w / 560;
+            var feet = FeetFor(w);
+            var body = new Rect(0, 0, w, size.Height - feet);
+            // feet: two room-deep blocks under the cabinet; their bottom edge is the bottom of the control (= board top)
+            var fw = Math.Round(64 * k);
+            foreach (var fx in new[] { Math.Round(w * 0.12), Math.Round(w * 0.88 - fw) })
+                ctx.FillRectangle(RoomDeep, new Rect(fx, body.Bottom, fw, feet));
+            ctx.FillRectangle(Cabinet, body);
+            ctx.FillRectangle(TopLight, new Rect(0, 0, w, 1));
+            ctx.FillRectangle(Edge, new Rect(0, body.Bottom - 1, w, 1));
+            // the recess around the glass (square: the glass itself has the tube's 6 px corners)
             var pic = PictureRect(size);
-            // the recess around the tube: a room-deep frame, its lower lip catches the light from above
-            var recess = pic.Inflate(4);
-            ctx.DrawRectangle(RoomDeep, null, new RoundedRect(recess, TubeRadius + 3));
-            ctx.FillRectangle(Lip, new Rect(recess.X + TubeRadius, recess.Bottom, recess.Width - 2 * TubeRadius, 1));
-            // chin: a speaker grille of horizontal slots on the right, two push buttons on the left
-            var chinTop = recess.Bottom + 1;
-            var chin = body.Bottom - 2 - chinTop;
+            var recess = pic.Inflate(RecessFor(w));
+            ctx.FillRectangle(RoomDeep, recess);
+            // chin: power LED left under the glass, speaker grille right under the glass
+            var chinTop = recess.Bottom;
+            var chin = body.Bottom - 1 - chinTop;
             if (chin < 10) return;
-            var bezel = BezelFor(size.Width);
-            const int slots = 5;
-            var slotH = Math.Max(2, Math.Round(chin * 0.075));
-            var gap = Math.Max(2, Math.Round(chin * 0.085));
-            var total = slots * slotH + (slots - 1) * gap;
-            var y0 = Math.Round(chinTop + (chin - total) / 2);
-            var w = Math.Round(size.Width * 0.24);
-            var x0 = size.Width - bezel - w;
-            for (var i = 0; i < slots; i++)
-            {
-                var y = y0 + i * (slotH + gap);
-                ctx.FillRectangle(Slot, new Rect(x0, y, w, slotH));
-                ctx.FillRectangle(SlotLight, new Rect(x0, y + slotH, w, 1));
-            }
-            var bw = Math.Round(size.Width * 0.045);
-            var bh = Math.Max(4, Math.Round(chin * 0.22));
-            var by = Math.Round(chinTop + (chin - bh) / 2);
-            for (var i = 0; i < 2; i++)
-            {
-                var bx = bezel + i * (bw + Math.Round(bw * 0.4));
-                ctx.FillRectangle(Slot, new Rect(bx, by, bw, bh));
-                ctx.FillRectangle(SlotLight, new Rect(bx, by + bh, bw, 1));
-            }
-            _ = owner;
+            var led = Math.Max(4, Math.Round(6 * k));
+            var look = string.IsNullOrEmpty(owner.SystemId) ? null : SystemPalette.Get(owner.SystemId, owner.Accent);
+            var ledBrush = owner.IsOff || look == null ? LedOff : look.LightBrush;
+            ctx.FillRectangle(ledBrush, new Rect(pic.X, Math.Round(chinTop + (chin - led) / 2), led, led));
+            const int lines = 7;
+            var pitch = Math.Max(2, Math.Round(3 * k));
+            var gw = Math.Round(120 * k);
+            var gy = Math.Round(chinTop + (chin - ((lines - 1) * pitch + 1)) / 2);
+            for (var i = 0; i < lines; i++)
+                ctx.FillRectangle(RoomDeep, new Rect(pic.Right - gw, gy + i * pitch, gw, 1));
         }
     }
     /// <summary>One picture (snap, test card or the dark tube); two of them cross-fade.</summary>
@@ -380,6 +377,7 @@ public sealed class PixelScreen : Panel
                     break;
                 case PictureKind.NoSignal when p.Look is { } look:
                     SystemWall.Draw(ctx, this, r, look, band: Math.Max(6, Math.Round(r.Height / 50)), motifShare: 0, motifInset: 0);
+                    ctx.FillRectangle(GlassLift, r);
                     MotifCatalog.Draw(ctx, look, MotifRect(r));
                     DrawOsd(ctx, r, look, p.Code);
                     break;

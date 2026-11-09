@@ -37,6 +37,11 @@ public sealed class CoverArt : Control
     public static readonly StyledProperty<bool> FillProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(Fill));
     /// <summary>Favourite marker: star 18 px in favourite yellow on a room-deep square, top left of the box.</summary>
     public static readonly StyledProperty<bool> IsFavoriteProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(IsFavorite));
+    /// <summary>
+    /// False = no favourite marker on this box (Start: shelves and stage carry no badges, DESIGN 10.2; the favourite
+    /// state is the filled star button of the stage).
+    /// </summary>
+    public static readonly StyledProperty<bool> ShowFavoriteProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(ShowFavorite), true);
     /// <summary>Status "Datei fehlt": cover dimmed to 0.45 plus the Missing icon top right (dimming = status only).</summary>
     public static readonly StyledProperty<bool> IsMissingProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(IsMissing));
 
@@ -66,7 +71,7 @@ public sealed class CoverArt : Control
     static CoverArt()
     {
         AffectsRender<CoverArt>(TitleProperty, BadgeProperty, AccentProperty, SystemIdProperty, FillProperty, IsFavoriteProperty, IsMissingProperty,
-            ShowTitleProperty);
+            ShowTitleProperty, ShowFavoriteProperty);
         ClipToBoundsProperty.OverrideDefaultValue<CoverArt>(true);
     }
 
@@ -82,6 +87,7 @@ public sealed class CoverArt : Control
     public bool Fill { get => GetValue(FillProperty); set => SetValue(FillProperty, value); }
     public bool IsFavorite { get => GetValue(IsFavoriteProperty); set => SetValue(IsFavoriteProperty, value); }
     public bool IsMissing { get => GetValue(IsMissingProperty); set => SetValue(IsMissingProperty, value); }
+    public bool ShowFavorite { get => GetValue(ShowFavoriteProperty); set => SetValue(ShowFavoriteProperty, value); }
 
     /// <summary>True when a real cover bitmap is shown (tests / diagnostics).</summary>
     public bool HasImage => _bitmap != null;
@@ -250,7 +256,7 @@ public sealed class CoverArt : Control
     private void DrawMarkers(DrawingContext ctx, Rect art)
     {
         if (art.Width < 60) return;
-        if (IsFavorite)
+        if (IsFavorite && ShowFavorite)
         {
             // on a placeholder the marker sits top left beside the spine band (the title owns the bottom)
             var placeholder = _bitmap == null && !Fill;
@@ -273,10 +279,20 @@ public sealed class CoverArt : Control
     public const double SplitMinWidth = 200;
 
     /// <summary>
-    /// Start size of the placeholder title (Archivo Expanded, DESIGN 10.2): 0.105 × box width (≈ 20 px at 196, ≈ 38 px
-    /// on the 360-px stage box); <see cref="PlaceholderTitle"/> steps it down only when a word or the lines do not fit.
+    /// Size of the placeholder title (Archivo Expanded, DESIGN 10.2, M2 QA): 0.105 × min(width, 0.72 × height), at least
+    /// 18 px, at most 26 px on shelf and grid boxes (lower than 300 px) and 40 px on stage boxes. A row of boxes of one
+    /// height therefore sets all its titles in ONE size, whatever the box format (a narrow GameCube case beside a wide
+    /// DS case); <see cref="PlaceholderTitle"/> steps it down only for a single word wider than the line.
     /// </summary>
-    public static double PlaceholderTitleSize(double width) => Math.Clamp(Math.Round(width * 0.105), 13, 40);
+    public static double PlaceholderTitleSize(double width, double height) =>
+        Math.Clamp(Math.Round(0.105 * Math.Min(width, 0.72 * height)), 18, height >= 300 ? 40 : 26);
+
+    /// <summary>Subtitle size (Atkinson Medium, Text 2): never below 15 px (DESIGN 3.2), 0.068 × the title's base.</summary>
+    public static double PlaceholderSubSize(double width, double height) =>
+        Math.Clamp(Math.Round(0.068 * Math.Min(width, 0.72 * height)), 15, 22);
+
+    /// <summary>Inset of the placeholder motif from the right and bottom edge: 14 px at 196, less on small boxes.</summary>
+    private static double MotifInset(double w) => Math.Clamp(Math.Round(w * 0.0714), 6, 14);
 
     /// <summary>Inner margin of the placeholder text: 14 px at 196, 24 px on the stage boxes.</summary>
     public static double PlaceholderPad(double w) => Math.Clamp(Math.Round(w * 0.0714), 10, 24);
@@ -309,12 +325,15 @@ public sealed class CoverArt : Control
                     ctx.FillRectangle(tex.Brush, new Rect(ox, oy, w, r.Height));
             }
             if (split > 0) ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y + split, w, 1));
-            // the motif silhouette in colour at 18 %, 45 % of the height, TOP right (the title is anchored at the bottom)
+            // the motif silhouette (DESIGN 10.2): ONE geometry in the system colour at 18 %, 45 % of the height, anchored
+            // bottom right with a 14 px inset – always inside the lower 62 % (never across the 38/62 split)
             var band = BandWidth(w);
             var pad = PlaceholderPad(w);
-            var motif = Math.Round(Math.Min(r.Height * 0.45, (w - band) * 0.8));
-            MotifCatalog.Draw(ctx, look, new Rect(r.Right - motif - Math.Round(pad * 0.5), r.Y + Math.Round(pad * 0.75), motif, motif), 0.18,
-                silhouette: true, cutout: look.WallHiBrush, alignRight: true);
+            var inset = MotifInset(w);
+            var room = split > 0 ? r.Height - split - inset - 2 : r.Height - 2 * inset;
+            var motif = Math.Round(Math.Min(Math.Min(r.Height * 0.45, (w - band) * 0.8), room));
+            if (motif > 8)
+                MotifCatalog.DrawSilhouette(ctx, look, new Rect(r.Right - inset - motif, r.Bottom - inset - motif, motif, motif), 0.18);
             // spine band: full colour, code −90°
             ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, band, r.Height));
             if (_codeText is { } code)
@@ -355,20 +374,15 @@ public sealed class CoverArt : Control
             var maxWidth = Math.Max(1, w - band - pad - Math.Max(6, Math.Round(pad * 0.5)));
             var budget = Math.Max(1, r.Height * 0.62);
             var (main, subtitle) = SplitTitle(Title);
-            var fit = PlaceholderTitle.Fit(main, maxWidth, budget, PlaceholderTitleSize(w), PlaceholderTitle.MaxLines);
+            // one size per box height (a whole row alike), ≤ 4 lines, then a character ellipsis; line height 1.1
+            var fit = PlaceholderTitle.Fit(main, maxWidth, budget, PlaceholderTitleSize(w, r.Height), PlaceholderTitle.MaxLines);
             _titleText = new FormattedText(fit.Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.PosterFace, fit.Size, PaperBrush)
             {
                 LineHeight = Math.Round(fit.Size * PlaceholderTitle.LineFactor),
             };
-            if (fit.Trimmed)
-            {
-                _titleText.MaxTextWidth = maxWidth;
-                _titleText.MaxLineCount = PlaceholderTitle.MaxLines;
-                _titleText.Trimming = TextTrimming.CharacterEllipsis;
-            }
             if (subtitle != null)
             {
-                var subSize = Math.Clamp(Math.Round(w * 0.068), 12, 24);
+                var subSize = PlaceholderSubSize(w, r.Height);
                 var subLine = Math.Round(subSize * 1.2);
                 var room = budget - Math.Ceiling(_titleText.Height) - SubGap;
                 var lines = (int)Math.Min(w >= 300 ? 3 : 2, Math.Floor(room / subLine));
@@ -418,16 +432,17 @@ public sealed class CoverArt : Control
 }
 
 /// <summary>
-/// Line breaking of placeholder titles (DESIGN 10.2 "Der Titel steht immer vollständig"): breaks ONLY at spaces and
-/// after hyphens; when a single word is wider than the line or the lines exceed the count/height, the size steps
-/// down by × 0.88 to at least <see cref="MinSize"/>. Only when even that fails, the caller trims with a character
-/// ellipsis. Results are cached per (text, width, height, size) – the grid recycles tiles while browsing.
+/// Line breaking of placeholder titles (DESIGN 10.2, M2 QA): breaks ONLY at spaces and after hyphens, never inside a
+/// word. The size stays the given one (one size for a row of boxes); it steps down (× 0.88, ≥ <see cref="MinSize"/>)
+/// only while a single word is wider than the line. More lines than allowed (count, or the height budget): the last
+/// line takes the rest of the title and ends in a character ellipsis. Results are cached per (text, width, height,
+/// size) – the grid recycles tiles while browsing.
 /// </summary>
 public static class PlaceholderTitle
 {
-    public const double MinSize = 11;
-    public const int MaxLines = 5;
-    public const double LineFactor = 1.08;
+    public const double MinSize = 13;
+    public const int MaxLines = 4;
+    public const double LineFactor = 1.1;
 
     public readonly record struct Result(string Text, double Size, int Lines, bool Trimmed);
 
@@ -451,15 +466,19 @@ public static class PlaceholderTitle
     {
         var tokens = Tokens(text);
         var size = Math.Max(MinSize, startSize);
-        while (true)
-        {
-            if (Wrap(tokens, size, maxWidth) is { } lines && lines.Count <= maxLines
-                && lines.Count * Math.Round(size * LineFactor) <= maxHeight + 0.5)
-                return new Result(string.Join('\n', lines), size, lines.Count, false);
-            if (size <= MinSize) break;
+        List<string>? lines;
+        while ((lines = Wrap(tokens, size, maxWidth)) == null && size > MinSize)
             size = Math.Max(MinSize, Math.Floor(size * 0.88 * 2) / 2);
-        }
-        return new Result(text, MinSize, maxLines, true);
+        lines ??= tokens.Select(t => t.Text).ToList(); // a word wider than the line even at the minimum: one per line
+        maxLines = Math.Max(1, Math.Min(maxLines, (int)Math.Floor((maxHeight + 0.5) / Math.Round(size * LineFactor))));
+        if (lines.Count <= maxLines) return new Result(string.Join('\n', lines), size, lines.Count, false);
+        // too many lines: the last allowed line carries the rest, cut with a character ellipsis
+        var rest = lines[maxLines - 1];
+        for (var i = maxLines; i < lines.Count; i++) rest += (rest.EndsWith('-') ? "" : " ") + lines[i];
+        static string Cut(string s) => s.TrimEnd(' ', '-', ',', ':', '.') + "…";
+        while (rest.Length > 1 && Measure(Cut(rest), size) > maxWidth + 0.5) rest = rest[..^1];
+        var kept = lines.Take(maxLines - 1).Append(Cut(rest));
+        return new Result(string.Join('\n', kept), size, maxLines, true);
     }
 
     /// <summary>Words with their joiner: a space before it, or nothing (the part after a hyphen).</summary>

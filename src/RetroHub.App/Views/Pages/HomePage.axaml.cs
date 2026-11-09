@@ -45,6 +45,8 @@ public partial class HomePage : PageBase
         ImportsButton.Click += (_, _) => _vm?.ShowImportsCommand.Execute(null);
 
         foreach (var shelf in ShelfList.Children.OfType<Shelf>()) shelf.ItemFocused += OnShelfItemFocused;
+        EmptyShelf.ItemsSource = Enumerable.Range(0, 5).ToArray();
+        Stage.AddHandler(GotFocusEvent, OnStageGotFocus, Avalonia.Interactivity.RoutingStrategies.Bubble, handledEventsToo: true);
         NavRepeatTracker.AnyChanged += OnRepeatChanged;
         DetachedFromVisualTree += (_, _) => NavRepeatTracker.AnyChanged -= OnRepeatChanged;
         AttachedToVisualTree += (_, _) =>
@@ -72,9 +74,11 @@ public partial class HomePage : PageBase
     // ===================== layout (DESIGN 7.1 and its ≈1100 values) =====================
 
     /// <summary>
-    /// 1920×1080 logical → stage board at page y 488, TV 560 wide, box frame 300×420, text column 764, shelf boxes 200
-    /// high anchored at page y 560, the next shelf from y 840. ≈1100 px window (logical 1375×875) → board at y 392, TV 400,
-    /// box 214×300, shelf boxes 160 anchored at y 448, the next shelf from y 676.
+    /// 1920×1080 logical → stage board at page y 488 (window 560), TV 560 wide, box frame 300×420, text column 764, shelf
+    /// boxes 200 high anchored at page y 560 (window 632), the next shelf from y 840; the shelf area is clipped from the
+    /// stage board's bottom edge (window 584), leaving 48 px above the active row for lift (12), ring (6) and cone.
+    /// ≈1100 px window (logical 1375×875) → board at page y 384 (logical 456, M2 QA: 40 px headroom above the active
+    /// row), TV 400, box 214×300, shelf boxes 160 anchored at page y 448 (logical 520), the next shelf from y 676.
     /// </summary>
     private void ApplyLayout(Size size)
     {
@@ -83,7 +87,7 @@ public partial class HomePage : PageBase
         if (_compact == compact) return;
         _compact = compact;
         Root.Classes.Set("compact", compact);
-        var board = compact ? 392.0 : 488.0;
+        var board = compact ? 384.0 : 488.0;
         Stage.Height = board;
         StageBoard.Margin = new Thickness(0, board, 0, 0);
         BoxSlot.Width = compact ? 214 : 300;
@@ -100,8 +104,8 @@ public partial class HomePage : PageBase
         StageTitle.Sizes = compact ? "56,40" : "72,56,40";
         TextColumn.Margin = new Thickness(0, 0, 0, compact ? 24 : 32);
         _stageFocus.ConeHeadroom = compact ? 40 : 56;
-        var shelvesTop = board + 24 + 8;
-        var anchor = compact ? 24.0 : 40.0;
+        var shelvesTop = board + 24; // clipped from the stage board's bottom edge on
+        var anchor = (compact ? 448.0 : 560.0) - shelvesTop;
         var item = compact ? 160.0 : 200.0;
         var spacing = compact ? 40.0 : 52.0;
         Shelves.Margin = new Thickness(0, shelvesTop, 0, 0);
@@ -116,11 +120,49 @@ public partial class HomePage : PageBase
 
     // ===================== stage follows the focus (dwell) =====================
 
+    /// <summary>
+    /// The focus came to the stage (actions or the stage box): the footer follows at once; after the dwell the stage
+    /// returns to the game to continue (DESIGN 7.1: Start's main action is always "Spielen" for it).
+    /// </summary>
+    private void OnStageGotFocus(object? sender, FocusChangedEventArgs e)
+    {
+        if (_vm == null || e.Source is not Visual v) return;
+        HomeFocus? zone = null;
+        for (Visual? x = v; x != null && x != Stage; x = x.GetVisualParent())
+        {
+            zone = x switch
+            {
+                _ when x == PlayButton => HomeFocus.Primary,
+                _ when x == DetailsButton => HomeFocus.Details,
+                _ when x == FavoriteButton => HomeFocus.Star,
+                _ when x == ImportsButton => HomeFocus.Imports,
+                _ when x == StageBox => HomeFocus.StageBox,
+                _ => null,
+            };
+            if (zone != null) break;
+        }
+        if (zone is not { } z) return;
+        _pending = null;
+        _vm.SetFocus(z);
+        var version = ++_dwell;
+        _ = Task.Delay(Motion.Dwell).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        {
+            if (version != _dwell || _vm == null || !Stage.IsKeyboardFocusWithin) return;
+            _vm.ReturnToContinue();
+        }), TaskScheduler.Default);
+    }
+
     private void OnShelfItemFocused(Shelf shelf, Control item, int index, int count)
     {
+        var dataCount = count - (shelf.ActionLabel != null ? 1 : 0);
+        _vm?.SetFocus(item.DataContext switch
+        {
+            GameItemViewModel => HomeFocus.ShelfGame,
+            SystemItemViewModel => HomeFocus.ShelfSystem,
+            _ => HomeFocus.ShelfAction,
+        }, shelf.Header, index, dataCount, shelf.ActionLabel);
         // the "Alle anzeigen" spine is not a subject; it keeps what the stage shows
         if (item.DataContext is not (GameItemViewModel or SystemItemViewModel)) { _pending = null; ++_dwell; return; }
-        var dataCount = count - (shelf.ActionLabel != null ? 1 : 0);
         _pending = (shelf, item, index, dataCount);
         var version = ++_dwell;
         if (NavRepeatTracker.Current?.IsActive == true) return; // resumes when the repeat ends

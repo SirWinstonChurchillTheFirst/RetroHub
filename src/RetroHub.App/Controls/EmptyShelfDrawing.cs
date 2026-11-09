@@ -5,13 +5,14 @@ using Avalonia.Media;
 namespace RetroHub.App.Controls;
 
 /// <summary>
-/// The empty library's line drawing (DESIGN 6.4 point 7, 7.1): "leeres Regal" – a board with two bookends and one box
-/// leaning against the right one, 1.5 px lines in paper at 60 %, standing on the bottom edge. No fill, no colour.
+/// The empty library's line drawing (DESIGN 6.4 point 7, 7.1): "leeres Regal" – two bookends and one box leaning
+/// against the right one, 1.5 px lines in paper at 60 %, standing DIRECTLY on the bottom edge (= the stage board's top;
+/// M2 QA: no board of its own floating above the real one). No fill, no colour.
 /// </summary>
 public sealed class EmptyShelfDrawing : Control
 {
     private static readonly IPen Line = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x99, 0xF4, 0xEC, 0xDF)), 1.5,
-        lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter);
+        lineCap: PenLineCap.Flat, lineJoin: PenLineJoin.Miter);
 
     static EmptyShelfDrawing()
     {
@@ -24,25 +25,48 @@ public sealed class EmptyShelfDrawing : Control
         var w = Bounds.Width;
         var h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
-        // a 120 × 120 drawing scaled to the width, standing on the bottom edge
+        // a 120 × 120 drawing scaled to the width; its feet end on the bottom edge (open figures, no base line)
         var s = Math.Min(w, h) / 120.0;
         var ox = (w - 120 * s) / 2;
         var oy = h - 120 * s;
+        var foot = 120 - 0.75 / s; // the stroke's lower half ends exactly on the board
         var g = new StreamGeometry();
         using (var c = g.Open())
         {
-            void Poly(params double[] p)
+            void Poly(bool closed, params double[] p)
             {
                 c.BeginFigure(new Point(ox + p[0] * s, oy + p[1] * s), false);
                 for (var i = 2; i < p.Length; i += 2) c.LineTo(new Point(ox + p[i] * s, oy + p[i + 1] * s));
-                c.EndFigure(false);
+                c.EndFigure(closed);
             }
-            Poly(2, 108, 118, 108);                 // the board's top edge
-            Poly(2, 116, 118, 116);                 // its front
-            Poly(14, 108, 14, 78, 20, 78, 20, 108); // left bookend
-            Poly(100, 108, 100, 70, 106, 70, 106, 108); // right bookend
-            Poly(84, 108, 69, 102.5, 85, 59.3, 100, 64.8, 84, 108); // one box leaning against it (20°)
+            Poly(false, 14, foot, 14, 90, 20, 90, 20, foot);       // left bookend
+            Poly(false, 100, foot, 100, 82, 106, 82, 106, foot);   // right bookend
+            Poly(true, 84, foot, 69, 114.5, 85, 71.3, 100, 76.8);  // one box leaning against it (20°)
         }
         ctx.DrawGeometry(null, Line, g);
+    }
+}
+
+/// <summary>
+/// An outlined, empty place for a box on the empty library's shelf (M2 QA): 1 px paper at 12 %, dashed 4/4, square –
+/// the shelf reads as one waiting to be filled. Not focusable, no fill.
+/// </summary>
+public sealed class EmptySlot : Control
+{
+    private static readonly IPen Dash = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x1F, 0xF4, 0xEC, 0xDF)), 1,
+        new ImmutableDashStyle([4, 4], 0), PenLineCap.Flat, PenLineJoin.Miter);
+
+    static EmptySlot()
+    {
+        AffectsRender<EmptySlot>(BoundsProperty);
+        IsHitTestVisibleProperty.OverrideDefaultValue<EmptySlot>(false);
+        FocusableProperty.OverrideDefaultValue<EmptySlot>(false);
+    }
+
+    public override void Render(DrawingContext ctx)
+    {
+        var r = new Rect(Bounds.Size).Deflate(0.5);
+        if (r.Width <= 0 || r.Height <= 0) return;
+        ctx.DrawRectangle(null, Dash, r);
     }
 }

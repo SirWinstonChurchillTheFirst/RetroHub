@@ -21,6 +21,11 @@ public class GameTile : Button
 
     public bool ShowCaption { get => GetValue(ShowCaptionProperty); set => SetValue(ShowCaptionProperty, value); }
 
+    /// <summary>Show the favourite marker on the box (off on Start: no badges on shelves and stage, DESIGN 10.2).</summary>
+    public static readonly StyledProperty<bool> ShowFavoriteProperty = AvaloniaProperty.Register<GameTile, bool>(nameof(ShowFavorite), true);
+
+    public bool ShowFavorite { get => GetValue(ShowFavoriteProperty); set => SetValue(ShowFavoriteProperty, value); }
+
     /// <summary>
     /// Box format height / width of the slot (0 = off). With a fixed <see cref="Layoutable.Height"/> and no width the
     /// tile is as wide as the system's box (Start shelves, DESIGN 7.1: height 200, width from the format), so covers

@@ -35,8 +35,17 @@
     </Style>
     <Style Selector="Panel.compact c|Shelf">
       <Setter Property="ItemHeight" Value="160" />
-      <Setter Property="TopGap" Value="24" />
+      <Setter Property="TopGap" Value="32" />
       <Setter Property="AnchorX" Value="112" />
+    </Style>
+    <!-- the empty library's shelf: outlined slots waiting to be filled -->
+    <Style Selector="c|EmptySlot">
+      <Setter Property="Width" Value="150" />
+      <Setter Property="Height" Value="200" />
+    </Style>
+    <Style Selector="Panel.compact c|EmptySlot">
+      <Setter Property="Width" Value="120" />
+      <Setter Property="Height" Value="160" />
     </Style>
     <!-- the stage text: the label line in the light colour, the title measured, the sentence with Archivo numbers -->
     <Style Selector="TextBlock.stage-label">
@@ -47,10 +56,13 @@
   </p:PageBase.Styles>
   <p:PageBase.Resources>
     <DataTemplate x:Key="ShelfGame" x:DataType="vm:GameItemViewModel">
-      <c:GameTile Classes="shelf" ShowCaption="False" SlotAspect="{Binding CoverAspect}" FitToImage="True" VerticalAlignment="Bottom" />
+      <c:GameTile Classes="shelf" ShowCaption="False" ShowFavorite="False" SlotAspect="{Binding CoverAspect}" FitToImage="True" VerticalAlignment="Bottom" />
     </DataTemplate>
     <DataTemplate x:Key="ShelfSystem" x:DataType="vm:SystemItemViewModel">
       <c:SystemSpine Classes="shelf" VerticalAlignment="Bottom" />
+    </DataTemplate>
+    <DataTemplate x:Key="ShelfSlot">
+      <c:EmptySlot VerticalAlignment="Bottom" />
     </DataTemplate>
   </p:PageBase.Resources>
 
@@ -94,7 +106,7 @@
 
       <!-- the box stands on the board (contain, bottom-aligned); focusable: confirm opens the game -->
       <Panel Name="BoxSlot" Grid.Column="2" Width="300" Height="420" VerticalAlignment="Bottom" ClipToBounds="False">
-        <c:GameTile Name="StageBox" ShowCaption="False" x:DataType="vm:GameItemViewModel" />
+        <c:GameTile Name="StageBox" ShowCaption="False" ShowFavorite="False" x:DataType="vm:GameItemViewModel" />
         <c:EmptyShelfDrawing Name="EmptyDrawing" IsVisible="False" Width="240" Height="240" VerticalAlignment="Bottom" HorizontalAlignment="Center" />
       </Panel>
 
@@ -119,9 +131,10 @@
         <c:Shelf Name="SystemsShelf" Header="{l:T home.shelf.platforms}" ItemsSource="{Binding Platforms}" ItemTemplate="{StaticResource ShelfSystem}"
                  ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}"
                  ActionLabel="{l:T home.allPlatforms}" ActionCommand="{Binding ShowSystemsCommand}" ItemSpacing="8" IsVisible="{Binding HasPlatforms}" />
-        <!-- an empty library still has its board: empty, with the label "Noch leer" (DESIGN 7.4) -->
+        <!-- an empty library still has its board with the label "Noch leer": five outlined slots waiting to be filled
+             (not focusable; the items are set in code) -->
         <c:Shelf Name="EmptyShelf" Header="{l:T home.shelf.empty}" ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}"
-                 IsVisible="{Binding IsLibraryEmpty}" />
+                 ItemTemplate="{StaticResource ShelfSlot}" IsVisible="{Binding IsLibraryEmpty}" />
       </StackPanel>
     </c:ShelfViewport>
     <!-- the shelf that peeks in from below shows only the top of its boxes (bands, codes of covers – never a half
