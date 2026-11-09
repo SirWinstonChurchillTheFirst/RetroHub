@@ -90,10 +90,13 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </StackPanel>
-          <!-- demo mode: a paper label ("Etikett": paper, ink, Etikett 15, 8 × 3, R 0) – Bernstein stays reserved (DESIGN 2.2) -->
-          <Border Grid.Column="4" Classes="etikett" IsVisible="{Binding ShowDemoChip}" ToolTip.Tip="{l:T shell.demo.tip}" VerticalAlignment="Center" Margin="24,0,0,0">
-            <TextBlock Text="{Binding DemoText}" />
-          </Border>
+          <!-- demo mode: plain text (label 15, Text 3) after a 6 × 6 square in Warnung – no fill: a paper block was the
+               brightest thing in the header and competed with the active channel (M3 QA). Bernstein stays reserved (2.2). -->
+          <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowDemoChip}" Background="Transparent"
+                      ToolTip.Tip="{l:T shell.demo.tip}" VerticalAlignment="Center" Margin="24,0,0,0">
+            <Border Width="6" Height="6" Background="{DynamicResource RhWarningBrush}" VerticalAlignment="Center" />
+            <TextBlock Classes="label" Text="{Binding DemoText}" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />
+          </StackPanel>
           <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="24" VerticalAlignment="Center" Margin="24,0,0,0">
             <TextBlock Text="{Binding ControllerName}" IsVisible="{Binding ShowControllerName}" FontSize="16" Foreground="{DynamicResource RhText3Brush}"
                        MaxWidth="220" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />

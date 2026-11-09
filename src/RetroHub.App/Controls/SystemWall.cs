@@ -23,12 +23,18 @@ public sealed class SystemWall : Control
         AvaloniaProperty.Register<SystemWall, double>(nameof(MotifInset), 24);
     public static readonly StyledProperty<double> BandHeightProperty =
         AvaloniaProperty.Register<SystemWall, double>(nameof(BandHeight), 8);
+    /// <summary>
+    /// Texture strength of this wall (NaN = the system's own). The library's banner raises it to 9 % so the wall reads
+    /// as material at 1080 instead of a plain page header (M3 QA).
+    /// </summary>
+    public static readonly StyledProperty<double> TextureOpacityProperty =
+        AvaloniaProperty.Register<SystemWall, double>(nameof(TextureOpacity), double.NaN);
 
     private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
 
     static SystemWall()
     {
-        AffectsRender<SystemWall>(SystemIdProperty, AccentProperty, MotifShareProperty, MotifInsetProperty, BandHeightProperty);
+        AffectsRender<SystemWall>(SystemIdProperty, AccentProperty, MotifShareProperty, MotifInsetProperty, BandHeightProperty, TextureOpacityProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<SystemWall>(false);
         ClipToBoundsProperty.OverrideDefaultValue<SystemWall>(true);
     }
@@ -38,22 +44,24 @@ public sealed class SystemWall : Control
     public double MotifShare { get => GetValue(MotifShareProperty); set => SetValue(MotifShareProperty, value); }
     public double MotifInset { get => GetValue(MotifInsetProperty); set => SetValue(MotifInsetProperty, value); }
     public double BandHeight { get => GetValue(BandHeightProperty); set => SetValue(BandHeightProperty, value); }
+    public double TextureOpacity { get => GetValue(TextureOpacityProperty); set => SetValue(TextureOpacityProperty, value); }
 
     public override void Render(DrawingContext context)
     {
         var r = new Rect(Bounds.Size);
         if (r.Width <= 0 || r.Height <= 0) return;
         var look = SystemPalette.Get(SystemId, Accent);
-        Draw(context, this, r, look, BandHeight, MotifShare, MotifInset);
+        Draw(context, this, r, look, BandHeight, MotifShare, MotifInset, TextureOpacity);
     }
 
     /// <summary>Draws a wall into <paramref name="r"/> (shared by placeholders and banners).</summary>
-    public static void Draw(DrawingContext context, Visual visual, Rect r, SystemLook look, double band, double motifShare, double motifInset)
+    public static void Draw(DrawingContext context, Visual visual, Rect r, SystemLook look, double band, double motifShare, double motifInset,
+        double textureOpacity = double.NaN)
     {
         var split = Math.Round(r.Height * 0.38);
         context.FillRectangle(look.WallHiBrush, new Rect(r.X, r.Y, r.Width, split));
         context.FillRectangle(look.WallBrush, new Rect(r.X, r.Y + split, r.Width, r.Height - split));
-        TextureFill.Draw(context, visual, r, look.Texture, look.TextureOpacity);
+        TextureFill.Draw(context, visual, r, look.Texture, double.IsNaN(textureOpacity) ? look.TextureOpacity : textureOpacity);
         context.FillRectangle(LightEdge, new Rect(r.X, r.Y + split, r.Width, 1));
         if (motifShare > 0)
         {

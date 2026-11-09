@@ -301,11 +301,12 @@ Regeln:
 | Variante | Front | Oberkante | Unterkante | Schatten | Wo |
 |---|---|---|---|---|---|
 | **Bühnenbrett** | 24 px Regal hell | 1 px `RhBoardLightBrush` | 1 px Kante | 16 px #000 45 % → 0 | Start (Bühne und Bretter), Detail, Konsolen, Systemseite |
-| **Regalkante** | 10 px Regal hell | 1 px `RhBoardLightBrush` | 1 px Kante | 16 px #000 45 % → 0 | Bibliothek-Grid, Listen-Vorschau |
+| **Regalkante** | 12 px Regal hell, darin oben 2 px **Lippe** #3A352D (Regal hell + 6 % Papier) unter dem Brettlicht | 1 px `RhBoardLightBrush` | 1 px Kante | 16 px #000 45 % → 0 | Bibliothek-Grid, Listen-Vorschau, leere Bibliothek |
 
 - Das Brett läuft über die **volle Inhaltsbreite** (Bühnenbrett auf Start und Detail randlos über die Fensterbreite).
 - **Etiketten** hängen links an der Front des Bühnenbretts, bei x = Seitenrand. Sie sind 24 px hoch und bündig mit der Front.
-- **Beleuchtetes Brettstück** (nur beim Fokus, gezeichnet vom `FocusLayer`): Die Oberkante wird auf Breite der Schachtel 2 px in Lichtfarbe zu 100 %, die Front darunter Regal hell gemischt mit 12 % Lichtfarbe.
+- **Beleuchtetes Brettstück** (nur beim Fokus, gezeichnet vom `FocusLayer` *über* den Zeilen; M3-QA): Die Oberkante wird über die Breite des Rings (Schachtel + 2 × 6 px) 2 px in Lichtfarbe zu 100 %, die Front darunter Regal hell gemischt mit **16 %** Lichtfarbe (Bernstein ≈ #4C3D26). Der Fokus-Kontaktschatten fällt erst *unter* die Front (auf der Front hob er die Tönung wieder auf). Der Ring steht auf diesem Lichtstreifen (8.1).
+- Die Regalkante war mit 10 px Regal hell auf Raum (≈ 1,3 : 1) nur eine Haarlinie (M3-QA). 12 px mit Lippe lesen sich als Brett, auf dem die Schachteln stehen.
 - Statisch: eine Brush-Instanz pro Schicht, app-weit.
 
 ### 4.3 Kanten und Linien
@@ -625,8 +626,8 @@ MainWindow
 - **Werkzeuge rechts** (44 hoch, rahmenlos): Suche (schiebt ein 360-px-Feld über den Ticker, 180 ms), Sortierung „↕ Titel“ (Auswahl-Overlay), Favoriten-Stern, Ansicht. Fokus: Inversion.
 
 **Regalspiegel (neu, ersetzt die Rückenleiste und die Zähl-Überschrift), fix unter dem Ticker**
-- Ein 12 px hohes Band über die Inhaltsbreite. **Ein Rücken pro Spiel** in Sortierreihenfolge, gefärbt in der *Farbe* seines Systems bei 70 %, mindestens 1 px breit. Bei mehr Spielen als Pixeln bekommt jede Pixelspalte die häufigste Farbe ihrer Spiele. Bei Sortierung nach System entstehen geschlossene Läufe.
-- **Klammer**: 2-px-Linien in Papier 4 px über dem Band, über die Breite des sichtbaren Bereichs (folgt dem Scrollen).
+- Ein 12 px hohes Band über die Inhaltsbreite. **Ein Rücken pro Spiel** in Sortierreihenfolge, gefärbt in der *Farbe* seines Systems bei 60 % (M3-QA, vorher 70 %), mindestens 1 px breit, stehend auf einem kleinen Brett (1 px Brettlicht, 2 px Regal hell). Bei mehr Spielen als Pixeln bekommt jede Pixelspalte die häufigste Farbe ihrer Spiele. Bei Sortierung nach System entstehen geschlossene Läufe.
+- **Klammer**: 1-px-Linie in Papier 70 % 4 px über dem Band mit 4-px-Ticks nach unten an beiden Enden (M3-QA), über die Breite des sichtbaren Bereichs (folgt dem Scrollen).
 - **Fokusmarke**: 2 px breit, 20 px hoch, über das Band, in Bernstein (im Systemfilter: Licht).
 - **Render**: Ein Control (`ShelfMirror`) rendert die Rücken bei jeder Änderung von Filter, Sortierung oder Anzahl einmal in ein `RenderTargetBitmap` (höchstens Breite × 12 px). Pro Frame werden nur dieses Bitmap, die Klammer und die Marke gezeichnet. Bei 1000+ Spielen sind das konstant 3 Draw-Calls.
 - **Bedienung**: Mausklick oder Ziehen springt bzw. scrollt zur Position. Nicht fokussierbar, der Ticker ist das Bedienelement.
@@ -637,13 +638,13 @@ MainWindow
 - **Favoriten-Filter**: kein Kopf. Die Fußleiste sagt „Favoriten, 3 von 11“.
 
 **Regal-Grid**
-- **Fach**: 1 : 1,25 (196×245 bei 8 Spalten und 1920). Spaltenzahl = floor((B + 28) / (176 + 28)), mindestens 3. Breite bis 1,15× gestreckt.
+- **Fach** (M3-QA): Format = Median der Schachtelformate der ganzen Sammlung (11.4), bei „Alle“ geklemmt auf 1,00–1,40; im Systemfach der Median des Systems. Für einen Katalog aus SNES/GBA/DS ergibt das ≈ 1,0 (196×196) statt 1 : 1,25 mit 55 px toter Kopffreiheit über jeder quadratischen Schachtel. Spaltenzahl = floor((B + 28) / (176 + 28)), mindestens 3. Breite bis 1,15× gestreckt.
 - **Schachtel**: contain, unten bündig, horizontal zentriert. Querformat steht niedriger, das ist gewollt.
-- **Regalkante** (10 px, 4.2) unter jeder Zeile über die volle Inhaltsbreite, gezeichnet von `CoverRowPresenter` (Render-Override, statische Brushes). Er zeichnet auch die Kontaktschatten aller Schachteln der Zeile (aus deren `ArtRect`).
-- **Bildunterschrift**: 16 px unter der Kante. Titel in `caption` 17/21, 2 Zeilen, Text 2 (fokussiert Papier). Darunter die Etikett-Zeile: Farbbalken 3×14, Code in `label` Text 3, Jahr in Zahl 15 Text 3. In gefilterter Ansicht entfällt der Code.
+- **Regalkante** (12 px mit Lippe, 4.2) unter jeder Zeile über die volle Inhaltsbreite, gezeichnet von `CoverRowPresenter` (Render-Override, statische Brushes). Er zeichnet auch die Kontaktschatten aller Schachteln der Zeile (aus deren `ArtRect`).
+- **Bildunterschrift** (M3-QA): 12 px unter der Kante, **unter jeder Schachtel, auch unter Platzhaltern** (deren Fronttitel ist oft gekürzt, und nur so liegen alle Titel einer Reihe auf einer Linie). Titel in `caption` 17/21 in einem festen 42-px-Block (2 Zeilen), Text 2 (fokussiert Papier); die Etikett-Zeile steht deshalb in jeder Reihe auf derselben Höhe. Passt ein Titel aus drei oder mehr Teilen nicht in zwei Zeilen, wird er als Kopf + „…“ + Schluss gesetzt („BS The Legend of Zelda – … Kapitel 1“), denn Namensvettern unterscheiden sich am Ende. Ein Halbgeviertstrich hängt mit geschütztem Leerzeichen am Wort davor, eine Schlusszahl am Wort davor (keine Zeile beginnt mit „– …“, keine „1“ allein). Darunter die Etikett-Zeile: Farbbalken 3×14, Code in `label` Text 3, Variante (Namensvettern), Jahr in Zahl 15 Text 3. **In gefilterter Ansicht entfällt der Code** (Balken, Variante, Jahr bleiben; ist nichts davon da, bleibt die Zeile leer, ihre 20 px bleiben reserviert).
 - **Status**: Fehlt die Datei oder ist das Spiel nicht startbar, sinkt die Cover-Deckkraft auf 0,45 und ein Icon `Missing`/`NotReady` 20 px erscheint in einer Raum-Tief-Fläche 28×28 (R 2) oben rechts im Cover. Favorit: Stern 18 px Favoritengelb in Raum-Tief 26×26 oben links. Es gibt keine System-Badges.
 - **Aufkleber „Neu“** (hinzugefügt vor < 7 Tagen und nie gestartet): Etikett in Bernstein mit Tinte-Text „Neu“ (Etikett 13 ist hier als Ausnahme erlaubt, weil es Aufkleber-Text und keine Lesezeile ist), überlappt die obere linke Ecke um −4/−4. Beim ersten Fokus „auspacken“: 250 ms 12 px nach oben links und Ausblenden. Gilt danach pro Sitzung als gesehen.
-- **Zeilenabstand**: 245 + 10 + 16 + 42 + 4 + 20 + 24 = **361**. Sichtbar sind etwa 2,4 Zeilen (≈ 19 Spiele).
+- **Zeilenabstand** (M3-QA, Fach 1,0): 196 + 12 + 12 + 42 + 4 + 20 + 24 = **310** (vorher 361). Der Abstand 24 unter der Etikett-Zeile bleibt, denn er ist zugleich die Kopffreiheit der eingerasteten obersten Zeile (8.4). Bei 1080 sind zwei volle Reihen und die dritte angeschnitten sichtbar (≈ 24 Spiele).
 - **Grid-Hintergrund**: Raum bzw. Systemwand. Kein Fernsehlicht, kein Korn.
 
 **≈ 1100 px (logisch 1375)**: Rand 56, Abstand 20, 6 Spalten. Werkzeuge nur als Icons. Banner 160 hoch.
@@ -665,7 +666,8 @@ MainWindow
 ```
 - **Liste** 44 % der Breite, Zeilen 64 px: links ein 4×24-Balken in Farbe, Titel in `ui-l` Papier (1 Zeile, Laufschrift im Fokus), rechts Code in `label` Text 3 und Favoritenstern. Trennlinie 1 px Kante. Kein Tabellenkopf.
 - **Fokuszeile**: Die Zeile wird Regal hell, der Balken wächst auf 8 px, oben liegt 1 px Lichtkante, und der Titel steht in einem **Papier-Chip** (Tinte, 8×4, R 2). Die Zeile wird nicht vollständig invertiert, weil ein 1280 px breiter Papierbalken heller wäre als jedes Spielbild.
-- **Vorschau** 56 %: Schachtel contain max 360×480 auf einer Regalkante, Titel `poster-s` (2 Zeilen, Ellipse), Meta-Satz, Spielen und Details. Kein Fernsehlicht.
+- **Vorschau** 56 %: Schachtel contain max **420×560** (M3-QA, vorher 360×480: bei 1080 blieben ≈ 200 px leer darüber) auf einer Regalkante, Text unten verankert. Titel `poster-s` **gemessen** bei 40, sonst 32 px, bis 3 Zeilen, erst dann Ellipse. Meta-Satz (Datum als „Seit 8. November“, mit Jahr nur, wenn es nicht das laufende ist), Spielen und Details. Kein Fernsehlicht.
+- **Listenzeile, zu langer Titel** (M3-QA, bis die Laufschrift kommt): Kopf bis zum ersten Trenner, „…“, dann so viel vom Schluss wie passt („BS The Legend of Zelda – …ne Tablets – Kapitel 2“; Avalonia `TextLeadingPrefixTrimming`).
 
 #### 7.2.3 Stand M3 (umgesetzt, Entscheidungen aus der QA)
 
@@ -678,7 +680,15 @@ MainWindow
 - **Aufkleber „Neu“**: nur, wenn höchstens ein Viertel der Bibliothek (und mehr als 3 Spiele) die Regel erfüllt. Ein frisch importiertes Regal ist keine Neuigkeit, und eine Wand voller Aufkleber markiert nichts.
 - **Listen-Ansicht**: Die Vorschau folgt der Fokuszeile (Schachtel bis 360×480 auf einer Regalkante, die bis zum rechten Fensterrand läuft). *Links* aus „Spielen“ kehrt zur Zeile zurück. Der Titel der Fokuszeile steht als Tinte auf dem Papier-Chip (vorher Papier auf Papier, weil eine App-Klassenregel die Fokusregel überstimmte).
 - **Leere Bibliothek**: Linienzeichnung „leeres Regal“ auf einer Regalkante, „Das Regal ist noch leer“ (poster-s), ein Satz, **Ordner hinzufügen** (Bernstein, erster Fokus) und **Importe öffnen**. Spiegel, Schultern und Werkzeuge entfallen. Fußleiste: „Noch keine Spiele“, Hinweise nur „Ordner hinzufügen“ und „Menü“. Ohne Treffer: Satz und Hinweis, Hinweise Suche, Fach, Menü.
-- **Laufschrift** in Listenzeilen ist noch nicht umgesetzt (Ellipse).
+- **Laufschrift** in Listenzeilen ist noch nicht umgesetzt (Kopf-…-Schluss-Kürzung, 7.2.2).
+
+**M3-QA (zweite Runde)**
+- **Einrasten** und Ausblendung unter dem Spiegel (8.4): keine Zeile wird mehr unter dem Regalspiegel angeschnitten.
+- **Ticker**: Die Schulterplatten sind ruhig (36×22, Regal hell, 1 px Kante, Keil in Text 2; Hover/Druck: Papier mit Tinte-Keil). Sie bleiben in beiden Eingabearten neutrale Blätter-Platten: Tastenkappen „Strg+Bild auf“ an beiden Enden drängten bei 1920 die letzten Systeme aus dem Ticker, und die Taste nennt ohnehin die Fußleiste. 16 px Luft zwischen Ticker-Kante (mit 48-px-Verlauf) und rechter Platte; der aktive Eintrag wird ganz innerhalb der Verläufe gehalten.
+- **Regalspiegel**: Spinen auf einem kleinen Brett (1 px Brettlicht über 2 px Regal hell) bei 60 % Farbe; die Klammer ist eine 1-px-Linie in Papier 70 % mit 4 px Ticks nach unten – ein Rahmen, kein Fortschrittsbalken.
+- **Wand-Banner**: Textur 9 % (statt der Systemstärke), Motiv 160 (≈ 1100: 124) auf dem Bühnenbrett.
+- **Leere Bibliothek**: kein Ticker. Das Brett (Regalkante) steht bei ≈ 46 % der Seitenhöhe, darauf die Linienzeichnung mit Figuren in Schachtelgröße (200 hoch, 1,5 px Papier 60 %) und 5 umrissene Plätze 150×200 (≈ 1100: 4), wie auf Start. Text 48 px unter dem Brett.
+- **Fußleiste** sagt „Regal“ statt „Raster“. **Demo-Modus** in der Kopfleiste ist Text (Etikett 15, Text 3) hinter einem 6×6-Quadrat in Warnung, kein Papierblock.
 
 ---
 
@@ -804,10 +814,10 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 - **Positionierung**: Bei Fokuswechsel wird `ArtRect` über die **Layout-Positionen** (ohne RenderTransforms) in die Ebene umgerechnet; `TranslatePoint` enthielte die Hebung schon und höbe den Ring doppelt (M2-QA). Ring und Kegel werden für das **Zielrechteck nach Hebung** gesetzt (ArtRect × 1,06 von unten Mitte) und erscheinen in Blink (90 ms). Sie laufen der Skalierung nicht hinterher. Wird die fokussierte Kachel recycelt oder verlässt sie den sichtbaren Bereich, wird die Ebene ausgeblendet.
 - **Z-Reihenfolge**: Die fokussierte Kachel bekommt `ZIndex=1` in ihrem `CoverRowPresenter`, und dessen Zeilencontainer bekommt `ZIndex=1` im `VirtualizingStackPanel`. So überdeckt die nach oben wachsende Schachtel die Bildunterschrift der Zeile darüber und wird nicht von ihr überdeckt. Horizontal wächst sie um 6 px je Seite, das ist weniger als der Abstand (≥ 20). Es entsteht also keine Überlappung mit den Nachbarn.
 - **Geometrie** (gecacht pro Größen-Bucket, auf 2 px gerundet):
-  - *Ring*: Achteck um das Zielrechteck. Innen 3 px Raum-Tief (Spalt), außen 3 px Lichtfarbe, Außenfase `RhChamferRing` 6 px. Gezeichnet als zwei Strokes einer `StreamGeometry`.
-  - *Lichtkegel* (M2-QA): kurzes Trapez, das **an der Oberkante der gehobenen Schachtel endet** und nie hinter der Schachtel liegt. Oben 0,6 × Coverbreite bei Coveroberkante − 40, unten 1,3 × Coverbreite auf der Coveroberkante; Lichtfarbe von 0 (oben) auf 18 % (unten), neben der Schachtel im letzten Drittel ausgeblendet. Ein vorab gerendertes Bitmap pro Lichtfarbe, geteilt; auf die Kopffreiheit beschnitten (Grid 24 px).
-  - *Brettstück*: 2 px Lichtfarbe auf der Brettoberkante über die Coverbreite, Front darunter Regal hell gemischt mit 12 % Lichtfarbe.
-  - *Fokus-Kontaktschatten*: 16 px #000 70 % → 0 auf Coverbreite.
+  - *Ring* (M3-QA: **stehender Ring**): Innen 3 px Raum-Tief (Spalt), außen 3 px Lichtfarbe, Außenfase `RhChamferRing` 6 px, um Seiten und Oberkante des Zielrechtecks. Unten ist er **offen**: Beide Schenkel enden flach auf der Brettoberkante (`ArtRect.Bottom`), der 2-px-Lichtstreifen des Brettstücks schließt ihn. Vorher lag die untere Kante 3–6 px in der Brettfront, und die Schachtel wirkte eingesunken. `Chamfer.DrawStandingRing`; Start-Bretter und Bühne nutzen denselben Ring.
+  - *Lichtkegel* (M2-QA, M3-QA): kurzes, **hartkantiges** Trapez, das an der Oberkante der gehobenen Schachtel endet und nie hinter der Schachtel liegt. Oben 0,6 × Coverbreite bei Coveroberkante − 32, unten 1,1 × Coverbreite auf der Coveroberkante; Lichtfarbe linear von 0 (oben) auf 12 % (unten), ohne seitliches Ausblenden (der weiche 18-%-Kegel las sich als „Glow“). Ein vorab gerendertes Bitmap pro Lichtfarbe, geteilt; auf die Kopffreiheit beschnitten (Grid 24 px).
+  - *Brettstück*: siehe 4.2 (2 px Licht über die Ringbreite, Front + 16 % Licht).
+  - *Fokus-Kontaktschatten*: 16 px #000 70 % → 0 auf Coverbreite, **unter** der Brettfront.
 - **Lichtfarbe**: in gemischtem Kontext Bernstein (bzw. die gewählte Benutzer-Lichtfarbe), im Systemkontext das *Licht* des Systems.
 - **Kosten**: zwei Elemente pro Grid, unabhängig von der Kachelzahl. Keine Kachel trägt Fokus-Visuals.
 
@@ -840,7 +850,7 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 - **Grenz-Feedback**: Gibt es über die erste oder letzte Kachel bzw. Zeile hinaus kein Ziel, läuft am fokussierten Element `TranslateX` 0 → −6 → +4 → 0 in 180 ms.
 - **Kein Dauer-Pulsieren**, kein „Atmen“.
 - **Wiederherstellen**: Jede Seite merkt sich den Fokus (PageHost), Bretter den Index pro Brett.
-- **Fokus nie verdeckt**: `BringRowIntoView`-Marge **40 px** (Ring 6 + Hebung 15 + Brett 10 + Schatten ≈ 9). Die Fußleiste verdeckt nie den Fokus.
+- **Fokus nie verdeckt**: `BringRowIntoView`-Marge unten **40 px** (die Fußleiste verdeckt nie den Fokus). **Einrasten (M3-QA)**: Vertikal scrollt das Grid nur auf Zeilengrenzen. Die oberste sichtbare Zeile beginnt immer genau *Zeilenabstand* (24 px) unter der Viewport-Oberkante; dort endet die Zeile darüber, und Hebung (≤ 12) plus Ring (6) passen hinein. Nach oben wird die Fokuszeile die oberste Zeile, nach unten gilt der kleinste eingerastete Versatz, bei dem die Fokuszeile samt Bildunterschrift sichtbar ist. Nur der untere Rand darf eine angeschnittene Zeile zeigen. Zeile 0 behält den Kopf (Wand-Banner). Freies Scrollen (Mausrad, Spiegel) blendet an der Viewport-Oberkante über eine fixe 12-px-Überlagerung im Seitengrund (100 % → 0, zwischen Zeilen und Fokusring, keine OpacityMask) aus, statt hart zu schneiden.
 
 ---
 
@@ -935,7 +945,8 @@ Gezeichnet in `CoverArt.DrawPlaceholder`, Seitenverhältnis 0,72 (B/H) hochkant,
 - **Text-Cache**: `FormattedText` für Titel und Code entsteht in `OnPropertyChanged` (Titel, Bounds-Bucket, System) und wird im Feld gehalten.
 - Umbruch nur an Leerzeichen und nach Bindestrichen, nie im Wort; die Größe sinkt nur, wenn ein einzelnes Wort breiter als die Zeile ist (× 0,88, ≥ 13 px). Mehr als 4 Zeilen: die vierte Zeile endet mit „…“ (M2-QA). `ShowBadge` und die Badge-Pille entfallen; auf Start trägt keine Schachtel eine Favoriten-Marke.
 - Der Platzhalter wird nicht abgedunkelt, denn Dimmen ist dem Status vorbehalten.
-- **Bedruckter Rücken (M3)**: Ab 28 px Bandbreite trägt das Band wie ein echter Rücken oben den Code, darunter den Haupttitel (vor „ – “/„: “) von unten nach oben und am Fuß das Jahr (Archivo Condensed, Text auf Farbe, ≥ 15 px). Dazu kommt eine 1-px-Falzlinie zur Front. Der Titel steht **ganz oder gar nicht**: Reicht der Platz nicht, entfällt zuerst das Jahr, dann der Titel. Es gibt nie „Banjo-K…“.
+- **Bedruckter Rücken (M3)**: Ab 28 px Bandbreite trägt das Band wie ein echter Rücken oben den Code, darunter den Haupttitel (vor „ – “/„: “) von unten nach oben und am Fuß das Jahr (Archivo Condensed, Text auf Farbe, ≥ 15 px). Dazu kommt eine 1-px-Falzlinie zur Front. Der Titel steht **ganz oder gar nicht**, es gibt nie „Banjo-K…“. **Das Jahr hat Vorrang** (M3-QA): Es steht immer (wenn bekannt), der Titel nur, wenn er daneben ganz passt. So liest sich eine Reihe als ein Druck (Code + Jahr überall, Titel wo Platz ist) statt „nur Titel“ neben „nur Jahr“.
+- **Untertitel mit Schluss** (M3-QA): Passt der Untertitel nicht in seine Zeilen, entfällt die gemeinsame Mitte und nur der letzte Teil wird gedruckt („Ancient Stone Tablets – Kapitel 1“ → „Kapitel 1“). Der unterscheidende Schluss bekommt nie eine Ellipse.
 - **Schmale Hüllen (M1-Rest, M3)**: Passt ein Wort in Archivo Expanded nicht in die Zeile (Wii/Switch), wird der Titel in derselben Größe in **Archivo Condensed** gesetzt, statt die Plakatschrift auf 13 px schrumpfen zu lassen. Die Untergrenze ist dann 15 px.
 
 ### 10.3 Fehlende Metadaten
@@ -1018,7 +1029,7 @@ Texte für Leerzustände benennen, was fehlt, und die Lösung, z. B. „Kein Emu
 
 - **Quelle** (umgesetzt in M3: Schema 2, `games.cover_w`/`cover_h`, `ImageHeader` für PNG/JPEG/WebP/GIF/BMP, Nachtrag älterer Cover beim Start und bei jedem Cover-Lauf; die Bibliothek nutzt den Median im Systemfach): Core speichert beim Cover-Download bzw. -Import Breite und Höhe (Header-Lesen, kein Decode). Die Systemseite berechnet beim Laden den **Median** der vorhandenen Maße und setzt den Slot-Aspekt, *bevor* das Grid gebaut wird. Gibt es weniger als 8 Maße, gelten die Startwerte.
 - **Startwerte** (H/B): NES 1,38 · SNES 1,00 · N64 0,90 · GB/GBC/GBA 1,00 · NDS 0,90 · 3DS 0,86 · GC/Wii/Wii U 1,40 · Switch 1,62 · PS1 1,00 · PS2 1,42 · PSP 1,72 · MD/SMS 1,40 · Saturn 1,00 · Dreamcast 1,00 · GG 1,25 · Arcade 1,40 · PC 1,40 · sonst 1,25.
-- Die gemischte Bibliothek bleibt bei 1 : 1,25.
+- **Gemischte Bibliothek** (M3-QA, ersetzt „bleibt bei 1 : 1,25“): Median der Schachtelformate *aller* Spiele (gespeichertes Covermaß, sonst Startwert des Systems, also das Format seines Platzhalters), geklemmt auf 1,00–1,40, vor dem Bau des Grids gesetzt. Es entscheidet die ganze Sammlung, nicht Suche oder Favoriten, damit das Fach beim Tippen nicht springt. 1,25 bleibt nur der Wert für eine leere Sammlung.
 
 ### 11.5 Visuelle QA-Checkliste (nach jedem Meilenstein, mit echten Screenshots)
 

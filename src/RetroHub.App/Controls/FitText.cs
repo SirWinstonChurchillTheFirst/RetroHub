@@ -111,7 +111,7 @@ public sealed class FitText : TextBlock
     /// </summary>
     public static string? SeparatorBreak(string text)
     {
-        foreach (var sep in new[] { " – ", ": " })
+        foreach (var sep in new[] { " – ", " – ", ": " })
         {
             var i = text.IndexOf(sep, StringComparison.Ordinal);
             if (i < 2 || i + sep.Length >= text.Length) continue;

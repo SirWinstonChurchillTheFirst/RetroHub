@@ -208,7 +208,7 @@ public sealed class FocusLayer
     {
         var side = Math.Ceiling(t.Width * (ConeBottomWidth - 1) / 2) + 12;
         var region = new Rect(Math.Floor(t.X - side), Math.Floor(t.Top - ConeAbove - 12),
-            Math.Ceiling(t.Width + 2 * side), Math.Ceiling(t.Height + ConeAbove + 12 + Math.Max(BoardFront, 16) + 12));
+            Math.Ceiling(t.Width + 2 * side), Math.Ceiling(t.Height + ConeAbove + 12 + BoardFront + 16 + 4));
         if (region == _region) return;
         var resize = region.Size != _region.Size;
         _region = region;
@@ -257,20 +257,20 @@ public sealed class FocusLayer
         startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
 
     /// <summary>
-    /// Cone geometry (DESIGN 8.1, M2 QA): a short trapezoid that ENDS at the top edge of the lifted box – it never
-    /// fills behind the box (a cone behind the box showed as a flat brown plate inside the ring). Top 0.6 × box width at
-    /// <see cref="ConeAbove"/> px above the box, bottom 1.3 × box width on the box's top edge, light colour 0 → 18 %
-    /// from top to bottom. Clipped to the headroom (grid: 24 px; a Start shelf: up to the stage board).
+    /// Cone geometry (DESIGN 8.1, M2 QA, M3 QA): a short, HARD-EDGED trapezoid that ends at the top edge of the lifted
+    /// box – it never fills behind the box. Top 0.6 × box width at <see cref="ConeAbove"/> px above the box, bottom
+    /// 1.1 × box width on the box's top edge, light colour 0 → 12 % from top to bottom, linear, no horizontal feathering
+    /// (M3 QA: the soft, wide 18 % cone read as a glow). Clipped to the headroom (grid: 24 px; a Start shelf: up to the
+    /// stage board).
     /// </summary>
-    public const double ConeBottomWidth = 1.3, ConeTopWidth = 0.6, ConeAbove = 40, ConePeakAlpha = 0.18;
+    public const double ConeBottomWidth = 1.1, ConeTopWidth = 0.6, ConeAbove = 32, ConePeakAlpha = 0.12;
 
-    private const int ConeW = 160, ConeH = 40;
+    private const int ConeW = 176, ConeH = 32;
 
     /// <summary>
     /// The light cone as a small premultiplied bitmap, rendered once per light colour (shared): alpha 0 at the top
-    /// rising to <see cref="ConePeakAlpha"/> at the bottom, a trapezoid from <see cref="ConeTopWidth"/> to the full
-    /// width with a soft horizontal edge (no BlurEffect, no per-frame work). The parts beside the box fade out over
-    /// the last rows, so the cone has no hard horizontal edge next to the ring.
+    /// rising linearly to <see cref="ConePeakAlpha"/> at the bottom, a trapezoid from <see cref="ConeTopWidth"/> to the
+    /// full width with a crisp (one-pixel antialiased) edge – no BlurEffect, no per-frame work.
     /// </summary>
     internal static Bitmap ConeBitmap(Color light)
     {
@@ -281,20 +281,15 @@ public sealed class FocusLayer
             var wb = new WriteableBitmap(new PixelSize(ConeW, ConeH), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
             var pixels = new byte[ConeW * ConeH * 4];
             var topHalf = ConeTopWidth / ConeBottomWidth / 2 * ConeW;
-            var falloff = ConeW * 0.07; // ≈ 12 px at a 196-px box
-            var boxHalf = ConeW / ConeBottomWidth / 2; // the box's half width at the bottom row
             for (var y = 0; y < ConeH; y++)
             {
                 var t = (y + 0.5) / ConeH;
                 var half = topHalf + (ConeW / 2.0 - topHalf) * t;
-                var vertical = ConePeakAlpha * t * t * (3 - 2 * t);
+                var vertical = ConePeakAlpha * t;
                 for (var x = 0; x < ConeW; x++)
                 {
                     var dx = Math.Abs(x + 0.5 - ConeW / 2.0);
-                    var e = Math.Clamp((half - dx) / falloff, 0, 1);
-                    e = e * e * (3 - 2 * e);
-                    // beside the box the light fades out over the last third (it falls past the box, not onto a ledge)
-                    if (dx > boxHalf) e *= Math.Clamp((1 - t) / 0.35 + 0.15, 0, 1);
+                    var e = Math.Clamp(half - dx + 0.5, 0, 1); // pixel coverage: a hard edge
                     var a = vertical * e;
                     var i = (y * ConeW + x) * 4;
                     pixels[i] = (byte)Math.Round(light.B * a);
@@ -346,12 +341,19 @@ public sealed class FocusLayer
         using var toHost = ctx.PushTransform(Matrix.CreateTranslation(-_region.X, -_region.Y));
         var t = _target;
         var light = LightColor;
-        // lit board piece: front tinted with 12 % light, focus contact shadow, 2 px light on the top edge
-        ctx.FillRectangle(new ImmutableSolidColorBrush(ColorUtil.WithAlpha(light, 0x1F)), new Rect(t.X, t.Bottom, t.Width, BoardFront));
-        ctx.FillRectangle(FocusContact, new Rect(t.X, t.Bottom, t.Width, Math.Min(16, BoardFront + 6)));
-        ctx.FillRectangle(new ImmutableSolidColorBrush(light), new Rect(t.X, t.Bottom, t.Width, 2));
-        Chamfer.DrawRing(ctx, t, new ImmutableSolidColorBrush(light));
+        var brush = new ImmutableSolidColorBrush(light);
+        // the lit board piece (M3 QA): the front under the box (as wide as the ring) tinted with 16 % light, 2 px light
+        // on the board top; the stronger contact shadow falls only BELOW the front (on the front it cancelled the tint).
+        // The ring stands on the board top – its legs end there and the light bar closes it: the box stands on the shelf.
+        var outer = RingGap + RingWidth;
+        var piece = new Rect(t.X - outer, t.Bottom, t.Width + 2 * outer, BoardFront);
+        ctx.FillRectangle(new ImmutableSolidColorBrush(ColorUtil.WithAlpha(light, 0x29)), piece);
+        ctx.FillRectangle(FocusContact, new Rect(t.X, t.Bottom + BoardFront, t.Width, 16));
+        ctx.FillRectangle(brush, new Rect(piece.X, t.Bottom, piece.Width, 2));
+        Chamfer.DrawStandingRing(ctx, t, brush, RingGap, RingWidth);
     }
+
+    private const double RingGap = 3, RingWidth = 3;
 
     private sealed class BackLayer(FocusLayer owner) : Control
     {

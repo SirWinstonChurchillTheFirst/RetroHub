@@ -166,14 +166,26 @@ public sealed class ButtonGlyph : Control
     private static readonly IImmutableSolidColorBrush Ink = new ImmutableSolidColorBrush(Color.Parse("#14120F"));
     private static readonly IImmutableSolidColorBrush Shelf = new ImmutableSolidColorBrush(Color.Parse("#2A2620"));
     private static readonly IImmutableSolidColorBrush Text3 = new ImmutableSolidColorBrush(Color.Parse("#948A7A"));
+    private static readonly IImmutableSolidColorBrush Text2 = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
+    private static readonly IPen EdgePen = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#3A342B")), 1);
+
+    /// <summary>
+    /// Quiet plate (the ticker's shoulders, M3 QA): Regal hell with a 1 px edge and the wedge / key name in Text 2 –
+    /// not a bright paper chip next to the ticker. <see cref="Hot"/> (hover, pressed) inverts it to paper and ink.
+    /// </summary>
+    public static readonly StyledProperty<bool> QuietProperty = AvaloniaProperty.Register<ButtonGlyph, bool>(nameof(Quiet));
+    public static readonly StyledProperty<bool> HotProperty = AvaloniaProperty.Register<ButtonGlyph, bool>(nameof(Hot));
 
     private FormattedText? _key;
 
     static ButtonGlyph()
     {
-        AffectsRender<ButtonGlyph>(ActionProperty, KeyboardProperty, SwapAcceptBackProperty);
-        AffectsMeasure<ButtonGlyph>(ActionProperty, KeyboardProperty);
+        AffectsRender<ButtonGlyph>(ActionProperty, KeyboardProperty, SwapAcceptBackProperty, QuietProperty, HotProperty);
+        AffectsMeasure<ButtonGlyph>(ActionProperty, KeyboardProperty, QuietProperty);
     }
+
+    public bool Quiet { get => GetValue(QuietProperty); set => SetValue(QuietProperty, value); }
+    public bool Hot { get => GetValue(HotProperty); set => SetValue(HotProperty, value); }
 
     public NavAction Action { get => GetValue(ActionProperty); set => SetValue(ActionProperty, value); }
     public bool Keyboard { get => GetValue(KeyboardProperty); set => SetValue(KeyboardProperty, value); }
@@ -200,11 +212,17 @@ public sealed class ButtonGlyph : Control
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == ActionProperty || change.Property == KeyboardProperty) _key = null;
+        if (change.Property == ActionProperty || change.Property == KeyboardProperty || change.Property == QuietProperty || change.Property == HotProperty) _key = null;
     }
 
     private FormattedText KeyText => _key ??= new FormattedText(KeyName(Action), CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
-        FontRoles.LabelFace, 15, Ink);
+        FontRoles.LabelFace, 15, Quiet && !Hot ? Text2 : Ink);
+
+    private void DrawQuietPlate(DrawingContext ctx, Rect plate)
+    {
+        var geo = Chamfer.Octagon(plate.Deflate(0.5), 3.5);
+        ctx.DrawGeometry(Hot ? Paper : Shelf, Hot ? null : EdgePen, geo);
+    }
 
     private bool IsShoulder => Action is NavAction.PageLeft or NavAction.PageRight;
     private bool IsSmallPlate => Action is NavAction.Menu or NavAction.View;
@@ -212,6 +230,7 @@ public sealed class ButtonGlyph : Control
     protected override Size MeasureOverride(Size availableSize)
     {
         if (Keyboard) return new Size(Math.Max(28, Math.Ceiling(KeyText.Width) + 16), 28);
+        if (IsShoulder && Quiet) return new Size(36, 28);
         if (IsShoulder) return new Size(40, 28);
         if (IsSmallPlate) return new Size(28, 28);
         return new Size(28, 28);
@@ -224,20 +243,22 @@ public sealed class ButtonGlyph : Control
         if (Keyboard)
         {
             var cap = new Rect(0, (b.Height - 24) / 2, b.Width, 24);
-            ctx.DrawGeometry(Paper, null, Chamfer.Octagon(cap, 4));
+            if (Quiet) DrawQuietPlate(ctx, cap);
+            else ctx.DrawGeometry(Paper, null, Chamfer.Octagon(cap, 4));
             var t = KeyText;
             ctx.DrawText(t, new Point(cap.X + (cap.Width - t.Width) / 2, cap.Y + (cap.Height - t.Height) / 2));
             return;
         }
         if (IsShoulder)
         {
-            var plate = new Rect(0, (b.Height - 24) / 2, 40, 24);
-            ctx.DrawGeometry(Paper, null, Chamfer.Octagon(plate, 4));
-            // wedge ◤ (left) / ◥ (right), 10 px, ink
+            var plate = Quiet ? new Rect(0, (b.Height - 22) / 2, 36, 22) : new Rect(0, (b.Height - 24) / 2, 40, 24);
+            if (Quiet) DrawQuietPlate(ctx, plate);
+            else ctx.DrawGeometry(Paper, null, Chamfer.Octagon(plate, 4));
+            // wedge ◤ (left) / ◥ (right), 10 px, ink (quiet: Text 2 at rest)
             var g = new StreamGeometry();
             using (var c = g.Open())
             {
-                double x0 = plate.X + 15, y0 = plate.Y + 7;
+                double x0 = plate.X + (plate.Width - 10) / 2, y0 = plate.Y + (plate.Height - 10) / 2;
                 if (Action == NavAction.PageLeft)
                 {
                     c.BeginFigure(new Point(x0, y0), true);
@@ -252,7 +273,7 @@ public sealed class ButtonGlyph : Control
                 }
                 c.EndFigure(true);
             }
-            ctx.DrawGeometry(Ink, null, g);
+            ctx.DrawGeometry(Quiet && !Hot ? Text2 : Ink, null, g);
             return;
         }
         if (IsSmallPlate)

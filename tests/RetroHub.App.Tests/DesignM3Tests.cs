@@ -47,6 +47,33 @@ public class DesignM3Tests
     }
 
     [Fact]
+    public void Mixed_slot_format_is_the_median_box_format_of_the_whole_collection()
+    {
+        // M3 QA: square SNES/GBA boxes in 1 : 1.25 slots left 55 px of dead headroom; covers count by their stored
+        // size, games without one by their system's start value, clamped to 1.00–1.40
+        var squares = Enumerable.Range(0, 5).Select(i => G("snes", "S" + i)).Concat([G("gba", "A"), G("gba", "B")]).ToList();
+        Assert.Equal(1.0, LibraryViewModel.MixedSlotAspect(squares.Append(G("ps2", "P"))));
+        var cases = Enumerable.Range(0, 5).Select(i => G("psp", "P" + i)).ToList(); // 1.72 → clamped
+        Assert.Equal(1.4, LibraryViewModel.MixedSlotAspect(cases));
+        var landscape = Enumerable.Range(0, 5).Select(i => G("snes", "L" + i, g => { g.CoverPath = "c.png"; g.CoverWidth = 512; g.CoverHeight = 360; })).ToList();
+        Assert.Equal(1.0, LibraryViewModel.MixedSlotAspect(landscape)); // never wider than square
+        Assert.Equal(LibraryViewModel.MixedAspect, LibraryViewModel.MixedSlotAspect([]));
+    }
+
+    [Fact]
+    public void Namesake_titles_keep_their_distinguishing_tail()
+    {
+        // M3 QA: four BS chapters all read "… Ancient Stone Tablet…"
+        Assert.Equal("BS The Legend of Zelda – … Kapitel 1", TitleTrimming.HeadAndTail("BS The Legend of Zelda – Ancient Stone Tablets – Kapitel 1"));
+        Assert.Null(TitleTrimming.HeadAndTail("Hyrule Warriors – Zeit der Verheerung")); // two parts: nothing to drop
+        Assert.Null(TitleTrimming.HeadAndTail("Freshly-Picked Tingle's Rosy Rupeeland"));
+        Assert.Equal("Kapitel 1", CoverArt.SubtitleTail("Ancient Stone Tablets – Kapitel 1"));
+        Assert.Null(CoverArt.SubtitleTail("A Link to the Past"));
+        Assert.Equal("Zelda – Ancient Stone Tablets – Kapitel 1", TitleTrimming.Glue("Zelda – Ancient Stone Tablets – Kapitel 1"));
+        Assert.True(TitleTrimming.PrefixLength("BS The Legend of Zelda – Ancient Stone Tablets – Kapitel 1") == "BS The Legend of Zelda – ".Length);
+    }
+
+    [Fact]
     public void Banner_sentence_is_a_sentence()
     {
         Loc.Load("de");

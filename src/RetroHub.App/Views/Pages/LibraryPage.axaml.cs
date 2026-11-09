@@ -143,6 +143,9 @@ public partial class LibraryPage : PageBase
             GradientStops = { new GradientStop(Color.FromArgb(0, g.R, g.G, g.B), 0), new GradientStop(g, 1) },
         };
         SearchPanel.Background = new SolidColorBrush(g);
+        // what scrolls away under the fixed ticker and mirror fades out in the page ground instead of being sliced
+        Covers.TopFadeColor = g;
+        Rows.TopFadeColor = g;
     }
 
     private void UpdateMirrorRange()
@@ -159,7 +162,12 @@ public partial class LibraryPage : PageBase
         Tools.Classes.Set("compact", _compact);
         Covers.Spacing = width >= 1600 ? 28 : 20;
         Banner.Height = _compact ? 160 : 200;
-        BannerMotif.Width = BannerMotif.Height = _compact ? 112 : 144;
+        // the motif stands on the banner's stage board at ≈ 72 % of the wall above it (M3 QA: 144 looked pushed aside)
+        BannerMotif.Width = BannerMotif.Height = _compact ? 124 : 160;
+        // the empty shelf's board at ≈ 46 % of the page (1080: y ≈ 510, 1100 px: y ≈ 415 in window pixels)
+        var inset = this.TryFindResource("RhPageInsetX", out var r) && r is Thickness t ? t : new Thickness(96, 0, 96, 0);
+        EmptyShelf.Margin = new Thickness(inset.Left, Math.Max(24, Math.Round(Bounds.Height * 0.46) - 200), inset.Right, 0);
+        EmptySlotLast.IsVisible = !_compact; // 1100 px: four places, none cut at the edge
         BannerTitle.FontSize = _compact ? 44 : 56;
         BannerText.Margin = new Thickness(0, 0, _compact ? 200 : 280, _compact ? 40 : 48);
     }
@@ -183,11 +191,14 @@ public partial class LibraryPage : PageBase
         }, DispatcherPriority.Render);
     }
 
-    /// <summary>The preview box: at most 360 × 480, as tall as the column allows, standing on the shelf edge.</summary>
+    /// <summary>
+    /// The preview box: at most 420 × 560, as tall as the column allows above the bottom-anchored text, standing on the
+    /// shelf edge (M3 QA: at 1080 the 360 × 480 box left ≈ 200 px of empty column above it).
+    /// </summary>
     private void SizePreview(Size size)
     {
-        PreviewArt.Width = 360;
-        PreviewArt.Height = Math.Max(120, Math.Min(480, size.Height - 10));
+        PreviewArt.Width = 420;
+        PreviewArt.Height = Math.Max(120, Math.Min(560, size.Height - ShelfBoard.EdgeHeight));
     }
 
     private void BuildSortMenu()
@@ -250,10 +261,23 @@ public partial class LibraryPage : PageBase
         FadeRight.IsVisible = extent - viewport - x > 1;
     }
 
-    /// <summary>The active ticker entry stays visible (DESIGN 7.2.1).</summary>
+    /// <summary>
+    /// The active ticker entry stays visible (DESIGN 7.2.1), and fully inside the 48 px edge fades – an entry that
+    /// stood under a fade looked cut (M3 QA).
+    /// </summary>
     private void BringActiveChipIntoView()
     {
-        if (ActiveChip() is { } c) c.BringIntoView();
+        if (ActiveChip() is not { } c || c.TranslatePoint(new Point(0, 0), Ticker) is not { } p) return;
+        const double fade = 48;
+        var view = TickerScroll.Viewport.Width;
+        var x = TickerScroll.Offset.X;
+        var left = p.X;
+        var right = p.X + c.Bounds.Width;
+        var first = left <= 1; // "Alle" may stand at the very start
+        if (!first && left - fade < x) x = left - fade;
+        else if (right + fade > x + view) x = right + fade - view;
+        else if (first) x = 0;
+        TickerScroll.Offset = TickerScroll.Offset.WithX(Math.Max(0, x));
     }
 
     private Control? ActiveChip()

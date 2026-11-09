@@ -14,7 +14,7 @@
   </p:PageBase.Resources>
   <Panel>
     <c:CoverGrid Name="Covers" ItemsSource="{Binding Games}" ItemTemplate="{StaticResource GridTile}" ItemWidth="176" Spacing="28" RowSpacing="24"
-                 CoverAspect="{Binding SlotAspect}" CaptionHeight="92" MaxStretch="1.15" ContentPadding="{DynamicResource RhGridInset}">
+                 CoverAspect="{Binding SlotAspect}" CaptionHeight="90" MaxStretch="1.15" ContentPadding="{DynamicResource RhGridInset}">
       <c:CoverGrid.Header>
         <!-- interim until the wall banner (M5, DESIGN 7.5): code label, measured name, ONE sentence, then the emulator
              status as a line with an 8 px status dot, left-aligned under the sentence; folders/extensions as meta -->

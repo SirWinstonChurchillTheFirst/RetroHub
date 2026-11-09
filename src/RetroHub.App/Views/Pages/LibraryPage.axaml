@@ -17,7 +17,9 @@
   -->
   <p:PageBase.Resources>
     <DataTemplate x:Key="GridTile" x:DataType="vm:GameItemViewModel">
-      <c:GameTile ShowSticker="True" />
+      <!-- filtered to one system the label line drops the code (DESIGN 7.2.1): bar, variant and year stay -->
+      <c:GameTile ShowSticker="True" Classes.no-code="{Binding $parent[p:PageBase].((vm:LibraryViewModel)DataContext).IsSystemSelected, FallbackValue=False}"
+                  Classes.bare="{Binding !HasLabelDetail}" />
     </DataTemplate>
     <DataTemplate x:Key="ListRow" x:DataType="vm:GameItemViewModel">
       <c:GameTile Theme="{StaticResource RhGameRow}" />
@@ -55,13 +57,21 @@
     <Style Selector="Button.ticker:focus-visible TextBlock.code-text">
       <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
     </Style>
-    <!-- the shoulder plates at the ticker's ends: a click steps like the shoulder button -->
+    <!-- the shoulder plates at the ticker's ends: quiet Regal-hell plates (never the brightest thing on the page);
+         hover/press inverts them to paper. A click steps like the shoulder button. They are neutral step plates in both
+         input modes (keyboard caps "Strg+Bild auf" pushed the last systems out of the ticker); the footer names the key. -->
     <Style Selector="Button.shoulder">
       <Setter Property="Focusable" Value="False" />
-      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="Padding" Value="0" />
       <Setter Property="MinHeight" Value="0" />
       <Setter Property="Height" Value="44" />
       <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.shoulder:pointerover c|ButtonGlyph">
+      <Setter Property="Hot" Value="True" />
+    </Style>
+    <Style Selector="Button.shoulder:pressed c|ButtonGlyph">
+      <Setter Property="Hot" Value="True" />
     </Style>
     <!-- favourites tool on: the star filled in favourite yellow (the status colour, never Bernstein) -->
     <Style Selector="ToggleButton#FavToggle:checked c|RhIcon#FavIcon">
@@ -75,10 +85,11 @@
 
   <Grid RowDefinitions="64,32,*">
     <!-- ===== ticker (system filter) + tools ===== -->
-    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="{DynamicResource RhPageInsetX}">
-      <Button Name="ShoulderLeft" Theme="{StaticResource RhGhostButton}" IsVisible="{Binding !IsLibraryEmpty}" Classes="shoulder" Margin="-6,0,6,0" Command="{Binding PreviousChipCommand}"
+    <!-- an empty library has no ticker at all (no orphan "Alle 0") -->
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="{DynamicResource RhPageInsetX}" IsVisible="{Binding !IsLibraryEmpty}">
+      <Button Name="ShoulderLeft" Theme="{StaticResource RhTickerItem}" Classes="shoulder" Margin="0,0,16,0" Command="{Binding PreviousChipCommand}"
               ToolTip.Tip="{l:T library.prevShelf}">
-        <c:ButtonGlyph Action="PageLeft" />
+        <c:ButtonGlyph Action="PageLeft" Quiet="True" />
       </Button>
       <Panel Grid.Column="1" VerticalAlignment="Center">
         <ScrollViewer Name="TickerScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
@@ -125,9 +136,10 @@
           </TextBox>
         </Border>
       </Panel>
-      <Button Name="ShoulderRight" Grid.Column="2" Theme="{StaticResource RhGhostButton}" IsVisible="{Binding !IsLibraryEmpty}" Classes="shoulder" Margin="6,0,24,0" Command="{Binding NextChipCommand}"
+      <!-- 16 px air between the ticker's clip edge (with its 48 px fade) and the right plate (M3 QA) -->
+      <Button Name="ShoulderRight" Grid.Column="2" Theme="{StaticResource RhTickerItem}" Classes="shoulder" Margin="16,0,24,0" Command="{Binding NextChipCommand}"
               ToolTip.Tip="{l:T library.nextShelf}">
-        <c:ButtonGlyph Action="PageRight" />
+        <c:ButtonGlyph Action="PageRight" Quiet="True" />
       </Button>
       <!-- tools: 44 high, frameless, focus = inversion -->
       <StackPanel Name="Tools" Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding !IsLibraryEmpty}">
@@ -171,20 +183,20 @@
 
     <!-- ===== shelf grid ===== -->
     <c:CoverGrid Name="Covers" Grid.Row="2" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource GridTile}"
-                 IsVisible="{Binding IsGridView}" ItemWidth="176" Spacing="28" RowSpacing="24" CoverAspect="{Binding SlotAspect}" CaptionHeight="92"
+                 IsVisible="{Binding IsGridView}" ItemWidth="176" Spacing="28" RowSpacing="24" CoverAspect="{Binding SlotAspect}" CaptionHeight="90"
                  MaxStretch="1.15" ContentPadding="{DynamicResource RhShelfInset}" HeaderBleed="True">
       <c:CoverGrid.Header>
         <!-- the wall banner of a selected system: wall (band, texture), name and sentence left, the motif right standing
              on a stage board; randlos (the negative margins are set in code from the grid's padding) -->
         <Panel Name="Banner" Height="200" IsVisible="{Binding IsSystemSelected}" ClipToBounds="True">
-          <c:SystemWall Name="BannerWall" SystemId="{Binding SystemLook.Id, FallbackValue={x:Null}}" Accent="{Binding BannerAccent}" MotifShare="0" />
+          <c:SystemWall Name="BannerWall" SystemId="{Binding SystemLook.Id, FallbackValue={x:Null}}" Accent="{Binding BannerAccent}" MotifShare="0" TextureOpacity="0.09" />
           <c:ShelfBoard Name="BannerBoard" Height="24" VerticalAlignment="Bottom" />
           <Panel Name="BannerContent" Margin="{DynamicResource RhPageInsetX}">
             <StackPanel Name="BannerText" VerticalAlignment="Bottom" Margin="0,0,280,48">
               <TextBlock Name="BannerTitle" Classes="poster" Text="{Binding BannerTitle}" TextTrimming="CharacterEllipsis" MaxLines="1" />
               <TextBlock Name="BannerSentence" Classes="read-l" c:Sentence.Text="{Binding BannerSentence}" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" MaxLines="1" />
             </StackPanel>
-            <c:MotifView Name="BannerMotif" Width="144" Height="144" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,0,24"
+            <c:MotifView Name="BannerMotif" Width="160" Height="160" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,0,24"
                          SystemId="{Binding SystemLook.Id, FallbackValue={x:Null}}" Accent="{Binding BannerAccent}" />
           </Panel>
         </Panel>
@@ -199,15 +211,15 @@
       <!-- the preview: the box on a shelf edge, the title, the sentence, Spielen and Details. No TV light. -->
       <Grid Name="Preview" Grid.Column="1" RowDefinitions="*,Auto" Margin="56,40,0,48" DataContext="{Binding}" IsVisible="{Binding PreviewItem, Converter={x:Static ObjectConverters.IsNotNull}}">
         <Panel Name="PreviewShelf" ClipToBounds="False">
-          <c:CoverArt Name="PreviewArt" MaxWidth="360" MaxHeight="480" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,0,10"
+          <c:CoverArt Name="PreviewArt" MaxWidth="420" MaxHeight="560" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,0,12"
                       Source="{Binding PreviewItem.CoverPath, FallbackValue={x:Null}}" Title="{Binding PreviewItem.Title, FallbackValue={x:Null}}"
                       Badge="{Binding PreviewItem.SystemShort, FallbackValue={x:Null}}" SystemId="{Binding PreviewItem.SystemId, FallbackValue={x:Null}}"
                       IsMissing="{Binding PreviewItem.IsMissing, FallbackValue=False}" ShowFavorite="False" />
-          <c:ShelfBoard Name="PreviewBoard" Height="10" VerticalAlignment="Bottom" Margin="-56,0,0,0" />
+          <c:ShelfBoard Name="PreviewBoard" Height="12" IsEdge="True" VerticalAlignment="Bottom" Margin="-56,0,0,0" />
         </Panel>
         <StackPanel Grid.Row="1" Margin="0,26,96,0" MaxWidth="900" HorizontalAlignment="Left">
-          <TextBlock Name="PreviewTitle" Classes="poster-s" Text="{Binding PreviewItem.Caption, FallbackValue={x:Null}}" TextWrapping="Wrap" MaxLines="2"
-                     TextTrimming="CharacterEllipsis" />
+          <!-- measured (M3 QA): 40, else 32 px, up to 3 lines before an ellipsis – the tail tells namesakes apart -->
+          <c:FitText Name="PreviewTitle" Classes="poster-s" Source="{Binding PreviewItem.WrapCaption, FallbackValue={x:Null}}" Sizes="40,32" MaxLines="3" />
           <TextBlock Name="PreviewMeta" Classes="read-l" c:Sentence.Text="{Binding PreviewMeta}" TextWrapping="Wrap" MaxLines="2" TextTrimming="WordEllipsis" Margin="0,12,0,0" />
           <StackPanel Name="PreviewActions" Orientation="Horizontal" Spacing="16" Margin="0,24,0,0">
             <Button Name="PreviewPlay" Theme="{StaticResource RhPrimaryButton}" MinWidth="240" MinHeight="64" Command="{Binding PlayPreviewCommand}">
@@ -225,10 +237,21 @@
     </Grid>
 
     <!-- an empty library (DESIGN 10.3 "Keine Spiele"): the empty shelf drawing on a board, one sentence, the way out -->
-    <StackPanel Grid.Row="2" IsVisible="{Binding IsLibraryEmpty}" Margin="{DynamicResource RhPageInsetX}" VerticalAlignment="Center" Spacing="0">
-      <c:EmptyShelfDrawing Width="200" Height="200" HorizontalAlignment="Left" Margin="40,0,0,0" />
-      <c:ShelfBoard Height="10" Margin="-200,0,-200,0" />
-      <TextBlock Classes="poster-s" Text="{l:T home.empty.title}" Margin="0,40,0,0" />
+    <!-- the empty shelf (M3 QA): no ticker; the board stands at ≈ 45 % of the page (top margin set in code), on it the
+         line drawing (200 high) and five outlined places waiting for boxes – the Start page's empty-shelf language –
+         and the text block 48 px below the board -->
+    <StackPanel Name="EmptyShelf" Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsLibraryEmpty}" Margin="{DynamicResource RhPageInsetX}"
+                VerticalAlignment="Top" Spacing="0">
+      <StackPanel Name="EmptyPlaces" Orientation="Horizontal" Spacing="24" ClipToBounds="True">
+        <c:EmptyShelfDrawing Tight="True" Width="380" Height="200" VerticalAlignment="Bottom" Margin="0,0,24,0" />
+        <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
+        <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
+        <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
+        <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
+        <c:EmptySlot Name="EmptySlotLast" Width="150" Height="200" VerticalAlignment="Bottom" />
+      </StackPanel>
+      <c:ShelfBoard Name="EmptyBoard" Height="12" IsEdge="True" Margin="-200,0,-200,0" />
+      <TextBlock Classes="poster-s" Text="{l:T home.empty.title}" Margin="0,48,0,0" />
       <TextBlock Classes="read-l" Text="{l:T home.empty.text}" Margin="0,12,0,0" />
       <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,28,0,0">
         <Button Name="EmptyAddFolder" Theme="{StaticResource RhPrimaryButton}" MinWidth="280" MinHeight="64" Command="{Binding AddFolderCommand}">

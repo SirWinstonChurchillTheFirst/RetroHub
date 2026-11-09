@@ -39,7 +39,10 @@ public sealed class ShelfMirror : Control
     /// <summary>Space above the band: bracket at 4 px above it, the mark reaches 4 px higher still.</summary>
     public const double Top = 8;
 
-    private static readonly IImmutableSolidColorBrush Paper = new ImmutableSolidColorBrush(SystemPalette.Paper);
+    private static readonly IImmutableSolidColorBrush Bracket = new ImmutableSolidColorBrush(ColorUtil.WithAlpha(SystemPalette.Paper, 0xB3));
+
+    /// <summary>Spine colour strength on the ground (M3 QA: 60 %, was 70 %).</summary>
+    public const double SpineStrength = 0.60;
 
     private WriteableBitmap? _bitmap;
     private (int Count, int Width, Color Ground, int Version) _built;
@@ -112,16 +115,22 @@ public sealed class ShelfMirror : Control
         using (ctx.PushRenderOptions(new RenderOptions { BitmapInterpolationMode = BitmapInterpolationMode.None }))
             ctx.DrawImage(_bitmap, new Rect(0, 0, pw, ph), band);
 
+        // the spines stand on a tiny shelf (M3 QA: on bare ground the band read as a bar chart): 1 px board light on
+        // a 2 px board in Regal hell, right under the band
+        ctx.FillRectangle(ThemeManager.BoardLight, new Rect(0, band.Bottom, band.Width, 1));
+        ctx.FillRectangle(ShelfBoard.FrontBrush, new Rect(0, band.Bottom + 1, band.Width, 2));
+
         var unit = band.Width / n;
-        // bracket over the part in view: a 2 px paper line 4 px above the band with short legs at both ends
+        // bracket over the part in view: a 1 px frame line in paper 70 %, 4 px above the band, with 4 px ticks down at
+        // both ends – a frame around what is in view, not a progress bar (M3 QA)
         if (FirstVisible >= 0 && LastVisible >= FirstVisible)
         {
             var x0 = Math.Floor(FirstVisible * unit);
             var x1 = Math.Max(x0 + 2, Math.Ceiling((Math.Min(LastVisible, n - 1) + 1) * unit));
             var y = band.Y - 4;
-            ctx.FillRectangle(Paper, new Rect(x0, y - 2, x1 - x0, 2));
-            ctx.FillRectangle(Paper, new Rect(x0, y - 2, 2, 5));
-            ctx.FillRectangle(Paper, new Rect(x1 - 2, y - 2, 2, 5));
+            ctx.FillRectangle(Bracket, new Rect(x0, y - 1, x1 - x0, 1));
+            ctx.FillRectangle(Bracket, new Rect(x0, y, 1, 4));
+            ctx.FillRectangle(Bracket, new Rect(x1 - 1, y, 1, 4));
         }
         // focus mark: 2 × 20, over the band, in the light colour
         if (FocusIndex >= 0 && FocusIndex < n)
@@ -151,7 +160,7 @@ public sealed class ShelfMirror : Control
         (int, double) Look(Spine s)
         {
             if (colours.TryGetValue(s, out var c)) return c;
-            var mixed = ColorUtil.Mix(ground, s.Color, 0.70);
+            var mixed = ColorUtil.Mix(ground, s.Color, SpineStrength);
             c = (unchecked((int)(0xFF000000u | (uint)mixed.R << 16 | (uint)mixed.G << 8 | mixed.B)), SpineShare(s.SystemId));
             colours[s] = c;
             return c;

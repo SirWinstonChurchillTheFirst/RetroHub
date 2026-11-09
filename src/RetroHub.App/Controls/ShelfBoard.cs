@@ -23,9 +23,18 @@ public sealed class ShelfBoard : Control
         [new ImmutableGradientStop(0, Color.FromArgb(0x8C, 0, 0, 0)), new ImmutableGradientStop(1, Color.FromArgb(0, 0, 0, 0))],
         startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
 
+    /// <summary>The 2 px lip under the board light of a shelf edge: Regal hell + 6 % paper (M3 QA: the edge read as a hairline).</summary>
+    public static readonly IImmutableSolidColorBrush LipBrush = new ImmutableSolidColorBrush(Color.Parse("#3A352D"));
+
     public const double StageHeight = 24;
-    public const double EdgeHeight = 10;
+    /// <summary>The library's shelf edge ("Regalkante", DESIGN 4.2): 12 px since the M3 QA (was 10, read as a rule).</summary>
+    public const double EdgeHeight = 12;
     public const double ShadowHeight = 16;
+
+    /// <summary>Draw as a shelf edge (board light, 2 px lip, front, edge) instead of a stage board.</summary>
+    public static readonly StyledProperty<bool> IsEdgeProperty = AvaloniaProperty.Register<ShelfBoard, bool>(nameof(IsEdge));
+
+    public bool IsEdge { get => GetValue(IsEdgeProperty); set => SetValue(IsEdgeProperty, value); }
 
     static ShelfBoard()
     {
@@ -41,7 +50,8 @@ public sealed class ShelfBoard : Control
     public override void Render(DrawingContext context)
     {
         var r = new Rect(Bounds.Size);
-        Draw(context, r);
+        if (IsEdge) DrawEdge(context, r);
+        else Draw(context, r);
         foreach (var c in Casters)
         {
             if (!c.IsEffectivelyVisible) continue;
@@ -57,6 +67,21 @@ public sealed class ShelfBoard : Control
     {
         if (r.Width <= 0 || r.Height <= 0) return;
         context.FillRectangle(FrontBrush, r);
+        context.FillRectangle(ThemeManager.BoardLight, new Rect(r.X, r.Y, r.Width, 1));
+        context.FillRectangle(EdgeBrush, new Rect(r.X, r.Bottom - 1, r.Width, 1));
+        context.FillRectangle(ShadowBrush, new Rect(r.X, r.Bottom, r.Width, ShadowHeight));
+    }
+
+    /// <summary>
+    /// Draws a shelf edge ("Regalkante") into <paramref name="r"/>: 1 px board light, a 2 px lip (#3A352D) below it,
+    /// the front in Regal hell, 1 px edge, the 16 px shadow. The lip gives the edge a thickness the eye reads as a board
+    /// the boxes stand on (M3 QA: the plain 10 px front on the room was ≈ 1.3 : 1 and read as a hairline).
+    /// </summary>
+    public static void DrawEdge(DrawingContext context, Rect r)
+    {
+        if (r.Width <= 0 || r.Height <= 0) return;
+        context.FillRectangle(FrontBrush, r);
+        context.FillRectangle(LipBrush, new Rect(r.X, r.Y + 1, r.Width, 2));
         context.FillRectangle(ThemeManager.BoardLight, new Rect(r.X, r.Y, r.Width, 1));
         context.FillRectangle(EdgeBrush, new Rect(r.X, r.Bottom - 1, r.Width, 1));
         context.FillRectangle(ShadowBrush, new Rect(r.X, r.Bottom, r.Width, ShadowHeight));

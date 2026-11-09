@@ -45,11 +45,19 @@ public sealed partial class GameItemViewModel : ObservableObject
     [ObservableProperty] public partial double CoverAspect { get; private set; } = 1.4;
     /// <summary>The title as captions print it: " - " becomes an en dash (DESIGN 3.2, M1 leftover).</summary>
     [ObservableProperty] public partial string Caption { get; private set; } = "";
+    /// <summary>The caption for wrapped lines: no line starts with "– …", a trailing number stays with its word (M3 QA).</summary>
+    [ObservableProperty] public partial string WrapCaption { get; private set; } = "";
     /// <summary>
     /// What tells this game apart from a namesake in the same list ("Englisch", "Japan", "Europa"), set by the
     /// library only where two games of one system share a title; "" otherwise.
     /// </summary>
     [ObservableProperty] public partial string Variant { get; set; } = "";
+
+    /// <summary>The label line has something besides the system code (a variant or a year).</summary>
+    public bool HasLabelDetail => Variant.Length > 0 || YearText.Length > 0;
+
+    partial void OnVariantChanged(string value) => OnPropertyChanged(nameof(HasLabelDetail));
+    partial void OnYearTextChanged(string value) => OnPropertyChanged(nameof(HasLabelDetail));
     /// <summary>The sticker "Neu" (DESIGN 7.2.1): set by the library (added recently, never started, not yet unpacked).</summary>
     [ObservableProperty] public partial bool IsNew { get; set; }
     /// <summary>Region/language in German ("Europa", "Englisch"); "" when unknown.</summary>
@@ -75,6 +83,7 @@ public sealed partial class GameItemViewModel : ObservableObject
         var sys = _services.Catalog.GetSystem(game.SystemId);
         Title = game.DisplayTitle;
         Caption = Controls.FitText.Typeset(Title);
+        WrapCaption = Controls.TitleTrimming.Glue(Caption);
         SystemId = game.SystemId;
         SystemName = sys?.Name ?? game.SystemId;
         SystemShort = string.IsNullOrEmpty(sys?.ShortName) ? game.SystemId.ToUpperInvariant() : sys!.ShortName;

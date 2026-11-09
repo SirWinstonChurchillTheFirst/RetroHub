@@ -14,9 +14,18 @@ public sealed class EmptyShelfDrawing : Control
     private static readonly IPen Line = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x99, 0xF4, 0xEC, 0xDF)), 1.5,
         lineCap: PenLineCap.Flat, lineJoin: PenLineJoin.Miter);
 
+    /// <summary>
+    /// Scale the FIGURES (not the 120 grid) to the control's height: the leaning box is then as tall as the control and
+    /// stands at the scale of real boxes beside the outlined places (library, M3 QA: the 200 px grid drew 80 px figures).
+    /// Width needed: ≈ 1.9 × height.
+    /// </summary>
+    public static readonly StyledProperty<bool> TightProperty = AvaloniaProperty.Register<EmptyShelfDrawing, bool>(nameof(Tight));
+
+    public bool Tight { get => GetValue(TightProperty); set => SetValue(TightProperty, value); }
+
     static EmptyShelfDrawing()
     {
-        AffectsRender<EmptyShelfDrawing>(BoundsProperty);
+        AffectsRender<EmptyShelfDrawing>(BoundsProperty, TightProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<EmptyShelfDrawing>(false);
     }
 
@@ -25,9 +34,10 @@ public sealed class EmptyShelfDrawing : Control
         var w = Bounds.Width;
         var h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
-        // a 120 × 120 drawing scaled to the width; its feet end on the bottom edge (open figures, no base line)
-        var s = Math.Min(w, h) / 120.0;
-        var ox = (w - 120 * s) / 2;
+        // a 120 × 120 drawing scaled to the width; its feet end on the bottom edge (open figures, no base line).
+        // Tight: the figures (x 14–106, y 71–120 of the grid) fill the height, left-aligned
+        var s = Tight ? h / 49.5 : Math.Min(w, h) / 120.0;
+        var ox = Tight ? -13 * s : (w - 120 * s) / 2;
         var oy = h - 120 * s;
         var foot = 120 - 0.75 / s; // the stroke's lower half ends exactly on the board
         var g = new StreamGeometry();

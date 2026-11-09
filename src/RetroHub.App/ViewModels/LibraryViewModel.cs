@@ -242,7 +242,7 @@ public sealed partial class LibraryViewModel : PageViewModel
         if (version != _version || result.Games == null) return;
 
         // the slot format and the system context are set BEFORE the items: the grid is built once, in its final format
-        ApplySystemContext(systemId, result.Stats, result.Sized);
+        ApplySystemContext(systemId, result.Stats, result.Sized, result.All);
         var items = Ctx.Items.GetAll(result.Games);
         MarkVariants(items);
         MarkNew(Ctx.Items.GetAll(result.All), DateTime.UtcNow);
@@ -262,14 +262,14 @@ public sealed partial class LibraryViewModel : PageViewModel
     /// <summary>
     /// The compartment of a system (DESIGN 7.2.1, 11.4): banner text, wall ground, system light, and the slot format
     /// from the median of the stored cover sizes (≥ <see cref="MinSizesForMedian"/>, else the system's start value).
-    /// "Alle": the room, the user's light, 1 : 1.25.
+    /// "Alle": the room, the user's light, the median format of the whole collection (<see cref="MixedSlotAspect"/>).
     /// </summary>
-    private void ApplySystemContext(string? systemId, LibraryStats stats, IReadOnlyList<Game>? sized)
+    private void ApplySystemContext(string? systemId, LibraryStats stats, IReadOnlyList<Game>? sized, IReadOnlyList<Game> all)
     {
         var def = systemId != null ? Ctx.Services.Catalog.GetSystem(systemId) : null;
         if (systemId == null || def == null)
         {
-            SlotAspect = MixedAspect;
+            SlotAspect = MixedSlotAspect(all);
             IsSystemSelected = false;
             SystemLook = null;
             ContextLight = null;
@@ -300,6 +300,24 @@ public sealed partial class LibraryViewModel : PageViewModel
         var mid = ratios.Count / 2;
         var median = ratios.Count % 2 == 1 ? ratios[mid] : (ratios[mid - 1] + ratios[mid]) / 2;
         return Math.Round(Math.Clamp(median, 0.6, 1.8), 2);
+    }
+
+    /// <summary>
+    /// Slot format of the mixed library (M3 QA, DESIGN 11.4): the median of every game's box format – its stored cover
+    /// size, else its system's start value (that is the format its spine placeholder takes) – clamped to 1.00–1.40.
+    /// The whole collection decides (not the search or the favourites), so the slot does not jump while typing. A
+    /// collection of square SNES/GBA boxes gets square slots instead of 55 px of dead headroom above every box.
+    /// </summary>
+    public static double MixedSlotAspect(IEnumerable<Game> games)
+    {
+        var ratios = games.Select(g => g.CoverWidth is > 0 && g.CoverHeight is > 0 && !string.IsNullOrEmpty(g.CoverPath)
+                ? (double)g.CoverHeight!.Value / g.CoverWidth!.Value
+                : SystemPalette.BoxAspect(g.SystemId))
+            .OrderBy(r => r).ToList();
+        if (ratios.Count == 0) return MixedAspect;
+        var mid = ratios.Count / 2;
+        var median = ratios.Count % 2 == 1 ? ratios[mid] : (ratios[mid - 1] + ratios[mid]) / 2;
+        return Math.Round(Math.Clamp(median, 1.0, 1.4), 2);
     }
 
     /// <summary>"Handheld von Nintendo, 2001. 7 Spiele, 46 Stunden gespielt." – parts without data fall away.</summary>

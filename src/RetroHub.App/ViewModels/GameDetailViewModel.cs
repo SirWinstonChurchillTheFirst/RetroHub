@@ -155,7 +155,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
     /// <summary>"46 Std. in 41 Sitzungen gespielt, zuletzt heute." – the play time starts the sentence ("Unter 1 Min. …").</summary>
     internal static string BuildPlaySentence(Core.Library.Game g) =>
         g.PlayCount == 0 || g.LastPlayedUtc == null
-            ? Loc.T("detail.sentence.never", Fmt.Date(g.AddedUtc))
+            ? Loc.T("detail.sentence.never", Fmt.DateInSentence(g.AddedUtc))
             : g.PlayCount == 1
                 ? Loc.T("detail.sentence.once", Fmt.SentenceStart(Fmt.PlayTime(g.PlaySeconds)), Fmt.LastPlayed(g.LastPlayedUtc))
                 : Loc.T("detail.sentence.played", Fmt.SentenceStart(Fmt.PlayTime(g.PlaySeconds)), g.PlayCount, Fmt.LastPlayed(g.LastPlayedUtc));

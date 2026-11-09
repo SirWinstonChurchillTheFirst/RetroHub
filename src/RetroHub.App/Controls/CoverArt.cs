@@ -419,13 +419,19 @@ public sealed class CoverArt : Control
                 var room = budget - Math.Ceiling(_titleText.Height) - SubGap;
                 var lines = (int)Math.Min(w >= 300 ? 3 : 2, Math.Floor(room / subLine));
                 if (lines >= 1)
-                    _subText = new FormattedText(FitText.Typeset(subtitle), CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.ReadMediumFace, subSize, SubBrush)
+                {
+                    // the subtitle never loses its distinguishing tail (M3 QA: "Ancient Stone…" on four chapters): when it
+                    // does not fit, the shared middle drops out and the last part is printed ("Kapitel 1")
+                    var text = TitleTrimming.Glue(FitText.Typeset(subtitle));
+                    if (!SubtitleFits(text, subSize, subLine, maxWidth, lines) && SubtitleTail(text) is { } tail) text = tail;
+                    _subText = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.ReadMediumFace, subSize, SubBrush)
                     {
                         MaxTextWidth = maxWidth,
                         MaxLineCount = lines,
                         LineHeight = subLine,
                         Trimming = TextTrimming.WordEllipsis,
                     };
+                }
             }
         }
         var codeSize = Math.Min(28, Math.Max(7, w * 0.09));
@@ -446,12 +452,13 @@ public sealed class CoverArt : Control
                 _spineYear = new FormattedText(Year, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, look.TextOnColorBrush);
             var codeEnd = w * 0.08 + (_codeText?.Width ?? 0) + SpineGap * 2;
             var length = r.Height - codeEnd - Math.Round(w * 0.06);
-            // a spine carries its (main) title whole or not at all – never "Banjo-K…": the year gives way first
+            // a spine carries its (main) title whole or not at all – never "Banjo-K…". The year comes first (M3 QA): it
+            // is always printed, the title only when it fits beside it, so a row of spines reads as one print run
+            // (code + year everywhere, titles where they fit) instead of "title only" next to "year only".
             var spineTitle = new FormattedText(FitText.Typeset(SplitTitle(Title).Main), CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
                 FontRoles.SpineFace, spineSize, look.TextOnColorBrush);
             var withYear = length - (_spineYear != null ? Math.Ceiling(_spineYear.Width) + SpineGap : 0);
             if (spineTitle.Width <= withYear) _spineTitle = spineTitle;
-            else if (spineTitle.Width <= length) { _spineTitle = spineTitle; _spineYear = null; }
         }
     }
 
@@ -459,6 +466,31 @@ public sealed class CoverArt : Control
     public const double SpineTitleMinBand = 28;
     private const double SpineGap = 10;
     private static readonly IImmutableSolidColorBrush FoldBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x40, 0, 0, 0));
+
+    private static bool SubtitleFits(string text, double size, double lineHeight, double maxWidth, int lines)
+    {
+        var probe = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.ReadMediumFace, size, SubBrush)
+        {
+            MaxTextWidth = maxWidth,
+            LineHeight = lineHeight,
+        };
+        return probe.Height <= lines * lineHeight + 0.5;
+    }
+
+    /// <summary>The last part of a subtitle after its last " – " / ": " ("Ancient Stone Tablets – Kapitel 1" → "Kapitel 1"); null without one.</summary>
+    internal static string? SubtitleTail(string subtitle)
+    {
+        var best = -1;
+        var len = 0;
+        foreach (var sep in new[] { " – ", " – ", ": " })
+        {
+            var i = subtitle.LastIndexOf(sep, StringComparison.Ordinal);
+            if (i > best) { best = i; len = sep.Length; }
+        }
+        if (best < 1) return null;
+        var tail = subtitle[(best + len)..].Trim();
+        return tail.Length > 0 ? tail : null;
+    }
 
     private const double SubGap = 4;
     private static readonly IImmutableSolidColorBrush SubBrush = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));

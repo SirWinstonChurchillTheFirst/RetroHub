@@ -86,6 +86,7 @@ public sealed class CoverGrid : UserControl
     private readonly ContentControl _headerHost;
     private readonly FocusLayer _focus;
     private readonly Control _boards;
+    private readonly Border _fade;
     private IReadOnlyList<object> _items = [];
     private Dictionary<object, int> _indexOf = new(ReferenceEqualityComparer.Instance);
     private INotifyCollectionChanged? _observed;
@@ -190,9 +191,51 @@ public sealed class CoverGrid : UserControl
     public void ScrollToIndex(int index)
     {
         if (_columns <= 0 || index < 0 || index >= _items.Count) return;
-        var row = index / _columns;
-        var y = row == 0 ? 0 : RowsTop + row * RowPitch - 40;
-        _scroll.Offset = _scroll.Offset.WithY(Math.Max(0, y));
+        _scroll.Offset = _scroll.Offset.WithY(SnapOffset(index / _columns));
+    }
+
+    /// <summary>
+    /// Space kept above the top row in view when the grid snaps (M3 QA): the row spacing itself – the lifted box
+    /// (+6 % of its height) and its ring fit into it, and the row above ends exactly at the viewport's top edge.
+    /// </summary>
+    private double SnapHeadroom => Math.Max(0, RowSpacing);
+
+    /// <summary>The scroll offset that puts row <paramref name="row"/> at the top with <see cref="SnapHeadroom"/> above it (row 0: 0).</summary>
+    private double SnapOffset(int row) => row <= 0 ? 0 : Math.Max(0, RowsTop + row * RowPitch - SnapHeadroom);
+
+    /// <summary>
+    /// Fade colour of the viewport's top edge (null = none): a 12 px overlay in the page ground, 100 % → 0, fixed to the
+    /// viewport and drawn between the rows and the focus ring. Whatever is scrolled freely under the fixed header fades
+    /// out there instead of being sliced (M3 QA). No OpacityMask.
+    /// </summary>
+    public static readonly StyledProperty<Color?> TopFadeColorProperty =
+        AvaloniaProperty.Register<CoverGrid, Color?>(nameof(TopFadeColor));
+
+    public Color? TopFadeColor { get => GetValue(TopFadeColorProperty); set => SetValue(TopFadeColorProperty, value); }
+
+    public const double TopFadeHeight = 12;
+
+    private void UpdateTopFade()
+    {
+        if (TopFadeColor is not { } c)
+        {
+            _fade.IsVisible = false;
+            return;
+        }
+        _fade.IsVisible = true;
+        _fade.Background = new ImmutableLinearGradientBrush(
+            [new ImmutableGradientStop(0, c), new ImmutableGradientStop(1, Color.FromArgb(0, c.R, c.G, c.B))],
+            startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
+        PlaceTopFade();
+    }
+
+    private void PlaceTopFade()
+    {
+        if (!_fade.IsVisible) return;
+        var y = _scroll.Offset.Y;
+        // at the very top nothing is scrolled away (and a compartment's banner keeps its colour band)
+        _fade.Opacity = Math.Clamp(y / TopFadeHeight, 0, 1);
+        _fade.RenderTransform = new TranslateTransform(0, y - _content.Margin.Top);
     }
 
     public CoverGrid()
@@ -212,9 +255,14 @@ public sealed class CoverGrid : UserControl
         _content = new Panel();
         _focus = new FocusLayer(_content, _rows) { BoardFront = ShelfBoard.EdgeHeight };
         _boards = new BoardLayer(this);
+        _fade = new Border
+        {
+            Height = TopFadeHeight, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false, IsVisible = false,
+        };
         _content.Children.Add(_focus.Back);
         _content.Children.Add(_boards);
         _content.Children.Add(_outer);
+        _content.Children.Add(_fade);
         _content.Children.Add(_focus.Front);
         _scroll = new ScrollViewer
         {
@@ -227,7 +275,7 @@ public sealed class CoverGrid : UserControl
         ScrollViewer.SetBringIntoViewOnFocusChange(_scroll, false);
         Content = _scroll;
         _scroll.SizeChanged += (_, _) => UpdateLayoutMetrics();
-        _scroll.ScrollChanged += (_, _) => RaiseViewportChanged();
+        _scroll.ScrollChanged += (_, _) => { RaiseViewportChanged(); PlaceTopFade(); };
         _rows.LayoutUpdated += (_, _) => InvalidateBoardsIfMoved();
         // tunnel: tiles (buttons) or the focus manager must not consume the arrows before the grid sees them
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -280,7 +328,8 @@ public sealed class CoverGrid : UserControl
         else if (change.Property == ItemWidthProperty || change.Property == SpacingProperty || change.Property == MaxStretchProperty
                  || change.Property == CoverAspectProperty || change.Property == CaptionHeightProperty || change.Property == RowSpacingProperty)
             UpdateLayoutMetrics(force: true);
-        else if (change.Property == ContentPaddingProperty || change.Property == HeaderBleedProperty) { ApplyPadding(); UpdateLayoutMetrics(); }
+        else if (change.Property == ContentPaddingProperty || change.Property == HeaderBleedProperty) { ApplyPadding(); UpdateLayoutMetrics(); PlaceTopFade(); }
+        else if (change.Property == TopFadeColorProperty) UpdateTopFade();
         else if (change.Property == PlaceholderAspectProperty) foreach (var presenter in RealizedRows()) presenter.ApplySize();
         else if (change.Property == HeaderProperty) _headerHost.Content = Header;
         else if (change.Property == ItemTemplateProperty) Rebuild(keepFocus: false);
@@ -290,6 +339,7 @@ public sealed class CoverGrid : UserControl
     {
         var p = ContentPadding;
         _content.Margin = p;
+        _fade.Margin = new Thickness(-p.Left, 0, -p.Right, 0);
         // a bleeding header covers the padding left, right and above; the padding's top stays as the gap below it
         _headerHost.Margin = HeaderBleed ? new Thickness(-p.Left, -p.Top, -p.Right, p.Top) : default;
     }
@@ -468,22 +518,42 @@ public sealed class CoverGrid : UserControl
         return true;
     }
 
+    /// <summary>Space kept below the focused row (the footer's fade lies over the page's last 40 px, DESIGN 4.6 / 8.4).</summary>
+    private const double BottomMargin = 40;
+
     /// <summary>
-    /// Keeps a margin above/below the focused row so the lifted box, its ring and the board stay visible
-    /// (DESIGN 8.4: 40 px = ring 6 + lift 15 + board 10 + shadow ≈ 9).
+    /// Brings the focused row into view, SNAPPED to row boundaries (M3 QA): the top row in view always starts
+    /// <see cref="SnapHeadroom"/> below the viewport's top edge – never a row cut through its boxes or captions under
+    /// the fixed header. Only the bottom edge may show part of a row. Scrolling up puts the focused row at the top;
+    /// scrolling down takes the smallest snapped offset that shows the focused row with its caption and
+    /// <see cref="BottomMargin"/> below. Row 0 keeps the header (a compartment's banner) in view.
     /// </summary>
     private void BringRowIntoView(Control tile)
     {
         var p = tile.TranslatePoint(new Point(0, 0), _content);
-        if (p == null) return;
-        var margin = 40;
-        var top = p.Value.Y + _content.Margin.Top - margin;
-        var bottom = p.Value.Y + _content.Margin.Top + tile.Bounds.Height + margin;
-        var offset = _scroll.Offset;
-        // the first row keeps the header in view (the compartment's banner) whenever both fit
-        if (p.Value.Y <= RowsTop - _content.Margin.Top + 1 && bottom <= _scroll.Viewport.Height) { _scroll.Offset = offset.WithY(0); return; }
-        if (top < offset.Y) _scroll.Offset = offset.WithY(Math.Max(0, top));
-        else if (bottom > offset.Y + _scroll.Viewport.Height) _scroll.Offset = offset.WithY(bottom - _scroll.Viewport.Height);
+        if (p == null || _columns <= 0) return;
+        var index = IndexOfTile(tile);
+        if (index < 0) return;
+        var row = index / _columns;
+        var top = p.Value.Y + _content.Margin.Top;            // the row's slot top in scroll coordinates
+        var bottom = top + tile.Bounds.Height + BottomMargin;  // caption end + margin
+        var viewport = _scroll.Viewport.Height;
+        var offset = _scroll.Offset.Y;
+        var headroom = row == 0 ? top : SnapHeadroom;
+        if (top - headroom >= offset - 0.5 && bottom <= offset + viewport + 0.5) return; // in view as it is
+        double target;
+        if (top - headroom < offset) target = SnapOffset(row);
+        else
+        {
+            // down: the first snapped offset at which the focused row fits; a row taller than the view goes to the top
+            target = SnapOffset(row);
+            for (var k = 0; k < row; k++)
+            {
+                var o = SnapOffset(k);
+                if (bottom <= o + viewport) { target = o; break; }
+            }
+        }
+        _scroll.Offset = _scroll.Offset.WithY(target); // the scroll viewer clamps at the end of the content
     }
 
     internal Control? TileAt(int rowIndex, int col)
@@ -574,7 +644,7 @@ public sealed class CoverGrid : UserControl
                 if (row.Children.Count == 0 || row.Children[0] is not GameTile first || first.CoverBottomInTile() is not { } bottom) continue;
                 if (row.TranslatePoint(new Point(0, 0), this) is not { } origin) continue;
                 var y = origin.Y + first.Bounds.Y + bottom;
-                ShelfBoard.Draw(context, new Rect(0, y, width, ShelfBoard.EdgeHeight));
+                ShelfBoard.DrawEdge(context, new Rect(0, y, width, ShelfBoard.EdgeHeight));
                 foreach (var child in row.Children)
                 {
                     if (child is not GameTile { IsVisible: true } tile || tile.ArtRectInTile() is not { } art || art.Width <= 0) continue;

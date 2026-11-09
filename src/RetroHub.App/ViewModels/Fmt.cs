@@ -45,6 +45,14 @@ public static class Fmt
 
     public static string Date(DateTime? utc) => utc == null ? "–" : utc.Value.ToLocalTime().ToString("d", Loc.Culture);
 
+    /// <summary>A date in a sentence (DESIGN 7.1): "25. September", with the year only when it is not this year ("3. März 2024").</summary>
+    public static string DateInSentence(DateTime utc, DateTime? nowUtc = null)
+    {
+        var local = utc.ToLocalTime();
+        var now = (nowUtc ?? DateTime.UtcNow).ToLocalTime();
+        return local.ToString(local.Year == now.Year ? "d. MMMM" : "d. MMMM yyyy", Loc.Culture);
+    }
+
     public static string DateTimeText(DateTime? utc) => utc == null ? "–" : utc.Value.ToLocalTime().ToString("g", Loc.Culture);
 
     public static string Size(long bytes)

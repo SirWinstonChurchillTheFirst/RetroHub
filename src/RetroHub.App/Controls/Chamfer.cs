@@ -52,6 +52,38 @@ public static class Chamfer
         var ringRect = target.Inflate(gap + ring / 2);
         ctx.DrawGeometry(null, new Pen(light, ring, lineJoin: PenLineJoin.Miter), Octagon(ringRect, Math.Max(0, chamfer - ring / 2)));
     }
+
+    /// <summary>
+    /// The focus ring of a box STANDING on a board (M3 QA): gap and ring run up the sides and over the top like
+    /// <see cref="DrawRing"/>, but their legs end flat on the board top (<paramref name="target"/>.Bottom) – the ring
+    /// never pierces the board front, so the box stands on the shelf instead of sinking into it. The lit board piece
+    /// (drawn by the caller) closes the frame at the bottom.
+    /// </summary>
+    public static void DrawStandingRing(DrawingContext ctx, Rect target, IBrush light, double gap = 3, double ring = 3, double chamfer = 6)
+    {
+        if (target.Width <= 0 || target.Height <= 0) return;
+        static Geometry Open(double l, double t, double r, double b, double c)
+        {
+            c = Math.Max(0, Math.Min(c, Math.Min(r - l, b - t) / 2));
+            var g = new StreamGeometry();
+            using var ctx = g.Open();
+            ctx.BeginFigure(new Point(l, b), false);
+            ctx.LineTo(new Point(l, t + c));
+            ctx.LineTo(new Point(l + c, t));
+            ctx.LineTo(new Point(r - c, t));
+            ctx.LineTo(new Point(r, t + c));
+            ctx.LineTo(new Point(r, b));
+            ctx.EndFigure(false);
+            return g;
+        }
+        var b = target.Bottom;
+        var gi = gap / 2;
+        ctx.DrawGeometry(null, new ImmutablePen(RoomDeep, gap, lineCap: PenLineCap.Flat, lineJoin: PenLineJoin.Miter),
+            Open(target.X - gi, target.Y - gi, target.Right + gi, b, Math.Max(0, chamfer - ring - gi)));
+        var ri = gap + ring / 2;
+        ctx.DrawGeometry(null, new Pen(light, ring, lineCap: PenLineCap.Flat, lineJoin: PenLineJoin.Miter),
+            Open(target.X - ri, target.Y - ri, target.Right + ri, b, Math.Max(0, chamfer - ring / 2)));
+    }
 }
 
 /// <summary>

@@ -325,13 +325,15 @@
             <!-- the sticker "Neu" (library only): over the box's top left corner, lifts with the box -->
             <c:NewSticker Name="PART_New" IsVisible="{TemplateBinding ShowSticker}" IsNew="{Binding IsNew}" />
           </Panel>
-          <!-- caption: 16 px below the 10 px shelf edge, in a fixed 66 px slot (the row pitch stays regular): the title
-               (max. 2 lines) and 4 px under its last line the label line. A spine placeholder carries its title on the
-               box, so its caption is only the label line (never the title twice). In a system context the code and
-               the bar drop out. -->
-          <StackPanel Grid.Row="1" Margin="0,26,0,0" Spacing="4" Height="66" IsVisible="{TemplateBinding ShowCaption}">
-            <TextBlock Name="PART_Title" Classes="caption" Text="{Binding Caption}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
-                       IsVisible="{Binding HasCover}" />
+          <!-- caption: 12 px below the 12 px shelf edge, in a fixed 66 px slot (the row pitch stays regular): a fixed
+               42 px title block (max. 2 lines) and 4 px under it the label line – every box of a row, placeholders
+               included, has its title and its label line on the same lines (M3 QA: one baseline grid per row). On the
+               system page the code and the bar drop out (.in-system); in the library's compartment only the code
+               (.no-code). -->
+          <StackPanel Grid.Row="1" Margin="0,24,0,0" Spacing="4" Height="66" IsVisible="{TemplateBinding ShowCaption}">
+            <c:TailCaption Name="PART_Title" Classes="caption" Source="{Binding WrapCaption}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                           Height="42" />
+
             <!-- label line: bar, code, the variant where a namesake stands in the same list ("Englisch" / "Japan"), year -->
             <StackPanel Orientation="Horizontal" Spacing="8" Height="20" ClipToBounds="True">
               <Border Name="PART_Bar" Width="3" Height="14" Background="{Binding SystemColorBrush}" VerticalAlignment="Center" />
@@ -368,6 +370,14 @@
     <Style Selector="^.in-system /template/ TextBlock#PART_Code">
       <Setter Property="IsVisible" Value="False" />
     </Style>
+    <!-- the library filtered to one system (DESIGN 7.2.1): the code drops out, bar, variant and year stay -->
+    <Style Selector="^.no-code /template/ TextBlock#PART_Code">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <!-- …and with neither variant nor year the line stays empty (its 20 px are kept): no lone colour bar -->
+    <Style Selector="^.no-code.bare /template/ Border#PART_Bar">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
   </ControlTheme>
 
   <!-- list row (same GameTile class, so clicks/favourites work identically): bar, title, code, star; focus = light
@@ -390,7 +400,9 @@
           <Grid ColumnDefinitions="*,Auto,40" Margin="24,0,16,0">
             <Border Name="PART_Chip" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="8,4" CornerRadius="2" Background="Transparent" Margin="-8,0,0,0">
               <!-- no class "ui-l": an app-level class style would win over the focus style below (paper on paper) -->
-              <TextBlock Name="PART_Title" Text="{Binding Caption}" TextTrimming="CharacterEllipsis" FontFamily="{DynamicResource RhFontUi}"
+              <!-- a title wider than the column keeps its head AND its tail ("BS The Legend of Zelda – …Kapitel 1"):
+                   namesakes differ at the end (M3 QA), until the marquee exists -->
+              <TextBlock Name="PART_Title" Text="{Binding Caption}" TextTrimming="{Binding Caption, Converter={x:Static c:TitleTrimming.Converter}}" FontFamily="{DynamicResource RhFontUi}"
                          FontWeight="Medium" FontSize="20" LineHeight="26" Foreground="{DynamicResource RhText1Brush}" />
             </Border>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="24,0,0,0">
