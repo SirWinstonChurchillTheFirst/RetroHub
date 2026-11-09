@@ -45,6 +45,62 @@ public class DesignPreviewTests
     [Fact]
     public Task Demo_library() => Run("demo", null, ShortSizes);
 
+    /// <summary>Specimen sheet: font roles, icons, controller glyphs, textures, walls – to look at, not to assert.</summary>
+    [Fact]
+    public Task Specimen_sheet() => UiTest.Run(() =>
+    {
+        Assert.SkipWhen(string.IsNullOrEmpty(DesignDir), "RETROHUB_DESIGN_DIR is not set (design previews only on request)");
+        var outDir = Path.Combine(DesignDir!, "shots", Milestone);
+        Directory.CreateDirectory(outDir);
+        TestSupport.CreateContext();
+        var stack = new Avalonia.Controls.StackPanel { Spacing = 14, Margin = new Avalonia.Thickness(48) };
+        void Text(string cls, string text) { var tb = new Avalonia.Controls.TextBlock { Text = text }; tb.Classes.Add(cls); stack.Children.Add(tb); }
+        Text("poster-xl", "Pokémon Smaragd-Edition 2004");
+        Text("poster-s", "Plakat 40 · Archivo Expanded ExtraBold");
+        Text("h2", "Etikett/Button · Archivo SemiCondensed SemiBold 24 – Bibliotheksordner");
+        Text("ui-l", "UI · Archivo SemiCondensed Medium 20 – Startoptionen zurücksetzen");
+        Text("read-l", "Lesen · Atkinson Hyperlegible Next 20 – Il1 O0 ÄÖÜäöüß „Zitat“ – … €");
+        var sentence = new Avalonia.Controls.TextBlock(); sentence.Classes.Add("read-l");
+        Controls.Sentence.SetText(sentence, "Game Boy Advance. 46 Std. in 41 Sitzungen gespielt, zuletzt 2004.");
+        stack.Children.Add(sentence);
+        Text("code", "GBA  SNES  N64  PS2  — Rücken · Archivo Condensed Bold");
+        var icons = new Avalonia.Controls.WrapPanel { ItemSpacing = 18, LineSpacing = 12 };
+        foreach (var key in new[] { "Start", "Library", "Systems", "Emulators", "Imports", "Settings", "Search", "Menu", "Back", "More", "Play", "Favorite",
+                     "Random", "Folder", "External", "Refresh", "Sort", "Filter", "Grid", "List", "Cover", "Remove", "Add", "Close", "Fullscreen", "Window",
+                     "Power", "Expand", "Collapse", "ArrowLeft", "ArrowRight", "Clock", "Calendar", "Players", "Region", "File", "Disk", "Controller",
+                     "Starts", "Ok", "Warning", "Error", "Info", "Missing", "NotReady", "MediaCart8", "MediaCart16", "MediaCart64", "MediaDisc",
+                     "MediaMiniDisc", "MediaCard", "MediaFloppy", "MediaHandheld", "MediaArcade" })
+        {
+            Avalonia.Application.Current!.TryGetResource("Icon." + key, null, out var g);
+            var filled = key is "Play" or "ArrowLeft" or "ArrowRight";
+            icons.Children.Add(new Controls.RhIcon { Data = g as Avalonia.Media.Geometry, Width = 28, Height = 28, Filled = filled });
+        }
+        stack.Children.Add(icons);
+        var glyphs = new Avalonia.Controls.StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 20 };
+        foreach (var keyboard in new[] { false, true })
+            foreach (var a in new[] { Input.NavAction.Accept, Input.NavAction.Back, Input.NavAction.Favorite, Input.NavAction.Search, Input.NavAction.PageLeft,
+                         Input.NavAction.PageRight, Input.NavAction.Menu, Input.NavAction.View })
+                glyphs.Children.Add(new Controls.ButtonGlyph { Action = a, Keyboard = keyboard });
+        stack.Children.Add(glyphs);
+        var walls = new Avalonia.Controls.WrapPanel { ItemSpacing = 12, LineSpacing = 12 };
+        foreach (var id in Theming.SystemPalette.KnownIds.OrderBy(i => i))
+        {
+            var p = new Avalonia.Controls.Panel { Width = 150, Height = 120 };
+            p.Children.Add(new Controls.SystemWall { SystemId = id, MotifShare = 0.6, MotifInset = 8 });
+            var label = new Avalonia.Controls.TextBlock { Text = id, Margin = new Avalonia.Thickness(8, 14, 0, 0), FontSize = 15 };
+            p.Children.Add(label);
+            walls.Children.Add(p);
+        }
+        stack.Children.Add(walls);
+        var window = new Avalonia.Controls.Window { Width = 1600, Height = 1500, Content = stack };
+        window.Show();
+        TestSupport.Settle(500);
+        var frame = window.CaptureRenderedFrame();
+        Assert.NotNull(frame);
+        frame!.Save(Path.Combine(outDir, "specimen.png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+        window.Close();
+    });
+
     // ===================== scratch roots =====================
 
     private static string PreviewRoot()
