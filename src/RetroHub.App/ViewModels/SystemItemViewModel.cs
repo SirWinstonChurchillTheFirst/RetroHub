@@ -51,5 +51,21 @@ public sealed partial class SystemItemViewModel : ObservableObject
         PlayTimeText = playSeconds > 0 ? Fmt.PlayTime(playSeconds) : Loc.T("time.never");
     }
 
+    /// <summary>
+    /// Returns <paramref name="current"/> (with updated counts) when it already shows exactly these systems in this
+    /// order – so the cards are not rebuilt and keep their focus – otherwise new view models.
+    /// </summary>
+    public static IReadOnlyList<SystemItemViewModel> Reconcile(IReadOnlyList<SystemItemViewModel> current, IReadOnlyList<SystemDef> wanted,
+        Core.Library.LibraryStats stats)
+    {
+        if (current.Count == wanted.Count && current.Select(c => c.Def).SequenceEqual(wanted))
+        {
+            foreach (var c in current) c.Update(stats.GamesPerSystem.GetValueOrDefault(c.Id), stats.PlaySecondsPerSystem.GetValueOrDefault(c.Id));
+            return current;
+        }
+        return wanted.Select(s => new SystemItemViewModel(s, stats.GamesPerSystem.GetValueOrDefault(s.Id), stats.PlaySecondsPerSystem.GetValueOrDefault(s.Id)))
+            .ToList();
+    }
+
     public override string ToString() => Name;
 }

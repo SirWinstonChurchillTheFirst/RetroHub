@@ -55,7 +55,72 @@ public static class Loc
         catch (CultureNotFoundException) { Culture = CultureInfo.InvariantCulture; }
         ReportedMissing.Clear();
         Source.Raise();
+        NotifyTextSubscribers();
         try { LanguageChanged?.Invoke(); } catch (Exception ex) { Log.Warn("LanguageChanged handler failed", ex); }
+    }
+
+    // ---- XAML text subscriptions ({l:T key}) ----
+    // Held WEAKLY: a binding keeps its subscription alive (it owns the IDisposable returned by Subscribe), so a control
+    // that is thrown away (recycled template, rebuilt list item) can be collected. A strong static event here would keep
+    // every control that ever showed a localized text – and everything it references (cover bitmaps …) – alive forever.
+    private static readonly object SubscriberGate = new();
+    private static readonly List<WeakReference<ITextSubscriber>> TextSubscribers = [];
+    private static int _pruneAt = 256;
+
+    internal interface ITextSubscriber
+    {
+        void Refresh();
+    }
+
+    internal static void AddTextSubscriber(ITextSubscriber subscriber)
+    {
+        lock (SubscriberGate)
+        {
+            TextSubscribers.Add(new WeakReference<ITextSubscriber>(subscriber));
+            if (TextSubscribers.Count >= _pruneAt)
+            {
+                TextSubscribers.RemoveAll(w => !w.TryGetTarget(out _));
+                _pruneAt = Math.Max(256, TextSubscribers.Count * 2);
+            }
+        }
+    }
+
+    internal static void RemoveTextSubscriber(ITextSubscriber subscriber)
+    {
+        lock (SubscriberGate)
+            TextSubscribers.RemoveAll(w => !w.TryGetTarget(out var s) || ReferenceEquals(s, subscriber));
+    }
+
+    /// <summary>Live XAML text subscriptions (dead ones are pruned first). Diagnostics and tests.</summary>
+    internal static int TextSubscriberCount
+    {
+        get
+        {
+            lock (SubscriberGate)
+            {
+                TextSubscribers.RemoveAll(w => !w.TryGetTarget(out _));
+                return TextSubscribers.Count;
+            }
+        }
+    }
+
+    private static void NotifyTextSubscribers()
+    {
+        List<ITextSubscriber> alive;
+        lock (SubscriberGate)
+        {
+            alive = new List<ITextSubscriber>(TextSubscribers.Count);
+            TextSubscribers.RemoveAll(w =>
+            {
+                if (!w.TryGetTarget(out var s)) return true;
+                alive.Add(s);
+                return false;
+            });
+        }
+        foreach (var s in alive)
+        {
+            try { s.Refresh(); } catch (Exception ex) { Log.Warn("Refreshing a localized text failed", ex); }
+        }
     }
 
     /// <summary>Text for <paramref name="key"/> in the current language.</summary>

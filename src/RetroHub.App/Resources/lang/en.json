@@ -108,5 +108,8 @@
   "time.today": "today",
   "time.yesterday": "yesterday",
   "time.daysAgo": "{0} days ago",
-  "time.weeksAgo": "{0} wk ago"
+  "time.weeksAgo": "{0} wk ago",
+  "launch.unknownError": "unknown error",
+  "launch.detached": "“{0}” was started",
+  "launch.detached.detail": "The game runs outside RetroHub – its play time cannot be recorded."
 }

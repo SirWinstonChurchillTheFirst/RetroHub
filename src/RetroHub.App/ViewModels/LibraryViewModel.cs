@@ -53,11 +53,13 @@ public sealed partial class LibraryViewModel : PageViewModel
         SelectedSort = SortOptions.First(o => o.Sort == savedSort);
         IsListView = string.Equals(ctx.Services.Settings.Current.LibraryView, "list", StringComparison.OrdinalIgnoreCase);
         _suppressReload = false;
-        _searchDebounce = new DispatcherTimer(TimeSpan.FromMilliseconds(220), DispatcherPriority.Background, (_, _) =>
+        // not the (interval, priority, callback) constructor: that one starts the timer → a second load right away
+        _searchDebounce = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(220) };
+        _searchDebounce.Tick += (_, _) =>
         {
-            _searchDebounce!.Stop();
+            _searchDebounce.Stop();
             _ = LoadAsync();
-        });
+        };
         ctx.LibraryChanged += () => { if (IsLoaded) _ = LoadAsync(); };
     }
 

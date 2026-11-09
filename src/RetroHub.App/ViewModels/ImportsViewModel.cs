@@ -84,11 +84,18 @@ public sealed partial class ImportsViewModel : PageViewModel
     }
 
     [RelayCommand(CanExecute = nameof(CanScan))]
-    private async Task ScanAsync()
+    private Task ScanAsync() => RunScanAsync(quiet: false);
+
+    /// <summary>
+    /// The scan behind "Jetzt scannen" and the start-up scan (setting "Beim Start scannen"). A quiet scan only reports
+    /// when it found something new or failed, so a routine start stays silent.
+    /// </summary>
+    public async Task RunScanAsync(bool quiet)
     {
+        if (IsScanning) return;
         if (Ctx.Services.Scanner.IsScanning)
         {
-            Ctx.Toasts.Show(Loc.T("imports.alreadyScanning"), ToastKind.Warning);
+            if (!quiet) Ctx.Toasts.Show(Loc.T("imports.alreadyScanning"), ToastKind.Warning);
             return;
         }
         IsScanning = true;
@@ -111,7 +118,8 @@ public sealed partial class ImportsViewModel : PageViewModel
         {
             var report = await Task.Run(() => scanner.ScanAsync(options, progress, ct), ct).ConfigureAwait(true);
             ShowReport(report);
-            Ctx.Toasts.Show(Loc.T("imports.done"), ToastKind.Success, Loc.T("imports.doneDetail", report.Added, report.Updated, report.Missing));
+            if (!quiet || report.Added > 0 || report.Errors.Count > 0)
+                Ctx.Toasts.Show(Loc.T("imports.done"), ToastKind.Success, Loc.T("imports.doneDetail", report.Added, report.Updated, report.Missing));
         }
         catch (OperationCanceledException)
         {

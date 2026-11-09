@@ -185,7 +185,8 @@
     </ItemsControl>
 
     <!-- ============ Launch overlay ("Spiel wird gestartet" + running state) ============ -->
-    <Panel Name="LaunchOverlay" IsVisible="{Binding Launch.IsActive}">
+    <!-- modal: Tab cycles inside the overlay and never reaches the shell behind it -->
+    <Panel Name="LaunchOverlay" IsVisible="{Binding Launch.IsActive}" KeyboardNavigation.TabNavigation="Cycle">
       <Border Background="#F20B0A1A" />
       <Border Background="{Binding Launch.Game.AccentBrush}" Opacity="0.10" />
       <Border Background="{DynamicResource RhAmbientBrushA}" />
@@ -230,7 +231,7 @@
     <!-- ============ Dialog overlay ============ -->
     <Panel Name="DialogOverlay" IsVisible="{Binding Dialogs.IsOpen}">
       <Border Background="{DynamicResource RhOverlayScrimBrush}" />
-      <Border Name="DialogPanel" Classes="glass" Background="#F5181733" Width="540" HorizontalAlignment="Center" VerticalAlignment="Center"
+      <Border Name="DialogPanel" KeyboardNavigation.TabNavigation="Cycle" Classes="glass" Background="#F5181733" Width="540" HorizontalAlignment="Center" VerticalAlignment="Center"
               Padding="32,28" BoxShadow="{DynamicResource RhPanelShadow}" DataContext="{Binding Dialogs.Current}" x:DataType="vm:DialogViewModel">
         <StackPanel Spacing="14">
           <TextBlock Text="{Binding Title}" Classes="h2" FontSize="21" TextWrapping="Wrap" />

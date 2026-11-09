@@ -80,9 +80,10 @@ public sealed partial class HomeViewModel : PageViewModel
         if (snap == null || version != _version) return;
 
         var items = Ctx.Items;
+        var previous = Continue;
         Continue = snap.Last != null ? items.Get(snap.Last) : null;
         HasContinue = Continue != null;
-        if (Continue != null)
+        if (Continue != null && (Continue != previous || HeroBrush == null))
         {
             var a = Continue.Accent;
             HeroBrush = ThemeManager.Gradient(ColorUtil.WithAlpha(ColorUtil.Mix(a, Color.Parse("#15142B"), 0.35), 0xE6), ColorUtil.WithAlpha(Color.Parse("#15142B"), 0x99),
@@ -90,9 +91,12 @@ public sealed partial class HomeViewModel : PageViewModel
             HeroGlow = ThemeManager.Radial(ColorUtil.WithAlpha(ColorUtil.Mix(a, Colors.White, 0.25), 0x66), new RelativePoint(0.82, 0.35, RelativeUnit.Relative), 0.6);
         }
         ContinueMeta = Continue == null ? "" : Loc.T("home.continueMeta", Continue.SystemName, Continue.LastPlayedText, Continue.PlayTimeText);
-        RecentlyPlayed = items.GetAll(snap.Recent.Skip(snap.Last != null ? 1 : 0));
-        Favorites = items.GetAll(snap.Favs);
-        RecentlyAdded = items.GetAll(snap.Added);
+        // Lists are only replaced when their content changed: a new list rebuilds the shelf, which drops the keyboard /
+        // controller focus of its tiles (refreshes happen often, e.g. while a scan runs). The items are shared
+        // instances (GameItemCache), so unchanged shelves still show updated favourites/play times.
+        RecentlyPlayed = Keep(RecentlyPlayed, items.GetAll(snap.Recent.Skip(snap.Last != null ? 1 : 0)));
+        Favorites = Keep(Favorites, items.GetAll(snap.Favs));
+        RecentlyAdded = Keep(RecentlyAdded, items.GetAll(snap.Added));
         Greeting = GreetingText(DateTime.Now.Hour).ToUpper(Loc.Culture);
 
         var stats = snap.Stats;
@@ -102,14 +106,17 @@ public sealed partial class HomeViewModel : PageViewModel
         StatFavorites = stats.FavoriteCount.ToString("N0", Loc.Culture);
         IsLibraryEmpty = stats.GameCount == 0;
 
-        Platforms = Ctx.Services.Catalog.Systems
+        var platforms = Ctx.Services.Catalog.Systems
             .Where(s => stats.GamesPerSystem.GetValueOrDefault(s.Id) > 0)
             .OrderByDescending(s => stats.PlaySecondsPerSystem.GetValueOrDefault(s.Id))
             .ThenBy(s => s.SortOrder)
-            .Select(s => new SystemItemViewModel(s, stats.GamesPerSystem.GetValueOrDefault(s.Id), stats.PlaySecondsPerSystem.GetValueOrDefault(s.Id)))
             .ToList();
+        Platforms = SystemItemViewModel.Reconcile(Platforms, platforms, stats);
         IsLoaded = true;
     }
+
+    private static IReadOnlyList<GameItemViewModel> Keep(IReadOnlyList<GameItemViewModel> current, IReadOnlyList<GameItemViewModel> fresh) =>
+        current.Count == fresh.Count && current.SequenceEqual(fresh) ? current : fresh;
 
     private static string GreetingText(int hour) => hour switch
     {

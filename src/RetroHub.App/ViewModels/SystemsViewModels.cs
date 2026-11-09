@@ -47,11 +47,10 @@ public sealed partial class SystemsViewModel : PageViewModel
         var repo = Ctx.Services.Games;
         var stats = await UiContext.Background(repo.Stats, "Loading platform statistics");
         if (stats == null || version != _version) return;
-        var all = Ctx.Services.Catalog.Systems.OrderBy(s => s.SortOrder)
-            .Select(s => new SystemItemViewModel(s, stats.GamesPerSystem.GetValueOrDefault(s.Id), stats.PlaySecondsPerSystem.GetValueOrDefault(s.Id)))
-            .ToList();
-        Systems = all.Where(s => !s.IsEmpty).ToList();
-        EmptySystems = all.Where(s => s.IsEmpty).ToList();
+        // unchanged card lists are kept (only their counts update), so a refresh does not drop the card focus
+        var ordered = Ctx.Services.Catalog.Systems.OrderBy(s => s.SortOrder).ToList();
+        Systems = SystemItemViewModel.Reconcile(Systems, ordered.Where(s => stats.GamesPerSystem.GetValueOrDefault(s.Id) > 0).ToList(), stats);
+        EmptySystems = SystemItemViewModel.Reconcile(EmptySystems, ordered.Where(s => stats.GamesPerSystem.GetValueOrDefault(s.Id) == 0).ToList(), stats);
         SummaryText = Loc.T("systems.summary", Systems.Count, stats.GameCount);
     }
 

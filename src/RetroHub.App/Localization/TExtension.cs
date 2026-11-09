@@ -20,21 +20,37 @@ public sealed class TExtension
         new LocObservable(Key, Upper).ToBinding();
 }
 
-/// <summary>Emits the current text immediately and again on every language change.</summary>
+/// <summary>
+/// Emits the current text immediately and again on every language change. The subscription is registered weakly in
+/// <see cref="Loc"/> and kept alive only by the binding that owns it, so discarded controls are not leaked.
+/// </summary>
 internal sealed class LocObservable(string key, bool upper) : IObservable<string>
 {
     public IDisposable Subscribe(IObserver<string> observer)
     {
-        void Push() => observer.OnNext(upper ? Loc.T(key).ToUpper(Loc.Culture) : Loc.T(key));
-        Action handler = Push;
-        Loc.LanguageChanged += handler;
-        Push();
-        return new Unsubscriber(() => Loc.LanguageChanged -= handler);
+        var subscription = new Subscription(key, upper, observer);
+        Loc.AddTextSubscriber(subscription);
+        subscription.Refresh();
+        return subscription;
     }
 
-    private sealed class Unsubscriber(Action dispose) : IDisposable
+    private sealed class Subscription(string key, bool upper, IObserver<string> observer) : Loc.ITextSubscriber, IDisposable
     {
-        private Action? _dispose = dispose;
-        public void Dispose() { _dispose?.Invoke(); _dispose = null; }
+        private IObserver<string>? _observer = observer;
+
+        public void Refresh()
+        {
+            var o = _observer;
+            if (o == null) return;
+            var text = Loc.T(key);
+            o.OnNext(upper ? text.ToUpper(Loc.Culture) : text);
+        }
+
+        public void Dispose()
+        {
+            if (_observer == null) return;
+            _observer = null;
+            Loc.RemoveTextSubscriber(this);
+        }
     }
 }

@@ -65,6 +65,7 @@ public partial class App : Application
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
             desktop.Exit += (_, _) => Shutdown();
             Program.Instance?.Listen(() => Dispatcher.UIThread.Post(window.BringToFront));
+            window.Opened += (_, _) => Dispatcher.UIThread.Post(() => _main?.StartBackgroundTasks(), DispatcherPriority.Background);
             Log.Info($"UI ready ({(services.IsDemo ? "demo" : "real")} services, {services.Catalog.Systems.Count} systems)");
         }
         catch (Exception ex)

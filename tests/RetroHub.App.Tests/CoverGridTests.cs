@@ -170,4 +170,21 @@ public class CoverGridTests
         Assert.True(TestSupport.Pump(() => ReferenceEquals(FocusedItem(window), items[0]), 2000));
         window.Close();
     });
+
+    [Fact]
+    public Task Focus_stays_in_place_when_the_focused_item_leaves_the_list() => UiTest.Run(() =>
+    {
+        var (window, grid, items) = Create(100, 600, height: 400);
+        Assert.True(grid.FocusIndex(57));
+        TestSupport.Settle(50);
+        var offset = grid.ScrollViewer.Offset.Y;
+        Assert.True(offset > 0);
+        // e.g. the game was un-favourited while the favourites filter is on → it disappears from the list
+        grid.ItemsSource = items.Where(i => i.N != 57).ToList();
+        TestSupport.Settle(80);
+        Assert.Equal(57, grid.SelectedIndex);
+        Assert.Equal(58, (FocusedItem(window) as Item)?.N);
+        Assert.True(grid.ScrollViewer.Offset.Y > 0, "the grid jumped back to the top");
+        window.Close();
+    });
 }

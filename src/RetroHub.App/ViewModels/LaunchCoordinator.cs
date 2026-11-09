@@ -23,7 +23,9 @@ public sealed partial class LaunchCoordinator : ObservableObject
     public LaunchCoordinator(UiContext ctx)
     {
         _ctx = ctx;
-        _clock = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => UpdateElapsed());
+        // note: the (interval, priority, callback) constructor would start the timer immediately
+        _clock = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
+        _clock.Tick += (_, _) => UpdateElapsed();
     }
 
     [ObservableProperty] public partial LaunchPhase Phase { get; private set; }
@@ -83,9 +85,28 @@ public sealed partial class LaunchCoordinator : ObservableObject
         try
         {
             var session = await Task.Run(() => services.Sessions.Start(plan)).ConfigureAwait(true);
+            if (session.State == SessionState.Failed)
+            {
+                // the session service reports a failed process start as a Failed session (no events), not as an exception
+                Log.Warn($"Starting '{item.Title}' failed: {session.Error}");
+                Phase = LaunchPhase.Idle;
+                Game = null;
+                await _ctx.Dialogs.InfoAsync(Loc.T("launch.failed.title"),
+                    Loc.T("launch.failed.message", item.Title, session.Error ?? Loc.T("launch.unknownError")));
+                return;
+            }
+            if (plan.UseShellExecute || (session.State == SessionState.Exited && session.Process == null))
+            {
+                // shell start (.lnk / steam://): handed off to another program, cannot be followed – no running overlay
+                await shown.ConfigureAwait(true);
+                Phase = LaunchPhase.Idle;
+                Game = null;
+                _ctx.Toasts.Show(Loc.T("launch.detached", item.Title), ToastKind.Info, Loc.T("launch.detached.detail"), seconds: 6);
+                return;
+            }
             _session = session;
             session.Ended += OnSessionEnded;
-            if (session.State is SessionState.Exited or SessionState.Failed) OnSessionEnded(session);
+            if (session.State is SessionState.Exited) OnSessionEnded(session);
             try { services.Input.SetSuspended(true); } catch (Exception ex) { Log.Warn("Input suspend failed", ex); }
             await shown.ConfigureAwait(true);
             if (_session == session && Phase == LaunchPhase.Starting)

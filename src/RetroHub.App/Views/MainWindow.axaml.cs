@@ -65,11 +65,15 @@ public partial class MainWindow : Window
         vm.PageShown += OnPageShown;
         vm.Dialogs.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(DialogService.Current)) Dispatcher.UIThread.Post(FocusDialog, DispatcherPriority.Loaded);
+            if (e.PropertyName != nameof(DialogService.Current)) return;
+            OnOverlayChanged();
+            Dispatcher.UIThread.Post(FocusDialog, DispatcherPriority.Loaded);
         };
         vm.Launch.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(LaunchCoordinator.Phase) && vm.Launch.IsRunning)
+            if (e.PropertyName != nameof(LaunchCoordinator.Phase)) return;
+            OnOverlayChanged();
+            if (vm.Launch.IsRunning)
                 Dispatcher.UIThread.Post(() => StopButton.Focus(NavigationMethod.Directional), DispatcherPriority.Loaded);
         };
         vm.Ctx.Services.Input.ActionRaised += a => Dispatcher.UIThread.Post(() =>
@@ -103,6 +107,36 @@ public partial class MainWindow : Window
         Activate();
         Topmost = true;
         Topmost = false;
+    }
+
+    // ================= overlays (dialog, launch) =================
+
+    /// <summary>The shell element that had the focus before a modal overlay opened (restored when it closes).</summary>
+    private IInputElement? _focusBeforeOverlay;
+    private bool _overlayOpen;
+
+    private void OnOverlayChanged()
+    {
+        var open = _vm.Dialogs.Current != null || _vm.Launch.IsActive;
+        if (open == _overlayOpen) return;
+        _overlayOpen = open;
+        if (open)
+        {
+            var focused = FocusManager?.GetFocusedElement();
+            _focusBeforeOverlay = focused is Visual v && IsInside(v, Shell) ? focused : null;
+            return;
+        }
+        var restore = _focusBeforeOverlay;
+        _focusBeforeOverlay = null;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_overlayOpen) return;
+            var method = _pointerMode ? NavigationMethod.Pointer : NavigationMethod.Directional;
+            if (restore is Visual rv && IsInside(rv, Shell) && restore.IsEffectivelyVisible && restore.IsEffectivelyEnabled && restore.Focus(method)) return;
+            // the element is gone (e.g. the game ended on another page): keep the controller usable
+            if (FocusManager?.GetFocusedElement() is not Visual f || !IsInside(f, Shell) || f is InputElement { IsEffectivelyVisible: false })
+                if (Pages.Current != null) FocusPage(Pages.Current, preferRemembered: true);
+        }, DispatcherPriority.Loaded);
     }
 
     private void ToggleMaximize() =>

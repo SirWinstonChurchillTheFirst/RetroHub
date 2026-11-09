@@ -19,17 +19,28 @@ public partial class LibraryPage : PageBase
             if (_vm != null)
             {
                 _vm.FocusSearchRequested += FocusSearch;
+                // The focus state must be read BEFORE the switch: hiding the old view (a binding on the same
+                // PropertyChanged) drops the keyboard focus, so afterwards nothing would be focused at all.
+                _vm.PropertyChanging += (_, e) =>
+                {
+                    if (e.PropertyName != nameof(LibraryViewModel.IsListView)) return;
+                    var from = _vm.IsListView ? Rows : Covers;
+                    _focusToTransfer = from.IsKeyboardFocusWithin ? Math.Max(0, from.SelectedIndex) : -1;
+                };
                 _vm.PropertyChanged += (_, e) =>
                 {
                     if (e.PropertyName != nameof(LibraryViewModel.IsListView)) return;
-                    var (from, to) = _vm.IsListView ? (Covers, Rows) : (Rows, Covers);
-                    if (!from.IsKeyboardFocusWithin) return;
-                    var index = Math.Max(0, from.SelectedIndex);
+                    var index = _focusToTransfer;
+                    _focusToTransfer = -1;
+                    if (index < 0) return;
+                    var to = _vm.IsListView ? Rows : Covers;
                     Dispatcher.UIThread.Post(() => to.FocusWhenReady(index), DispatcherPriority.Loaded);
                 };
             }
         };
     }
+
+    private int _focusToTransfer = -1;
 
     private void FocusSearch()
     {

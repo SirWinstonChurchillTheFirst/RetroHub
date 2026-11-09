@@ -168,8 +168,14 @@ public sealed class CoverGrid : UserControl
         // a refreshed list (same games, new list instance) keeps the focused game focused and the scroll position
         var hadFocus = IsKeyboardFocusWithin;
         var selected = SelectedItem;
+        var oldIndex = _selectedIndex;
         ReadItems();
         var index = selected != null && _indexOf.TryGetValue(selected, out var i) ? i : -1;
+        if (index < 0 && hadFocus && oldIndex >= 0 && _items.Count > 0)
+        {
+            // the focused item left the list (e.g. un-favourited while "Favoriten" is on): stay at the same place
+            index = Math.Min(oldIndex, _items.Count - 1);
+        }
         if (index < 0) _scroll.Offset = default;
         SelectedIndex = index >= 0 ? index : hadFocus && _items.Count > 0 ? 0 : -1;
         Rebuild(keepFocus: hadFocus);

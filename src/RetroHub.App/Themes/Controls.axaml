@@ -11,6 +11,8 @@
 
   <!-- ================= Buttons ================= -->
   <ControlTheme x:Key="RhButton" TargetType="Button">
+    <!-- Avalonia 12 clips buttons to their bounds by default: the focus ring sits outside them -->
+    <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Background" Value="{DynamicResource RhGlassFaintBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource RhLineStrongBrush}" />
@@ -188,6 +190,8 @@
 
   <!-- ================= Sidebar navigation ================= -->
   <ControlTheme x:Key="RhNavItem" TargetType="Button">
+    <!-- Avalonia 12 clips buttons to their bounds by default: the focus ring sits outside them -->
+    <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
     <Setter Property="Height" Value="48" />
@@ -350,6 +354,8 @@
 
   <!-- list-view row (same GameTile class, so clicks/favourites work identically) -->
   <ControlTheme x:Key="RhGameRow" TargetType="c:GameTile">
+    <!-- Avalonia 12 clips buttons to their bounds by default: the focus ring sits outside them -->
+    <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     <Setter Property="Cursor" Value="Hand" />
@@ -391,6 +397,8 @@
 
   <!-- ================= Platform card ================= -->
   <ControlTheme x:Key="{x:Type c:SystemCard}" TargetType="c:SystemCard">
+    <!-- Avalonia 12 clips buttons to their bounds by default: the focus ring sits outside them -->
+    <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     <Setter Property="Cursor" Value="Hand" />
@@ -479,6 +487,8 @@
 
   <!-- toggle chip (e.g. "Favoriten" filter) -->
   <ControlTheme x:Key="RhToggleChip" TargetType="ToggleButton">
+    <!-- Avalonia 12 clips buttons to their bounds by default: the focus ring sits outside them -->
+    <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="MinHeight" Value="44" />
     <Setter Property="Padding" Value="16,0" />
     <Setter Property="FontSize" Value="13.5" />

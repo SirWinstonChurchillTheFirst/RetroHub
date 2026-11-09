@@ -6,9 +6,7 @@
     <RootNamespace>RetroHub.App.Tests</RootNamespace>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
-    <!-- .NET 10 SDK: "dotnet test" without a global.json test-runner opt-in uses VSTest; run xunit.v3 through
-         xunit.runner.visualstudio instead of Microsoft.Testing.Platform so the plain "dotnet test" command works. -->
-    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <!-- Avalonia.Headless.XUnit 12.1.5 is built against xunit.v3 3.2 and fails at discovery with xunit.v3 4.0.2
        (MissingMethodException in AvaloniaFactDiscoverer), so the tests use HeadlessUnitTestSession directly (UiTest.Run). -->

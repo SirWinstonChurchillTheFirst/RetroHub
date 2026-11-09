@@ -14,7 +14,9 @@ public sealed class UiContext : IDisposable
         Services = services;
         Items = new GameItemCache(services);
         Launch = new LaunchCoordinator(this);
-        _libraryDebounce = new DispatcherTimer(TimeSpan.FromMilliseconds(150), DispatcherPriority.Background, (_, _) => FlushLibraryChanged());
+        // not the (interval, priority, callback) constructor: that one starts the timer → a spurious LibraryChanged at start
+        _libraryDebounce = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(150) };
+        _libraryDebounce.Tick += (_, _) => FlushLibraryChanged();
         services.Games.Changed += OnRepositoryChanged;
         services.Emulators.Changed += OnEmulatorsChanged;
     }

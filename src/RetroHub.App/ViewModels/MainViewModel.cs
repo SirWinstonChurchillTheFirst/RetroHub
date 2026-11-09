@@ -43,7 +43,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         ctx.Services.Input.ControllerChanged += () => Dispatcher.UIThread.Post(UpdateController);
         ctx.LibraryChanged += UpdateStatus;
         Loc.LanguageChanged += OnLanguageChanged;
-        _clock = new DispatcherTimer(TimeSpan.FromSeconds(10), DispatcherPriority.Background, (_, _) => UpdateClock());
+        _clock = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(10) };
+        _clock.Tick += (_, _) => UpdateClock();
         _clock.Start();
         UpdateClock();
         UpdatePreferences();
@@ -129,6 +130,25 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         PageShown?.Invoke(e, page);
     }
 
+    /// <summary>
+    /// Work that starts once the window is up: the library scan when "Beim Start scannen" is on. Runs in the
+    /// background (the Imports page shows its progress); never blocks or throws into the UI.
+    /// </summary>
+    public Task? StartBackgroundTasks()
+    {
+        try
+        {
+            if (!Ctx.Services.Settings.Current.ScanOnStartup) return null;
+            Log.Info("Start-up library scan");
+            return ((ImportsViewModel)GetPage(PageKey.Imports)).RunScanAsync(quiet: true);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Starting the background tasks failed", ex);
+            return null;
+        }
+    }
+
     [RelayCommand]
     private void Navigate(NavItemViewModel? item)
     {
@@ -189,18 +209,19 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private void UpdateClock() => Clock = DateTime.Now.ToString("t", Loc.Culture);
 
-    private void UpdateStatus()
+    private int _statusVersion;
+
+    /// <summary>Status line ("66 Spiele · 13 Plattformen"); the statistics query runs off the UI thread.</summary>
+    private void UpdateStatus() => _ = UpdateStatusAsync();
+
+    private async Task UpdateStatusAsync()
     {
-        try
-        {
-            var stats = Ctx.Services.Games.Stats();
-            StatusText = Loc.T("shell.status", stats.GameCount, stats.SystemCount);
-        }
-        catch (Exception ex)
-        {
-            Log.Warn("Reading library stats failed", ex);
-        }
         DemoText = IsDemo ? Loc.T("shell.demo") : "";
+        var version = ++_statusVersion;
+        var games = Ctx.Services.Games;
+        var stats = await UiContext.Background(games.Stats, "Reading library stats");
+        if (stats == null || version != _statusVersion) return;
+        StatusText = Loc.T("shell.status", stats.GameCount, stats.SystemCount);
     }
 
     private void UpdateTexts()

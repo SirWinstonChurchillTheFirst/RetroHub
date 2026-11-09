@@ -27,6 +27,10 @@
       <Setter Property="OffContent" Value="" />
       <Setter Property="MinWidth" Value="0" />
     </Style>
+    <!-- round accent swatches: the focus ring follows the circle -->
+    <Style Selector="Button.swatch /template/ Border#PART_Ring">
+      <Setter Property="CornerRadius" Value="24" />
+    </Style>
   </p:PageBase.Styles>
 
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
@@ -45,7 +49,7 @@
               <TextBlock Text="{l:T settings.accent}" Classes="rowTitle" />
               <TextBlock Text="{l:T settings.accent.hint}" Classes="rowHint" />
             </StackPanel>
-            <ItemsControl Grid.Column="1" Name="AccentList" ItemsSource="{Binding Accents}" VerticalAlignment="Center">
+            <ItemsControl Grid.Column="1" Name="AccentList" ItemsSource="{Binding Accents}" VerticalAlignment="Center" ClipToBounds="False">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                   <StackPanel Orientation="Horizontal" Spacing="10" />
@@ -53,7 +57,7 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:AccentOption">
-                  <Button Theme="{StaticResource RhIconButton}" Width="40" Height="40" CornerRadius="20" Padding="3" ToolTip.Tip="{Binding Name}"
+                  <Button Theme="{StaticResource RhIconButton}" Classes="swatch" Width="40" Height="40" CornerRadius="20" Padding="3" ToolTip.Tip="{Binding Name}"
                           Classes.selected="{Binding IsSelected}" Background="Transparent" BorderThickness="0"
                           HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                           Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectAccentCommand}" CommandParameter="{Binding}">
