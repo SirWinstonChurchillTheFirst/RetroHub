@@ -253,10 +253,14 @@ RetroHub-Root, weil RetroHub für `D:\RetroHub` schon lief; Eden per `emulatorPa
 |---|---|
 | Plan | Emulator `eden`, Vollbild, startbar, Hinweis „Eden braucht die Schlüssel (prod.keys …)“ |
 | Start | `eden.exe -f -g "E:\…\Spiel.nsp"`, Vollbild-Übergabe an Edens Fenster |
-| Eden | Kein Spiel: Edens Log „Failed to load ROM (Error 12)! … (0007-000C)“ mit vielen Krypto-Asserts (`aes_util.cpp`) – wie erwartet ohne Keys. „Installed firmware: No firmware available“. Bis zum `WM_CLOSE` nach 25 s stand Eden ohne Logeintrag (vermutlich ein Hinweisfenster beim Start; der Inhalt wurde nicht angesehen), erst danach „BootGame“ |
+| Eden | Kein Spiel: Edens Log „Failed to load ROM (Error 12)! … (0007-000C)“ mit vielen Krypto-Asserts (`aes_util.cpp`) – wie erwartet ohne Keys. „Installed firmware: No firmware available“. Zwischen 0,4 s und 23,9 s (Eden-Logzeit) kein Logeintrag; danach „Installed firmware: No firmware available“. „BootGame“ erst bei 25,03 s, zeitgleich mit dem `WM_CLOSE` (25,0 s nach Sitzungsstart laut RetroHub-Log) – vermutlich hat das `WM_CLOSE` ein Hinweisfenster geschlossen; dessen Inhalt wurde nicht angesehen |
 | Beenden | `WM_CLOSE` an 2 Fenster, Eden blieb offen („close-result closed=false“), RetroHub zeigte sich nach 8 s wieder. Eden wurde dann vom Testtreiber per Prozess-Kill beendet; RetroHub erkannte das Sitzungsende (140 s, Exitcode −1), kehrte zur Übersicht zurück und schloss sich 5 s später (`--test-exit-after-return 5`) |
 
-Weitere Beobachtung: Edens Update-Prüfung ist aktiv (Log „Received update Eden v0.2.1“, `check_for_updates=true`).
+Weitere Beobachtung: Edens Update-Prüfung war aktiv (Log „Received update Eden v0.2.1“, `check_for_updates=true`).
+Nachtrag (Review): RetroHub setzt seitdem in `user/config/qt-config.ini`, Abschnitt `[UI]`, `check_for_updates=false`
+und `confirmStop=2` (Ask_Never). Edens Vorgabe `confirmStop=0` (Ask_Always) würde bei laufendem Spiel auf das
+`WM_CLOSE` von „Spiel beenden“ mit „Are you sure you want to close Eden?“ antworten und offen bleiben (aus Edens
+Quelltext und der erzeugten qt-config.ini abgeleitet, mangels Keys nicht mit laufendem Spiel getestet).
 Sammlung vorher/nachher (31 Einträge im Switch-Ordner, Größe und Änderungszeit): **unverändert**.
 
 **Offen:** echtes Spielen nicht getestet (keine eigenen Keys/Firmware vorhanden); Eden lässt sich bei offenem

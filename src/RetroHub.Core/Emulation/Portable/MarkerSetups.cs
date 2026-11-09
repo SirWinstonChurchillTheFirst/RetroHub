@@ -1,3 +1,4 @@
+using RetroHub.Core.Emulation.ConfigFiles;
 using RetroHub.Core.IO;
 using RetroHub.Core.Logging;
 
@@ -91,7 +92,14 @@ public sealed class CemuSetup : PortableSetupBase
 /// Keys convenience: prod.keys / title.keys found in bios/switch/ (or directly in bios/) are copied into
 /// user\keys\ when the copy there is missing, or differs and is older. The source is never moved or deleted, an
 /// empty source never overwrites anything, and a newer different copy in Eden's folder (e.g. installed through
-/// Eden's menu) is kept. Firmware is not copied (Eden installs it itself through its menu).
+/// Eden's menu) is kept. A differing copy that gets replaced is first saved as "prod.keys.retrohub-old-&lt;time&gt;"
+/// (the mtime rule is not reliable: a copy made by Eden's "Install decryption keys" may keep the source's old
+/// timestamp). Firmware
+/// is not copied (Eden installs it itself through its menu).
+/// user\config\qt-config.ini, [UI]: confirmStop=2 (ConfirmStop::Ask_Never; Eden's default Ask_Always would answer
+/// RetroHub's WM_CLOSE during a game with "Are you sure you want to close Eden?" and stay open) and
+/// check_for_updates=false. A missing file is created with just these keys (Eden fills in its defaults); the
+/// legacy-migration check only looks at the config folder.
 /// </summary>
 public sealed class EdenSetup : PortableSetupBase
 {
@@ -101,11 +109,20 @@ public sealed class EdenSetup : PortableSetupBase
     public const string BiosSubfolder = "switch";
     public const string ProdKeys = "prod.keys";
     public const string TitleKeys = "title.keys";
+    public const string QtConfig = "qt-config.ini";
+
+    /// <summary>Eden's ConfirmStop enum: Ask_Always = 0, Ask_Based_On_Game = 1, Ask_Never = 2.</summary>
+    public const string ConfirmStopNever = "2";
+
+    /// <summary>Suffix of the copy kept when a differing key file in Eden's folder is replaced.</summary>
+    public const string BackupInfix = ".retrohub-old-";
 
     public override string Summary =>
         "Eden läuft portabel (Ordner „user“ neben der eden.exe, z. B. emulators/eden/user). Einstellungen, Spielstände (nand), " +
         "Shader-Cache und Keys liegen dort, nicht in saves/. Eigene prod.keys/title.keys aus bios/switch/ kopiert RetroHub " +
-        "nach user/keys; die Firmware deiner Switch installierst du in Eden über dessen Menü („Firmware installieren“).";
+        "nach user/keys (eine abweichende ältere Kopie dort bleibt als „….retrohub-old-<Zeit>“ erhalten); die Firmware deiner " +
+        "Switch installierst du in Eden über dessen Menü („Firmware installieren“). RetroHub schaltet Edens Nachfrage beim " +
+        "Beenden und die Update-Prüfung ab.";
 
     /// <summary>Hint when no prod.keys exist (German, for the launch problems).</summary>
     public const string MissingKeysMessage =
@@ -117,7 +134,12 @@ public sealed class EdenSetup : PortableSetupBase
     {
         var user = ctx.Ensure(Path.Combine(ctx.ExeDir, "user"));
         // an existing config folder keeps Eden's legacy-data migration dialog away
-        ctx.Ensure(Path.Combine(user, "config"));
+        var config = ctx.Ensure(Path.Combine(user, "config"));
+        var file = Path.Combine(config, QtConfig);
+        var ini = IniFile.Load(file);
+        AzaharSetup.Set(ini, "UI", "confirmStop", ConfirmStopNever);
+        AzaharSetup.Set(ini, "UI", "check_for_updates", "false");
+        Saved(Id, file, ini.SaveIfChanged(file));
         var keysDir = Path.Combine(user, "keys");
         foreach (var name in new[] { ProdKeys, TitleKeys })
             CopyKey(ctx.Paths.Bios, keysDir, name);
@@ -169,9 +191,26 @@ public sealed class EdenSetup : PortableSetupBase
                 return false;
             }
         }
+        string? backup = null;
+        if (File.Exists(dst))
+        {
+            backup = BackupPath(dst);
+            File.Copy(dst, backup); // never overwrites an earlier backup
+        }
         SafeFile.WriteAllBytes(dst, bytes);
         File.SetLastWriteTimeUtc(dst, srcTime);
-        Log.Info($"Eden: copied {src} to {dst}");
+        Log.Info(backup == null
+            ? $"Eden: copied {src} to {dst}"
+            : $"Eden: copied {src} to {dst} (previous copy saved as {backup})");
         return true;
+    }
+
+    /// <summary>A not yet existing "&lt;file&gt;.retrohub-old-yyyyMMdd-HHmmss[-n]" next to the file.</summary>
+    private static string BackupPath(string file)
+    {
+        var stem = $"{file}{BackupInfix}{DateTime.Now:yyyyMMdd-HHmmss}";
+        var path = stem;
+        for (int n = 2; File.Exists(path); n++) path = $"{stem}-{n}";
+        return path;
     }
 }

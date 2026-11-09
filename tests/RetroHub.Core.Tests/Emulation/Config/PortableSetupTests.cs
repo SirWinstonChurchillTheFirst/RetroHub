@@ -297,8 +297,35 @@ public sealed class PortableSetupTests : IDisposable
         // user\config keeps Eden's "migrate from yuzu" dialog away
         Assert.True(Directory.Exists(P("emulators", "eden", "user", "config")));
         Assert.False(Directory.Exists(P("emulators", "eden", "user", "keys")));
-        Assert.Equal(["emulators/eden/eden.exe"], _t.Files());
+        Assert.Equal(["emulators/eden/eden.exe", "emulators/eden/user/config/qt-config.ini"], _t.Files());
         Assert.False(EdenSetup.HasProdKeys(_t.Paths.Bios, P("emulators", "eden")));
+
+        // a new qt-config.ini holds only the [UI] keys RetroHub needs
+        var ini = IniFile.Load(P("emulators", "eden", "user", "config", "qt-config.ini"));
+        Assert.Equal("2", ini.Get("UI", "confirmStop"));
+        Assert.Equal("false", ini.Get("UI", @"confirmStop\default"));
+        Assert.Equal("false", ini.Get("UI", "check_for_updates"));
+        Assert.Equal("false", ini.Get("UI", @"check_for_updates\default"));
+        Assert.Equal(["UI"], ini.Sections());
+    }
+
+    [Fact]
+    public void Eden_turns_off_stop_confirmation_and_update_check_keeping_other_settings()
+    {
+        var (eden, _) = Emu("eden", "emulators/eden/eden.exe");
+        // excerpt of the qt-config.ini Eden v0.2.1 wrote on this machine (default confirmStop=0 = Ask_Always)
+        const string head = "[Renderer]\nbackend\\default=true\nbackend=1\n\n[UI]\nshowConsole=false\n";
+        const string tail = "pauseWhenInBackground\\default=true\npauseWhenInBackground=false\n";
+        const string rest = "theme\\default=false\ntheme=colorful_dark\n\n[System]\nlanguage_index\\default=false\nlanguage_index=2\n";
+        var file = _t.Touch("emulators/eden/user/config/qt-config.ini",
+            head + "confirmStop\\default=true\nconfirmStop=0\n" + tail +
+            "check_for_updates\\default=true\ncheck_for_updates=true\n" + rest);
+        RunTwiceIdempotent(eden, Make.Plan("switch", LaunchMode.Fullscreen));
+
+        Assert.Equal(
+            head + "confirmStop\\default=false\nconfirmStop=2\n" + tail +
+            "check_for_updates\\default=false\ncheck_for_updates=false\n" + rest,
+            File.ReadAllText(file));
     }
 
     [Fact]
@@ -331,12 +358,27 @@ public sealed class PortableSetupTests : IDisposable
         File.SetLastWriteTimeUtc(prod, new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc));
         PortableSetups.Apply(eden, plan, _t.Paths);
         Assert.Equal("header_key = 33\n", File.ReadAllText(dstProd));
+        // ... but the replaced copy is kept (the mtime rule can be wrong)
+        var keysDir = P("emulators", "eden", "user", "keys");
+        var backup = Assert.Single(Directory.GetFiles(keysDir, "prod.keys" + EdenSetup.BackupInfix + "*"));
+        Assert.Equal("header_key = 22\n", File.ReadAllText(backup));
+
+        // a second replacement never overwrites the first backup
+        File.WriteAllText(prod, "header_key = 44\n");
+        File.SetLastWriteTimeUtc(prod, new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+        PortableSetups.Apply(eden, plan, _t.Paths);
+        Assert.Equal("header_key = 44\n", File.ReadAllText(dstProd));
+        var backups = Directory.GetFiles(keysDir, "prod.keys" + EdenSetup.BackupInfix + "*");
+        Assert.Equal(2, backups.Length);
+        Assert.Equal("header_key = 22\n", File.ReadAllText(backup));
+        Assert.Contains(backups, b => File.ReadAllText(b) == "header_key = 33\n");
 
         // an empty key file in bios/switch/ never overwrites anything
         File.WriteAllText(prod, "");
         File.SetLastWriteTimeUtc(prod, new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc));
         PortableSetups.Apply(eden, plan, _t.Paths);
-        Assert.Equal("header_key = 33\n", File.ReadAllText(dstProd));
+        Assert.Equal("header_key = 44\n", File.ReadAllText(dstProd));
+        Assert.Equal(2, Directory.GetFiles(keysDir, "prod.keys" + EdenSetup.BackupInfix + "*").Length);
         Assert.True(File.Exists(prod));
         Assert.DoesNotContain(_t.Files(), f => f.EndsWith(".retrohub-tmp", StringComparison.Ordinal));
     }
