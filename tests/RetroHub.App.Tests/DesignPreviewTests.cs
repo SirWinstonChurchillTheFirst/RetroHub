@@ -298,12 +298,7 @@ public class DesignPreviewTests
                 if (variant == "demo1000") continue;
 
                 var pick = PickGame(ctx);
-                if (pick != null && Wants("detail", PageTokens))
-                {
-                    vm.Navigator.Navigate(PageKey.GameDetail, pick);
-                    TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel { Game: not null }, 8000);
-                    Save(window, prefix + "-3-detail.png", 1200);
-                }
+                if (pick != null && Wants("detail", PageTokens)) DetailStates(window, vm, ctx, pick, prefix);
 
                 if (Wants("konsolen", PageTokens))
                 {
@@ -706,6 +701,65 @@ public class DesignPreviewTests
         }
         File.WriteAllText(Path.Combine(outDir, "perf-library.txt"), report.ToString());
     });
+
+    /// <summary>
+    /// The game detail in the states that matter (DESIGN 7.3, M4), driven like a controller: the stage with "Spielen"
+    /// focused; the pulled box focused (lift, cone, board piece, ring around spine + front); the back ("Rückseite") after
+    /// Down; the overlays Mehr, Dateiinfo, Cover and – when there are screens – the two screens large; then a plain game
+    /// (never played, as little known as the library has: no cover if possible) on its stage and its back.
+    /// </summary>
+    private static void DetailStates(MainWindow window, MainViewModel vm, UiContext ctx, GameItemViewModel pick, string prefix)
+    {
+        Control? Focused() => window.FocusManager?.GetFocusedElement() as Control;
+        GameDetailViewModel Open(GameItemViewModel game)
+        {
+            vm.Navigator.Navigate(PageKey.GameDetail, game);
+            TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel { Game: not null } d && d.Game.Id == game.Id && d.Emulators.Count > 0, 8000);
+            TestSupport.Settle(300);
+            return (GameDetailViewModel)vm.CurrentPage!;
+        }
+        void Sheet(GameDetailViewModel d, System.Windows.Input.ICommand show, string file)
+        {
+            show.Execute(null);
+            Save(window, prefix + file, 700);
+            window.Execute(Input.NavAction.Back);
+            TestSupport.Settle(200);
+        }
+        var detail = Open(pick);
+        Save(window, prefix + "-3-detail.png", 1200);
+        // the box: left from the actions
+        for (var i = 0; i < 4 && Focused() is not GameTile; i++) window.Execute(Input.NavAction.Left);
+        if (Focused() is GameTile) Save(window, prefix + "-3b-detail-schachtel.png", 700);
+        // the back: down from the actions
+        window.Execute(Input.NavAction.Right);
+        window.Execute(Input.NavAction.Down);
+        Save(window, prefix + "-3c-detail-rueckseite.png", 900);
+        // the start rows of the back (the screens come first at 1920 when there are some)
+        for (var i = 0; i < 3 && Focused() is not ComboBox; i++) window.Execute(Input.NavAction.Right);
+        if (Focused() is ComboBox) Save(window, prefix + "-3d-detail-start.png", 700);
+        // the shoulder on to "Daneben im Regal" (the last section): its boxes take the object focus
+        window.Execute(Input.NavAction.PageRight);
+        TestSupport.Settle(150);
+        if (Focused() is GameTile { Parent: StackPanel { Name: "NeighbourRow" } }) Save(window, prefix + "-3d2-detail-regal.png", 900);
+        for (var i = 0; i < 4; i++) window.Execute(Input.NavAction.PageLeft); // shoulder: back to the stage
+        TestSupport.Settle(200);
+        Sheet(detail, detail.ShowMoreCommand, "-3e-detail-mehr.png");
+        Sheet(detail, detail.ShowFileInfoCommand, "-3f-detail-datei.png");
+        Sheet(detail, detail.ShowCoverCommand, "-3g-detail-cover.png");
+        if (detail.HasScreens) Sheet(detail, detail.ShowScreensCommand, "-3h-detail-bildschirme.png");
+        if (detail.HasDescription) Sheet(detail, detail.ShowDescriptionCommand, "-3i-detail-text.png");
+
+        // a plain game: never played, nothing known but the file; without a cover where the library has one
+        var all = ctx.Services.Games.Query(new GameQuery());
+        var plain = all.Where(g => g.PlayCount == 0 && g.Id != pick.Id)
+            .OrderBy(g => (string.IsNullOrEmpty(g.CoverPath) ? 0 : 2) + (string.IsNullOrEmpty(g.Description) ? 0 : 1) + (string.IsNullOrEmpty(g.Genre) ? 0 : 1))
+            .FirstOrDefault();
+        if (plain == null) return;
+        Open(ctx.Items.Get(plain));
+        Save(window, prefix + "-3j-detail-schlicht.png", 1200);
+        window.Execute(Input.NavAction.Down);
+        Save(window, prefix + "-3k-detail-schlicht-rueckseite.png", 900);
+    }
 
     /// <summary>The detail/system subject: the last played game, else one with a cover, else the first.</summary>
     private static GameItemViewModel? PickGame(UiContext ctx)

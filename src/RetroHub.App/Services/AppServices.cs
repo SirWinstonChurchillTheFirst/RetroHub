@@ -91,7 +91,8 @@ public sealed partial class AppServices : IDisposable
     public static AppServices CreateDemo(AppPaths paths, SettingsStore settings, UiPreferencesStore ui)
     {
         var catalog = new DemoCatalog();
-        var games = new DemoGameRepository(DemoData.CreateGames(catalog), DemoData.CreateFolders(paths));
+        var demoGames = DemoData.CreateGames(catalog);
+        var games = new DemoGameRepository(demoGames, DemoData.CreateFolders(paths), DemoData.CreateSessions(demoGames));
         var registry = new DemoEmulatorRegistry(catalog, paths);
         return new AppServices
         {

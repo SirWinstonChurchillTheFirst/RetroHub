@@ -43,6 +43,29 @@ public sealed record ProblemItem(string Text, bool IsBlocking, string? Url = nul
     }
 }
 
+/// <summary>
+/// One place on the "Ausleihkarte" (DESIGN 7.3): a stamp of a session (date + duration), the entry stamp (the day the
+/// game came into the collection) or an empty place waiting for the next stamp (dashed outline).
+/// </summary>
+public sealed record CardPlace(string Date, string Note, CardPlaceKind Kind)
+{
+    public bool IsStamp => Kind != CardPlaceKind.Empty;
+    public bool IsEmpty => Kind == CardPlaceKind.Empty;
+    public bool IsEntry => Kind == CardPlaceKind.Entry;
+    public bool IsSession => Kind == CardPlaceKind.Session;
+}
+
+public enum CardPlaceKind { Session, Entry, Empty }
+
+/// <summary>One line of the file info overlay ("Ordner", the path in Cascadia Mono).</summary>
+public sealed record InfoLine(string Label, string Value, bool Mono = false);
+
+/// <summary>The overlays of the detail page (DESIGN 7.3).</summary>
+public enum DetailSheet { None, More, FileInfo, Description, Cover, Screens }
+
+/// <summary>Where the focus is on the detail page: the footer names the action of the focused element.</summary>
+public enum DetailFocus { Play, Solve, Favorite, More, Box, System, Row, File, Screen, ReadMore, Neighbour, Sheet }
+
 /// <summary>A label/value pair in the metadata list.</summary>
 public sealed record FactItem(string Label, string Value)
 {
@@ -93,13 +116,96 @@ public sealed partial class GameDetailViewModel : PageViewModel
     /// <summary>Set by the view: shows the image picker and returns the chosen file (null = cancelled).</summary>
     public Func<Task<string?>>? PickImage { get; set; }
 
-    public override IReadOnlyList<HintItem> Hints =>
-    [
-        new(NavAction.Accept, Loc.T("hint.select")),
-        new(NavAction.Back, Loc.T("hint.back")),
-        new(NavAction.Favorite, Game?.IsFavorite == true ? Loc.T("hint.unfavorite") : Loc.T("hint.favorite")),
-        new(NavAction.Menu, Loc.T("hint.menu")),
-    ];
+    // ===================== Rückseite: screens, Ausleihkarte (DESIGN 7.3) =====================
+
+    /// <summary>Title screen and snap on disk (or fetched with online covers); null = that screen drops out.</summary>
+    [ObservableProperty] public partial string? TitleScreen { get; private set; }
+    [ObservableProperty] public partial string? SnapScreen { get; private set; }
+    [ObservableProperty] public partial bool HasScreens { get; private set; }
+    [ObservableProperty] public partial bool HasTitleScreen { get; private set; }
+    [ObservableProperty] public partial bool HasSnapScreen { get; private set; }
+    /// <summary>"Über das Spiel" has something to show: a description or a screen. Otherwise the column drops out.</summary>
+    [ObservableProperty] public partial bool HasAbout { get; private set; }
+    /// <summary>A home console makes TV pictures (near-4:3 screens fill the glass); a handheld's are letterboxed.</summary>
+    [ObservableProperty] public partial bool IsTvSystem { get; private set; } = true;
+
+    /// <summary>The places of the Ausleihkarte: always <see cref="CardSize"/> (stamps, the entry stamp, empty places).</summary>
+    [ObservableProperty] public partial IReadOnlyList<CardPlace> CardPlaces { get; private set; } = [];
+    /// <summary>"Die letzten 5 von 41 Sitzungen." when the card cannot show them all; else empty.</summary>
+    [ObservableProperty] public partial string CardSentence { get; private set; } = "";
+
+    /// <summary>Places on the card: the last sessions (oldest left), the entry stamp while it still fits, empty places.</summary>
+    public const int CardSize = 5;
+
+    /// <summary>
+    /// "Daneben im Regal" (M4): the boxes that stand left and right of this one on its system's shelf (title order), at
+    /// most <see cref="NeighbourCount"/> each side; the view shows as many as fit around the gap the pulled box left.
+    /// </summary>
+    [ObservableProperty] public partial IReadOnlyList<GameItemViewModel> NeighboursBefore { get; private set; } = [];
+    [ObservableProperty] public partial IReadOnlyList<GameItemViewModel> NeighboursAfter { get; private set; } = [];
+    [ObservableProperty] public partial bool HasNeighbours { get; private set; }
+
+    public const int NeighbourCount = 4;
+
+    // ===================== overlays =====================
+
+    [ObservableProperty] public partial DetailSheet Sheet { get; private set; }
+    public bool IsSheetOpen => Sheet != DetailSheet.None;
+    [ObservableProperty] public partial IReadOnlyList<InfoLine> FileLines { get; private set; } = [];
+    /// <summary>The game has a per-game emulator or mode choice ("Startoptionen zurücksetzen" is offered).</summary>
+    [ObservableProperty] public partial bool HasOverrides { get; private set; }
+
+    partial void OnSheetChanged(DetailSheet value)
+    {
+        OnPropertyChanged(nameof(IsSheetOpen));
+        RaiseHintsChanged();
+    }
+
+    /// <summary>Shoulder left/right: the view jumps to the previous/next section (Bühne, Über das Spiel, Start).</summary>
+    public event Action<int>? SectionRequested;
+
+    private DetailFocus _focus = DetailFocus.Play;
+
+    /// <summary>The view reports where the focus is (the footer follows at once).</summary>
+    public void SetFocus(DetailFocus focus)
+    {
+        if (_focus == focus) return;
+        _focus = focus;
+        RaiseHintsChanged();
+    }
+
+    public override IReadOnlyList<HintItem> Hints
+    {
+        get
+        {
+            if (IsSheetOpen)
+                return Sheet is DetailSheet.More or DetailSheet.FileInfo
+                    ? [new(NavAction.Accept, Loc.T("hint.select")), new(NavAction.Back, Loc.T("hint.close"))]
+                    : [new(NavAction.Back, Loc.T("hint.close"))];
+            var accept = _focus switch
+            {
+                DetailFocus.Play => Loc.T("detail.play"),
+                DetailFocus.Solve => SolutionText,
+                DetailFocus.Favorite => Game?.IsFavorite == true ? Loc.T("hint.unfavorite") : Loc.T("hint.favorite"),
+                DetailFocus.More => Loc.T("detail.more"),
+                DetailFocus.Box => Loc.T("hint.cover"),
+                DetailFocus.System => Loc.T("hint.open"),
+                DetailFocus.Row => Loc.T("hint.change"),
+                DetailFocus.File => Loc.T("hint.fileInfo"),
+                DetailFocus.Screen => Loc.T("hint.view"),
+                DetailFocus.ReadMore => Loc.T("hint.readMore"),
+                DetailFocus.Neighbour => Loc.T("hint.open"),
+                _ => Loc.T("hint.select"),
+            };
+            var list = new List<HintItem> { new(NavAction.Accept, accept) };
+            // F toggles the favourite everywhere on this page; on the Favorit button Accept already says it
+            if (_focus != DetailFocus.Favorite)
+                list.Add(new(NavAction.Favorite, Game?.IsFavorite == true ? Loc.T("hint.unfavorite") : Loc.T("hint.favorite")));
+            list.Add(new(NavAction.PageRight, Loc.T("hint.section")));
+            list.Add(new(NavAction.Back, Loc.T("hint.back")));
+            return list;
+        }
+    }
 
     public override void OnNavigatedTo(object? argument, bool isBack)
     {
@@ -116,12 +222,30 @@ public sealed partial class GameDetailViewModel : PageViewModel
 
     public override bool HandleAction(NavAction action)
     {
+        if (action == NavAction.Back && IsSheetOpen)
+        {
+            Sheet = DetailSheet.None;
+            return true;
+        }
+        // an overlay is modal: the shoulders and F do nothing behind it
+        if (IsSheetOpen) return action is NavAction.PageLeft or NavAction.PageRight or NavAction.Favorite or NavAction.View;
         if (action == NavAction.Favorite && Game != null)
         {
             _ = ToggleFavoriteAsync();
             return true;
         }
+        if (action is NavAction.PageLeft or NavAction.PageRight)
+        {
+            SectionRequested?.Invoke(action == NavAction.PageLeft ? -1 : +1);
+            return true;
+        }
         return false;
+    }
+
+    public override void OnNavigatedFrom()
+    {
+        base.OnNavigatedFrom();
+        Sheet = DetailSheet.None;
     }
 
     /// <summary>"Rollenspiel von Game Freak, 2004. 1 Spieler. Europa." – meta as a sentence, missing parts drop out (DESIGN 3.2).</summary>
@@ -171,7 +295,13 @@ public sealed partial class GameDetailViewModel : PageViewModel
             var choices = s.Launcher.ChoicesFor(game.SystemId);
             var plan = s.Launcher.Plan(game);
             var stats = s.Games.Stats();
-            return (Game: game, Choices: choices, Plan: plan, Stats: stats);
+            var sessions = s.Games.Sessions(gameId, CardSize);
+            // the shelf the box was pulled from: the same system in title order, the box's neighbours left and right
+            var shelf = s.Games.Query(new GameQuery { SystemId = game.SystemId, Sort = GameSort.Title });
+            var at = shelf.ToList().FindIndex(x => x.Id == game.Id);
+            var before = at < 0 ? [] : shelf.Skip(Math.Max(0, at - NeighbourCount)).Take(at - Math.Max(0, at - NeighbourCount)).ToList();
+            var after = at < 0 ? [] : shelf.Skip(at + 1).Take(NeighbourCount).ToList();
+            return (Game: game, Choices: choices, Plan: plan, Stats: stats, Sessions: sessions, Before: before, After: after);
         }, "Loading the game");
         if (version != _version) return;
         if (data.Game == null)
@@ -187,7 +317,8 @@ public sealed partial class GameDetailViewModel : PageViewModel
             var def = s.Catalog.GetSystem(g.SystemId);
             System = def == null ? null : new SystemItemViewModel(def, data.Stats.GamesPerSystem.GetValueOrDefault(def.Id), data.Stats.PlaySecondsPerSystem.GetValueOrDefault(def.Id));
             Title = g.DisplayTitle;
-            Location = g.DisplayTitle;
+            Location = Loc.T("detail.location", Game.SystemName, g.DisplayTitle);
+            IsTvSystem = def == null || def.Category is SystemCategory.Console or SystemCategory.Arcade;
             // TV light of the game above the stage board; the glow sits at the box (left)
             Backdrop = new BackdropSpec(BackdropKind.TvLight, Game.CoverPath, g.SystemId, Game.Accent, g.Id, StageShare: 0.63, GlowX: 0.16, GlowY: 0.38, GhostX: 0.82);
             Description = string.IsNullOrWhiteSpace(g.Description) ? Loc.T("detail.noDescription") : g.Description!;
@@ -210,6 +341,15 @@ public sealed partial class GameDetailViewModel : PageViewModel
             HasCover = !string.IsNullOrEmpty(g.CoverPath);
             FileName = Path.GetFileName(g.Path);
             FileInfo = Fmt.Size(g.Size); // name and size only; path and CRC belong in the file info overlay
+            FileLines = BuildFileLines(g, SafeAbsolute(g.Path));
+            HasOverrides = g.EmulatorOverride != null || g.LaunchModeOverride != null;
+            BuildCard(g, data.Sessions, DateTime.UtcNow);
+            NeighboursBefore = data.Before.Select(Ctx.Items.Get).ToList();
+            NeighboursAfter = data.After.Select(Ctx.Items.Get).ToList();
+            HasNeighbours = NeighboursBefore.Count + NeighboursAfter.Count > 0;
+            if (_screensFor != g.Id) SetScreens(null, null);
+            HasAbout = HasDescription || HasScreens;
+            LoadScreens(g);
 
             // emulator choices: "Automatisch" (system default order) + every configured choice with its install state
             var options = new List<EmulatorOption>
@@ -262,12 +402,15 @@ public sealed partial class GameDetailViewModel : PageViewModel
         Problems = plan.Problems.OrderByDescending(p => p.Blocking).Select(p => ProblemItem.From(ShortenPath(p.Message), p.Blocking)).ToList();
         HasProblems = Problems.Count > 0;
         CanPlay = plan.CanLaunch;
+        var firstBlocking = plan.Problems.FirstOrDefault(p => p.Blocking);
         // a sentence, no "A · B" chain: "Startet mit RetroArch (snes9x) im Vollbild."
         PlanSummary = plan.Emulator != null
             ? Loc.T("detail.planSummary", plan.Emulator.Def.Name + (plan.Core != null ? $" ({plan.Core})" : ""), Fmt.ModePhrase(plan.Mode))
             : Loc.T("detail.planNoEmulator");
         ShowSolution = !CanPlay && Game != null;
-        SolutionText = Game?.IsMissing == true ? Loc.T("detail.solution.file") : Loc.T("detail.solution.emulator");
+        // the way out names the FIRST thing in the way: a missing file before a missing emulator
+        _solveFile = Game?.IsMissing == true || firstBlocking?.Kind == LaunchProblemKind.FileMissing;
+        SolutionText = _solveFile ? Loc.T("detail.solution.file") : Loc.T("detail.solution.emulator");
         PlayCommand.NotifyCanExecuteChanged();
     }
 
@@ -315,12 +458,148 @@ public sealed partial class GameDetailViewModel : PageViewModel
     [ObservableProperty] public partial string SolutionText { get; private set; } = "";
 
     /// <summary>The way out: the emulators of this system (or the imports when the file is missing).</summary>
+    private bool _solveFile;
+
     [RelayCommand]
     private void Solve()
     {
         if (Game == null) return;
-        if (Game.IsMissing) Ctx.Navigator.Navigate(PageKey.Imports);
+        if (_solveFile) Ctx.Navigator.Navigate(PageKey.Imports);
         else Ctx.Navigator.Navigate(PageKey.Emulators, Game.SystemId);
+    }
+
+    // ===================== overlays (DESIGN 7.3) =====================
+
+    [RelayCommand] private void ShowMore() => Sheet = DetailSheet.More;
+    [RelayCommand] private void ShowFileInfo() => Sheet = DetailSheet.FileInfo;
+    [RelayCommand] private void ShowDescription() { if (HasDescription) Sheet = DetailSheet.Description; }
+    [RelayCommand] private void ShowCover() { if (Game != null) Sheet = DetailSheet.Cover; }
+    [RelayCommand] private void ShowScreens() { if (HasScreens) Sheet = DetailSheet.Screens; }
+    [RelayCommand] private void CloseSheet() => Sheet = DetailSheet.None;
+
+    /// <summary>"Startoptionen zurücksetzen": emulator and mode back to "Automatisch" (the system's defaults).</summary>
+    [RelayCommand]
+    private async Task ResetLaunchOptionsAsync()
+    {
+        Sheet = DetailSheet.None;
+        var item = Game;
+        if (item == null) return;
+        var s = Ctx.Services;
+        var ok = await UiContext.Background(() =>
+        {
+            var game = s.Games.Get(item.Id);
+            if (game == null) return false;
+            game.EmulatorOverride = null;
+            game.LaunchModeOverride = null;
+            s.Games.Upsert(game);
+            return true;
+        }, "Resetting the launch options");
+        if (ok && Game == item) await LoadAsync(item.Id);
+    }
+
+    // ===================== screens =====================
+
+    private long _screensFor;
+    private CancellationTokenSource? _screenCts;
+
+    private void SetScreens(string? title, string? snap)
+    {
+        TitleScreen = title;
+        SnapScreen = snap;
+        HasTitleScreen = title != null;
+        HasSnapScreen = snap != null;
+        HasScreens = title != null || snap != null;
+        HasAbout = HasDescription || HasScreens;
+    }
+
+    /// <summary>
+    /// Title screen and snap for the back (DESIGN 7.3/10.1): what is on disk at once, the missing kinds only with online
+    /// covers (the Start stage does the same). What is missing drops out; the demo has no artwork service.
+    /// </summary>
+    private void LoadScreens(Core.Library.Game game)
+    {
+        if (Ctx.Services.Artwork is not { } artwork) return;
+        _screenCts?.Cancel();
+        var cts = _screenCts = new CancellationTokenSource();
+        var id = game.Id;
+        var online = Ctx.Services.Settings.Current.OnlineCovers;
+        _ = Task.Run(async () =>
+        {
+            var local = artwork.FindScreens(game);
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyScreens(id, local.Title, local.Snap));
+            if ((local.Snap != null && local.Title != null) || !online) return;
+            var fetched = await artwork.FetchScreensAsync(game, cts.Token).ConfigureAwait(false);
+            if (fetched.Snap != local.Snap || fetched.Title != local.Title)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyScreens(id, fetched.Title, fetched.Snap));
+        }, cts.Token).ContinueWith(t => { if (t.IsFaulted) Log.Warn("Detail screen lookup failed", t.Exception); }, TaskScheduler.Default);
+    }
+
+    private void ApplyScreens(long id, string? title, string? snap)
+    {
+        if (Game?.Id != id) return;
+        _screensFor = id;
+        SetScreens(title, snap);
+    }
+
+    // ===================== Ausleihkarte =====================
+
+    /// <summary>
+    /// The card (DESIGN 7.3, M4): <see cref="CardSize"/> places, filled like a library card from the left – the entry
+    /// stamp ("Eingang", the day the game came into the collection) while the card still reaches back that far, then the
+    /// sessions oldest to newest, then empty places waiting for the next stamps. A game never played shows its entry
+    /// stamp and four empty places: the card is there, nothing is invented.
+    /// </summary>
+    internal void BuildCard(Core.Library.Game g, IReadOnlyList<PlaySession> recent, DateTime nowUtc)
+    {
+        var places = new List<CardPlace>(CardSize);
+        var total = Math.Max(g.PlayCount, recent.Count);
+        var shown = recent.Take(CardSize).Reverse().ToList(); // oldest left
+        // the entry stamp only while the card reaches back to the start (every session known and room left)
+        if (recent.Count >= total && total < CardSize) places.Add(new CardPlace(StampDate(g.AddedUtc, nowUtc), Loc.T("detail.card.entry"), CardPlaceKind.Entry));
+        foreach (var session in shown.Skip(Math.Max(0, shown.Count - (CardSize - places.Count))))
+            places.Add(new CardPlace(StampDate(session.StartUtc, nowUtc), StampDuration(session.Seconds), CardPlaceKind.Session));
+        while (places.Count < CardSize) places.Add(new CardPlace("", "", CardPlaceKind.Empty));
+        CardPlaces = places;
+        var stamps = places.Count(p => p.IsSession);
+        CardSentence = total > stamps && stamps > 0 ? Loc.T("detail.card.lastOf", stamps, total) : "";
+    }
+
+    /// <summary>"9. Nov." – with the year when it is not this year ("3. März 2024").</summary>
+    internal static string StampDate(DateTime utc, DateTime nowUtc)
+    {
+        var local = utc.ToLocalTime();
+        var now = nowUtc.ToLocalTime();
+        return local.ToString(local.Year == now.Year ? "d. MMM" : "d. MMM yyyy", Loc.Culture);
+    }
+
+    /// <summary>"1:12 Std." from an hour on, else "12 Min."; a session under a minute is "unter 1 Min.".</summary>
+    internal static string StampDuration(long seconds)
+    {
+        var t = TimeSpan.FromSeconds(Math.Max(0, seconds));
+        if (t.TotalHours >= 1) return Loc.T("detail.card.hours", $"{(int)t.TotalHours}:{t.Minutes:00}");
+        if (t.TotalMinutes >= 1) return Loc.T("detail.card.minutes", (int)t.TotalMinutes);
+        return Loc.T("detail.card.underMinute");
+    }
+
+    // ===================== file info =====================
+
+    private string SafeAbsolute(string stored)
+    {
+        try { return Ctx.Services.Paths.FromPortable(stored); }
+        catch (Exception) { return stored; }
+    }
+
+    /// <summary>The file info overlay: name, folder (Cascadia Mono), size, CRC32, header code, dates – what is known.</summary>
+    internal static IReadOnlyList<InfoLine> BuildFileLines(Core.Library.Game g, string fullPath)
+    {
+        var lines = new List<InfoLine> { new(Loc.T("detail.file"), Path.GetFileName(fullPath)) };
+        if (Path.GetDirectoryName(fullPath) is { Length: > 0 } folder) lines.Add(new InfoLine(Loc.T("detail.folder"), folder, true));
+        if (g.Size > 0) lines.Add(new InfoLine(Loc.T("detail.size"), $"{Fmt.Size(g.Size)} ({g.Size.ToString("N0", Loc.Culture)} Bytes)"));
+        if (!string.IsNullOrEmpty(g.Crc32)) lines.Add(new InfoLine("CRC32", g.Crc32!, true));
+        if (!string.IsNullOrEmpty(g.Serial)) lines.Add(new InfoLine(Loc.T("detail.serial"), g.Serial!, true));
+        lines.Add(new InfoLine(Loc.T("detail.added"), Fmt.DateTimeText(g.AddedUtc)));
+        if (g.FileTimeUtc > DateTime.MinValue.AddYears(1)) lines.Add(new InfoLine(Loc.T("detail.fileTime"), Fmt.DateTimeText(g.FileTimeUtc)));
+        return lines;
     }
 
     [RelayCommand]
@@ -333,6 +612,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
     [RelayCommand]
     private void OpenGameFolder()
     {
+        Sheet = DetailSheet.None;
         var folder = string.IsNullOrEmpty(FilePath) ? null : Path.GetDirectoryName(FilePath);
         if (folder != null && !ShellOpen.Folder(folder)) Ctx.Toasts.Show(Loc.T("common.folderMissing", folder), ToastKind.Warning);
     }
@@ -362,6 +642,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
     [RelayCommand]
     private async Task ChooseCoverAsync()
     {
+        Sheet = DetailSheet.None;
         var artwork = Ctx.Services.Artwork;
         var item = Game;
         if (artwork == null || item == null || PickImage == null) return;
@@ -385,6 +666,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
     [RelayCommand]
     private async Task RemoveCoverAsync()
     {
+        Sheet = DetailSheet.None;
         var artwork = Ctx.Services.Artwork;
         var item = Game;
         if (artwork == null || item == null) return;

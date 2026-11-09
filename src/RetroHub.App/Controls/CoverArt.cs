@@ -48,6 +48,11 @@ public sealed class CoverArt : Control
     public static readonly StyledProperty<string?> YearProperty = AvaloniaProperty.Register<CoverArt, string?>(nameof(Year));
     /// <summary>Status "Datei fehlt": cover dimmed to 0.45 plus the Missing icon top right (dimming = status only).</summary>
     public static readonly StyledProperty<bool> IsMissingProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(IsMissing));
+    /// <summary>
+    /// False = the placeholder has no printed spine band on its front (the detail stage: the generated
+    /// <see cref="BoxSpine"/> is the box's real side, a second band on the front would print the spine twice).
+    /// </summary>
+    public static readonly StyledProperty<bool> PrintedSpineProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(PrintedSpine), true);
 
     /// <summary>Width/height of a placeholder box of an unknown system (DESIGN 10.2: 0.72, portrait).</summary>
     public const double PlaceholderAspect = 0.72;
@@ -77,7 +82,7 @@ public sealed class CoverArt : Control
     static CoverArt()
     {
         AffectsRender<CoverArt>(TitleProperty, BadgeProperty, AccentProperty, SystemIdProperty, FillProperty, IsFavoriteProperty, IsMissingProperty,
-            ShowTitleProperty, ShowFavoriteProperty, YearProperty);
+            ShowTitleProperty, ShowFavoriteProperty, YearProperty, PrintedSpineProperty);
         ClipToBoundsProperty.OverrideDefaultValue<CoverArt>(true);
     }
 
@@ -96,6 +101,7 @@ public sealed class CoverArt : Control
     public bool ShowFavorite { get => GetValue(ShowFavoriteProperty); set => SetValue(ShowFavoriteProperty, value); }
     public double SlotFormat { get => GetValue(SlotFormatProperty); set => SetValue(SlotFormatProperty, value); }
     public string? Year { get => GetValue(YearProperty); set => SetValue(YearProperty, value); }
+    public bool PrintedSpine { get => GetValue(PrintedSpineProperty); set => SetValue(PrintedSpineProperty, value); }
 
     /// <summary>True when a real cover bitmap is shown (tests / diagnostics).</summary>
     public bool HasImage => _bitmap != null;
@@ -129,7 +135,7 @@ public sealed class CoverArt : Control
         else if (change.Property == FillProperty || change.Property == SystemIdProperty || change.Property == SlotFormatProperty) UpdateArtRect();
         if (change.Property == TitleProperty || change.Property == BadgeProperty || change.Property == SystemIdProperty
             || change.Property == BoundsProperty || change.Property == SourceProperty || change.Property == ShowTitleProperty
-            || change.Property == YearProperty || change.Property == SlotFormatProperty)
+            || change.Property == YearProperty || change.Property == SlotFormatProperty || change.Property == PrintedSpineProperty)
             _textKey = default; // rebuilt lazily on the next placeholder layout (see EnsureText)
     }
 
@@ -269,7 +275,7 @@ public sealed class CoverArt : Control
         {
             // on a placeholder the marker sits top left beside the spine band (the title owns the bottom)
             var placeholder = _bitmap == null && !Fill;
-            var left = placeholder ? BandWidth(art.Width) + 6 : 6;
+            var left = placeholder ? Band(art.Width) + 6 : 6;
             var box = new Rect(art.X + left, art.Y + 6, 26, 26);
             ctx.DrawRectangle(MarkerGround, null, new RoundedRect(box, 2));
             using (ctx.PushTransform(Matrix.CreateScale(0.75, 0.75) * Matrix.CreateTranslation(box.X + 4, box.Y + 4)))
@@ -309,6 +315,9 @@ public sealed class CoverArt : Control
     /// <summary>Spine band width: 16 % of the box width.</summary>
     private static double BandWidth(double w) => Math.Max(6, Math.Round(w * 0.16));
 
+    /// <summary>The band of this placeholder: none when the spine is not printed on the front (<see cref="PrintedSpine"/>).</summary>
+    private double Band(double w) => PrintedSpine ? BandWidth(w) : 0;
+
     /// <summary>Texture strength on placeholders, relative to the system's wall strength (boxes read as material).</summary>
     private const double PlaceholderTextureFactor = 2.0;
 
@@ -336,7 +345,7 @@ public sealed class CoverArt : Control
             if (split > 0) ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y + split, w, 1));
             // the motif silhouette (DESIGN 10.2): ONE geometry in the system colour at 18 %, 45 % of the height, anchored
             // bottom right with a 14 px inset – always inside the lower 62 % (never across the 38/62 split)
-            var band = BandWidth(w);
+            var band = Band(w);
             var pad = PlaceholderPad(w);
             var inset = MotifInset(w);
             var room = split > 0 ? r.Height - split - inset - 2 : r.Height - 2 * inset;
@@ -345,7 +354,7 @@ public sealed class CoverArt : Control
                 MotifCatalog.DrawSilhouette(ctx, look, new Rect(r.Right - inset - motif, r.Bottom - inset - motif, motif, motif), 0.18);
             // spine band: full colour, printed like a real spine - code at the top, the title from the foot upwards,
             // the year at the foot (all -90 degrees, read bottom to top); a 1 px fold line where the spine meets the front
-            ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, band, r.Height));
+            if (band > 0) ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, band, r.Height));
             if (band >= SpineTitleMinBand) ctx.FillRectangle(FoldBrush, new Rect(r.X + band - 1, r.Y, 1, r.Height));
             if (_codeText is { } code)
             {
@@ -364,6 +373,9 @@ public sealed class CoverArt : Control
                 using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(r.X + (band - spine.Height) / 2, foot)))
                     ctx.DrawText(spine, new Point(0, 0));
             }
+            // a front without a printed spine (the detail's pulled box) wears the wall's colour band on top instead,
+            // like the system walls: the box keeps its system colour on the front
+            if (band <= 0) ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, w, Math.Max(8, Math.Round(r.Height * 0.024))));
             ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y, w, 1));
             // title and subtitle: left after the band, anchored at the bottom with the inner margin
             if (_titleText is { } title)
@@ -386,7 +398,7 @@ public sealed class CoverArt : Control
         if (_textKey == key && (_titleText != null || !ShowTitle || string.IsNullOrEmpty(Title))) return;
         _textKey = key;
         var w = r.Width;
-        var band = BandWidth(w);
+        var band = Band(w);
         var pad = PlaceholderPad(w);
         // the title (DESIGN 10.2): bottom left after the band, in full – wrapped only at spaces and hyphens, the size
         // stepped down (× 0.88, never below 11 px) until every word and all lines fit; the subtitle in Atkinson below
@@ -435,7 +447,7 @@ public sealed class CoverArt : Control
             }
         }
         var codeSize = Math.Min(28, Math.Max(7, w * 0.09));
-        _codeText = string.IsNullOrEmpty(Badge) ? null :
+        _codeText = string.IsNullOrEmpty(Badge) || band <= 0 ? null :
             new FormattedText(Badge, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, codeSize, look.TextOnColorBrush)
             {
                 MaxTextWidth = Math.Max(1, r.Height - w * 0.16),

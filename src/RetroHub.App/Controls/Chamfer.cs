@@ -137,10 +137,13 @@ public sealed class FocusRing : Control
         AvaloniaProperty.Register<FocusRing, double>(nameof(Thickness), 3);
     public static readonly StyledProperty<double> ChamferProperty =
         AvaloniaProperty.Register<FocusRing, double>(nameof(Chamfer), 6);
+    /// <summary>The object stands on a board: the ring is open at the bottom, its legs end on the board top (M3 QA).</summary>
+    public static readonly StyledProperty<bool> StandingProperty =
+        AvaloniaProperty.Register<FocusRing, bool>(nameof(Standing));
 
     static FocusRing()
     {
-        AffectsRender<FocusRing>(BrushProperty, GapProperty, ThicknessProperty, ChamferProperty);
+        AffectsRender<FocusRing>(BrushProperty, GapProperty, ThicknessProperty, ChamferProperty, StandingProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<FocusRing>(false);
         ClipToBoundsProperty.OverrideDefaultValue<FocusRing>(false);
     }
@@ -149,10 +152,12 @@ public sealed class FocusRing : Control
     public double Gap { get => GetValue(GapProperty); set => SetValue(GapProperty, value); }
     public double Thickness { get => GetValue(ThicknessProperty); set => SetValue(ThicknessProperty, value); }
     public double Chamfer { get => GetValue(ChamferProperty); set => SetValue(ChamferProperty, value); }
+    public bool Standing { get => GetValue(StandingProperty); set => SetValue(StandingProperty, value); }
 
     public override void Render(DrawingContext context)
     {
         if (Brush is not { } brush) return;
-        Controls.Chamfer.DrawRing(context, new Rect(Bounds.Size), brush, Gap, Thickness, Chamfer);
+        if (Standing) Controls.Chamfer.DrawStandingRing(context, new Rect(Bounds.Size), brush, Gap, Thickness, Chamfer);
+        else Controls.Chamfer.DrawRing(context, new Rect(Bounds.Size), brush, Gap, Thickness, Chamfer);
     }
 }

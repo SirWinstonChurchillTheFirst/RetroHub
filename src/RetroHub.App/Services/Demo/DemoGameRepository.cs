@@ -17,10 +17,16 @@ public sealed class DemoGameRepository : IGameRepository
 
     public event Action? Changed;
 
-    public DemoGameRepository(IEnumerable<Game> games, IEnumerable<LibraryFolder> folders)
+    public DemoGameRepository(IEnumerable<Game> games, IEnumerable<LibraryFolder> folders, IEnumerable<PlaySession>? sessions = null)
     {
         _games = games.Select(Clone).ToList();
         _folders = folders.ToList();
+        // a play log that already exists (the demo's history): kept as it is, the counts on the games stay
+        foreach (var session in sessions ?? [])
+        {
+            session.Id = _nextSessionId++;
+            _sessions.Add(session);
+        }
         _nextId = _games.Count == 0 ? 1 : _games.Max(g => g.Id) + 1;
         _nextFolderId = _folders.Count == 0 ? 1 : _folders.Max(f => f.Id) + 1;
     }

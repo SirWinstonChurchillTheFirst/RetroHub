@@ -85,6 +85,9 @@ public class GameTile : Button
     /// <summary>The cover of this tile (null until the template is applied, or for templates without one).</summary>
     public CoverArt? Art { get; private set; }
 
+    /// <summary>The generated spine beside the cover (only the detail stage's pulled box, DESIGN 7.3); else null.</summary>
+    public BoxSpine? Spine { get; private set; }
+
     /// <summary>Raised when the cover's <see cref="CoverArt.ArtRect"/> changed (the row redraws its contact shadows).</summary>
     public event EventHandler? ArtChanged;
 
@@ -94,6 +97,8 @@ public class GameTile : Button
         if (Art != null) Art.ArtRectChanged -= OnArtRectChanged;
         Art = e.NameScope.Find<CoverArt>("PART_Art");
         if (Art != null) Art.ArtRectChanged += OnArtRectChanged;
+        Spine = e.NameScope.Find<BoxSpine>("PART_Spine");
+        if (Spine != null) Spine.Art = Art;
     }
 
     private void OnArtRectChanged(object? sender, EventArgs e)

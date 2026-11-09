@@ -208,6 +208,39 @@ public static class DemoData
         return list;
     }
 
+    /// <summary>
+    /// The play log behind the demo's play counts (the detail's Ausleihkarte, DESIGN 7.3): the last sessions of every
+    /// played game (at most 8), the newest ending at its "last played" time, the others 1–4 days apart, durations
+    /// around the game's average session. Deterministic (stable hash).
+    /// </summary>
+    public static List<PlaySession> CreateSessions(IEnumerable<Game> games)
+    {
+        var list = new List<PlaySession>();
+        foreach (var g in games)
+        {
+            if (g.PlayCount <= 0 || g.LastPlayedUtc is not { } last) continue;
+            var average = g.PlaySeconds / (double)g.PlayCount;
+            var end = last;
+            var hash = StableHash(g.Title);
+            for (var i = 0; i < Math.Min(8, g.PlayCount); i++)
+            {
+                var h = hash * (uint)(i + 7) * 2654435761u;
+                var seconds = (long)Math.Max(45, average * (0.55 + (h % 90) / 100.0));
+                list.Add(new PlaySession
+                {
+                    GameId = g.Id,
+                    EmulatorId = null,
+                    StartUtc = end.AddSeconds(-seconds),
+                    EndUtc = end,
+                    Seconds = seconds,
+                    ExitCode = 0,
+                });
+                end = end.AddDays(-(1 + (h >> 8) % 4)).AddHours(-((h >> 12) % 9));
+            }
+        }
+        return list;
+    }
+
     public static List<LibraryFolder> CreateFolders(AppPaths paths) =>
     [
         new LibraryFolder { Id = 1, Path = "games", IsBuiltIn = true, Recursive = true, Enabled = true, LastScanUtc = DateTime.UtcNow.AddHours(-3) },

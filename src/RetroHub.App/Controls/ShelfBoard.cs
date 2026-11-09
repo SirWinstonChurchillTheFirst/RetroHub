@@ -55,7 +55,12 @@ public sealed class ShelfBoard : Control
         foreach (var c in Casters)
         {
             if (!c.IsEffectivelyVisible) continue;
-            var span = c is CoverArt art ? art.ArtRect : new Rect(c.Bounds.Size);
+            var span = c switch
+            {
+                CoverArt art => art.ArtRect,
+                BoxSpine spine => spine.SpineRect,
+                _ => new Rect(c.Bounds.Size),
+            };
             if (span.Width <= 0) continue;
             if (c.TranslatePoint(span.TopLeft, this) is not { } p) continue;
             context.FillRectangle(ContactBrush, new Rect(p.X, 1, span.Width, Math.Min(10, r.Height - 1)));

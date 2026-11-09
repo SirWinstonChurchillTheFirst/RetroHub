@@ -566,6 +566,8 @@ public partial class MainWindow : Window
             case NavAction.Accept:
                 return Invoke(focused);
             case NavAction.Back:
+                // a page's own overlay closes first (the detail's "Mehr", "Dateiinfo", cover …)
+                if (page?.HandleAction(action) == true) return true;
                 if (_vm.Navigator.GoBack()) return true;
                 if (focused is Visual fv && IsInside(fv, TopBar))
                 {

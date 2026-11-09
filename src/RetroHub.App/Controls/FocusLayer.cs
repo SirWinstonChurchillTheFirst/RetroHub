@@ -179,6 +179,9 @@ public sealed class FocusLayer
         // (M2 QA: the ring was lifted twice – 1.06² – and stood 5–12 px away from the box, the cone showing in the gap)
         if (LayoutOffset(art, _host) is not { } origin) return;
         var rect = new Rect(origin.X + r.X, origin.Y + r.Y, r.Width, r.Height);
+        // the pulled box of the detail stage: ring, board piece and shadow take in its generated spine (DESIGN 7.3)
+        if (tile.Spine is { IsVisible: true } spine && spine.SpineRect is { Width: > 0 } sr)
+            rect = new Rect(rect.X - sr.Width, rect.Y, rect.Width + sr.Width, rect.Height);
         // the lift scales from the bottom centre: the rectangle the box will have when the step animation is done
         var lifted = Motion.Current == EffectiveMotion.Full // reduced/off: no lift
             ? new Rect(rect.Center.X - rect.Width * Lift / 2, rect.Bottom - rect.Height * Lift, rect.Width * Lift, rect.Height * Lift)
