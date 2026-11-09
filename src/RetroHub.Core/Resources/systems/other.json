@@ -1,0 +1,136 @@
+// Built-in systems: Atari (400–499), NEC (500–599), SNK (600–699), others (700–799).
+// Neo Geo (AES/MVS) is folded into "arcade" (FBNeo/MAME run the neogeo.zip romsets); see arcade-pc.json.
+[
+  {
+    "id": "atari2600",
+    "name": "Atari 2600",
+    "shortName": "2600",
+    "manufacturer": "Atari",
+    "year": 1977,
+    "category": "Console",
+    "folders": ["atari2600", "a2600"],
+    "extensions": [".a26", ".bin", ".zip", ".7z"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Atari - 2600",
+    "emulators": ["retroarch/stella"],
+    "accent": "#B5651D",
+    "sortOrder": 400
+  },
+  {
+    "id": "atari7800",
+    "name": "Atari 7800",
+    "shortName": "7800",
+    "manufacturer": "Atari",
+    "year": 1986,
+    "category": "Console",
+    "folders": ["atari7800", "a7800"],
+    "extensions": [".a78", ".zip", ".7z"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Atari - 7800",
+    "emulators": ["retroarch/prosystem"],
+    "accent": "#C8102E",
+    "bios": [
+      { "file": "7800 BIOS (U).rom", "required": false, "description": "Optional – zeigt das Startlogo, einige Spiele laufen damit besser." }
+    ],
+    "sortOrder": 405
+  },
+  {
+    "id": "lynx",
+    "name": "Atari Lynx",
+    "shortName": "Lynx",
+    "manufacturer": "Atari",
+    "year": 1989,
+    "category": "Handheld",
+    "folders": ["lynx", "atarilynx"],
+    "extensions": [".lnx", ".zip", ".7z"],
+    // 160x102
+    "aspectRatio": 1.5686,
+    "libretroName": "Atari - Lynx",
+    "emulators": ["retroarch/handy", "retroarch/mednafen_lynx"],
+    "accent": "#F7A800",
+    "bios": [
+      {
+        "file": "lynxboot.img",
+        "md5": ["fcd403db69f54290b51035d82f835e7b"],
+        "required": false,
+        "description": "Lynx-Boot-ROM – Beetle Lynx braucht sie, Handy läuft auch ohne."
+      }
+    ],
+    "sortOrder": 410
+  },
+  {
+    "id": "pcengine",
+    "name": "PC Engine / TurboGrafx-16",
+    "shortName": "PC Engine",
+    "manufacturer": "NEC",
+    "year": 1987,
+    "category": "Console",
+    // HuCards and CD-ROM² games share one system (the BIOS is only needed for CD games)
+    "folders": ["pcengine", "tg16", "turbografx16", "pcenginecd", "tgcd", "supergrafx"],
+    "extensions": [".pce", ".sgx", ".cue", ".chd", ".ccd", ".m3u", ".zip", ".7z"],
+    "playlistExtensions": [".m3u", ".cue"],
+    "aspectRatio": 1.3333,
+    // thumbnails of CD games live in "NEC - PC Engine CD - TurboGrafx-CD" (only one name per system is possible)
+    "libretroName": "NEC - PC Engine - TurboGrafx 16",
+    "emulators": ["retroarch/mednafen_pce_fast", "retroarch/mednafen_pce", "retroarch/mednafen_supergrafx"],
+    "accent": "#F05A28",
+    "bios": [
+      {
+        "file": "syscard3.pce",
+        "md5": ["38179df8f4ac870017db21ebcbf53114"],
+        "required": false,
+        "description": "Super System Card 3.0 – nur für CD-Spiele nötig."
+      }
+    ],
+    "sortOrder": 500
+  },
+  {
+    "id": "ngp",
+    "name": "Neo Geo Pocket / Color",
+    "shortName": "NGP",
+    "manufacturer": "SNK",
+    "year": 1998,
+    "category": "Handheld",
+    "folders": ["ngp", "ngpc", "neogeopocket"],
+    "extensions": [".ngp", ".ngc", ".zip", ".7z"],
+    // 160x152
+    "aspectRatio": 1.0526,
+    "libretroName": "SNK - Neo Geo Pocket Color",
+    "emulators": ["retroarch/mednafen_ngp", "retroarch/race"],
+    "accent": "#1D4FA0",
+    "sortOrder": 600
+  },
+  {
+    "id": "wonderswan",
+    "name": "WonderSwan / Color",
+    "shortName": "WonderSwan",
+    "manufacturer": "Bandai",
+    "year": 1999,
+    "category": "Handheld",
+    "folders": ["wonderswan", "wswan", "wonderswancolor", "wswanc"],
+    "extensions": [".ws", ".wsc", ".zip", ".7z"],
+    // 224x144
+    "aspectRatio": 1.5556,
+    "libretroName": "Bandai - WonderSwan Color",
+    "emulators": ["retroarch/mednafen_wswan"],
+    "accent": "#00A0B0",
+    "sortOrder": 700
+  },
+  {
+    "id": "msx",
+    "name": "MSX",
+    "shortName": "MSX",
+    "manufacturer": "Microsoft / ASCII",
+    "year": 1983,
+    "category": "Computer",
+    "folders": ["msx", "msx1", "msx2"],
+    // blueMSX needs its "Machines" and "Databases" folders in RetroArch's system folder (not a single BIOS file)
+    "extensions": [".rom", ".mx1", ".mx2", ".dsk", ".cas", ".m3u", ".zip", ".7z"],
+    "playlistExtensions": [".m3u"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Microsoft - MSX",
+    "emulators": ["retroarch/bluemsx", "retroarch/fmsx"],
+    "accent": "#3A6EA5",
+    "sortOrder": 710
+  }
+]

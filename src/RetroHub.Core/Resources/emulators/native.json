@@ -1,0 +1,16 @@
+// "Emulator" for PC games: the game's own exe (or .lnk/.url shortcut) is started. The planner handles Kind Native
+// specially: {rom} is the program itself, Game.ExtraArgs are appended, shortcuts go through ShellExecute.
+[
+  {
+    "id": "native",
+    "name": "Windows (direkt)",
+    "kind": "Native",
+    "exe": [],
+    "systems": ["pc"],
+    "args": ["{rom}"],
+    "fullscreenArgs": [],
+    "defaultMode": "Windowed",
+    "modes": ["Windowed", "Fullscreen"],
+    "notes": "Startet das Spiel selbst. Ob es im Vollbild läuft, bestimmt das Spiel."
+  }
+]

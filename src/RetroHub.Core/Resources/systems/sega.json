@@ -1,0 +1,151 @@
+// Built-in systems: Sega (SortOrder 300–399).
+[
+  {
+    "id": "mastersystem",
+    "name": "Sega Master System",
+    "shortName": "SMS",
+    "manufacturer": "Sega",
+    "year": 1985,
+    "category": "Console",
+    "folders": ["mastersystem", "sms", "markiii"],
+    "extensions": [".sms", ".zip", ".7z"],
+    "sniffers": ["sms"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Sega - Master System - Mark III",
+    "emulators": ["retroarch/genesis_plus_gx", "retroarch/picodrive", "retroarch/gearsystem"],
+    "accent": "#E1251B",
+    "sortOrder": 300
+  },
+  {
+    "id": "megadrive",
+    "name": "Sega Mega Drive / Genesis",
+    "shortName": "Mega Drive",
+    "manufacturer": "Sega",
+    "year": 1988,
+    "category": "Console",
+    "folders": ["megadrive", "genesis", "md"],
+    // ".bin" is the most common Mega Drive dump extension; the "megadrive" sniffer ("SEGA" at 0x100) confirms it
+    "extensions": [".md", ".gen", ".smd", ".bin", ".zip", ".7z"],
+    "sniffers": ["megadrive"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Sega - Mega Drive - Genesis",
+    "emulators": ["retroarch/genesis_plus_gx", "retroarch/picodrive"],
+    "accent": "#0060A8",
+    "sortOrder": 305
+  },
+  {
+    "id": "gamegear",
+    "name": "Sega Game Gear",
+    "shortName": "Game Gear",
+    "manufacturer": "Sega",
+    "year": 1990,
+    "category": "Handheld",
+    "folders": ["gamegear", "gg"],
+    "extensions": [".gg", ".zip", ".7z"],
+    // the "sms" sniffer reads the "TMR SEGA" header, whose region code also tells Game Gear cartridges apart
+    "sniffers": ["sms"],
+    "aspectRatio": 1.1111,
+    "libretroName": "Sega - Game Gear",
+    "emulators": ["retroarch/genesis_plus_gx", "retroarch/gearsystem"],
+    "accent": "#2D9CDB",
+    "sortOrder": 310
+  },
+  {
+    "id": "segacd",
+    "name": "Sega Mega-CD / Sega CD",
+    "shortName": "Mega-CD",
+    "manufacturer": "Sega",
+    "year": 1991,
+    "category": "Console",
+    "folders": ["segacd", "megacd"],
+    "extensions": [".cue", ".chd", ".iso", ".m3u"],
+    "playlistExtensions": [".m3u", ".cue"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Sega - Mega-CD - Sega CD",
+    "emulators": ["retroarch/genesis_plus_gx", "retroarch/picodrive"],
+    "accent": "#3D7DCA",
+    // Genesis Plus GX / PicoDrive need the BIOS of the game's region (one of the three)
+    "bios": [
+      { "file": "bios_CD_U.bin", "required": false, "description": "Sega-CD-BIOS USA – für US-Spiele nötig." },
+      { "file": "bios_CD_E.bin", "required": false, "description": "Mega-CD-BIOS Europa – für europäische Spiele nötig." },
+      { "file": "bios_CD_J.bin", "required": false, "description": "Mega-CD-BIOS Japan – für japanische Spiele nötig." }
+    ],
+    "sortOrder": 315
+  },
+  {
+    "id": "sega32x",
+    "name": "Sega 32X",
+    "shortName": "32X",
+    "manufacturer": "Sega",
+    "year": 1994,
+    "category": "Console",
+    "folders": ["sega32x", "32x"],
+    "extensions": [".32x", ".zip", ".7z"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Sega - 32X",
+    "emulators": ["retroarch/picodrive"],
+    "accent": "#F2A900",
+    "sortOrder": 320
+  },
+  {
+    "id": "saturn",
+    "name": "Sega Saturn",
+    "shortName": "Saturn",
+    "manufacturer": "Sega",
+    "year": 1994,
+    "category": "Console",
+    "folders": ["saturn"],
+    "extensions": [".cue", ".chd", ".ccd", ".m3u"],
+    "playlistExtensions": [".m3u", ".cue"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Sega - Saturn",
+    "emulators": ["retroarch/mednafen_saturn", "retroarch/kronos"],
+    "accent": "#4A4F9C",
+    // Beetle Saturn needs one of the two; Kronos also has an HLE BIOS
+    "bios": [
+      {
+        "file": "sega_101.bin",
+        "md5": ["85ec9ca47d8f6807718151cbcca8b964"],
+        "required": false,
+        "description": "Saturn-BIOS Japan – Beetle Saturn braucht eines der beiden Saturn-BIOS."
+      },
+      {
+        "file": "mpr-17933.bin",
+        "md5": ["3240872c70984b6cbfda1586cab68dbe"],
+        "required": false,
+        "description": "Saturn-BIOS USA/Europa – Beetle Saturn braucht eines der beiden Saturn-BIOS."
+      }
+    ],
+    "sortOrder": 325
+  },
+  {
+    "id": "dreamcast",
+    "name": "Sega Dreamcast",
+    "shortName": "Dreamcast",
+    "manufacturer": "Sega",
+    "year": 1998,
+    "category": "Console",
+    "folders": ["dreamcast", "dc"],
+    "extensions": [".chd", ".gdi", ".cdi", ".cue", ".m3u"],
+    "playlistExtensions": [".m3u", ".gdi", ".cue"],
+    "aspectRatio": 1.3333,
+    "libretroName": "Sega - Dreamcast",
+    "emulators": ["flycast", "retroarch/flycast", "redream"],
+    "accent": "#F26F21",
+    // Flycast and Redream run without these (HLE BIOS); with them games are more compatible
+    "bios": [
+      {
+        "file": "dc/dc_boot.bin",
+        "md5": ["e10c53c2f8b90bab96ead2d368858623"],
+        "required": false,
+        "description": "Dreamcast-BIOS – optional, Flycast und Redream haben ein Ersatz-BIOS."
+      },
+      {
+        "file": "dc/dc_flash.bin",
+        "required": false,
+        "description": "Dreamcast-Flash (Einstellungen, Region) – optional."
+      }
+    ],
+    "sortOrder": 330
+  }
+]

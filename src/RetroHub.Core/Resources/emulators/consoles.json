@@ -1,0 +1,111 @@
+// Standalone console emulators. These recreate their render window when a game starts (or on fullscreen
+// toggles), so they are not embedded: RetroHub hands over in fullscreen and comes back when they exit.
+[
+  {
+    "id": "dolphin",
+    "name": "Dolphin",
+    "website": "https://dolphin-emu.org/",
+    "license": "GPL-2.0-or-later",
+    "exe": ["Dolphin.exe"],
+    "systems": ["gamecube", "wii"],
+    // -b: exit when emulation stops; -C <System>.<Section>.<Key>=<Value> overrides a setting for this run
+    "args": ["-b", "-C", "Dolphin.Interface.ConfirmStop=False", "{fullscreen}", "-e", "{rom}"],
+    "fullscreenArgs": ["-C", "Dolphin.Display.Fullscreen=True"],
+    "portable": "dolphin",
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed"],
+    "downloadUrl": "https://dolphin-emu.org/download/",
+    "notes": "Portabel über „portable.txt“ neben Dolphin.exe (Ordner „User“). Im Fenstermodus gilt Dolphins eigene Vollbild-Einstellung."
+  },
+  {
+    "id": "pcsx2",
+    "name": "PCSX2",
+    "website": "https://pcsx2.net/",
+    "license": "GPL-3.0",
+    // 2.x: pcsx2-qt.exe; older nightlies: pcsx2-qtx64-avx2.exe etc.
+    "exe": ["pcsx2-qt.exe", "pcsx2*.exe"],
+    "systems": ["ps2"],
+    "args": ["-batch", "{fullscreen}", "--", "{rom}"],
+    "fullscreenArgs": ["-fullscreen"],
+    "portable": "pcsx2",
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed"],
+    "downloadUrl": "https://pcsx2.net/downloads/",
+    "notes": "Braucht ein PS2-BIOS (eigener Dump, Auswahl in PCSX2). „-batch“ beendet PCSX2, wenn das Spiel beendet wird."
+  },
+  {
+    "id": "duckstation",
+    "name": "DuckStation",
+    "website": "https://www.duckstation.org/",
+    "license": "CC-BY-NC-ND-4.0",
+    // e.g. duckstation-qt-x64-ReleaseLTCG.exe
+    "exe": ["duckstation-qt*.exe"],
+    "systems": ["ps1"],
+    "args": ["-batch", "{fullscreen}", "--", "{rom}"],
+    "fullscreenArgs": ["-fullscreen"],
+    "portable": "duckstation",
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed"],
+    "downloadUrl": "https://github.com/stenzek/duckstation/releases",
+    "notes": "Braucht ein PS1-BIOS (z. B. scph5501.bin im BIOS-Ordner)."
+  },
+  {
+    "id": "ppsspp",
+    "name": "PPSSPP",
+    "website": "https://www.ppsspp.org/",
+    "license": "GPL-2.0-or-later",
+    "exe": ["PPSSPPWindows64.exe", "PPSSPPWindows.exe"],
+    "systems": ["psp"],
+    "args": ["{fullscreen}", "{rom}"],
+    "fullscreenArgs": ["--fullscreen"],
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed"],
+    "downloadUrl": "https://www.ppsspp.org/download/",
+    "notes": "Die ZIP-Version ist von sich aus portabel (Ordner „memstick“ neben der Exe); eine „installed.txt“ schaltet auf Dokumente\\PPSSPP um."
+  },
+  {
+    "id": "flycast",
+    "name": "Flycast",
+    "website": "https://github.com/flyinghead/flycast",
+    "license": "GPL-2.0",
+    "exe": ["flycast.exe"],
+    "systems": ["dreamcast"],
+    "args": ["{fullscreen}", "{rom}"],
+    "fullscreenArgs": ["-config", "window:fullscreen=yes"],
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed"],
+    "downloadUrl": "https://github.com/flyinghead/flycast/releases",
+    "notes": "Vollbild per „-config window:fullscreen=yes“ ist noch nicht bestätigt; notfalls in Flycast selbst einstellen. Läuft ohne Dreamcast-BIOS (HLE)."
+  },
+  {
+    "id": "redream",
+    "name": "Redream",
+    "website": "https://redream.io/",
+    "license": "Proprietär (Freeware, Premium optional)",
+    "exe": ["redream.exe"],
+    "systems": ["dreamcast"],
+    "args": ["{rom}"],
+    "fullscreenArgs": [],
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed"],
+    "downloadUrl": "https://redream.io/download",
+    "notes": "Kein Kommandozeilenschalter für Vollbild: Vollbild/Fenster wird in Redream (redream.cfg, Einstellung „mode“) festgelegt."
+  },
+  {
+    "id": "mame",
+    "name": "MAME",
+    "website": "https://www.mamedev.org/",
+    "license": "GPL-2.0-or-later",
+    "exe": ["mame.exe", "mame64.exe"],
+    "systems": ["arcade"],
+    // MAME is fullscreen by default. "-window" makes it windowed; in fullscreen mode "-nowindow" follows and,
+    // being later on the command line, wins. The BIOS folder is a second rompath (neogeo.zip etc.).
+    // MAME resolves its relative paths (cfg/, nvram/, …) against the working directory → emulator folder.
+    "args": ["{romName}", "-rompath", "{romDir};{bios}", "-skip_gameinfo", "-window", "{fullscreen}"],
+    "fullscreenArgs": ["-nowindow"],
+    "defaultMode": "Fullscreen",
+    "modes": ["Fullscreen", "Windowed"],
+    "downloadUrl": "https://www.mamedev.org/release.html",
+    "notes": "Spielname = Name des ROM-Sets (Dateiname ohne Endung). Die Romsets müssen zur MAME-Version passen."
+  }
+]
