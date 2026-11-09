@@ -99,10 +99,12 @@
         </Grid>
 
         <!-- the stage board, edge to edge; the TV light ends here; the box casts its contact shadow on it -->
-        <c:ShelfBoard Name="StageBoard" Height="24" />
+        <!-- ZIndex 1: its shadow falls onto the back, which is room (below the board the TV light ends, DESIGN 2.5) -->
+        <c:ShelfBoard Name="StageBoard" Height="24" ZIndex="1" />
 
         <!-- ===== "Rückseite" ===== -->
-        <Grid Name="Back" ColumnDefinitions="904*,80,744*" Margin="{DynamicResource RhPageInset}">
+        <Border Name="BackGround" Background="{DynamicResource RhBaseBrush}" Padding="{DynamicResource RhPageInset}">
+        <Grid Name="Back" ColumnDefinitions="904*,80,744*">
           <!-- two stacks; the sections move between them (code-behind, ApplyBackLayout) -->
           <StackPanel Name="LeftStack" Spacing="0">
           <!-- Über das Spiel: description (68 characters, 8 lines, then "Weiterlesen"), the two screens on a shelf edge -->
@@ -242,8 +244,9 @@
           </StackPanel>
           <StackPanel Name="RightStack" Grid.Column="2" Spacing="0" />
         </Grid>
+        </Border>
         <!-- room below the back, so the page can scroll to a clean cut above the actions (code-behind) -->
-        <Border Name="BottomSpacer" Height="0" />
+        <Border Name="BottomSpacer" Height="0" Background="{DynamicResource RhBaseBrush}" />
       </StackPanel>
     </ScrollViewer>
 

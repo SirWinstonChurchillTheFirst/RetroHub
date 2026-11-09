@@ -608,12 +608,12 @@ MainWindow
 │      ┃ Fokusmarke                                                                         │
 ├───────────────────────────────────────────────────────────────────────────────────────────┤ 168
 │                                                                                           │
-│   ▯▯   ┌─┐   ▯▯▯  ┌──┐   ▯▯   ┌─┐   ▯▯▯  ┌──┐        8 Spalten, Fach 196×245, Abstand 28 │ 208
-│ ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁   │ 453 Regalkante 10
-│   Pokémon       Super Mario    Golden Sun                     caption 17/21, 2 Zeilen      │ 479
-│   ▮GBA 2004     ▮SNES 1991     ▮GBA 2001                      Etikett-Zeile 15             │ 525
+│   ▯▯   ┌─┐   ▯▯▯  ┌──┐   ▯▯   ┌─┐   ▯▯▯  ┌──┐     8 Spalten, Fach 196×196 (Median), 28 │ 192
+│ ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁   │ 388 Regalkante 12 (Lippe 2)
+│   Pokémon       Super Mario    Golden Sun                     caption 17/21, Block 42      │ 412
+│   ▮GBA 2004     ▮SNES 1991     ▮GBA 2001                      Etikett-Zeile 15             │ 458
 │                                                                                           │
-│   ▯▯ …                                                       Zeilenabstand 361            │ 569
+│   ▯▯ …                                                       Zeilenabstand 310            │ 502
 ├───────────────────────────────────────────────────────────────────────────────────────────┤ 1024
 │ Bibliothek › Alle Spiele, 12 von 66      ◤◥ Fach   ◆ Suche   ◆ Öffnen   ◆ Zurück          │
 └───────────────────────────────────────────────────────────────────────────────────────────┘
@@ -743,6 +743,21 @@ MainWindow
 - **Schulter links/rechts** springt zwischen Bühne, „Über das Spiel“ und „Start“.
 
 **≈ 1100 px (logisch 1375×875)**: Schachtel-Rahmen 240×336 plus Rücken 20 px, Bühnenbrett bei y 470, Textspalte ab x 380, Titel maximal 56. Rückseite einspaltig in der Reihenfolge Start, Ausleihkarte, Über das Spiel, Bildschirme.
+
+#### 7.3.1 Stand M4 (umgesetzt, Entscheidungen beim Bau)
+
+- **Gezogene Schachtel** (`RhPulledBox`, ein `GameTile` mit `BoxSpine` + `CoverArt` in *einer* Hebe-Fläche): Rücken und Front heben sich als ein Objekt (1,06), Ring, Kegel, Brettstück und Kontaktschatten umfassen beide (`FocusLayer` nimmt den Rücken über `GameTile.Spine` dazu). Bestätigen bzw. Klick öffnet das Cover groß (Overlay), nie das Detail erneut. Querformat-Rahmen **520** (≈ 1100: 360) statt 460: eine PAL-SNES-Schachtel stand mit 333 px als flacher Streifen auf der leeren Bühne, jetzt 377.
+- **Rücken** druckt den Titel ganz, sonst den Haupttitel (vor „ – “/„: “), erst dann mit Ellipse; Code und Jahr am Fuß. Die Schrift (Papier oder Tinte) wird gegen die abgedunkelte Fläche gewählt.
+- **Platzhalter im Detail**: kein zweites Rückenband auf der Front (`CoverArt.PrintedSpine = false`, der `BoxSpine` ist die Seite der Schachtel), dafür das Farbband der Wand oben (8–12 px). So trägt auch eine Schachtel ohne Bild ihre Systemfarbe auf Front und Seite.
+- **Rückseite in zwei Stapeln** (904 | 80 | 744): links „Über das Spiel“ (Text, darunter Titelbild und Snap als zwei kleine Bildschirm-Geräte 400 breit auf einer Regalkante, Bildunterschrift „Titelbild“/„Im Spiel“), darunter **„Daneben im Regal“**; rechts „Start“ und die Ausleihkarte. **Ohne Beschreibung und Bildschirme** rückt „Start“ nach links, rechts stehen Ausleihkarte und „Daneben im Regal“ – die rechte Hälfte ist nie leer (M4-Abnahme). ≈ 1100: ein Stapel Start, Ausleihkarte, Über das Spiel, Daneben im Regal.
+- **Daneben im Regal** (neu): das Fach, aus dem die Schachtel gezogen wurde. Die Nachbarn desselben Systems in Titelreihenfolge (je Seite bis 4, so viele wie die Spalte fasst) stehen mit Bildunterschrift auf einer Regalkante, an der Stelle der gezogenen Schachtel bleibt eine **gestrichelte Lücke**. Fokus wie im Regal (Hebung, Kegel, Ring), Bestätigen öffnet den Nachbarn. Echte Daten, Bildpräsenz, kein „Das könnte dir gefallen“.
+- **Ausleihkarte**: immer 5 Plätze, von links gefüllt: der Stempel **„Eingang“** (Tag der Aufnahme), solange die Karte bis zum Anfang reicht, dann die Sitzungen alt → neu („9. Nov.“ über „1:12 Std.“, Zahlen in Archivo), dann gestrichelte freie Plätze. Nie gespielt: Eingang + 4 freie Plätze. Mehr als 5 Sitzungen: die letzten 5 und der Satz „Die letzten 5 von 41 Sitzungen.“ Die Demo hat dafür ein erzeugtes Spielprotokoll.
+- **Dateizeile** ist eine Zeile wie die Auswahlzeilen („Datei · Name · Größe ›“) und öffnet die Dateiinfo.
+- **Overlays** liegen über dem Seitenbereich (Kopf- und Fußleiste bleiben): Mehr (Cover wählen, Cover entfernen, Ordner öffnen, Dateiinfo, Startoptionen zurücksetzen – nur bei eigener Wahl), Dateiinfo (Ordner und CRC in Cascadia Mono), Weiterlesen (nur bei mehr als 8 Zeilen), Cover groß auf einem Bühnenbrett, beide Bildschirme groß. Raum-Tief 72 % (Cover/Bildschirme 94 %), kein Blur. **Zurück schließt zuerst das Overlay** (`MainWindow` fragt die Seite vor dem Seitenwechsel), der Fokus bleibt darin und kehrt danach zum auslösenden Element zurück.
+- **Navigation**: Runter von der Bühne führt nach „Über das Spiel“ (wenn fokussierbar), sonst auf die erste Startzeile; Hoch von dort zurück zu „Spielen“. Schulter: Bühne → Über das Spiel → Start → Daneben im Regal. Die Fußleiste nennt die Aktion des fokussierten Elements („Spielen“, „Importe öffnen“, „Cover ansehen“, „Ändern“, „Dateiinfo“, „Ansehen“, „Öffnen“) plus Favorit, Bereich, Zurück; im Overlay nur Auswählen/Schließen.
+- **Scrollen schneidet nie durch den Titel**: Die Oberkante hält über dem System-Etikett, knapp über der Aktionsreihe (der Titel ist oben verschwunden, „Spielen“ bleibt sichtbar) oder irgendwo darunter; unter der Rückseite entsteht dafür bei Bedarf Platz. Unter dem Bühnenbrett ist die Seite Raum (opak), damit das ortsfeste Fernsehlicht beim Scrollen nicht hinter die Rückseite wandert.
+- **Lösungs-Button** nennt das *erste* Hindernis: fehlt die Datei, „Importe öffnen“, sonst „Emulator einrichten“.
+- Die Auswahl in den Startzeilen ist weiterhin das Popup der `ComboBox` (`RhChoiceRow`), noch kein eigenes Auswahl-Overlay.
 
 ---
 
@@ -1021,7 +1036,7 @@ Texte für Leerzustände benennen, was fehlt, und die Lösung, z. B. „Kein Emu
 | **M1 Fundament** | Tokens, Font-Rollen + `FontRoleTests`, Icons, Controller-Glyphen, Kopfleiste mit Kanälen + OSD, Fußleiste, UiScale mit Baum aus 7.0, `TextureFill`, `ChamferPlate`, `ShelfBoard`/`ShelfLabel`, `CoverArt` (contain, `ArtRect`, Rücken-Platzhalter), `FocusLayer`, `NavRepeatTracker`, Motion-Tokens, `SystemPalette` + Tests | Kein `#7B61FF`/`#4C8DFF`, keine Radien > 6, keine Marken-Glyphen; alle Seiten mit Kopfleiste bedienbar; Fokus aus 3 m erkennbar |
 | **M2 Start** | `RoomBackdrop`, `PixelScreen`, Bühne (Bildschirm + Schachtel + Text, gemessener Titel), Bretter mit Ankern und Etiketten, `SystemShelf` (Rücken + Front, Motive vorläufig Cart8), Leerzustand. Core: Snaps/Titel | Screenshots 1920/1600/1100/2560 mit Demo- *und* echtem Katalog; „Kein Signal“ geprüft |
 | **M3 Bibliothek** | Ticker, `ShelfMirror`, Grid mit Regalkante und FocusLayer, Banner, Systemgrund, Aufkleber, Listen-Ansicht. Core: Cover-Maße | 1000-Spiele-Demo bei 60 fps; Bibliothek ohne Cover lesbar |
-| **M4 Detail** | Schachtel mit `BoxSpine`, Meta-Satz mit Zahl-Runs, Aktionen, Lösungs-Button, Rückseite (Text, Bildschirme, Startzeilen), Ausleihkarte, Overlays | Detail ohne Beschreibung, Genre und Bild sieht vollständig aus |
+| **M4 Detail** | Schachtel mit `BoxSpine`, Meta-Satz mit Zahl-Runs, Aktionen, Lösungs-Button, Rückseite (Text, Bildschirme, Startzeilen), Ausleihkarte, „Daneben im Regal“, Overlays (Stand: 7.3.1) | Detail ohne Beschreibung, Genre und Bild sieht vollständig aus |
 | **M5 Konsolen & System** | Motive final + Außenseiter-Test, Texturen komplett, Konsolen, Systemseite | Jedes System ist ohne Text unterscheidbar; kein Motiv wird als Produkt benannt |
 | **M6 Werkbank & Start** | Service-Menü, Emulatoren nach Systemen, Importe mit Lieferschein, Starttransition mit `FlightLayer`, Aufräumen (Poppins, StatTile, Glas-Keys) | Alle Seiten im QA grün |
 

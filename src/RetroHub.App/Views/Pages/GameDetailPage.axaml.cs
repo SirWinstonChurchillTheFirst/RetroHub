@@ -26,6 +26,7 @@ public partial class GameDetailPage : PageBase
     private bool _compact;
     private bool? _appliedCompact;
     private Control? _sheetOpener;
+    private int _scrollVersion;
 
     public GameDetailPage()
     {
@@ -357,7 +358,11 @@ public partial class GameDetailPage : PageBase
         if (zone is { } z) _vm.SetFocus(z);
         if (e.NavigationMethod != NavigationMethod.Directional) return;
         // the stage shows from the top; the back is shown whole when it fits under the box (turning the box around)
-        if (IsInside(v, Stage)) Scroll.Offset = default;
+        if (IsInside(v, Stage))
+        {
+            ++_scrollVersion; // a scroll still queued for the back must not pull the page down again
+            Scroll.Offset = default;
+        }
         else if (IsInside(v, Back)) ShowBack(FocusTarget(v));
     }
 
@@ -392,7 +397,8 @@ public partial class GameDetailPage : PageBase
         // the cut above the actions must be reachable: room below the back when the page is too short for it
         var content = PageContent.Bounds.Height - BottomSpacer.Height;
         BottomSpacer.Height = Math.Max(0, Math.Ceiling(target + viewport - content));
-        Dispatcher.UIThread.Post(() => Scroll.Offset = new Vector(0, target), DispatcherPriority.Loaded);
+        var version = ++_scrollVersion;
+        Dispatcher.UIThread.Post(() => { if (version == _scrollVersion) Scroll.Offset = new Vector(0, target); }, DispatcherPriority.Loaded);
     }
 
     /// <summary>What has to be visible for a focused element: a lifted box with its board, a screen with its caption.</summary>

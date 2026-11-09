@@ -347,6 +347,12 @@ public sealed partial class GameDetailViewModel : PageViewModel
             NeighboursBefore = data.Before.Select(Ctx.Items.Get).ToList();
             NeighboursAfter = data.After.Select(Ctx.Items.Get).ToList();
             HasNeighbours = NeighboursBefore.Count + NeighboursAfter.Count > 0;
+            // namesakes on the shelf (translations, BS chapters) say their region in the label line, like in the library;
+            // only ever ADDED here: the shelf is a part of the system, a namesake outside it keeps the library's mark
+            var shelfItems = new List<GameItemViewModel>([.. NeighboursBefore, Game, .. NeighboursAfter]);
+            var namesakes = shelfItems.GroupBy(i => HomeViewModel.NormalizeTitle(i.Title)).Where(x => x.Count() > 1).SelectMany(x => x);
+            foreach (var item in namesakes)
+                if (item.Variant.Length == 0) item.Variant = item.RegionText.Length > 0 ? item.RegionText : Loc.T("library.variant.original");
             if (_screensFor != g.Id) SetScreens(null, null);
             HasAbout = HasDescription || HasScreens;
             LoadScreens(g);
