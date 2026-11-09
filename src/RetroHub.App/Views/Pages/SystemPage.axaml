@@ -1,0 +1,51 @@
+<p:PageBase xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:p="using:RetroHub.App.Views.Pages"
+            xmlns:vm="using:RetroHub.App.ViewModels"
+            xmlns:c="using:RetroHub.App.Controls"
+            xmlns:l="using:RetroHub.App.Localization"
+            x:Class="RetroHub.App.Views.Pages.SystemPage"
+            x:DataType="vm:SystemViewModel">
+  <p:PageBase.Resources>
+    <DataTemplate x:Key="GridTile" x:DataType="vm:GameItemViewModel">
+      <c:GameTile />
+    </DataTemplate>
+  </p:PageBase.Resources>
+  <Panel>
+    <c:CoverGrid Name="Covers" ItemsSource="{Binding Games}" ItemTemplate="{StaticResource GridTile}" ItemWidth="168" Spacing="24" RowSpacing="26"
+                 CoverAspect="1.4" CaptionHeight="54" ContentPadding="40,4,40,32">
+      <c:CoverGrid.Header>
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,26">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Border Classes="chip" Background="#1FFFFFFF">
+                <TextBlock Text="{Binding System.ShortName}" />
+              </Border>
+              <Border Classes="chip">
+                <TextBlock Text="{Binding System.CountText}" />
+              </Border>
+            </StackPanel>
+            <TextBlock Text="{Binding System.Name}" Classes="display" Margin="0,6,0,0" />
+            <TextBlock Text="{Binding FactsText}" Classes="meta" FontSize="14" Foreground="{DynamicResource RhText2Brush}" />
+          </StackPanel>
+          <Border Grid.Column="1" Classes="card" Padding="20,16" VerticalAlignment="Bottom" MinWidth="320">
+            <StackPanel Spacing="10">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Ellipse Width="9" Height="9" Fill="{DynamicResource RhSuccessBrush}" IsVisible="{Binding EmulatorReady}" VerticalAlignment="Center" />
+                <Ellipse Width="9" Height="9" Fill="{DynamicResource RhWarningBrush}" IsVisible="{Binding !EmulatorReady}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding EmulatorText}" FontSize="13.5" FontWeight="SemiBold" MaxWidth="360" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock Classes="meta">
+                <Run Text="{l:T system.folders}" /><Run Text=" " /><Run Text="{Binding FoldersText}" />
+              </TextBlock>
+              <TextBlock Classes="meta" TextWrapping="Wrap" MaxWidth="360">
+                <Run Text="{l:T system.extensions}" /><Run Text=" " /><Run Text="{Binding ExtensionsText}" />
+              </TextBlock>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </c:CoverGrid.Header>
+    </c:CoverGrid>
+    <TextBlock Text="{l:T system.empty}" Classes="body" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+  </Panel>
+</p:PageBase>

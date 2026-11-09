@@ -21,3 +21,6 @@ _downloads/
 /plugins/
 /app/
 /RetroHub.exe
+
+# generated screenshots / test output
+/artifacts/

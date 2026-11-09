@@ -21,6 +21,11 @@
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
   <ItemGroup>
+    <!-- language files: shipped as app/resources/lang/*.json (user-editable) and embedded as a fallback -->
+    <None Include="Resources\lang\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="resources\lang\%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Resources\lang\*.json" LogicalName="RetroHub.App.lang.%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\RetroHub.Core\RetroHub.Core.csproj" />
     <ProjectReference Include="..\RetroHub.Input\RetroHub.Input.csproj" />
   </ItemGroup>

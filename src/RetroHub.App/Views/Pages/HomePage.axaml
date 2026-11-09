@@ -1,0 +1,93 @@
+<p:PageBase xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:p="using:RetroHub.App.Views.Pages"
+            xmlns:vm="using:RetroHub.App.ViewModels"
+            xmlns:c="using:RetroHub.App.Controls"
+            xmlns:l="using:RetroHub.App.Localization"
+            x:Class="RetroHub.App.Views.Pages.HomePage"
+            x:DataType="vm:HomeViewModel">
+  <p:PageBase.Resources>
+    <DataTemplate x:Key="ShelfGame" x:DataType="vm:GameItemViewModel">
+      <c:GameTile Width="164" Height="284" />
+    </DataTemplate>
+    <DataTemplate x:Key="ShelfSystem" x:DataType="vm:SystemItemViewModel">
+      <c:SystemCard Width="276" Height="156" />
+    </DataTemplate>
+  </p:PageBase.Resources>
+
+  <ScrollViewer Name="Scroll" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="40,4,40,40" Spacing="34">
+      <!-- header -->
+      <StackPanel Spacing="4">
+        <TextBlock Text="{Binding Greeting}" Classes="label accent" />
+        <TextBlock Text="{l:T home.title}" Classes="title" />
+      </StackPanel>
+
+      <!-- hero: continue playing -->
+      <Border Name="Hero" Classes="glass" CornerRadius="28" ClipToBounds="True" MinHeight="320" IsVisible="{Binding HasContinue}" Background="{Binding HeroBrush}">
+        <Panel>
+          <Border Background="{Binding HeroGlow}" IsHitTestVisible="False" />
+          <TextBlock Text="{Binding Continue.SystemShort}" FontSize="220" FontWeight="Bold" Foreground="#09FFFFFF" LetterSpacing="-8"
+                     HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,250,-70" IsHitTestVisible="False" />
+          <Grid ColumnDefinitions="*,Auto" Margin="44,36,44,36">
+            <StackPanel VerticalAlignment="Center" Spacing="0" Margin="0,0,40,0">
+              <Border Classes="chip" HorizontalAlignment="Left" Background="#1AFFFFFF">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <c:RhIcon Data="{StaticResource Icon.Play}" Filled="True" Width="11" Height="11" Foreground="{DynamicResource RhAccentTextBrush}" />
+                  <TextBlock Text="{l:T home.continue, Upper=True}" FontSize="11" LetterSpacing="1.2" Foreground="{DynamicResource RhText1Brush}" />
+                </StackPanel>
+              </Border>
+              <TextBlock Text="{Binding Continue.Title}" Classes="display" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Margin="0,16,0,0" />
+              <TextBlock Text="{Binding ContinueMeta}" Classes="meta" FontSize="14" Foreground="{DynamicResource RhText2Brush}" Margin="0,10,0,0" />
+              <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,30,0,0">
+                <Button Name="PlayButton" Theme="{StaticResource RhPrimaryButton}" Command="{Binding PlayContinueCommand}" MinWidth="184">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <c:RhIcon Data="{StaticResource Icon.Play}" Filled="True" Width="16" Height="16" Foreground="White" />
+                    <TextBlock Text="{l:T detail.play}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+                <Button Command="{Binding OpenContinueCommand}" MinHeight="48" Padding="22,0">
+                  <TextBlock Text="{l:T home.details}" VerticalAlignment="Center" />
+                </Button>
+              </StackPanel>
+            </StackPanel>
+            <Border Grid.Column="1" Width="188" Height="252" CornerRadius="20" ClipToBounds="True" VerticalAlignment="Center"
+                    BoxShadow="0 24 48 -12 #B0000000" BorderBrush="#26FFFFFF" BorderThickness="1">
+              <c:CoverArt Source="{Binding Continue.CoverPath}" Title="{Binding Continue.Title}" Badge="{Binding Continue.SystemShort}"
+                          Accent="{Binding Continue.Accent}" ShowTitle="True" />
+            </Border>
+          </Grid>
+        </Panel>
+      </Border>
+
+      <!-- hero: empty library / nothing played yet -->
+      <Border Classes="glass" CornerRadius="28" Padding="44,40" IsVisible="{Binding !HasContinue}">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{l:T home.empty.title}" Classes="title" />
+          <TextBlock Text="{l:T home.empty.text}" Classes="body" MaxWidth="640" HorizontalAlignment="Left" />
+          <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,16,0,0">
+            <Button Theme="{StaticResource RhPrimaryButton}" Command="{Binding ShowLibraryCommand}" Content="{l:T home.openLibrary}" />
+            <Button Command="{Binding ShowImportsCommand}" Content="{l:T home.importGames}" MinHeight="48" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- stats -->
+      <Grid ColumnDefinitions="*,16,*,16,*,16,*">
+        <c:StatTile Grid.Column="0" Icon="{StaticResource Icon.Layers}" Value="{Binding StatGames}" Label="{l:T home.stat.games}" />
+        <c:StatTile Grid.Column="2" Icon="{StaticResource Icon.Gamepad}" Value="{Binding StatPlatforms}" Label="{l:T home.stat.platforms}" />
+        <c:StatTile Grid.Column="4" Icon="{StaticResource Icon.Clock}" Value="{Binding StatPlayTime}" Label="{l:T home.stat.playtime}" />
+        <c:StatTile Grid.Column="6" Icon="{StaticResource Icon.Star}" Value="{Binding StatFavorites}" Label="{l:T home.stat.favorites}" />
+      </Grid>
+
+      <c:Shelf Header="{l:T home.shelf.recent}" ItemsSource="{Binding RecentlyPlayed}" ItemTemplate="{StaticResource ShelfGame}"
+               ActionLabel="{l:T home.showAll}" ActionCommand="{Binding ShowLibraryCommand}" IsVisible="{Binding HasRecentlyPlayed}" />
+      <c:Shelf Header="{l:T home.shelf.favorites}" ItemsSource="{Binding Favorites}" ItemTemplate="{StaticResource ShelfGame}"
+               ActionLabel="{l:T home.showAll}" ActionCommand="{Binding ShowFavoritesCommand}" IsVisible="{Binding HasFavorites}" />
+      <c:Shelf Header="{l:T home.shelf.added}" ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource ShelfGame}"
+               IsVisible="{Binding HasRecentlyAdded}" />
+      <c:Shelf Header="{l:T home.shelf.platforms}" ItemsSource="{Binding Platforms}" ItemTemplate="{StaticResource ShelfSystem}"
+               ActionLabel="{l:T home.allPlatforms}" ActionCommand="{Binding ShowSystemsCommand}" ItemSpacing="20" />
+    </StackPanel>
+  </ScrollViewer>
+</p:PageBase>

@@ -1,0 +1,107 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    RetroHub design tokens – "Nova" (after the user's Batocera theme es-theme-nova).
+    8 px grid · radii 12 (chips) / 16 (tiles, buttons, fields) / 24 (panels) · selection 160 ms ease-out · content 220 ms fade.
+    Every consumer uses DynamicResource; accent-dependent tokens are replaced at runtime by ThemeManager.ApplyAccent.
+    Rule (from MonHub DESIGN.md): a token key never equals a ControlTheme/style key.
+  -->
+
+  <!-- ===== Colours ===== -->
+  <Color x:Key="RhBaseColor">#0B0A1A</Color>
+  <Color x:Key="RhSurfaceColor">#15142B</Color>
+  <Color x:Key="RhSurfaceHiColor">#1E1C3A</Color>
+  <Color x:Key="RhLineColor">#14FFFFFF</Color>
+  <Color x:Key="RhText1Color">#F3F4FA</Color>
+  <Color x:Key="RhText2Color">#B9BCD3</Color>
+  <Color x:Key="RhText3Color">#80849E</Color>
+  <Color x:Key="RhAccentAColor">#7B61FF</Color>
+  <Color x:Key="RhAccentBColor">#4C8DFF</Color>
+  <Color x:Key="RhAccentSoftColor">#2E7B61FF</Color>
+
+  <!-- ===== Surfaces ===== -->
+  <SolidColorBrush x:Key="RhBaseBrush" Color="#0B0A1A" />
+  <SolidColorBrush x:Key="RhSidebarBrush" Color="#C40D0C20" />
+  <SolidColorBrush x:Key="RhSurfaceBrush" Color="#15142B" />
+  <SolidColorBrush x:Key="RhSurfaceHiBrush" Color="#1E1C3A" />
+  <!-- glass: semi-transparent surfaces over the static ambient background (no live blur) -->
+  <SolidColorBrush x:Key="RhGlassBrush" Color="#A815142B" />
+  <SolidColorBrush x:Key="RhGlassHiBrush" Color="#C21E1C3A" />
+  <SolidColorBrush x:Key="RhGlassFaintBrush" Color="#0AFFFFFF" />
+  <SolidColorBrush x:Key="RhOverlayScrimBrush" Color="#B3060512" />
+  <SolidColorBrush x:Key="RhHoverBrush" Color="#0FFFFFFF" />
+  <SolidColorBrush x:Key="RhPressedBrush" Color="#08FFFFFF" />
+  <SolidColorBrush x:Key="RhSelectedBrush" Color="#14FFFFFF" />
+
+  <!-- ===== Lines ===== -->
+  <SolidColorBrush x:Key="RhLineBrush" Color="#14FFFFFF" />
+  <SolidColorBrush x:Key="RhLineStrongBrush" Color="#26FFFFFF" />
+  <LinearGradientBrush x:Key="RhGlassBorderBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Offset="0" Color="#2AFFFFFF" />
+    <GradientStop Offset="1" Color="#0DFFFFFF" />
+  </LinearGradientBrush>
+
+  <!-- ===== Text ===== -->
+  <SolidColorBrush x:Key="RhText1Brush" Color="#F3F4FA" />
+  <SolidColorBrush x:Key="RhText2Brush" Color="#B9BCD3" />
+  <SolidColorBrush x:Key="RhText3Brush" Color="#80849E" />
+  <SolidColorBrush x:Key="RhTextOnAccentBrush" Color="#FFFFFF" />
+
+  <!-- ===== Accent (replaced at runtime) ===== -->
+  <SolidColorBrush x:Key="RhAccentBrush" Color="#7B61FF" />
+  <SolidColorBrush x:Key="RhAccentBBrush" Color="#4C8DFF" />
+  <SolidColorBrush x:Key="RhAccentSoftBrush" Color="#2E7B61FF" />
+  <SolidColorBrush x:Key="RhAccentFaintBrush" Color="#187B61FF" />
+  <SolidColorBrush x:Key="RhAccentTextBrush" Color="#A897FF" />
+  <LinearGradientBrush x:Key="RhAccentGradientBrush" StartPoint="0%,50%" EndPoint="100%,50%">
+    <GradientStop Offset="0" Color="#7B61FF" />
+    <GradientStop Offset="1" Color="#4C8DFF" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="RhAccentGradientDiagBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#7B61FF" />
+    <GradientStop Offset="1" Color="#4C8DFF" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="RhFocusRingBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#9380FF" />
+    <GradientStop Offset="1" Color="#6A9FFF" />
+  </LinearGradientBrush>
+  <BoxShadows x:Key="RhFocusGlow">0 0 0 1 #557B61FF, 0 14 36 -4 #807B61FF</BoxShadows>
+  <BoxShadows x:Key="RhButtonGlow">0 8 24 -6 #A07B61FF</BoxShadows>
+  <BoxShadows x:Key="RhPanelShadow">0 18 48 -12 #99000000</BoxShadows>
+  <BoxShadows x:Key="RhNoShadow">0 0 0 0 #00000000</BoxShadows>
+  <RadialGradientBrush x:Key="RhAmbientBrushA" Center="12%,0%" GradientOrigin="12%,0%" RadiusX="75%" RadiusY="75%">
+    <GradientStop Offset="0" Color="#3A7B61FF" />
+    <GradientStop Offset="1" Color="#007B61FF" />
+  </RadialGradientBrush>
+  <RadialGradientBrush x:Key="RhAmbientBrushB" Center="95%,100%" GradientOrigin="95%,100%" RadiusX="70%" RadiusY="70%">
+    <GradientStop Offset="0" Color="#264C8DFF" />
+    <GradientStop Offset="1" Color="#004C8DFF" />
+  </RadialGradientBrush>
+
+  <!-- ===== States ===== -->
+  <SolidColorBrush x:Key="RhSuccessBrush" Color="#34D399" />
+  <SolidColorBrush x:Key="RhSuccessSoftBrush" Color="#2234D399" />
+  <SolidColorBrush x:Key="RhWarningBrush" Color="#F5B83D" />
+  <SolidColorBrush x:Key="RhWarningSoftBrush" Color="#22F5B83D" />
+  <SolidColorBrush x:Key="RhDangerBrush" Color="#FF5C72" />
+  <SolidColorBrush x:Key="RhDangerSoftBrush" Color="#22FF5C72" />
+  <SolidColorBrush x:Key="RhCloseHoverBrush" Color="#C42B1C" />
+  <SolidColorBrush x:Key="RhFavoriteBrush" Color="#FFC94D" />
+
+  <!-- ===== Shape ===== -->
+  <CornerRadius x:Key="RhRadiusSmall">8</CornerRadius>
+  <CornerRadius x:Key="RhRadiusChip">12</CornerRadius>
+  <CornerRadius x:Key="RhRadiusTile">16</CornerRadius>
+  <CornerRadius x:Key="RhRadiusPanel">24</CornerRadius>
+  <CornerRadius x:Key="RhRadiusPill">999</CornerRadius>
+  <Thickness x:Key="RhPagePadding">40,8,40,32</Thickness>
+
+  <!-- ===== Type (Poppins; Inter as fallback) ===== -->
+  <FontFamily x:Key="RhFont">avares://RetroHub.App/Assets/Fonts#Poppins, fonts:Inter#Inter</FontFamily>
+  <x:Double x:Key="RhFontDisplay">40</x:Double>
+  <x:Double x:Key="RhFontTitle">30</x:Double>
+  <x:Double x:Key="RhFontH2">19</x:Double>
+  <x:Double x:Key="RhFontBody">14.5</x:Double>
+  <x:Double x:Key="RhFontMeta">13</x:Double>
+  <x:Double x:Key="RhFontLabel">11.5</x:Double>
+</ResourceDictionary>
