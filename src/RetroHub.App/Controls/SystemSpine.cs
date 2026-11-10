@@ -13,9 +13,11 @@ namespace RetroHub.App.Controls;
 
 /// <summary>
 /// A system on a shelf (DESIGN 7.1 "Fächer-Brett", 7.4 "Fächerwand"): a SPINE (wall-light tone with the era texture, 8 px
-/// band in the system's colour, the code turned −90° in the spine role, the count at the foot; on the Konsolen wall
-/// also the system's motif standing at the foot, <see cref="ShowMotif"/>) that turns its FRONT forward when it gets the
-/// focus (the system's wall with band, texture and the motif standing at 72 %, the name, maker and year, the count).
+/// band in the system's colour, the code turned −90° in the spine role HANGING 16 px under the band – on Start and on the
+/// Konsolen wall alike –, the count at the foot and the motif standing above it: full width on the Konsolen wall
+/// (<see cref="ShowMotif"/>), 40 px on a Start spine of ≥ 200) that turns its FRONT forward when it gets the focus (the
+/// system's wall with band, texture and the motif; a big front (Konsolen) carries an inner shelf with up to three of its
+/// games, the small front of Start the motif at 72 %; the name, maker and year, the count).
 /// The front may be taller than the spine (<see cref="SpineHeight"/>; Konsolen: spine 460, front 600): both stand on the
 /// same board, the drawn height grows with the width. Only the width of the visible part animates (Glide 220 ms; 90 ms
 /// linear while a direction is held; immediate when motion is reduced/off); the front is always laid out at its full
@@ -41,8 +43,18 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     private static readonly IImmutableSolidColorBrush Text2 = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
     private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
 
+    /// <summary>Where the code hangs: 16 px under the 8 px band (one anchor on Start and Konsolen, M5 QA).</summary>
+    public const double CodeTop = 8 + 16;
+
     private SystemItemViewModel? _system;
-    private FormattedText? _code, _count, _name, _sub, _frontCount;
+    // the inner shelf of a big front: up to three boxes (built when the front first opens, after DecodeDwell)
+    private Canvas? _shelf;
+    private readonly List<CoverArt> _covers = [];
+    private Rect[] _slots = [];
+    private double _boardY;
+    private Rect _motifBox;
+    private Avalonia.Threading.DispatcherTimer? _dwell;
+    private FormattedText? _code, _codeLit, _count, _name, _sub, _frontCount;
     private (string?, double, double, int) _textKey;
     private bool _open;
     private double _ringOpacity;
@@ -114,6 +126,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         _system = DataContext as SystemItemViewModel;
         if (_system != null) _system.PropertyChanged += OnSystemChanged;
         _textKey = default;
+        UpdateCovers();
         InvalidateVisual();
     }
 
@@ -124,6 +137,120 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
             _textKey = default;
             InvalidateVisual();
         }
+        else if (e.PropertyName == nameof(SystemItemViewModel.Featured)) UpdateCovers();
+    }
+
+    /// <summary>A big front (Konsolen) carries an inner shelf with games (M5 QA: the open front was an empty slab).</summary>
+    private bool HasShelf => LargeFront && Opens;
+
+    /// <summary>
+    /// The boxes of the inner shelf: built the first time the front opens, once the focus rested <see cref="Motion.DecodeDwell"/>
+    /// and no direction is held (no decodes while the row glides past); then they only follow the system's games.
+    /// </summary>
+    private void UpdateCovers()
+    {
+        if (_shelf == null) return;
+        var games = _system?.Featured ?? [];
+        var count = Math.Min(games.Count, FrontWidth >= 480 ? 3 : 2);
+        while (_covers.Count < count)
+        {
+            var art = new CoverArt { ShowFavorite = false, IsHitTestVisible = false };
+            art.ArtRectChanged += (_, _) => InvalidateVisual();
+            _covers.Add(art);
+            _shelf.Children.Add(art);
+        }
+        for (var i = 0; i < _covers.Count; i++)
+        {
+            var art = _covers[i];
+            art.IsVisible = i < count;
+            if (i >= count) continue;
+            var g = games[i];
+            art.SystemId = g.SystemId;
+            art.Accent = g.Accent;
+            art.Badge = g.SystemShort;
+            art.Title = g.Title;
+            art.Year = g.YearText;
+            art.IsMissing = g.IsMissing;
+            art.SlotFormat = SystemPalette.BoxAspect(g.SystemId);
+            art.Source = g.CoverPath;
+        }
+        InvalidateArrange();
+        InvalidateVisual();
+    }
+
+    private void EnsureShelf()
+    {
+        if (_shelf != null || !HasShelf) return;
+        if (NavRepeatTracker.Current?.IsActive == true || _dwell != null)
+        {
+            if (_dwell != null) return;
+            _dwell = new Avalonia.Threading.DispatcherTimer { Interval = Motion.DecodeDwell };
+            _dwell.Tick += (_, _) =>
+            {
+                if (NavRepeatTracker.Current?.IsActive == true && _open) return; // keep waiting while a direction is held
+                _dwell!.Stop();
+                _dwell = null;
+                if (_open) EnsureShelf();
+            };
+            _dwell.Start();
+            return;
+        }
+        _shelf = new Canvas { ClipToBounds = true, IsHitTestVisible = false };
+        VisualChildren.Add(_shelf);
+        LogicalChildren.Add(_shelf);
+        UpdateCovers();
+    }
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        _shelf?.Measure(Size.Infinity);
+        return default;
+    }
+
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        if (_shelf == null) return finalSize;
+        var area = ObjectRect;
+        LayoutFront(finalSize.Height);
+        var t = Openness;
+        _shelf.Opacity = Math.Clamp((t - 0.6) / 0.4, 0, 1);
+        _shelf.IsVisible = t > 0.6;
+        _shelf.Arrange(area);
+        for (var i = 0; i < _covers.Count && i < _slots.Length; i++)
+        {
+            var slot = _slots[i];
+            Canvas.SetLeft(_covers[i], slot.X);
+            Canvas.SetTop(_covers[i], slot.Y - area.Y);
+            _covers[i].Width = slot.Width;
+            _covers[i].Height = slot.Height;
+        }
+        return finalSize;
+    }
+
+    /// <summary>
+    /// The big front's layout (front coordinates, origin top left of the front): the inner board at 62 % of the height
+    /// (10 px, the wall's board tone), up to three boxes standing on it from the inset (art height 150, ≈1100: 110, gap
+    /// 12, the system's box format, never into the name and maker above), below it the count left and the motif right.
+    /// </summary>
+    private void LayoutFront(double height)
+    {
+        var inset = FrontInset;
+        var big = FrontWidth >= 480;
+        _boardY = Math.Round(height * 0.62);
+        var textBottom = 8 + Math.Round(inset * 0.8) + (_name?.Height ?? 0) + 8 + (_sub?.Height ?? 0);
+        var count = _covers.Count(c => c.IsVisible);
+        var aspect = _system != null ? SystemPalette.BoxAspect(_system.Id) : 1.25;
+        var h = Math.Min(big ? 150 : 110, _boardY - textBottom - 16);
+        var room = FrontWidth - 2 * inset;
+        if (count > 0 && count * h / aspect + (count - 1) * 12 > room) h = (room - (count - 1) * 12) / count * aspect;
+        h = Math.Max(0, Math.Floor(h));
+        var w = Math.Floor(h / aspect);
+        _slots = new Rect[count];
+        for (var i = 0; i < count; i++) _slots[i] = new Rect(inset + i * (w + 12), _boardY - h, w, h);
+        // the motif stands on the stage board, right, in the part under the inner board
+        var below = height - (_boardY + 10);
+        var size = Math.Round(Math.Min(below - (big ? 24 : 16), FrontWidth * 0.46));
+        _motifBox = new Rect(FrontWidth - Math.Round(FrontWidth * 0.06) - size, height - size, size, size);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -161,6 +288,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
             {
                 _open = open;
                 SetWidth(animate: true);
+                if (open) EnsureShelf();
             }
             // the ring stands above the neighbouring spines (they would cover it: later siblings draw on top)
             var z = _ringOpacity > 0 ? 1 : 0;
@@ -196,8 +324,10 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         if (_textKey == key && _code != null) return;
         _textKey = key;
         if (_system is not { } s) return;
-        var spineSize = Math.Clamp(Math.Round(SpineWidth * 0.30), 15, 28);
-        _code = new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, Paper);
+        // the quiet "Noch leer" spines: 16 in Text 2 (M5 QA: ≈ 11 px in Text 3 was unreadable from the couch)
+        var spineSize = Opens ? Math.Clamp(Math.Round(SpineWidth * 0.30), 15, 28) : 16;
+        _code = new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, Opens ? Paper : Text2);
+        _codeLit = Opens ? null : new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, Paper);
         var countSize = SpineWidth >= 96 ? Math.Min(28, Math.Round(SpineWidth * 0.22)) : 15;
         _count = new FormattedText(s.GameCount.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
             FontRoles.NumberFace, countSize, SpineWidth >= 96 ? Paper : Text2);
@@ -250,12 +380,29 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         var area = ObjectRect;
         using (ctx.PushClip(area))
         {
-            if (t < 1) DrawSpine(ctx, area, look, (1 - Math.Clamp(t / 0.5, 0, 1)) * (Opens ? 1 : _ringOpacity > 0.5 ? 0.9 : 0.62));
+            if (t < 1) DrawSpine(ctx, area, look, 1 - Math.Clamp(t / 0.5, 0, 1));
             if (t > 0)
             {
                 var front = new Rect(area.X, 0, FrontWidth, r.Height);
+                var shelf = HasShelf;
+                if (shelf) LayoutFront(r.Height);
                 using (ctx.PushOpacity(Math.Clamp(t / 0.5, 0, 1)))
-                    SystemWall.Draw(ctx, this, front, look, band: 8, motifShare: 0.72, motifInset: Math.Round(FrontWidth * 0.06));
+                {
+                    SystemWall.Draw(ctx, this, front, look, band: 8, motifShare: shelf ? 0 : 0.72, motifInset: Math.Round(FrontWidth * 0.06));
+                    if (shelf)
+                    {
+                        // the inner board across the front, the contact shadows of the boxes on it, the motif below
+                        ShelfBoard.DrawOnWall(ctx, new Rect(front.X, _boardY, FrontWidth, 10), look);
+                        for (var i = 0; i < _covers.Count && i < _slots.Length; i++)
+                        {
+                            if (!_covers[i].IsVisible) continue;
+                            var art = _covers[i].ArtRect;
+                            var span = art.Width > 0 ? new Rect(_slots[i].X + art.X, 0, art.Width, 0) : _slots[i];
+                            ctx.FillRectangle(ShelfBoard.ContactBrush, new Rect(front.X + span.X, _boardY + 1, span.Width, 9));
+                        }
+                        MotifCatalog.Draw(ctx, look, _motifBox.Translate(new Vector(front.X, 0)), relief: true);
+                    }
+                }
                 using (ctx.PushOpacity(Math.Clamp((t - 0.6) / 0.4, 0, 1)))
                 using (ctx.PushTransform(Matrix.CreateTranslation(area.X, 0)))
                     DrawFrontText(ctx, new Rect(0, 0, FrontWidth, r.Height));
@@ -275,6 +422,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         {
             var w = SpineWidth;
             var r = new Rect(0, 0, area.Width, area.Height);
+            var lit = Opens || _ringOpacity > 0.5;
             // the Konsolen spine is a narrow slice of its wall (38 % Wand hell over 62 % Wand, the light edge between);
             // the small spines of Start stay one tone
             var split = ShowMotif ? Math.Round(r.Height * 0.38) : r.Height;
@@ -282,9 +430,14 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
             if (split < r.Height) ctx.FillRectangle(look.WallBrush, new Rect(0, split, r.Width, r.Height - split));
             SystemWall.DrawTextures(ctx, this, r, look);
             if (split < r.Height) ctx.FillRectangle(LightEdge, new Rect(0, split, r.Width, 1));
-            ctx.FillRectangle(look.ColorBrush, new Rect(0, 0, r.Width, 8));
+            // a spine without games is quiet through its band (50 %), not through unreadable text (M5 QA)
+            using (ctx.PushOpacity(lit ? 1 : 0.5))
+                ctx.FillRectangle(look.ColorBrush, new Rect(0, 0, r.Width, 8));
             ctx.FillRectangle(LightEdge, new Rect(0, 8, r.Width, 1));
-            // from the foot up: the count, (the motif standing above it), the code turned −90° reading bottom to top
+            // the code hangs 16 px under the band and reads upward (one anchor on Start and Konsolen, M5 QA); from the
+            // foot up: the count and the motif standing above it
+            var code = lit ? _code : _codeLit ?? _code;
+            var codeEnd = code != null ? CodeTop + code.Width : CodeTop;
             var gap = w >= 96 ? 16 : 12;
             var foot = r.Height - gap;
             if (_count is { } count && _system?.GameCount > 0)
@@ -292,20 +445,20 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 ctx.DrawText(count, new Point(Math.Round((w - count.Width) / 2), Math.Round(foot - count.Height)));
                 foot -= count.Height + gap;
             }
-            if (ShowMotif)
+            var motif = ShowMotif ? Math.Round(w - 2 * Math.Max(12, Math.Round(w * 0.14)))
+                // a Start spine of ≥ 200 shows the motif at 40 px – the same object at a smaller scale – where the code leaves room
+                : Opens && r.Height >= 200 && foot - 40 >= codeEnd + 8 ? 40 : 0;
+            if (motif > 0)
             {
-                var size = Math.Round(w - 2 * Math.Max(12, Math.Round(w * 0.14)));
-                MotifCatalog.Draw(ctx, look, new Rect(Math.Round((w - size) / 2), Math.Round(foot - size), size, size), cutout: look.WallBrush);
-                foot -= size + gap + 4;
+                MotifCatalog.Draw(ctx, look, new Rect(Math.Round((w - motif) / 2), Math.Round(foot - motif), motif, motif), cutout: look.WallBrush);
+                foot -= motif + gap + 4;
             }
-            if (_code is { } code)
+            if (code != null)
             {
                 var x = Math.Round((w - code.Height) / 2);
-                // on the Konsolen spine the code reads upward and ends under the band (a label at the head of the spine);
-                // only a code longer than the light zone runs on below it
-                var start = ShowMotif ? Math.Min(foot, 8 + gap + code.Width) : foot;
+                // only a code longer than the room above the motif is cut (never on the catalog's codes)
                 using (ctx.PushClip(new Rect(0, 12, w, Math.Max(0, foot - 12))))
-                using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(x, Math.Round(start))))
+                using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(x, Math.Round(codeEnd))))
                     ctx.DrawText(code, new Point(0, 0));
             }
         }

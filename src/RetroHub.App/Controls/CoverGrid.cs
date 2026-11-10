@@ -83,12 +83,27 @@ public sealed class CoverGrid : UserControl
     public static readonly StyledProperty<bool> ShowBoardProperty =
         AvaloniaProperty.Register<CoverGrid, bool>(nameof(ShowBoard), true);
 
+    /// <summary>
+    /// Height of a compact page header that covers the viewport's top once the grid's header has scrolled out
+    /// (Systemseite, M5 QA): rows ≥ 1 snap this much lower, so they start <see cref="RowSpacing"/> below it.
+    /// </summary>
+    public static readonly StyledProperty<double> StickyInsetProperty =
+        AvaloniaProperty.Register<CoverGrid, double>(nameof(StickyInset));
+
+    /// <summary>
+    /// Every snapped position stays reachable at the end of the content (a spacer grows on demand): a short grid under
+    /// a tall header never stops between two snaps with a sliver of the header left at the top (M5 QA).
+    /// </summary>
+    public static readonly StyledProperty<bool> SnapToEndProperty =
+        AvaloniaProperty.Register<CoverGrid, bool>(nameof(SnapToEnd));
+
     private readonly ScrollViewer _scroll;
     private readonly ItemsControl _rows;
     private readonly StackPanel _outer;
     private readonly Panel _content;
     private readonly ContentControl _headerHost;
     private readonly ContentControl _footerHost;
+    private readonly Control _tail = new Control { IsHitTestVisible = false };
     private readonly FocusLayer _focus;
     private readonly Control _boards;
     private readonly Border _fade;
@@ -109,6 +124,9 @@ public sealed class CoverGrid : UserControl
 
     /// <summary>Raised when the part of the list in view changed (scrolling, rebuild, resize): see <see cref="VisibleRange"/>.</summary>
     public event Action? ViewportChanged;
+
+    /// <summary>Raised on every change of the scroll position (see <see cref="ScrollOffsetY"/>).</summary>
+    public event Action? Scrolled;
 
     private (int, int) _lastRange = (-2, -2);
 
@@ -196,17 +214,23 @@ public sealed class CoverGrid : UserControl
     public void ScrollToIndex(int index)
     {
         if (_columns <= 0 || index < 0 || index >= _items.Count) return;
-        _scroll.Offset = _scroll.Offset.WithY(SnapOffset(index / _columns));
+        ScrollToSnapped(SnapOffset(index / _columns));
     }
 
     /// <summary>
     /// Space kept above the top row in view when the grid snaps (M3 QA): the row spacing itself – the lifted box
     /// (+6 % of its height) and its ring fit into it, and the row above ends exactly at the viewport's top edge.
     /// </summary>
-    private double SnapHeadroom => Math.Max(0, RowSpacing);
+    private double SnapHeadroom => Math.Max(0, RowSpacing) + Math.Max(0, StickyInset);
 
     /// <summary>The scroll offset that puts row <paramref name="row"/> at the top with <see cref="SnapHeadroom"/> above it (row 0: 0).</summary>
     private double SnapOffset(int row) => row <= 0 ? 0 : Math.Max(0, RowsTop + row * RowPitch - SnapHeadroom);
+
+    /// <summary>The scroll position (the page shows its compact header once the grid's header has scrolled out).</summary>
+    public double ScrollOffsetY => _scroll.Offset.Y;
+
+    /// <summary>Height of the header above the first row (0 without one).</summary>
+    public double HeaderHeight => _headerHost.Bounds.Height;
 
     /// <summary>
     /// Fade colour of the viewport's top edge (null = none): a 12 px overlay in the page ground, 100 % → 0, fixed to the
@@ -256,7 +280,7 @@ public sealed class CoverGrid : UserControl
         };
         _headerHost = new ContentControl();
         _footerHost = new ContentControl();
-        _outer = new StackPanel { Children = { _headerHost, _rows, _footerHost } };
+        _outer = new StackPanel { Children = { _headerHost, _rows, _footerHost, _tail } };
         // one focus layer per grid, inside the scroll content (scrolls along): cone behind the rows, ring above them
         _content = new Panel();
         _focus = new FocusLayer(_content, _rows) { BoardFront = ShelfBoard.EdgeHeight };
@@ -281,7 +305,7 @@ public sealed class CoverGrid : UserControl
         ScrollViewer.SetBringIntoViewOnFocusChange(_scroll, false);
         Content = _scroll;
         _scroll.SizeChanged += (_, _) => UpdateLayoutMetrics();
-        _scroll.ScrollChanged += (_, _) => { RaiseViewportChanged(); PlaceTopFade(); };
+        _scroll.ScrollChanged += (_, _) => { RaiseViewportChanged(); PlaceTopFade(); Scrolled?.Invoke(); };
         _rows.LayoutUpdated += (_, _) => InvalidateBoardsIfMoved();
         // tunnel: tiles (buttons) or the focus manager must not consume the arrows before the grid sees them
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -304,6 +328,8 @@ public sealed class CoverGrid : UserControl
     public Control? Footer { get => GetValue(FooterProperty); set => SetValue(FooterProperty, value); }
     public bool ShowBoard { get => GetValue(ShowBoardProperty); set => SetValue(ShowBoardProperty, value); }
     public bool HeaderBleed { get => GetValue(HeaderBleedProperty); set => SetValue(HeaderBleedProperty, value); }
+    public double StickyInset { get => GetValue(StickyInsetProperty); set => SetValue(StickyInsetProperty, value); }
+    public bool SnapToEnd { get => GetValue(SnapToEndProperty); set => SetValue(SnapToEndProperty, value); }
     public double PlaceholderAspect { get => GetValue(PlaceholderAspectProperty); set => SetValue(PlaceholderAspectProperty, value); }
 
     /// <summary>The grid's focus visuals (light colour: null = the user's light colour; a system's light in its context).</summary>
@@ -383,6 +409,7 @@ public sealed class CoverGrid : UserControl
 
     private void ReadItems()
     {
+        _tail.Height = 0;
         _items = ItemsSource?.Cast<object>().ToList() ?? [];
         var map = new Dictionary<object, int>(_items.Count, ReferenceEqualityComparer.Instance);
         for (var i = 0; i < _items.Count; i++) map.TryAdd(_items[i], i);
@@ -561,7 +588,25 @@ public sealed class CoverGrid : UserControl
                 if (bottom <= o + viewport) { target = o; break; }
             }
         }
-        _scroll.Offset = _scroll.Offset.WithY(target); // the scroll viewer clamps at the end of the content
+        ScrollToSnapped(target);
+    }
+
+    /// <summary>
+    /// Scrolls to <paramref name="target"/>; the scroll viewer clamps at the end of the content, so with
+    /// <see cref="SnapToEnd"/> the spacer after the footer first grows until the snapped position is reachable.
+    /// </summary>
+    private void ScrollToSnapped(double target)
+    {
+        if (SnapToEnd && target > 0)
+        {
+            var max = _scroll.Extent.Height - _scroll.Viewport.Height;
+            if (target > max + 0.5)
+            {
+                _tail.Height = Math.Ceiling(_tail.Bounds.Height + target - max);
+                _scroll.UpdateLayout();
+            }
+        }
+        _scroll.Offset = _scroll.Offset.WithY(target);
     }
 
     internal Control? TileAt(int rowIndex, int col)

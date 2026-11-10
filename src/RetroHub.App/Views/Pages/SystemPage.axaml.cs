@@ -3,6 +3,8 @@ using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -25,6 +27,13 @@ public partial class SystemPage : PageBase
 
     private SystemViewModel? _vm;
     private Control? _infoOpener;
+    private bool _compact;
+
+    /// <summary>Height of the wall's light zone: the neighbour row (DESIGN 7.5.1, M5 QA); 24 without neighbours.</summary>
+    public double BandHeight => _vm?.HasNeighbours == false ? 24 : _compact ? 64 : 88;
+
+    /// <summary>Gap between the light zone and the title's top (the tone edge never touches a glyph).</summary>
+    public const double TitleClearance = 24;
 
     public SystemPage()
     {
@@ -43,10 +52,14 @@ public partial class SystemPage : PageBase
             ApplyLight();
         };
         BannerBoard.Casters = [BannerMotif];
-        // the grid does not scroll to focused elements by itself (it snaps rows): the footer's button asks for its place
-        ImportsButton.GotFocus += (_, _) => ImportsButton.BringIntoView();
+        // the grid does not scroll to focused elements by itself (it snaps rows): the footer's button asks for its place,
+        // with the footer and its fade below it (they lie over the page's last ≈ 96 px)
+        ImportsButton.GotFocus += (_, _) => ImportsButton.BringIntoView(new Rect(0, 0, ImportsButton.Bounds.Width, ImportsButton.Bounds.Height + 96));
         InfoButton.GotFocus += (_, _) => Banner.BringIntoView();
         SizeChanged += (_, e) => ApplySize(e.NewSize);
+        BannerSentence.SizeChanged += (_, _) => FitTitle();
+        StatusRow.SizeChanged += (_, _) => FitTitle();
+        Covers.Scrolled += UpdateCompactHeader;
         InfoScrim.PointerPressed += (_, e) =>
         {
             e.Handled = true;
@@ -68,6 +81,9 @@ public partial class SystemPage : PageBase
             case nameof(SystemViewModel.IsInfoOpen):
                 ApplyInfo();
                 break;
+            case nameof(SystemViewModel.HasNeighbours):
+                ApplyBanner();
+                break;
         }
     }
 
@@ -79,26 +95,74 @@ public partial class SystemPage : PageBase
         Covers.FocusVisuals.Refresh();
         Covers.TopFadeColor = system.Look.Wall;
         Covers.PlaceholderAspect = _vm.SlotAspect;
+        var w = system.Look.Wall;
+        CompactFade.Background = new ImmutableLinearGradientBrush(
+            [new ImmutableGradientStop(0, w), new ImmutableGradientStop(1, Avalonia.Media.Color.FromArgb(0, w.R, w.G, w.B))],
+            startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
     }
 
-    /// <summary>1080 or ≈1100 values: banner 392/300 high, motif 300/220, name 72·56·44 / 56·44·36.</summary>
+    /// <summary>
+    /// The compact header shows once ≥ 70 % of the banner has scrolled out: rows ≥ 1 snap below it, so the page never
+    /// shows a sliver of the banner with a cut motif (M5 QA).
+    /// </summary>
+    private void UpdateCompactHeader()
+    {
+        var header = Covers.HeaderHeight;
+        var show = header > 0 && Covers.ScrollOffsetY >= 0.7 * header;
+        CompactHeader.Opacity = show ? 1 : 0;
+        CompactHeader.IsHitTestVisible = show;
+    }
+
+    /// <summary>1080 or ≈1100 values: banner 392/320 high, motif 300/220, name 72·56·44 / 56·44·36.</summary>
     private void ApplySize(Size size)
     {
-        var compact = size.Height < CompactBelowHeight;
-        Banner.Height = compact ? 320 : 392;
-        BannerMotif.Width = BannerMotif.Height = compact ? 220 : 300;
+        _compact = size.Height < CompactBelowHeight;
+        var compact = _compact;
         BannerTitle.Sizes = compact ? "56,44,36" : "72,56,44";
         BannerText.Margin = new Thickness(0, 0, compact ? 280 : 380, compact ? 36 : 48);
-        Neighbours.Margin = new Thickness(-10, compact ? 20 : 28, 0, 0);
         Covers.Spacing = size.Width >= 1600 ? 28 : 20;
-        // the empty compartment at ≈ 1100: figures 150 high, so the way to the imports stays in view under the banner
-        EmptyDrawing.Width = compact ? 285 : 380;
-        EmptyDrawing.Height = compact ? 150 : 200;
+        // the empty compartment at ≈ 1100: figures 120 high and a closer title, so the way to the imports stays clear of
+        // the footer's fade under the banner (M5 QA)
+        EmptyDrawing.Width = compact ? 84 : 140;
+        EmptyDrawing.Height = compact ? 120 : 200;
         foreach (var slot in EmptyPlaces.Children.OfType<EmptySlot>())
         {
-            slot.Width = compact ? 112 : 150;
-            slot.Height = compact ? 150 : 200;
+            slot.Width = compact ? 90 : 150;
+            slot.Height = compact ? 120 : 200;
         }
+        EmptyTitle.Margin = new Thickness(0, compact ? 32 : 48, 0, 0);
+        ApplyBanner();
+    }
+
+    /// <summary>
+    /// The banner's geometry: the light zone holds only the neighbour row and has a fixed height (88, ≈1100: 64; 24 when
+    /// there are no neighbours – no dead stripe), the banner shrinks with it; the motif stands on the board.
+    /// </summary>
+    private void ApplyBanner()
+    {
+        var band = BandHeight;
+        var full = _compact ? 320.0 : 392.0;
+        var bannerHeight = full - ((_compact ? 64 : 88) - band);
+        Banner.Height = bannerHeight;
+        BannerWall.SplitHeight = band;
+        // the neighbour row centred in the light zone under the 8 px colour band
+        Neighbours.Margin = new Thickness(-10, Math.Round(8 + (band - 8 - 40) / 2), 0, 0);
+        var wall = bannerHeight - 24;
+        BannerMotif.Width = BannerMotif.Height = Math.Min(_compact ? 220 : 300, wall - 24);
+        FitTitle();
+    }
+
+    /// <summary>
+    /// The title may take what is left between the light zone (+ <see cref="TitleClearance"/>) and the sentence and status
+    /// row anchored to the board: two lines at 72 never reach the tone edge, they fall back to 56/44 (M5 QA).
+    /// </summary>
+    private void FitTitle()
+    {
+        var bottom = Banner.Height - BannerText.Margin.Bottom;
+        var below = BannerSentence.Bounds.Height + BannerSentence.Margin.Top + StatusRow.Bounds.Height + StatusRow.Margin.Top;
+        if (BannerSentence.Bounds.Height <= 0) below = 30 + 8 + 40 + 16;
+        var room = Math.Floor(bottom - below - (BandHeight + TitleClearance));
+        if (Math.Abs(BannerTitle.MaxTextHeight - room) > 0.5) BannerTitle.MaxTextHeight = Math.Max(30, room);
     }
 
     /// <summary>

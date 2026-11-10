@@ -4,9 +4,11 @@ using Avalonia.Headless;
 using Avalonia.Media;
 using RetroHub.App.Controls;
 using RetroHub.App.Input;
+using RetroHub.App.Services;
 using RetroHub.App.Theming;
 using RetroHub.App.ViewModels;
 using RetroHub.App.Views;
+using RetroHub.Core;
 using RetroHub.Core.Catalog;
 using RetroHub.Core.Config;
 using Xunit;
@@ -60,6 +62,65 @@ public class DesignM5Tests
             Assert.True(ColorUtil.Contrast(front, look.WallHi) >= 1.15, $"{id}: board/wall-hi {ColorUtil.Contrast(front, look.WallHi):0.00}");
         }
     }
+
+    [Fact]
+    public Task Every_motif_reads_against_its_wall() => UiTest.Run(() =>
+    {
+        // M5 QA: the PS2 tower (near-black body on a near-black wall, ≈ 1.3 : 1) practically vanished; every motif has at
+        // least one painted part with ≥ 3 : 1 against its wall, and the tower's body itself does
+        var weak = new List<string>();
+        foreach (var id in SystemPalette.KnownIds)
+        {
+            var look = SystemPalette.Get(id);
+            var best = MotifCatalog.PaintedColors(look).Max(p => ColorUtil.Contrast(p.Color, look.Wall));
+            if (best < 3.0) weak.Add($"{id} {best:0.00}");
+        }
+        Assert.True(weak.Count == 0, "motifs under 3 : 1 against their wall: " + string.Join(", ", weak));
+        var ps2 = SystemPalette.Get("ps2");
+        Assert.True(ColorUtil.Contrast(MotifCatalog.LiftColor(ps2), ps2.Wall) >= 3.0);
+    });
+
+    [Fact]
+    public Task Banner_title_never_reaches_into_the_walls_light_zone() => UiTest.Run(() =>
+    {
+        // M5 QA: the 38 % tone edge ran through two-line names ("Super Nintendo Entertainment System"); the light zone has
+        // a fixed height and the title starts at least 16 px below it – for every name of the REAL catalog (empty library)
+        // at all four sizes
+        var root = Path.Combine(Path.GetTempPath(), "retrohub-ui-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        AppServices.WithoutGamepad = true;
+        var paths = new AppPaths(root, AppContext.BaseDirectory);
+        var settings = new SettingsStore(paths.SettingsFile);
+        settings.Current.Motion = MotionLevel.Off;
+        App.InitializeUi(settings.Current, null);
+        using var services = AppServices.Create(paths, settings, new UiPreferencesStore(null));
+        Assert.False(services.IsDemo);
+        Assert.True(services.Catalog.Systems.Count >= 32);
+        var ctx = new UiContext(services);
+        foreach (var (w, h) in new[] { (1920, 1080), (1600, 900), (1100, 700), (2560, 1440) })
+        {
+            var vm = new MainViewModel(ctx);
+            var window = new MainWindow(vm) { Width = w, Height = h };
+            window.Show();
+            TestSupport.Pump(() => vm.CurrentPage is HomeViewModel { IsLoaded: true });
+            TestSupport.Settle(200);
+            foreach (var def in services.Catalog.Systems)
+            {
+                vm.Navigator.Navigate(PageKey.System, def.Id);
+                Assert.True(TestSupport.Pump(() => vm.CurrentPage is SystemViewModel { IsLoaded: true } s && s.System?.Id == def.Id, 4000), def.Id);
+                TestSupport.Settle(30);
+                var page = window.GetVisualDescendantsOf<Views.Pages.SystemPage>().First(p => p.IsEffectivelyVisible);
+                var wall = page.GetVisualDescendantsOf<SystemWall>().First(x => x.Name == "BannerWall");
+                var title = page.GetVisualDescendantsOf<FitText>().First(x => x.Name == "BannerTitle");
+                TestSupport.Pump(() => title.Text?.Length > 0, 1000);
+                var top = title.TranslatePoint(new Point(0, 0), wall);
+                Assert.NotNull(top);
+                Assert.True(top!.Value.Y >= wall.SplitHeight + 16, $"{def.Id} at {w}×{h}: title top {top.Value.Y:0} vs light zone {wall.SplitHeight:0} ({title.Text}, {title.FontSize})");
+                Assert.True(title.Bounds.Height <= title.MaxTextHeight + 1, $"{def.Id} at {w}×{h}: title {title.Bounds.Height:0} > room {title.MaxTextHeight:0}");
+            }
+            window.Close();
+        }
+    });
 
     [Fact]
     public void The_16_bit_modules_carry_dither_and_grooves()
@@ -203,6 +264,13 @@ public class DesignM5Tests
         Assert.Equal("Handheld von Nintendo, 2001. 7 Spiele, noch nicht gespielt.", SystemViewModel.BuildSentence(def, 7, 20, now.AddDays(-1), now));
         Assert.Equal("Handheld von Nintendo, 2001. Noch keine Spiele im Fach.", SystemViewModel.BuildSentence(def, 0, 0, null, now));
         Assert.EndsWith("zuletzt am 3. März.", SystemViewModel.BuildSentence(def, 2, 7200, new DateTime(2026, 3, 3, 12, 0, 0, DateTimeKind.Utc), now));
+        // whole words in the sentence, ending in exactly one period (M5 QA: "zuletzt vor 1 Wo" lost both)
+        Assert.EndsWith(", zuletzt vor einer Woche.", SystemViewModel.BuildSentence(def, 2, 7200, now.AddDays(-7), now));
+        Assert.EndsWith(", zuletzt vor 2 Wochen.", SystemViewModel.BuildSentence(def, 2, 7200, now.AddDays(-14), now));
+        Assert.EndsWith(", zuletzt vor 4 Wochen.", SystemViewModel.BuildSentence(def, 2, 7200, now.AddDays(-29), now));
+        Assert.EndsWith(", zuletzt vor 5 Minuten.", SystemViewModel.BuildSentence(def, 2, 7200, now.AddMinutes(-5), now));
+        foreach (var days in new[] { 7, 14, 29 })
+            Assert.DoesNotContain("..", SystemViewModel.BuildSentence(def, 2, 7200, now.AddDays(-days), now));
     });
 }
 

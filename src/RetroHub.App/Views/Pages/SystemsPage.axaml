@@ -8,12 +8,13 @@
             x:DataType="vm:SystemsViewModel">
   <!--
     Konsolen "Die Fächerwand" (DESIGN 7.4, M5). No card grid: the systems with games stand as SPINES on one stage board
-    (128 × 460, band, texture, the code turned, the motif at the foot, the count); the focused one turns its FRONT
-    forward (520 × 600: its wall with band, texture and motif, name, maker and year, the count) and stands in slot 3
-    (the row glides; offsets from the target widths). The page ground is the wall of the focused system in shadow.
-    Under the board the ticker (codes, "Fach 3 von 13"); below a low edge with the systems without games as thin, quiet
-    spines ("Noch leer"). Nothing scrolls vertically. 1080: board top at page y 688 (window 760).
-    Narrow pages (logical height < 860, class "compact"): spines 96 × 360, front 380 × 460.
+    (128 × 460, band, texture, the code hanging under the band, the motif at the foot, the count); the focused one turns
+    its FRONT forward (520 × 600: its wall with band and texture, name, maker and year, an inner shelf with three of its
+    games, the count and the motif below it) and stands in slot 3 (the row glides; offsets from the target widths). The
+    page ground is the wall of the focused system in shadow. Under the board the position rail (one tick per system,
+    the current one with its code; "Fach 3 von 13" right); below a low edge with the systems without games as thin,
+    quiet spines ("Noch leer"). Nothing scrolls vertically.
+    Narrow pages (logical height < 860, class "compact"): spines 96 × 360, front 380 × 460 (two boxes on its shelf).
   -->
   <p:PageBase.Styles>
     <Style Selector="c|SystemSpine.wall">
@@ -29,14 +30,14 @@
       <Setter Property="SpineWidth" Value="96" />
       <Setter Property="FrontWidth" Value="380" />
     </Style>
+    <!-- "Noch leer": 48 × 148 (≈1100: 48 × 116), the code in 16 Text 2 – readable from the couch, quiet through the band -->
     <Style Selector="c|SystemSpine.unused">
-      <Setter Property="Height" Value="132" />
-      <Setter Property="SpineWidth" Value="40" />
+      <Setter Property="Height" Value="148" />
+      <Setter Property="SpineWidth" Value="48" />
       <Setter Property="Opens" Value="False" />
     </Style>
     <Style Selector="Panel.compact c|SystemSpine.unused">
-      <Setter Property="Height" Value="104" />
-      <Setter Property="SpineWidth" Value="36" />
+      <Setter Property="Height" Value="116" />
     </Style>
     <Style Selector="c|Shelf#Wall">
       <Setter Property="ItemHeight" Value="600" />
@@ -47,22 +48,13 @@
       <Setter Property="AnchorX" Value="208" />
     </Style>
     <Style Selector="c|EmptySlot.wall">
+      <Setter Property="Recessed" Value="True" />
       <Setter Property="Width" Value="128" />
       <Setter Property="Height" Value="460" />
     </Style>
     <Style Selector="Panel.compact c|EmptySlot.wall">
       <Setter Property="Width" Value="96" />
       <Setter Property="Height" Value="360" />
-    </Style>
-    <!-- ticker: codes only (the spines carry the counts); the current code in paper with a 3 px underline in its colour -->
-    <Style Selector="TextBlock.wall-code">
-      <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
-    </Style>
-    <Style Selector="Button.wall-tick:pointerover TextBlock.wall-code">
-      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-    </Style>
-    <Style Selector="Button.wall-tick.current TextBlock.wall-code">
-      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     </Style>
   </p:PageBase.Styles>
   <p:PageBase.Resources>
@@ -96,42 +88,20 @@
         </StackPanel>
       </Panel>
 
-      <!-- ticker: the codes of all systems on the wall (a click turns that front forward), right the position -->
-      <Grid Name="TickerRow" ColumnDefinitions="*,Auto" Margin="{DynamicResource RhPageInsetX}" Height="48" IsVisible="{Binding HasSystems}">
-        <Panel>
-          <ScrollViewer Name="TickerScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-            <ItemsControl Name="Ticker" ItemsSource="{Binding Systems}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="22" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:SystemItemViewModel">
-                  <Button Theme="{StaticResource RhTickerItem}" Classes="wall-tick" Classes.current="{Binding IsCurrent}" Focusable="False"
-                          Tag="{Binding}" Click="OnTickerClick">
-                    <StackPanel Spacing="3" Margin="0,6,0,0">
-                      <TextBlock Classes="code wall-code" Text="{Binding ShortName}" />
-                      <Border Height="3" Background="{Binding AccentBrush}" IsVisible="{Binding IsCurrent}" />
-                    </StackPanel>
-                  </Button>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </ScrollViewer>
-          <Border Name="FadeLeft" Width="48" HorizontalAlignment="Left" IsHitTestVisible="False" IsVisible="False" />
-          <Border Name="FadeRight" Width="48" HorizontalAlignment="Right" IsHitTestVisible="False" IsVisible="False" />
-        </Panel>
-        <TextBlock Grid.Column="1" Classes="ui" FontSize="16" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" Margin="32,0,0,0"
-                   c:Sentence.Text="{Binding PositionText}" />
+      <!-- the position rail: one tick per system on the wall (a click turns that front forward), the current one with its
+           code; right the position in a fixed column, never touching the rail -->
+      <Grid Name="TickerRow" ColumnDefinitions="*,180" Margin="{DynamicResource RhPageInsetX}" Height="44" IsVisible="{Binding HasSystems}">
+        <c:PositionRail Name="Rail" Systems="{Binding Systems}" Current="{Binding Current}" Margin="0,0,48,0" />
+        <TextBlock Grid.Column="1" Classes="ui" FontSize="16" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Bottom"
+                   HorizontalAlignment="Right" Margin="0,0,0,2" c:Sentence.Text="{Binding PositionText}" />
       </Grid>
 
       <!-- the systems without games: thin, quiet spines on a low edge, the label hangs at its front -->
-      <Panel Name="UnusedShelf" IsVisible="{Binding HasEmptySystems}" Margin="0,20,0,0">
+      <Panel Name="UnusedShelf" IsVisible="{Binding HasEmptySystems}" Margin="0,32,0,0">
         <c:Shelf Name="Unused" ItemsSource="{Binding EmptySystems}" ItemTemplate="{StaticResource UnusedSpine}" ItemSpacing="8" TopGap="0"
                  ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}" Header="{l:T systems.unused}"
                  BoardLook="{Binding Current.Look, FallbackValue={x:Null}}"
-                 ItemHeight="132" AnchorX="640" />
+                 ItemHeight="148" AnchorX="640" />
       </Panel>
     </StackPanel>
   </Panel>

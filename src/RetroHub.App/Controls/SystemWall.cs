@@ -29,12 +29,19 @@ public sealed class SystemWall : Control
     /// </summary>
     public static readonly StyledProperty<double> TextureOpacityProperty =
         AvaloniaProperty.Register<SystemWall, double>(nameof(TextureOpacity), double.NaN);
+    /// <summary>
+    /// Height of the upper "Wand hell" zone in px (NaN = 38 % of the wall). A banner with a title fixes it, so the tone
+    /// edge never runs through the glyphs of a two-line name (M5 QA): the light zone holds only the neighbour row.
+    /// </summary>
+    public static readonly StyledProperty<double> SplitHeightProperty =
+        AvaloniaProperty.Register<SystemWall, double>(nameof(SplitHeight), double.NaN);
 
     private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
 
     static SystemWall()
     {
-        AffectsRender<SystemWall>(SystemIdProperty, AccentProperty, MotifShareProperty, MotifInsetProperty, BandHeightProperty, TextureOpacityProperty);
+        AffectsRender<SystemWall>(SystemIdProperty, AccentProperty, MotifShareProperty, MotifInsetProperty, BandHeightProperty, TextureOpacityProperty,
+            SplitHeightProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<SystemWall>(false);
         ClipToBoundsProperty.OverrideDefaultValue<SystemWall>(true);
     }
@@ -45,13 +52,14 @@ public sealed class SystemWall : Control
     public double MotifInset { get => GetValue(MotifInsetProperty); set => SetValue(MotifInsetProperty, value); }
     public double BandHeight { get => GetValue(BandHeightProperty); set => SetValue(BandHeightProperty, value); }
     public double TextureOpacity { get => GetValue(TextureOpacityProperty); set => SetValue(TextureOpacityProperty, value); }
+    public double SplitHeight { get => GetValue(SplitHeightProperty); set => SetValue(SplitHeightProperty, value); }
 
     public override void Render(DrawingContext context)
     {
         var r = new Rect(Bounds.Size);
         if (r.Width <= 0 || r.Height <= 0) return;
         var look = SystemPalette.Get(SystemId, Accent);
-        Draw(context, this, r, look, BandHeight, MotifShare, MotifInset, TextureOpacity);
+        Draw(context, this, r, look, BandHeight, MotifShare, MotifInset, TextureOpacity, SplitHeight);
     }
 
     /// <summary>
@@ -68,9 +76,9 @@ public sealed class SystemWall : Control
 
     /// <summary>Draws a wall into <paramref name="r"/> (shared by placeholders and banners).</summary>
     public static void Draw(DrawingContext context, Visual visual, Rect r, SystemLook look, double band, double motifShare, double motifInset,
-        double textureOpacity = double.NaN)
+        double textureOpacity = double.NaN, double splitHeight = double.NaN, bool relief = false)
     {
-        var split = Math.Round(r.Height * 0.38);
+        var split = double.IsNaN(splitHeight) ? Math.Round(r.Height * 0.38) : Math.Clamp(Math.Round(splitHeight), 0, r.Height);
         context.FillRectangle(look.WallHiBrush, new Rect(r.X, r.Y, r.Width, split));
         context.FillRectangle(look.WallBrush, new Rect(r.X, r.Y + split, r.Width, r.Height - split));
         DrawTextures(context, visual, r, look, textureOpacity);
@@ -80,7 +88,7 @@ public sealed class SystemWall : Control
             // never wider than 46 % of the wall, so the name above and maker/count bottom left stay free
             var size = Math.Round(Math.Min(r.Height * motifShare, r.Width * 0.46));
             var box = new Rect(r.Right - motifInset - size, r.Bottom - size, size, size);
-            MotifCatalog.Draw(context, look, box);
+            MotifCatalog.Draw(context, look, box, relief: relief);
         }
         if (band > 0) context.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, r.Width, band));
     }
@@ -119,6 +127,7 @@ public sealed class MotifView : Control
                 context.DrawGeometry(flat, null, MotifCatalog.Silhouette(look.Motif));
             return;
         }
-        MotifCatalog.Draw(context, look, r, alignRight: true);
+        // at hero size the motif gets its relief (edge light, foot, material; M5 QA)
+        MotifCatalog.Draw(context, look, r, alignRight: true, relief: true);
     }
 }

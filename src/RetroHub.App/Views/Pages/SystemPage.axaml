@@ -10,9 +10,12 @@
     Systemseite "Das Fach" (DESIGN 7.5, M5). The WALL BANNER heads the grid and scrolls with it (randlos): the system's
     wall (38/62, band, texture 8 %), top left the neighbours as text buttons with shoulder glyphs, bottom left the name
     (measured poster), ONE sentence and the emulator line with "Systeminfo", right the motif (300) standing on the stage
-    board – a board in the wall's own tone, so it reads in front of every wall. Below the board the grid in the system's
-    light on the wall as a flat tone. One to six games end in "Fachende" (a sentence and the way to the imports); an
-    empty compartment shows the empty shelf. Systeminfo is an overlay (folders, file types, emulators, BIOS).
+    board – a board in the wall's own tone, so it reads in front of every wall. The wall's light zone has a FIXED height
+    (88, ≈1100: 64; 24 without neighbours) and holds only the neighbour row; the title never reaches into it (M5 QA).
+    Below the board the grid in the system's light on the wall as a flat tone. Once the banner has scrolled out, a
+    compact header (64: wall, band, name, motif on a small board) takes its place – never a sliver of the banner.
+    One to six games end in "Fachende" (a sentence with the way to the imports beside it); an empty compartment shows
+    the empty shelf. Systeminfo is an overlay in the form of a filing card (folders, file types, emulators, BIOS).
     1080: wall window y 72–440, board 440–464, first box ≈ 512.
   -->
   <p:PageBase.Resources>
@@ -35,11 +38,12 @@
 
   <Panel Name="Root">
     <c:CoverGrid Name="Covers" ItemsSource="{Binding Games}" ItemTemplate="{StaticResource GridTile}" ItemWidth="176" Spacing="28" RowSpacing="24"
-                 CoverAspect="{Binding SlotAspect}" CaptionHeight="90" MaxStretch="1.15" ContentPadding="{DynamicResource RhGridInset}" HeaderBleed="True">
+                 CoverAspect="{Binding SlotAspect}" CaptionHeight="90" MaxStretch="1.15" ContentPadding="{DynamicResource RhGridInset}" HeaderBleed="True"
+                 StickyInset="64" SnapToEnd="True">
       <c:CoverGrid.Header>
         <Panel Name="Banner" Height="392" ClipToBounds="True">
           <c:SystemWall Name="BannerWall" Margin="0,0,0,24" SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#948A7A}"
-                        MotifShare="0" TextureOpacity="0.08" />
+                        MotifShare="0" TextureOpacity="0.08" SplitHeight="88" />
           <c:ShelfBoard Name="BannerBoard" Height="24" VerticalAlignment="Bottom" WallLook="{Binding System.Look, FallbackValue={x:Null}}" />
           <Panel Name="BannerContent" Margin="{DynamicResource RhPageInsetX}">
             <!-- the neighbours: text buttons with the shoulder glyphs (the shoulders do the same) -->
@@ -60,7 +64,8 @@
             </StackPanel>
             <!-- name, ONE sentence, the emulator line – anchored to the board -->
             <StackPanel Name="BannerText" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="0,0,380,48">
-              <c:FitText Name="BannerTitle" Classes="poster" Source="{Binding System.PosterName, FallbackValue={x:Null}}" Sizes="72,56,44" MaxLines="2" LineFactor="1.04" />
+              <c:FitText Name="BannerTitle" Classes="poster" Source="{Binding System.PosterName, FallbackValue={x:Null}}" Sizes="72,56,44" MaxLines="2" LineFactor="1.04"
+                         MaxTextHeight="138" />
               <TextBlock Name="BannerSentence" Classes="read-l" c:Sentence.Text="{Binding SentenceText}" TextWrapping="Wrap" MaxLines="2" Margin="0,8,0,0" />
               <StackPanel Name="StatusRow" Orientation="Horizontal" Spacing="12" Margin="0,16,0,0">
                 <Ellipse Width="8" Height="8" Fill="{DynamicResource RhSuccessBrush}" IsVisible="{Binding EmulatorReady}" VerticalAlignment="Center" />
@@ -85,49 +90,79 @@
         </Panel>
       </c:CoverGrid.Header>
       <c:CoverGrid.Footer>
-        <!-- one to six games: "Fachende" – the compartment ends in one sentence and the way to more; empty: the empty shelf -->
-        <StackPanel Name="Ending" Spacing="0" Margin="0,4,0,0">
+        <!-- one to six games: "Fachende" – the compartment ends in one sentence with the way to more beside it (one line, so
+             it stays above the footer's fade at ≈ 1100); empty: the empty shelf (recessed places, one leaning spine). The
+             bottom margin reserves the footer and its fade, so the button can always be brought fully into view. -->
+        <StackPanel Name="Ending" Spacing="0" Margin="0,4,0,40">
           <StackPanel Name="EmptyEnding" IsVisible="{Binding IsEmpty}" Margin="0,24,0,0">
             <StackPanel Name="EmptyPlaces" Orientation="Horizontal" Spacing="24" ClipToBounds="True">
-              <c:EmptyShelfDrawing Name="EmptyDrawing" Tight="True" Width="380" Height="200" VerticalAlignment="Bottom" Margin="0,0,24,0" />
-              <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
-              <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
-              <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
+              <c:EmptyShelfDrawing Name="EmptyDrawing" Gesture="True" Width="140" Height="200" VerticalAlignment="Bottom" Margin="0,0,8,0" />
+              <c:EmptySlot Recessed="True" Width="150" Height="200" VerticalAlignment="Bottom" />
+              <c:EmptySlot Recessed="True" Width="150" Height="200" VerticalAlignment="Bottom" />
+              <c:EmptySlot Recessed="True" Width="150" Height="200" VerticalAlignment="Bottom" />
             </StackPanel>
             <c:ShelfBoard Name="EmptyBoard" Height="12" IsEdge="True" Margin="-200,0,-200,0" />
-            <TextBlock Classes="poster-s" Text="{l:T system.emptyTitle}" Margin="0,48,0,0" />
+            <TextBlock Name="EmptyTitle" Classes="poster-s" Text="{l:T system.emptyTitle}" Margin="0,48,0,0" />
             <TextBlock Classes="read-l" Text="{Binding EmptyText}" TextWrapping="Wrap" Margin="0,12,0,0" />
           </StackPanel>
-          <TextBlock Name="FewText" Classes="read-l" Text="{l:T system.fewGames}" IsVisible="{Binding IsFewGames}" />
-          <Button Name="ImportsButton" Margin="0,20,0,0" MinHeight="56" Padding="24,0" Command="{Binding OpenImportsCommand}" HorizontalAlignment="Left">
-            <Button.IsVisible>
-              <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                <Binding Path="IsEmpty" />
-                <Binding Path="IsFewGames" />
-              </MultiBinding>
-            </Button.IsVisible>
-            <TextBlock Text="{l:T system.openImports}" VerticalAlignment="Center" />
-          </Button>
+          <StackPanel Name="EndRow" Orientation="Horizontal" Spacing="24" Margin="0,8,0,0">
+            <TextBlock Name="FewText" Classes="read-l" Text="{l:T system.fewGames}" IsVisible="{Binding IsFewGames}" VerticalAlignment="Center" />
+            <Button Name="ImportsButton" MinHeight="48" Padding="24,0" Command="{Binding OpenImportsCommand}" VerticalAlignment="Center">
+              <Button.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                  <Binding Path="IsEmpty" />
+                  <Binding Path="IsFewGames" />
+                </MultiBinding>
+              </Button.IsVisible>
+              <TextBlock Text="{l:T system.openImports}" VerticalAlignment="Center" />
+            </Button>
+          </StackPanel>
         </StackPanel>
       </c:CoverGrid.Footer>
     </c:CoverGrid>
 
-    <!-- ===== Systeminfo: the page dims (room-deep 72 %, no blur); header and footer stay ===== -->
+    <!-- ===== the compact header: once the banner has scrolled out (≥ 70 %), a 64 px strip of the wall with its band, the
+         name and the motif on a small board takes its place (fades in, Step); rows snap below it ===== -->
+    <Panel Name="CompactHeader" VerticalAlignment="Top" Height="76" Opacity="0" IsHitTestVisible="False">
+      <Panel.Transitions>
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.14" />
+        </Transitions>
+      </Panel.Transitions>
+      <Border Name="CompactWall" Height="64" VerticalAlignment="Top" Background="{Binding System.WallBrush, FallbackValue={x:Null}}" />
+      <Border Name="CompactFade" Height="12" VerticalAlignment="Top" Margin="0,64,0,0" />
+      <Border Height="4" VerticalAlignment="Top" Background="{Binding System.AccentBrush, FallbackValue={x:Null}}" />
+      <TextBlock Name="CompactName" Classes="poster" FontSize="28" LineHeight="32" LetterSpacing="-0.28" Margin="96,18,300,0"
+                 VerticalAlignment="Top" TextTrimming="CharacterEllipsis" MaxLines="1"
+                 Text="{Binding System.Name, FallbackValue={x:Null}}" />
+      <c:MotifView Name="CompactMotif" Width="44" Height="44" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,120,0"
+                   SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#948A7A}" />
+      <c:ShelfBoard Name="CompactBoard" Height="6" Width="76" HorizontalAlignment="Right" Margin="0,58,104,0"
+                    WallLook="{Binding System.Look, FallbackValue={x:Null}}" />
+    </Panel>
+
+    <!-- ===== Systeminfo: a filing card over the dimmed page (room-deep 72 %, no blur); header and footer stay. Left the
+         system's colour band, the name in the poster face, the motif top right on a board line, labels in the code face,
+         values in Cascadia. Square (R 0), 1 px edge plus a 1 px light edge on top. ===== -->
     <Panel Name="InfoLayer" IsVisible="{Binding IsInfoOpen}" Background="Transparent">
       <Border Name="InfoScrim" Background="#B80A0908" />
       <Border Name="InfoPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Width="760" Background="{DynamicResource RhSurfaceBrush}"
-              BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="{DynamicResource RhRadiusPanel}" Padding="0,28,0,24"
-              BoxShadow="{DynamicResource RhPanelShadow}" ClipToBounds="False">
+              BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="0"
+              BoxShadow="{DynamicResource RhPanelShadow}" ClipToBounds="True">
         <Panel>
-          <Border Height="1" VerticalAlignment="Top" Margin="0,-28,0,0" Background="{DynamicResource RhLightEdgeBrush}" />
-          <StackPanel Spacing="0">
-            <TextBlock Classes="h2" Margin="36,0,36,16" Text="{Binding System.Name, FallbackValue={x:Null}}" TextWrapping="Wrap" />
-            <ItemsControl ItemsSource="{Binding InfoLines}" Margin="36,0,36,8">
+          <Border Width="8" HorizontalAlignment="Left" Background="{Binding System.AccentBrush, FallbackValue={x:Null}}" />
+          <Border Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" />
+          <c:MotifView Name="InfoMotif" Width="64" Height="64" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,28,48,0"
+                       SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#948A7A}" />
+          <Border Height="4" Width="96" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,92,32,0" Background="{DynamicResource RhLineBrush}" />
+          <StackPanel Spacing="0" Margin="48,32,40,32">
+            <TextBlock Name="InfoTitle" Classes="poster" FontSize="28" LineHeight="34" LetterSpacing="-0.28" Margin="0,0,120,24"
+                       Text="{Binding System.Name, FallbackValue={x:Null}}" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding InfoLines}" Margin="0,8,0,8">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:InfoLine">
-                  <Grid ColumnDefinitions="180,*" Margin="0,0,0,12">
-                    <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource RhFontUi}" FontWeight="Medium" FontSize="18" LineHeight="24"
-                               Foreground="{DynamicResource RhText3Brush}" />
+                  <Grid ColumnDefinitions="180,*" Margin="0,0,0,14">
+                    <TextBlock Text="{Binding Label}" Classes="code" FontSize="15" LineHeight="24" Foreground="{DynamicResource RhText2Brush}" />
                     <TextBlock Grid.Column="1" Text="{Binding Value}" Classes="ui" TextWrapping="Wrap" IsVisible="{Binding !Mono}" />
                     <TextBlock Grid.Column="1" Text="{Binding Value}" FontFamily="Cascadia Mono, Consolas, monospace" FontSize="15" LineHeight="24"
                                Foreground="{DynamicResource RhText1Brush}" TextWrapping="Wrap" IsVisible="{Binding Mono}" />
@@ -135,7 +170,7 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <StackPanel Orientation="Horizontal" Spacing="12" Margin="36,12,36,0" HorizontalAlignment="Right">
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,12,0,0" HorizontalAlignment="Right">
               <Button Name="InfoCloseButton" Command="{Binding CloseInfoCommand}" MinHeight="48">
                 <TextBlock Text="{l:T detail.close}" />
               </Button>

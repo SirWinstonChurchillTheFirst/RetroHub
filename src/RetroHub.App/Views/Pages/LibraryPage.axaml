@@ -238,17 +238,17 @@
 
     <!-- an empty library (DESIGN 10.3 "Keine Spiele"): the empty shelf drawing on a board, one sentence, the way out -->
     <!-- the empty shelf (M3 QA): no ticker; the board stands at ≈ 45 % of the page (top margin set in code), on it the
-         line drawing (200 high) and five outlined places waiting for boxes – the Start page's empty-shelf language –
+         one leaning box (200 high) and recessed places waiting for boxes – the Start page's empty-shelf language –
          and the text block 48 px below the board -->
     <StackPanel Name="EmptyShelf" Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsLibraryEmpty}" Margin="{DynamicResource RhPageInsetX}"
                 VerticalAlignment="Top" Spacing="0">
       <StackPanel Name="EmptyPlaces" Orientation="Horizontal" Spacing="24" ClipToBounds="True">
-        <c:EmptyShelfDrawing Tight="True" Width="380" Height="200" VerticalAlignment="Bottom" Margin="0,0,24,0" />
-        <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
-        <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
-        <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
-        <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
-        <c:EmptySlot Name="EmptySlotLast" Width="150" Height="200" VerticalAlignment="Bottom" />
+        <c:EmptyShelfDrawing Gesture="True" Width="140" Height="200" VerticalAlignment="Bottom" Margin="0,0,8,0" />
+        <c:EmptySlot Recessed="True" Width="150" Height="200" VerticalAlignment="Bottom" />
+        <c:EmptySlot Recessed="True" Width="150" Height="200" VerticalAlignment="Bottom" />
+        <c:EmptySlot Recessed="True" Width="150" Height="200" VerticalAlignment="Bottom" />
+        <c:EmptySlot Recessed="True" Width="150" Height="200" VerticalAlignment="Bottom" />
+        <c:EmptySlot Name="EmptySlotLast" Recessed="True" Width="150" Height="200" VerticalAlignment="Bottom" />
       </StackPanel>
       <c:ShelfBoard Name="EmptyBoard" Height="12" IsEdge="True" Margin="-200,0,-200,0" />
       <TextBlock Classes="poster-s" Text="{l:T home.empty.title}" Margin="0,48,0,0" />

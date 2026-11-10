@@ -57,8 +57,13 @@ public sealed partial class SystemItemViewModel : ObservableObject
     [ObservableProperty] public partial string CountText { get; private set; } = "";
     [ObservableProperty] public partial string PlayTimeText { get; private set; } = "";
     [ObservableProperty] public partial bool IsEmpty { get; private set; }
-    /// <summary>The system whose front stands open on the Konsolen wall (its ticker code is underlined).</summary>
+    /// <summary>The system whose front stands open on the Konsolen wall (its mark on the position rail).</summary>
     [ObservableProperty] public partial bool IsCurrent { get; set; }
+    /// <summary>
+    /// Up to three games standing on the inner shelf of the open front (Konsolen, M5 QA: the last played first, then by
+    /// title); empty until loaded.
+    /// </summary>
+    [ObservableProperty] public partial IReadOnlyList<GameItemViewModel> Featured { get; set; } = [];
 
     public void Update(int gameCount, long playSeconds)
     {

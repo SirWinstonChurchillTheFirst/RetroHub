@@ -68,6 +68,9 @@ public sealed partial class SystemsViewModel : PageViewModel
         Location = index >= 0 ? system.Name : Loc.T("systems.location.unused", system.Name);
     }
 
+    /// <summary>Boxes on the inner shelf of an open front (≈1100: the front shows two of them).</summary>
+    public const int FeaturedCount = 3;
+
     /// <summary>Share of room-deep in the page ground (the room wall in shadow, DESIGN 7.4).</summary>
     public const double WallShade = 0.45;
 
@@ -95,11 +98,23 @@ public sealed partial class SystemsViewModel : PageViewModel
     {
         var version = ++_version;
         var repo = Ctx.Services.Games;
-        var stats = await UiContext.Background(repo.Stats, "Loading platform statistics");
-        if (stats == null || version != _version) return;
-        // unchanged card lists are kept (only their counts update), so a refresh does not drop the card focus
         var ordered = Ctx.Services.Catalog.Systems.OrderBy(s => s.SortOrder).ToList();
+        // the statistics and, per system with games, the three boxes for the front's inner shelf (last played first)
+        var data = await UiContext.Background(() =>
+        {
+            var s = repo.Stats();
+            var featured = new Dictionary<string, IReadOnlyList<Game>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var def in ordered)
+                if (s.GamesPerSystem.GetValueOrDefault(def.Id) > 0)
+                    featured[def.Id] = repo.Query(new GameQuery { SystemId = def.Id, Sort = GameSort.LastPlayed, Limit = FeaturedCount });
+            return (Stats: s, Featured: featured);
+        }, "Loading platform statistics");
+        if (data.Stats == null || version != _version) return;
+        var stats = data.Stats;
+        // unchanged card lists are kept (only their counts update), so a refresh does not drop the card focus
         Systems = SystemItemViewModel.Reconcile(Systems, ordered.Where(s => stats.GamesPerSystem.GetValueOrDefault(s.Id) > 0).ToList(), stats);
+        foreach (var system in Systems)
+            system.Featured = data.Featured.TryGetValue(system.Id, out var games) ? Ctx.Items.GetAll(games) : [];
         EmptySystems = SystemItemViewModel.Reconcile(EmptySystems, ordered.Where(s => stats.GamesPerSystem.GetValueOrDefault(s.Id) == 0).ToList(), stats);
         SummaryText = Loc.T("systems.summary", Systems.Count, stats.GameCount);
         IsLoaded = true;
@@ -310,11 +325,14 @@ public sealed partial class SystemViewModel : PageViewModel
         // "noch nicht gespielt" (under a minute in all) never gets a "zuletzt" behind it
         if (lastPlayedUtc is not { } last || playSeconds < 60) return sentence;
         var now = nowUtc ?? DateTime.UtcNow;
+        // whole words inside a sentence ("vor einer Woche", "vor 5 Minuten"), never the abbreviations of the labels
+        // ("vor 1 Wo."): an abbreviation's period and the sentence's period collided (M5 QA: "zuletzt vor 1 Wo")
         var when = (now.ToLocalTime().Date - last.ToLocalTime().Date).Days < 30
-            ? Fmt.LastPlayed(last, now)
+            ? Fmt.LastPlayedInSentence(last, now)
             : Loc.T("system.sentence.on", Fmt.DateInSentence(last, now));
         var tail = Loc.T("system.sentence.last", when);
-        if (when.EndsWith('.')) tail = tail.TrimEnd('.');
+        // a part that already ends with a period gives up exactly ONE (the sentence's own)
+        if (when.EndsWith('.') && tail.EndsWith("..", StringComparison.Ordinal)) tail = tail[..^1];
         return sentence.TrimEnd('.') + tail;
     }
 

@@ -23,9 +23,20 @@ public sealed class EmptyShelfDrawing : Control
 
     public bool Tight { get => GetValue(TightProperty); set => SetValue(TightProperty, value); }
 
+    /// <summary>
+    /// Only the one leaning box as a gesture (2 px in Text 3, scaled to the height, left-aligned) beside recessed places
+    /// (M5 QA: bookends and dashed outlines read as an empty-state wireframe). Width needed: ≈ 0.7 × height.
+    /// </summary>
+    public static readonly StyledProperty<bool> GestureProperty = AvaloniaProperty.Register<EmptyShelfDrawing, bool>(nameof(Gesture));
+
+    public bool Gesture { get => GetValue(GestureProperty); set => SetValue(GestureProperty, value); }
+
+    private static readonly IPen GestureLine = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#948A7A")), 2,
+        lineCap: PenLineCap.Flat, lineJoin: PenLineJoin.Miter);
+
     static EmptyShelfDrawing()
     {
-        AffectsRender<EmptyShelfDrawing>(BoundsProperty, TightProperty);
+        AffectsRender<EmptyShelfDrawing>(BoundsProperty, TightProperty, GestureProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<EmptyShelfDrawing>(false);
     }
 
@@ -34,6 +45,25 @@ public sealed class EmptyShelfDrawing : Control
         var w = Bounds.Width;
         var h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
+        if (Gesture)
+        {
+            // the leaning box of the grid (x 69–100, y 71–120) at the control's height, its foot on the bottom edge
+            var k = h / 49.5;
+            var gx = -68 * k;
+            var gy = h - 120 * k;
+            var gfoot = 120 - 1 / k;
+            var lean = new StreamGeometry();
+            using (var c = lean.Open())
+            {
+                c.BeginFigure(new Point(gx + 84 * k, gy + gfoot * k), false);
+                c.LineTo(new Point(gx + 69 * k, gy + 114.5 * k));
+                c.LineTo(new Point(gx + 85 * k, gy + 71.3 * k));
+                c.LineTo(new Point(gx + 100 * k, gy + 76.8 * k));
+                c.EndFigure(true);
+            }
+            ctx.DrawGeometry(null, GestureLine, lean);
+            return;
+        }
         // a 120 × 120 drawing scaled to the width; its feet end on the bottom edge (open figures, no base line).
         // Tight: the figures (x 14–106, y 71–120 of the grid) fill the height, left-aligned
         var s = Tight ? h / 49.5 : Math.Min(w, h) / 120.0;
@@ -72,6 +102,17 @@ public sealed class EmptySlot : Control
         new ImmutableDashStyle([4, 4], 0), PenLineCap.Flat, PenLineJoin.Miter);
 
     public static readonly StyledProperty<double> AspectProperty = AvaloniaProperty.Register<EmptySlot, double>(nameof(Aspect));
+    /// <summary>
+    /// A recessed empty compartment instead of a dashed outline (M5 QA): the ground darkened, a 2 px shadow inside at the
+    /// top, 1 px Kante at the sides – an empty place standing on the real board, not a selection marquee.
+    /// </summary>
+    public static readonly StyledProperty<bool> RecessedProperty = AvaloniaProperty.Register<EmptySlot, bool>(nameof(Recessed));
+
+    private static readonly IImmutableSolidColorBrush RecessFill = new ImmutableSolidColorBrush(Color.FromArgb(0x33, 0, 0, 0));
+    private static readonly IImmutableSolidColorBrush RecessTop = new ImmutableSolidColorBrush(Color.FromArgb(0x66, 0, 0, 0));
+    private static readonly IImmutableSolidColorBrush RecessSide = new ImmutableSolidColorBrush(Color.Parse("#3A342B"));
+
+    public bool Recessed { get => GetValue(RecessedProperty); set => SetValue(RecessedProperty, value); }
     public static readonly StyledProperty<bool> BaselineProperty = AvaloniaProperty.Register<EmptySlot, bool>(nameof(Baseline));
 
     /// <summary>Width / height of the outlined place inside the bounds; 0 = the bounds themselves.</summary>
@@ -81,7 +122,7 @@ public sealed class EmptySlot : Control
 
     static EmptySlot()
     {
-        AffectsRender<EmptySlot>(BoundsProperty, AspectProperty, BaselineProperty);
+        AffectsRender<EmptySlot>(BoundsProperty, AspectProperty, BaselineProperty, RecessedProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<EmptySlot>(false);
         FocusableProperty.OverrideDefaultValue<EmptySlot>(false);
     }
@@ -97,6 +138,14 @@ public sealed class EmptySlot : Control
         }
         var outer = new Rect(size);
         var r = Aspect > 0 ? CoverArt.Compute(outer, null, false, Aspect) : outer;
+        if (Recessed)
+        {
+            ctx.FillRectangle(RecessFill, r);
+            ctx.FillRectangle(RecessTop, new Rect(r.X, r.Y, r.Width, 2));
+            ctx.FillRectangle(RecessSide, new Rect(r.X, r.Y, 1, r.Height));
+            ctx.FillRectangle(RecessSide, new Rect(r.Right - 1, r.Y, 1, r.Height));
+            return;
+        }
         r = r.Deflate(0.5);
         if (r.Width <= 0 || r.Height <= 0) return;
         ctx.DrawRectangle(null, Dash, r);

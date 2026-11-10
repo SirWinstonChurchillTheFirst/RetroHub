@@ -20,8 +20,13 @@ public static class MotifCatalog
         Body,
         /// <summary>Cut-out in the ground tone (screens, label insets, grooves, slots).</summary>
         Cut,
-        /// <summary>"Licht" (one groove of the tower, the lines of the twin lens).</summary>
+        /// <summary>"Licht" (the lines of the twin lens).</summary>
         Light,
+        /// <summary>
+        /// "Farbe" lifted to lightness ≥ 0.55 and ≥ 3.2 : 1 against the wall (same hue): a body that would vanish on a near-black wall in its own dark
+        /// colour (PS2 tower, M5 QA: ≈ 1.3 : 1) reads with ≥ 3 : 1 without turning into paper.
+        /// </summary>
+        Lift,
     }
 
     /// <summary>One flat part; <paramref name="Stroke"/> &gt; 0 = drawn as a line of that width instead of filled.</summary>
@@ -64,6 +69,16 @@ public static class MotifCatalog
     }
 
     private static Geometry Dot(double cx, double cy, double r) => new EllipseGeometry(new Rect(cx - r, cy - r, 2 * r, 2 * r));
+
+    /// <summary>A 3 × 3 perforation of dots (speaker holes as a category, not a product's slot pattern).</summary>
+    private static Geometry Perforation(double x0, double y0, double pitch, double r)
+    {
+        var g = new GeometryGroup { FillRule = FillRule.NonZero };
+        for (var row = 0; row < 3; row++)
+            for (var col = 0; col < 3; col++)
+                g.Children.Add(Dot(x0 + col * pitch, y0 + row * pitch, r));
+        return g;
+    }
 
     private static Geometry Group(params Geometry[] parts)
     {
@@ -130,15 +145,15 @@ public static class MotifCatalog
         ],
 
         // ---- handhelds ----
-        // upright handheld: screen on top, cross and a LEVEL pair of keys below, a speaker slot (no diagonal pair, no
-        // rounded corner)
+        // upright handheld: screen on top, a cross and two keys STACKED on the right, a 3 × 3 perforation at the foot
+        // (M5 QA: the level pair beside slanted speaker lines still named the product; no rounded corner)
         Motif.HandheldTall =>
         [
             C("M30,4 H90 L98,12 V120 H22 V12 Z"),
             X("M34,16 H86 V62 H34 Z"),
             X(Cross(42, 86, 10, 6)),
-            new(Group(Dot(74, 86, 4.5), Dot(88, 86, 4.5)), Paint.Cut),
-            X("M68,104 H92 V106 H68 Z M68,110 H92 V112 H68 Z"),
+            new(Group(Dot(80, 77, 4.5), Dot(80, 93, 4.5)), Paint.Cut),
+            new(Perforation(54, 104, 6, 1.7), Paint.Cut),
         ],
         // the same upright handheld with its outline repeated 6 px behind it (a clear second shell)
         Motif.HandheldTallDouble =>
@@ -147,7 +162,8 @@ public static class MotifCatalog
             C("M30,4 H90 L98,12 V120 H22 V12 Z"),
             X("M34,16 H86 V62 H34 Z"),
             X(Cross(42, 86, 10, 6)),
-            new(Group(Dot(74, 86, 4.5), Dot(88, 86, 4.5)), Paint.Cut),
+            new(Group(Dot(80, 77, 4.5), Dot(80, 93, 4.5)), Paint.Cut),
+            new(Perforation(54, 104, 6, 1.7), Paint.Cut),
         ],
         // a narrow upright handheld: small screen, a small cross, two keys above each other, speaker lines
         Motif.HandheldNarrow =>
@@ -158,13 +174,15 @@ public static class MotifCatalog
             new(Group(Dot(72, 70, 4), Dot(72, 84, 4)), Paint.Cut),
             X("M42,98 H78 V100 H42 Z M42,104 H78 V106 H42 Z M42,110 H78 V112 H42 Z"),
         ],
-        // a landscape handheld: chamfered body, screen in the middle, cross left, two keys right
+        // a landscape handheld: square shoulders with a 6 px chamfer only at the foot, screen in the middle, cross left,
+        // two flat slot keys right (M5 QA: the chamfered octagon with round keys was the product's outline)
         Motif.HandheldWide =>
         [
-            C("M14,40 H106 L114,48 V112 L106,120 H14 L6,112 V48 Z"),
+            // the body in its colour lifted to L 0.55: violet on the violet wall was 2.8 : 1 (M5 QA contrast rule)
+            new(P("M6,40 H114 V114 L108,120 H12 L6,114 Z"), Paint.Lift),
             X("M38,52 H82 V100 H38 Z"),
             X(Cross(22, 76, 8, 5)),
-            new(Group(Dot(96, 70, 4), Dot(96, 84, 4)), Paint.Cut),
+            X("M91,68 H101 V72 H91 Z M91,82 H101 V86 H91 Z"),
         ],
         // a big landscape handheld: tall body, a large screen, speaker slots under the keys
         Motif.HandheldBig =>
@@ -206,13 +224,14 @@ public static class MotifCatalog
             B("M14,57 H106 V63 H14 Z"),
             X("M36,16 H84 V50 H36 Z M36,72 H84 V106 H36 Z"),
         ],
-        // clamshell whose upper half is wider (a wide screen above, a small screen and a round pad below)
+        // clamshell with two halves of the SAME width; the upper screen shows depth as a stair of three offset frames
+        // (M5 QA: a wider top over a narrower bottom with a circle pad was the product; this is "a clamshell with depth")
         Motif.ClamshellWide =>
         [
-            C("M8,8 H112 V56 H8 Z M20,64 H100 V120 H20 Z"),
+            new(P("M12,8 H108 V56 H12 Z M12,64 H108 V120 H12 Z"), Paint.Lift), // red on anthracite was 2.8 : 1
             B("M16,57 H104 V63 H16 Z"),
-            X("M20,15 H100 V49 H20 Z M44,72 H82 V104 H44 Z"),
-            new(Dot(31, 80, 5), Paint.Cut),
+            X("M22,14 H98 V50 H22 Z M36,72 H84 V110 H36 Z"),
+            new(P("M28,19 H72 V35 H28 Z M36,24 H80 V40 H36 Z M44,29 H88 V45 H44 Z"), Paint.Color, 2),
         ],
 
         // ---- discs ----
@@ -245,14 +264,17 @@ public static class MotifCatalog
             B("M4,92 H116 V120 H4 Z"),
             X("M44,103 H76 V108 H44 Z"),
         ],
-        // slot loader: a disc a third of the way into the slot of a block (the disc, not the housing, carries the
-        // category; no stand, no lit slot, the block lies wide instead of standing slim)
+        // slot loader: a wide, low block; the disc lies flat in perspective and slides into the slot along the block's top
+        // edge – only its far half shows (a flat lens with the hub and one ring segment), no disc face standing above the
+        // block (M5 QA: the round disc on the block read as a head on a body, an avatar icon)
         Motif.SlotDisc =>
         [
-            new(Disc(60, 42, 30, 6), Paint.Color),
-            B("M22,56 H98 V120 H22 Z"),
-            X("M28,56 H92 V60 H28 Z"),
-            X("M30,108 H46 V111 H30 Z"),
+            new(Group(new EllipseGeometry(new Rect(12, 64, 96, 40))), Paint.Color),
+            new(new EllipseGeometry(new Rect(52, 76, 16, 6)), Paint.Cut),
+            new(P("M28,80 Q60,62 92,80"), Paint.Cut, 2),
+            B("M4,84 H116 V120 H4 Z"),
+            X("M14,84 H106 V87 H14 Z"),
+            X("M16,108 H32 V111 H16 Z"),
         ],
         // a second screen: a tablet with keys standing in front of a large screen drawn as an outline (no monitor
         // stand: on its own stand it read as a monitor)
@@ -272,7 +294,7 @@ public static class MotifCatalog
             X("M32,40 H88 V84 H32 Z"),
             X(Cross(22, 54, 5, 3)),
             new(Group(Dot(98, 50, 3), Dot(98, 62, 3)), Paint.Cut),
-            C("M6,98 H114 V120 H6 Z"),
+            new(P("M6,98 H114 V120 H6 Z"), Paint.Lift), // red on anthracite was 2.9 : 1
             X("M18,98 H102 V102 H18 Z"),
         ],
 
@@ -313,12 +335,14 @@ public static class MotifCatalog
             B("M28,64 H96 V120 H28 Z"),
         ],
         Motif.KeyBlock => [B("M4,52 H116 V120 H4 Z"), new(KeyBlock(), Paint.Color)],
-        // tower: body lifted from the black wall, seven grooves, one in light
+        // tower: a body in its own colour lifted to L 0.55 (M5 QA: the near-black body vanished on the black wall), one
+        // disc slot at 30 % height, the lower grooves as 2 px seams, standing on a 6 px foot plate (not a PC case)
         Motif.Tower =>
         [
-            B("M30,6 H90 V120 H30 Z"),
-            X("M38,20 H82 V22 H38 Z M38,34 H82 V36 H38 Z M38,48 H82 V50 H38 Z M38,76 H82 V78 H38 Z M38,90 H82 V92 H38 Z M38,104 H82 V106 H38 Z"),
-            new(P("M38,62 H82 V64 H38 Z"), Paint.Light),
+            new(P("M34,4 H86 V112 H34 Z"), Paint.Lift),
+            X("M42,34 H78 V36 H42 Z"),
+            X("M42,60 H78 V62 H42 Z M42,70 H78 V72 H42 Z M42,80 H78 V82 H42 Z M42,90 H78 V92 H42 Z M42,100 H78 V102 H42 Z"),
+            new(P("M24,114 H96 V120 H24 Z"), Paint.Lift),
         ],
         _ => [B("M14,10 H106 V120 H14 Z")],
     };
@@ -353,32 +377,132 @@ public static class MotifCatalog
         }
     }
 
+    private static readonly Dictionary<uint, IImmutableSolidColorBrush> LiftBrushes = new();
+
+    /// <summary>The colour of <paramref name="look"/> lifted to ≥ L 0.55 and ≥ 3.2 : 1 against its wall, same hue and saturation (<see cref="Paint.Lift"/>).</summary>
+    public static Color LiftColor(SystemLook look)
+    {
+        // at least L 0.55, raised in 0.02 steps until it stands ≥ 3.2 : 1 against its wall (same hue and saturation)
+        var (h, sat, l) = ColorUtil.ToHsl(look.Color);
+        l = Math.Max(l, 0.55);
+        var c = ColorUtil.FromHsl(h, sat, l);
+        while (ColorUtil.Contrast(c, look.Wall) < 3.2 && l < 0.86)
+        {
+            l += 0.02;
+            c = ColorUtil.FromHsl(h, sat, l);
+        }
+        return c;
+    }
+
+    private static IBrush LiftBrush(SystemLook look)
+    {
+        var key = look.Color.ToUInt32();
+        lock (LiftBrushes)
+        {
+            if (!LiftBrushes.TryGetValue(key, out var b)) LiftBrushes[key] = b = new ImmutableSolidColorBrush(LiftColor(look));
+            return b;
+        }
+    }
+
+    /// <summary>
+    /// The colours a motif shows against its wall (cut-outs excluded): the QA rule "at least one part ≥ 3 : 1 to the wall"
+    /// is checked on these (DesignM5Tests).
+    /// </summary>
+    public static IEnumerable<(Paint Paint, Color Color)> PaintedColors(SystemLook look)
+    {
+        foreach (var part in Get(look.Motif).Parts)
+        {
+            var c = part.Paint switch
+            {
+                Paint.Color => look.Color,
+                Paint.Body => ((ISolidColorBrush)BodyBrush(look)).Color,
+                Paint.Light => look.Light,
+                Paint.Lift => LiftColor(look),
+                _ => (Color?)null,
+            };
+            if (c is { } color) yield return (part.Paint, color);
+        }
+    }
+
+    /// <summary>A motif drawn at least this tall (DIP) gets the relief (edge light, lip, texture) when asked for.</summary>
+    public const double ReliefMinSize = 160;
+
+    private static readonly IImmutableSolidColorBrush ReliefLight = new ImmutableSolidColorBrush(Color.FromArgb(0x2E, 0xF4, 0xEC, 0xDF));
+    private static readonly IImmutableSolidColorBrush ReliefLip = new ImmutableSolidColorBrush(Color.FromArgb(0x4D, 0, 0, 0));
+    private static readonly Dictionary<(Motif, int), (Geometry Rim, Geometry Lip)> Reliefs = new();
+    private static readonly Dictionary<(Texture, int), IBrush?> ReliefTextures = new();
+
+    /// <summary>
+    /// The relief of a motif at a size bucket (M5 QA: at hero size the flat single fills read as clip-art): the 2 px
+    /// top/left rim of every part (the silhouette minus itself shifted down-right) and the 6 px foot of every part (the
+    /// silhouette minus itself shifted up) – in the 120 grid, cached per motif and 20-px bucket.
+    /// </summary>
+    private static (Geometry Rim, Geometry Lip) Relief(Motif motif, double scale)
+    {
+        var bucket = (int)Math.Round(120 * scale / 20);
+        lock (Reliefs)
+        {
+            if (Reliefs.TryGetValue((motif, bucket), out var r)) return r;
+            var s = bucket * 20 / 120.0;
+            var sil = Silhouette(motif);
+            Geometry Shifted(double dx, double dy) => new GeometryGroup { Children = { sil }, Transform = new MatrixTransform(Matrix.CreateTranslation(dx, dy)) };
+            r = (new CombinedGeometry(GeometryCombineMode.Exclude, sil, Shifted(2 / s, 2 / s)),
+                 new CombinedGeometry(GeometryCombineMode.Exclude, sil, Shifted(0, -6 / s)));
+            Reliefs[(motif, bucket)] = r;
+            return r;
+        }
+    }
+
+    /// <summary>The system's texture as a brush in the 120 grid at <paramref name="scale"/> (one tile = its pixel size on screen).</summary>
+    private static IBrush? ReliefTexture(Texture texture, double scale)
+    {
+        var bucket = (int)Math.Round(scale * 100);
+        lock (ReliefTextures)
+        {
+            if (ReliefTextures.TryGetValue((texture, bucket), out var b)) return b;
+            b = null;
+            if (TextureBrushes.Get(texture) is { } tex && tex.Brush.Source is { } source)
+                b = new ImageBrush(source)
+                {
+                    TileMode = TileMode.Tile,
+                    Stretch = Stretch.Fill,
+                    AlignmentX = AlignmentX.Left,
+                    AlignmentY = AlignmentY.Top,
+                    Opacity = 0.08,
+                    DestinationRect = new RelativeRect(0, 0, tex.Size.Width / (bucket / 100.0), tex.Size.Height / (bucket / 100.0), RelativeUnit.Absolute),
+                }.ToImmutable();
+            ReliefTextures[(texture, bucket)] = b;
+            return b;
+        }
+    }
+
     private static readonly Dictionary<Motif, Geometry> Silhouettes = new();
 
     /// <summary>
-    /// The motif's outline as ONE geometry: the union of all painted parts (lines widened) minus the cut-outs, in the
-    /// 120 grid. Built once per motif. Drawn with a single fill, it never shows overlapping translucent layers.
+    /// The motif's outline as ONE geometry: the union of all painted parts (lines widened) minus the cut-outs (in painting
+    /// order), in the 120 grid. Built once per motif. Drawn with a single fill, it never shows overlapping translucent layers.
     /// </summary>
     public static Geometry Silhouette(Motif motif)
     {
         lock (Silhouettes)
         {
             if (Silhouettes.TryGetValue(motif, out var g)) return g;
-            Geometry? solid = null, cuts = null;
+            Geometry? solid = null;
             var seamPen = new Pen(Brushes.Black, 4, lineJoin: PenLineJoin.Miter);
             foreach (var part in Get(motif).Parts)
             {
                 var geo = part.Stroke > 0
                     ? part.Geometry.GetWidenedGeometry(new Pen(Brushes.Black, part.Stroke, lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter))
                     : part.Geometry;
-                if (part.Paint == Paint.Cut) { cuts = cuts == null ? geo : new CombinedGeometry(GeometryCombineMode.Union, cuts, geo); continue; }
+                // cut-outs in painting order: a part drawn later (the depth frames in a screen, a shutter in a window) stays
+                if (part.Paint == Paint.Cut) { if (solid != null) solid = new CombinedGeometry(GeometryCombineMode.Exclude, solid, geo); continue; }
                 // a part laid over earlier ones keeps a 2 px seam around it (labels, keys, bands, the hinge): in one
                 // colour the drawing stays readable instead of melting into a plain block (M5 outsider sheet)
                 if (solid != null && part.Stroke <= 0)
                     solid = new CombinedGeometry(GeometryCombineMode.Exclude, solid, part.Geometry.GetWidenedGeometry(seamPen));
                 solid = solid == null ? geo : new CombinedGeometry(GeometryCombineMode.Union, solid, geo);
             }
-            g = solid == null ? new RectangleGeometry(default) : cuts == null ? solid : new CombinedGeometry(GeometryCombineMode.Exclude, solid, cuts);
+            g = solid ?? new RectangleGeometry(default);
             Silhouettes[motif] = g;
             return g;
         }
@@ -402,7 +526,7 @@ public static class MotifCatalog
     /// <paramref name="cutout"/> (the ground tone), composited at <paramref name="opacity"/> as one layer.
     /// </summary>
     public static void Draw(DrawingContext ctx, SystemLook look, Rect box, double opacity = 1, bool silhouette = false,
-        IBrush? cutout = null, bool alignRight = false)
+        IBrush? cutout = null, bool alignRight = false, bool relief = false)
     {
         var shape = Get(look.Motif);
         var scale = Math.Min(box.Width, box.Height) / 120.0;
@@ -419,11 +543,21 @@ public static class MotifCatalog
                     Paint.Color => look.ColorBrush,
                     Paint.Body => body,
                     Paint.Light => silhouette ? look.ColorBrush : look.LightBrush,
+                    Paint.Lift => silhouette ? look.ColorBrush : LiftBrush(look),
                     _ => ground,
                 };
                 if (part.Stroke > 0)
                     ctx.DrawGeometry(null, new Pen(brush, part.Stroke, lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter), part.Geometry);
                 else ctx.DrawGeometry(brush, null, part.Geometry);
+            }
+            // the relief at hero size (≥ 160): material inside the fill, a thickness at the foot, light on the top/left
+            // edges – static, three geometries per motif and size bucket (spine-size motifs stay flat)
+            if (relief && !silhouette && 120 * scale >= ReliefMinSize)
+            {
+                var (rim, lip) = Relief(look.Motif, scale);
+                if (ReliefTexture(look.Texture, scale) is { } tex) ctx.DrawGeometry(tex, null, Silhouette(look.Motif));
+                ctx.DrawGeometry(ReliefLip, null, lip);
+                ctx.DrawGeometry(ReliefLight, null, rim);
             }
         }
     }

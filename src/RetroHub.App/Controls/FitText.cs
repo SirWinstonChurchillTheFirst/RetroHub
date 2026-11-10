@@ -27,13 +27,18 @@ public sealed class FitText : TextBlock
     public static readonly StyledProperty<int> LastResortLinesProperty = AvaloniaProperty.Register<FitText, int>(nameof(LastResortLines));
     /// <summary>Line height as a factor of the chosen size.</summary>
     public static readonly StyledProperty<double> LineFactorProperty = AvaloniaProperty.Register<FitText, double>(nameof(LineFactor), 1.1);
+    /// <summary>
+    /// Height the title may take (NaN = no limit): a size counts only with as many lines as fit this height (Systemseite
+    /// banner, M5 QA: two lines at 72 would reach into the wall's light zone, so they fall back to 56/44).
+    /// </summary>
+    public static readonly StyledProperty<double> MaxTextHeightProperty = AvaloniaProperty.Register<FitText, double>(nameof(MaxTextHeight), double.NaN);
 
-    private (string? Text, int Width, string Sizes, int Lines) _key;
+    private (string? Text, int Width, string Sizes, int Lines, int Height) _key;
     private int _lines;
 
     static FitText()
     {
-        AffectsMeasure<FitText>(SourceProperty, FallbackSourceProperty, SizesProperty, FallbackSizeProperty, LineFactorProperty);
+        AffectsMeasure<FitText>(SourceProperty, FallbackSourceProperty, SizesProperty, FallbackSizeProperty, LineFactorProperty, MaxTextHeightProperty);
     }
 
     protected override Type StyleKeyOverride => typeof(TextBlock);
@@ -44,6 +49,7 @@ public sealed class FitText : TextBlock
     public double FallbackSize { get => GetValue(FallbackSizeProperty); set => SetValue(FallbackSizeProperty, value); }
     public double LineFactor { get => GetValue(LineFactorProperty); set => SetValue(LineFactorProperty, value); }
     public int LastResortLines { get => GetValue(LastResortLinesProperty); set => SetValue(LastResortLinesProperty, value); }
+    public double MaxTextHeight { get => GetValue(MaxTextHeightProperty); set => SetValue(MaxTextHeightProperty, value); }
 
     /// <summary>The chosen size (NaN = the fallback is shown).</summary>
     public double ChosenSize { get; private set; } = double.NaN;
@@ -66,13 +72,14 @@ public sealed class FitText : TextBlock
     {
         if (_lines == 0) _lines = MaxLines > 0 ? MaxLines : 2; // the configured line count (MaxLines may grow to LastResortLines)
         var lines = _lines;
-        var key = (Source, (int)Math.Floor(width), Sizes, lines);
+        var limit = MaxTextHeight;
+        var key = (Source, (int)Math.Floor(width), Sizes, lines, double.IsNaN(limit) ? -1 : (int)Math.Floor(limit));
         if (key == _key) return;
         _key = key;
         var sizes = ParseSizes(Sizes);
         var face = new Typeface(FontFamily, FontStyle, FontWeight, FontStretch);
         var source = Typeset(Source ?? "");
-        var (size, text) = ChooseWithBreak(source, face, sizes, width, lines);
+        var (size, text) = double.IsNaN(limit) ? ChooseWithBreak(source, face, sizes, width, lines) : ChooseWithin(source, face, sizes, width, lines, limit);
         var usedLines = lines;
         if (size == null && LastResortLines > lines && sizes.Length > 0 && Fits(source, face, sizes[^1], width, LastResortLines))
         {
@@ -133,6 +140,19 @@ public sealed class FitText : TextBlock
             if (Fits(text, face, size, width, 1)) return (size, text);
             if (broken != null && Fits(broken, face, size, width, maxLines)) return (size, broken);
             if (Fits(text, face, size, width, maxLines)) return (size, text);
+        }
+        return (null, text);
+    }
+
+    /// <summary><see cref="ChooseWithBreak"/> per size, with only as many lines as fit <paramref name="maxHeight"/> at that size.</summary>
+    private (double? Size, string Text) ChooseWithin(string text, Typeface face, double[] sizes, double width, int maxLines, double maxHeight)
+    {
+        foreach (var size in sizes)
+        {
+            var allowed = Math.Min(maxLines, (int)Math.Floor((maxHeight + 0.5) / Math.Round(size * LineFactor)));
+            if (allowed < 1) continue;
+            var (s, t) = ChooseWithBreak(text, face, [size], width, allowed);
+            if (s != null) return (s, t);
         }
         return (null, text);
     }

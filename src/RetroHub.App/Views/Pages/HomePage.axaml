@@ -38,8 +38,9 @@
       <Setter Property="TopGap" Value="32" />
       <Setter Property="AnchorX" Value="112" />
     </Style>
-    <!-- the empty library's shelf: outlined slots waiting to be filled -->
+    <!-- the empty library's shelf: recessed places waiting to be filled (M5 QA: no dashed outlines) -->
     <Style Selector="c|EmptySlot">
+      <Setter Property="Recessed" Value="True" />
       <Setter Property="Width" Value="150" />
       <Setter Property="Height" Value="200" />
     </Style>

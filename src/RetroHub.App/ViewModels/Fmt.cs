@@ -43,6 +43,28 @@ public static class Fmt
         return local.ToString("d", Loc.Culture);
     }
 
+    /// <summary>
+    /// "When" inside a running sentence (DESIGN 3.2: sentences, not labels): whole words instead of the label
+    /// abbreviations – "vor 5 Minuten", "vor einer Woche", "vor 3 Wochen"; today/yesterday/days as in <see cref="LastPlayed"/>.
+    /// </summary>
+    public static string LastPlayedInSentence(DateTime utc, DateTime? nowUtc = null)
+    {
+        var now = (nowUtc ?? DateTime.UtcNow).ToLocalTime();
+        var local = utc.ToLocalTime();
+        var days = (now.Date - local.Date).Days;
+        if (days <= 0)
+        {
+            var diff = now - local;
+            if (diff.TotalMinutes < 2) return Loc.T("time.justNow");
+            if (diff.TotalHours < 1) return Loc.T("time.sentence.minutesAgo", (int)diff.TotalMinutes);
+            return Loc.T("time.today");
+        }
+        if (days == 1) return Loc.T("time.yesterday");
+        if (days < 7) return Loc.T("time.daysAgo", days);
+        if (days < 30) return days / 7 == 1 ? Loc.T("time.sentence.weekAgo") : Loc.T("time.sentence.weeksAgo", days / 7);
+        return DateInSentence(utc, nowUtc);
+    }
+
     public static string Date(DateTime? utc) => utc == null ? "–" : utc.Value.ToLocalTime().ToString("d", Loc.Culture);
 
     /// <summary>A date in a sentence (DESIGN 7.1): "25. September", with the year only when it is not this year ("3. März 2024").</summary>

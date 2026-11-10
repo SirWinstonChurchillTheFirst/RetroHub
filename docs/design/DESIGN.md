@@ -166,10 +166,10 @@ Neu in v1.1: Die Wand wird **aus dem Gehäusematerial** abgeleitet und nicht meh
 | gbc | beere | Handheld hoch (doppelt) | #8E3BD0 | #2FB8A6 | #BD8CE3 | 5,8 | Papier 4,9 |
 | gba | violett | Handheld quer | #5A46D9 | #A9A2E8 | #A499EA | 6,0 | Papier 5,4 |
 | gamecube | violett | MiniDisc | #6450CC | #F29A3B | #A498E1 | 5,9 | Papier 5,0 |
-| wii | weiß | SlotDisc (Disc im Schlitz) | #3FC0EE | #E6EEF2 | #7CD4F3 | 6,3 | Tinte 8,9 |
+| wii | weiß | SlotDisc (flache Disc gleitet in den Schlitz) | #3FC0EE | #E6EEF2 | #7CD4F3 | 6,3 | Tinte 8,9 |
 | wiiu | weiß | Tablet (zweiter Bildschirm) | #12A0CC | #F0F0F0 | #7CD7F3 | 6,5 | Tinte 6,2 |
 | nds | kühlgrau | Klappe | #8FA3B8 | #3C4654 | #A6B7C9 | 6,4 | Tinte 7,2 |
-| 3ds | anthrazit | ClamshellWide (Klappe, oben breiter) | #C21D26 | #2B2B30 | #EC8389 | 5,6 | Papier 5,1 |
+| 3ds | anthrazit | ClamshellWide (Klappe mit Tiefen-Treppe) | #C21D26 | #2B2B30 | #EC8389 | 5,6 | Papier 5,1 |
 | switch | anthrazit | Dock (Handgerät über Sockel) | #C41F2A | #2E2E33 | #EB848B | 5,6 | Papier 5,0 |
 | virtualboy | schwarz | TwinLens (Stereobrille) | #C8121C | #1A0505 | #F37C83 | 6,8 | Papier 5,0 |
 | arcade | schwarz | Bedienfeld | #FF2E88 | #22E4FF | #F47BAF | 7,0 | Tinte 5,3 |
@@ -189,7 +189,7 @@ Neu in v1.1: Die Wand wird **aus dem Gehäusematerial** abgeleitet und nicht meh
 | saturn | anthrazit | Disc mit Bändern | #5A5FB8 | #2A2A2E | #9B9ED4 | 5,6 | Papier 4,8 |
 | dreamcast | weiß | Disc mit Halbton | #F26F21 | #EDEBE6 | #F4A87B | 5,4 | Tinte 6,3 |
 | ps1 | kühlgrau | Disc mit Spur | #9AA0B4 | #3A3F4E | #A6AEC9 | 5,9 | Tinte 7,2 |
-| ps2 | schwarz | Turm | #2C4FD0 | #08090F | #899DE6 | 6,8 | Papier 5,7 |
+| ps2 | schwarz | Turm (Farbe auf L 0,55) | #2C4FD0 | #08090F | #899DE6 | 6,8 | Papier 5,7 |
 | psp | schwarz | Handheld breit | #A9B4C8 | #0C0D10 | #A6B2C9 | 8,3 | Tinte 8,9 |
 
 **Regeln und Test** (`SystemPaletteTests`, Core-unabhängig im App-Testprojekt):
@@ -433,23 +433,23 @@ Cart64         n64           schräge Schultern M14,30 L26,10 H94 L106,30, C Eti
 CartStack      sega32x       Modul auf Modul (oben 80 % Breite, 8 px Fuge)
 Card           pcengine      flache Karte M14,44 H106 V120 H14 Z, C Feld, X Kontaktreihe aus 8 Stegen
 Handhelds
-HandheldTall        gb          hochkant, Bildschirm oben, Kreuz links, ZWEI WAAGERECHTE Tasten, Lautsprecherschlitze; gefaste Oberecken, keine runde Ecke
-HandheldTallDouble  gbc         dasselbe Gerät, sein Umriss 6 px versetzt dahinter (2-px-Linie in Zweitfarbe: zweite, klare Schale)
+HandheldTall        gb          hochkant, Bildschirm oben, Kreuz links, zwei Tasten ÜBEREINANDER rechts, 3×3-Lochung am Fuß; gefaste Oberecken, keine runde Ecke (M5-QA)
+HandheldTallDouble  gbc         dasselbe Gerät (Tasten übereinander, Lochung), sein Umriss 6 px versetzt dahinter (2-px-Linie in Zweitfarbe: zweite, klare Schale)
 HandheldNarrow      wonderswan  schmal hochkant, kleiner Bildschirm, kleines Kreuz, zwei Tasten übereinander, drei Lautsprecherlinien
-HandheldWide        gba         quer, gefastes Achteck, Bildschirm mittig, Kreuz links, zwei Tasten rechts übereinander
+HandheldWide        gba         quer, eckige Schultern, 6-px-Fase nur am Fuß, Bildschirm mittig, Kreuz links, zwei flache Schlitztasten 10×4 rechts; Körper in Farbe angehoben (Paint.Lift: L ≥ 0,55 und ≥ 3,2 : 1 zur Wand; Violett auf violetter Wand hatte 2,8 : 1) (M5-QA)
 HandheldBig         gamegear    quer und hoch, großer Bildschirm, Lautsprecherschlitze unter den Tasten
 HandheldLong        lynx        sehr breit, an beiden Enden herabhängende Griffe
 HandheldCompact     ngp         klein, fast quadratisch, Bildschirm oben, runder Knauf statt Kreuz
 HandheldBroad       psp         breit und flach, Bildschirm füllt fast die Front
 Clamshell           nds         zwei GLEICHE Hälften, Scharnier in Körperton, zwei gleiche Bildschirme
-ClamshellWide       3ds         obere Hälfte breiter mit Breitbildschirm, unten kleiner Bildschirm und runder Pad
+ClamshellWide       3ds         zwei GLEICH breite Hälften; im oberen Bildschirm eine Treppe aus drei versetzten 2-px-Rahmen (Tiefe), kein Pad (M5-QA)
 Discs und Laufwerke
 DiscTrack     ps1        Disc (60,68) r 52, Loch r 9, zwei Datenspur-Bögen (r 30/40) ausgespart
 DiscBands     saturn     Disc mit zwei harten konzentrischen Bändern (Zweitfarbe)
 DiscHalftone  dreamcast  Disc mit Halbtonpunkten, nach rechts zunehmend
 MiniDisc      gamecube   kleine Disc (60,82) r 38, Loch r 13, 6-px-Ring in Zweitfarbe
 Tray          segacd     große Disc (60,58) r 46 hinter einer breiten, flachen Schubladenfront M4,92 H116 V120 mit Griffmulde
-SlotDisc      wii        Disc (60,42) r 30 zu einem Drittel im Schlitz eines BREITEN Blocks M22,56 H98 V120 (kein schmaler Ständer, kein Fuß, kein leuchtender Schlitz)
+SlotDisc      wii        flacher, breiter Block M4,84 H116 V120; die Disc liegt perspektivisch flach (Ellipse 96×40) und gleitet entlang der Oberkante in den Schlitz – nur ihre hintere Hälfte mit Nabe und einem 2-px-Ringsegment ist zu sehen; keine Disc-Fläche, die über dem Block steht (M5-QA: „Kopf auf Körper“)
 Tablet        wiiu       zweiter Bildschirm: ein Tablett mit Kreuz und Tasten steht VOR einem großen Bildschirm-Umriss (2 px); kein Monitorfuß
 Dock          switch     Hybrid: ein einteiliges Handgerät, 8 px über dem Schlitz eines flachen Sockels angehoben; keine Dock-Wände über dem Bildschirm, keine Seitenteile, kein Farbpaar
 Andere Geräte
@@ -459,10 +459,14 @@ Stick         atari2600   flacher Sockel, dünner Stab mit Kugel, eine Taste
 StickGrip     atari7800   dicker Griff ohne Kugel, zwei Tasten auf dem Sockel
 Floppy        pc          Diskette mit Schieber und Etikett
 KeyBlock      msx         3 Reihen à 5 gefaste Tasten auf einem Block
-Tower         ps2         Turm mit 7 Rillen, eine davon in Licht
+Tower         ps2         Turm in Farbe angehoben (Paint.Lift: L ≥ 0,55 und ≥ 3,2 : 1 zur Wand), ein Disc-Schlitz bei 30 % Höhe, fünf 2-px-Fugen darunter, auf einer 6-px-Fußplatte (M5-QA: fast schwarz auf schwarz, ≈ 1,3 : 1)
 ```
 
-**Silhouette** (`MotifCatalog.Silhouette`, Platzhalter-Cover und Außenseiter-Bogen): alle Teile vereinigt, Aussparungen abgezogen, und jedes Teil, das über ein früheres gelegt ist, behält eine **2-px-Fuge** (Etiketten, Tasten, Bänder, Scharnier). Vorher schmolzen einfarbig Etikett und Körper zu einem Block, und Saturn, Dreamcast und eine leere Disc waren gleich (M5).
+**Kontrast** (M5-QA, `DesignM5Tests.Every_motif_reads_against_its_wall`): Jedes Motiv hat mindestens ein gemaltes Teil mit ≥ 3 : 1 gegen seine Wand. Unter der Regel lagen ps2 (≈ 1,3), gba (2,8), 3ds (2,8) und switch (2,9); ihr Hauptteil ist jetzt `Paint.Lift` (die eigene Farbe, L ≥ 0,55 und so lange in 0,02-Schritten heller, bis ≥ 3,2 : 1).
+
+**Relief ab Heldengröße** (M5-QA, `MotifCatalog.Draw(relief: true)`, nur ab 160 px: Systemseite, Front, Bibliotheks-Banner; Rücken, Platzhalter und der Bildschirm „Kein Signal“ bleiben flach): (1) die System-Textur in der Füllung bei 8 % (eine Brush pro Textur und Maßstab), (2) eine 6-px-Unterlippe jedes Teils in #000 30 % (das Objekt hat Dicke und steht), (3) eine 2-px-Lichtkante oben/links in Papier 18 % (Silhouette minus sich selbst verschoben). Drei Geometrien pro Motiv und 20-px-Größenstufe, gecacht; statisch. Bogen `motive-held.png`.
+
+**Silhouette** (`MotifCatalog.Silhouette`, Platzhalter-Cover und Außenseiter-Bogen): alle Teile vereinigt, Aussparungen **in Malreihenfolge** abgezogen (ein später gemaltes Teil in einer Aussparung bleibt: die Tiefenrahmen im 3DS-Bildschirm), und jedes Teil, das über ein früheres gelegt ist, behält eine **2-px-Fuge** (Etiketten, Tasten, Bänder, Scharnier). Vorher schmolzen einfarbig Etikett und Körper zu einem Block, und Saturn, Dreamcast und eine leere Disc waren gleich (M5).
 
 ### 6.3 Zuordnung (Farbe, Textur)
 
@@ -482,7 +486,7 @@ Die Motiv- und Gehäusezuordnung steht in der Systemtabelle 2.4 (Motivnamen dort
 | switch | Handgerät Zweitfarbe, Sockel Farbe | lochblech-10 | kein Rot/Blau-Paar, keine Seitenteile |
 | virtualboy | nur Linien in Licht | bayer-8 (Scanlines gehören nur dem Bildschirm-Objekt) | |
 | ps1 / saturn / dreamcast / segacd | Disc Farbe, Details Zweitfarbe bzw. ausgespart | poly-48 / poly-48 / halbton-12 / halbton-12 | Saturn ohne Umlaufbahn |
-| ps2 | Turm fast schwarz (angehoben), Lichtlinie in Licht | rillen-1x6 | |
+| ps2 | Turm in Farbe auf L 0,55, Fugen ausgespart | rillen-1x6 | M5-QA: vorher fast schwarz auf schwarzer Wand |
 | arcade | Bedienfeld Farbe, Stick Zweitfarbe | maske-6 | |
 | pc | Beige, Etikett in Phosphorgrün | lochblech-10 | |
 | atari2600 / 7800 | Stick vor Holzwand (2600) bzw. Griff auf Schwarz (7800) | holz-256x32 / bayer-8 | |
@@ -491,8 +495,8 @@ Die Motiv- und Gehäusezuordnung steht in der Systemtabelle 2.4 (Motivnamen dort
 
 ### 6.4 Wo Motive erscheinen
 
-1. **Wand** (Systemfront, Banner, Systemseite): Motiv voll, 72 % der Wandhöhe (höchstens 46 % der Breite), rechts, auf der Unterkante stehend. Systemseite: 300 px (≈ 1100: 220) auf dem Bühnenbrett.
-2. **Systemrücken**: auf Start nur Band, Code und Anzahl. **Auf der Fächerwand (Konsolen) steht das Motiv am Fuß des Rückens** (Rückenbreite − 2 × 18 px), damit die Wand ohne Lesen unterscheidbar ist (M5-Abnahme).
+1. **Wand** (Systemfront, Banner, Systemseite): Motiv voll, 72 % der Wandhöhe (höchstens 46 % der Breite), rechts, auf der Unterkante stehend. Systemseite: 300 px (≈ 1100: 220) auf dem Bühnenbrett. **Konsolen-Front** (M5-QA): unter dem inneren Brett rechts, so hoch wie der Raum darunter (1080 ≈ 190 px), mit Relief.
+2. **Systemrücken**: **Auf der Fächerwand (Konsolen) steht das Motiv am Fuß des Rückens** (Rückenbreite − 2 × 18 px), damit die Wand ohne Lesen unterscheidbar ist (M5-Abnahme). Auf Start (M5-QA) dasselbe Objekt kleiner: 40 px über der Anzahl, wenn der Rücken ≥ 200 hoch ist und der Code darüber Platz lässt.
 3. **Platzhalter-Cover**: Silhouette in Farbe bei 18 %, 45 % der Höhe, rechts unten.
 4. **Bildschirm „Kein Signal“**: Motiv voll, 50 % der Bildschirmhöhe, auf der Wand im Bildschirm.
 5. **Detail ohne Bild**: Motiv-Umriss 1,5 px in Licht bei 10 %, 520 px hoch, rechts unten im Bühnenbereich.
@@ -501,7 +505,7 @@ Die Motiv- und Gehäusezuordnung steht in der Systemtabelle 2.4 (Motivnamen dort
 
 ### 6.5 Außenseiter-Test (M5)
 
-**Verfahren.** Der Vorschau-Harness rendert drei Bögen **ohne jeden Text** (`DesignPreviewTests.Motif_sheet`, Filter `motive`): `motive-umriss.png` (jedes Motiv einzeln als flache Papier-Silhouette, ohne Farbe – das ist der Bogen für den Außenseiter-Test), `motive-farbig.png` (jede Systemwand mit Band, Textur und Motiv – „ohne Text unterscheidbar“) und `motive-klein.png` (dieselben Wände in Rücken- bzw. Platzhaltergröße, 72 px). Die Reihenfolge steht nur in `motive-legende.txt`. Die Bögen wurden in M5 in drei Runden angesehen und die Motive dabei geändert (Wii, Wii U, Switch, Virtual Boy, Mega-CD, die Disc-Details). **Ehrlich:** Geprüft hat der Designer selbst, mit der Frage „Was sagt jemand ohne Retro-Vorwissen?“. Ein Durchgang mit einer echten Außenseiterin steht aus; die Bögen sind dafür vorbereitet (einzeln zeigen, nur „Was ist das?“ fragen, Antwort notieren).
+**Verfahren.** Der Vorschau-Harness rendert drei Bögen **ohne jeden Text** (`DesignPreviewTests.Motif_sheet`, Filter `motive`): `motive-umriss.png` (jedes Motiv einzeln als flache Papier-Silhouette, ohne Farbe – das ist der Bogen für den Außenseiter-Test), `motive-farbig.png` (jede Systemwand mit Band, Textur und Motiv – „ohne Text unterscheidbar“) und `motive-klein.png` (dieselben Wände in Rücken- bzw. Platzhaltergröße, 72 px). Die Reihenfolge steht nur in `motive-legende.txt`. Die Bögen wurden in M5 in drei Runden angesehen und die Motive dabei geändert (Wii, Wii U, Switch, Virtual Boy, Mega-CD, die Disc-Details). **Ehrlich:** Geprüft hat der Designer selbst, mit der Frage „Was sagt jemand ohne Retro-Vorwissen?“. Ein Durchgang mit einer echten Außenseiterin steht aus; die Bögen sind dafür vorbereitet (einzeln zeigen, nur „Was ist das?“ fragen, Antwort notieren). Die QA nach M5 verlangte zwei Nicht-Spieler; das kann der Bau nicht leisten, **die Spalte „Was ein Außenseiter nennt“ ist weiter eine Erwartung, kein Befund**. Clamshell (nds) blieb unverändert: zwei gleiche Hälften mit Scharnier sind jedes Klappgerät; die QA nannte es, schlug aber keine Änderung vor.
 
 | Motiv (System) | Was ein Außenseiter nennt | Warum es kein Produkt ist |
 |---|---|---|
@@ -512,22 +516,22 @@ Die Motiv- und Gehäusezuordnung steht in der Systemtabelle 2.4 (Motivnamen dort
 | Cart64 (n64) | „ein Modul“ | flache Schrägen (flacher als v1.0), kein Griffbogen |
 | CartStack (sega32x) | „zwei Module aufeinander“ | Kategorie „Aufsatz“, keine Pilzform des Geräts |
 | Card (pcengine) | „eine Karte / Speicherkarte“ | Chipkarte mit Kontakten ist ein Allerweltsobjekt |
-| HandheldTall (gb) | „ein Handheld / Gameboy-artig?“ | **Grenzfall.** Gegenmaßnahmen: Tasten waagerecht statt diagonal, keine runde Ecke, kein vierstufig grüner Bildschirm, kein grauer Körper; übrig bleibt die Kategorie „Handheld hochkant“ |
+| HandheldTall (gb) | „ein Handheld hochkant“ | **Grenzfall, M5-QA geändert**: Tasten übereinander statt nebeneinander/diagonal, 3×3-Lochung statt schräger Lautsprecherschlitze, keine runde Ecke, kein vierstufig grüner Bildschirm, kein grauer Körper |
 | HandheldTallDouble (gbc) | „ein Handheld mit zweiter Schale“ | wie oben, plus versetzter Umriss statt Gehäuseform |
 | HandheldNarrow (wonderswan) | „ein schmales Handgerät / Pager“ | keine Tastenanordnung des Originals |
-| HandheldWide (gba) | „eine Handkonsole“ | gefastes Achteck statt runder Flügel |
+| HandheldWide (gba) | „eine Handkonsole quer“ | **M5-QA geändert**: eckige Schultern, Fase nur am Fuß, Schlitztasten statt runder Knöpfe |
 | HandheldBig (gamegear) | „ein großes Handgerät“ | eckig, keine Rundungen des Originals |
 | HandheldLong (lynx) | „ein Handheld mit Griffen“ | Griffe als einfache Lappen |
 | HandheldCompact (ngp) | „ein kleines Handgerät“ | runder Knauf ist eine Kategorie, kein Markenzeichen |
 | HandheldBroad (psp) | „ein Handheld mit großem Bildschirm“ | gefastes Achteck, kein Pillenumriss |
 | Clamshell (nds) | „ein Klapp-Handheld“ | zwei Rechtecke mit Scharnier; jedes Klappgerät sieht so aus |
-| ClamshellWide (3ds) | „ein Klapp-Handheld, oben breiter“ | T-Form als Kategorie „oben Breitbild“ |
+| ClamshellWide (3ds) | „ein Klapp-Handheld mit Tiefe“ | **M5-QA geändert**: gleich breite Hälften, kein Kreis-Pad; die Treppe aus drei versetzten Rahmen sagt „Tiefe“, nicht das Gerät |
 | DiscTrack (ps1) | „eine CD“ | Datenspur-Bögen, kein Logo |
 | DiscBands (saturn) | „eine CD / Schallplatte“ | konzentrische Bänder, **keine Umlaufbahn** |
 | DiscHalftone (dreamcast) | „eine CD“ | Punktraster, **keine Spirale** |
 | MiniDisc (gamecube) | „eine kleine Disc“ | das Medium, nicht der Würfel; kein Griff, kein Würfel-im-Würfel |
 | Tray (segacd) | „ein CD-Laufwerk mit Schublade“ | Allerweltslaufwerk |
-| SlotDisc (wii) | „eine Disc, die in einen Schlitz geht“ | **geändert in M5**: der schmale aufrechte Ständer (v1.1) war die Silhouette des Geräts. Jetzt liegt ein breiter Block, die Disc trägt die Kategorie (Slot-Laufwerk wie im Autoradio) |
+| SlotDisc (wii) | „ein CD-Schlitz / Autoradio“ | **geändert in M5 und M5-QA**: der schmale aufrechte Ständer (v1.1) war die Silhouette des Geräts; die runde Disc über dem Block las sich danach als Avatar („Kopf auf Körper“). Jetzt gleitet eine perspektivisch flache Disc in den Schlitz eines flachen Blocks |
 | Tablet (wiiu) | „ein Tablet vor einem Fernseher“ | **geändert in M5**: das Tablett auf einem Monitorfuß las sich als Monitor. Jetzt „zweiter Bildschirm“: Tablett vor einem Bildschirm-Umriss, keine Sticks an Produktpositionen |
 | Dock (switch) | „ein Handgerät über seiner Ladeschale“ | **geändert in M5**: der Bildschirm halb im Block entsprach dem Dock des Produkts. Jetzt ein einteiliges Handgerät über einem flachen Sockel mit Schlitz; keine abnehmbaren Seitenteile, kein Rot/Blau |
 | TwinLens (virtualboy) | „eine VR-Brille“ | **geändert in M5**: Rahmen auf Zweibein war das Gerät; mit Bügel oben las es sich als Radio. Jetzt Visier mit Nasenkerbe und Riemen, ohne Fuß |
@@ -536,7 +540,7 @@ Die Motiv- und Gehäusezuordnung steht in der Systemtabelle 2.4 (Motivnamen dort
 | StickGrip (atari7800) | „ein Joystick mit Griff“ | Griff ohne Kugel, Tasten am Sockel |
 | Floppy (pc) | „eine Diskette“ | Allgemeingut („Speichern“-Symbol) |
 | KeyBlock (msx) | „eine Tastatur“ | Tastenblock ohne Layout |
-| Tower (ps2) | „ein Computer-Turm“ | Rillen und eine Lichtlinie, kein Logo, keine Form des Originals |
+| Tower (ps2) | „ein Turm-Gerät“ | **M5-QA**: auf Fußplatte, Disc-Schlitz oben, Fugen; in eigener Farbe statt fast schwarz. Restrisiko „PC-Turm“ (Kategorie, kein Produkt) |
 
 **Unterscheidbarkeit ohne Text**: Auf `motive-farbig.png` und `motive-klein.png` unterscheiden sich alle 32 Systeme durch die Kombination aus Motiv (jedes einzigartig), Wandton und Farbband; die Disc-Familie (ps1, saturn, dreamcast, gamecube, segacd, wii) trennt sich über Details (Spur, Bänder, Punkte, Größe, Schublade, Schlitzblock) und Farbe. Am knappsten sind ps1 und saturn in Platzhaltergröße (graue gegen indigofarbene Disc).
 
@@ -640,11 +644,11 @@ MainWindow
 - **Schachteln**: Höhe 200, Breite nach Bild (contain), Abstand 24, unten bündig. **Keine Bildunterschriften**, denn die Bühne ist die Bildunterschrift. Platzhalter tragen ihren Titel selbst. Keine Abzeichen auf den Schachteln (auch kein Favoriten-Stern).
 - **Etikett** statt Überschrift: Es hängt links an der Brettfront bei x 96 (Papier, Tinte, Etikett 15, 8×3, R 0). Es gibt keine H2 und keinen „Alle anzeigen ›“-Link.
 - **Ende jedes Bretts**: ein Rücken „Alle“ (72×200, Regal hell, Band in Bernstein, Text „Alle anzeigen“ in Rücken 18 gedreht). Er führt in die Bibliothek mit passendem Filter bzw. passender Sortierung.
-- **Fächer-Brett**: `SystemShelf` (dasselbe Control wie Konsolen, 7.4). Systemrücken 72×200 (Wand hell, 8-px-Band in Farbe, Code −90° in Rücken 22 Papier, Anzahl unten in Zahl 15). Der fokussierte Rücken wird zur **Front** 200×200 (Wand mit 8-px-Band und Motiv) mit **16 px Luft auf jeder Seite** (Platz 232; der Abstand der Rücken bleibt 8); Ring und Hebung 1,03 nach 8.2, die Front liegt dabei über ihren Nachbarn (ZIndex 1). Eine einzige Objektsprache.
+- **Fächer-Brett**: `SystemShelf` (dasselbe Control wie Konsolen, 7.4). Systemrücken 72×200 (Wand hell, 8-px-Band in Farbe, Code −90° in Rücken 22 Papier **hängend 16 px unter dem Band** wie auf Konsolen, Motiv 40 px über der Anzahl, Anzahl unten in Zahl 15; M5-QA: vorher stand der Code am Fuß und dieselben Rücken lasen sich auf beiden Seiten verschieden). Der fokussierte Rücken wird zur **Front** 200×200 (Wand mit 8-px-Band und Motiv) mit **16 px Luft auf jeder Seite** (Platz 232; der Abstand der Rücken bleibt 8); Ring und Hebung 1,03 nach 8.2, die Front liegt dabei über ihren Nachbarn (ZIndex 1). Eine einzige Objektsprache.
 - **Horizontaler Anker**: Die fokussierte Schachtel steht mit der linken Kante bei x 240 (am Brettanfang bei x 96). Die Reihe gleitet per `TranslateTransform` (Glide 220 ms; unter `.nav-repeat` 90 ms linear).
 - **Vertikaler Anker**: Das fokussierte Brett steht mit der Schachtel-Oberkante bei y 632. Das nächste Brett ragt ab y 908 angeschnitten herein („mehr unten“). Bretter darüber gleiten unter die Bühne. **Nur der Bretterbereich als Ganzes ist beschnitten**, ab der Unterkante des Bühnenbretts (y 584); Reihen und Schachteln beschneiden nie (die gehobene Schachtel und ihr Ring ragen über die Reihe). Über der aktiven Reihe bleiben 48 px für Hebung (12), Ring (6) und den kurzen Kegel.
 
-**Leere Bibliothek**: Der Bildschirm ist aus (Raum-Tief mit einer 1-px-Linie in Papier 20 % in der Mitte). Statt der Schachtel steht eine Linienzeichnung „leeres Regal“ (Papier 60 %) **direkt auf dem Bühnenbrett** (zwei Buchstützen und eine angelehnte Schachtel, ohne eigenes Brett). Das Brett „Noch leer“ darunter trägt **5 umrissene Plätze** 150×200 (1 px Papier 12 %, gestrichelt 4/4, Abstand 24, ab x 96), es wartet sichtbar auf Spiele. Text: „Das Regal ist noch leer“ und „Lege Spieldateien in einen Bibliotheksordner und starte einen Scan.“ Buttons: **Ordner hinzufügen** (Bernstein) und **Importe öffnen**.
+**Leere Bibliothek**: Der Bildschirm ist aus (Raum-Tief mit einer 1-px-Linie in Papier 20 % in der Mitte). Statt der Schachtel steht eine Linienzeichnung „leeres Regal“ (Papier 60 %) **direkt auf dem Bühnenbrett** (zwei Buchstützen und eine angelehnte Schachtel, ohne eigenes Brett). Das Brett „Noch leer“ darunter trägt **5 leere Fächer** 150×200 (M5-QA: eingetieft statt gestrichelt – Grund #000 20 %, 2-px-Schatten innen oben #000 40 %, 1 px Kante an den Seiten; Abstand 24, ab x 96), es wartet sichtbar auf Spiele. Text: „Das Regal ist noch leer“ und „Lege Spieldateien in einen Bibliotheksordner und starte einen Scan.“ Buttons: **Ordner hinzufügen** (Bernstein) und **Importe öffnen**.
 
 **≈ 1100 px (logisch 1375×875)**: Bühnenbrett bei y 456 (M2-QA; vorher 464: Ring und Hebung stießen ans Brett). Bildschirm 400×300 bei x 879–1279, Schachtel-Rahmen 214×300 bei x 625–839, Textblock x 96–585 (Titel meist 40 oder 56). Bretter: Schachteln 160 hoch, Anker bei y 520 (40 px Luft unter dem Bühnenbrett), das nächste Brett ab y 752, Front 160 mit 16 px Luft je Seite.
 
@@ -747,7 +751,8 @@ MainWindow
 - **Ticker**: Die Schulterplatten sind ruhig (36×22, Regal hell, 1 px Kante, Keil in Text 2; Hover/Druck: Papier mit Tinte-Keil). Sie bleiben in beiden Eingabearten neutrale Blätter-Platten: Tastenkappen „Strg+Bild auf“ an beiden Enden drängten bei 1920 die letzten Systeme aus dem Ticker, und die Taste nennt ohnehin die Fußleiste. 16 px Luft zwischen Ticker-Kante (mit 48-px-Verlauf) und rechter Platte; der aktive Eintrag wird ganz innerhalb der Verläufe gehalten.
 - **Regalspiegel**: Spinen auf einem kleinen Brett (1 px Brettlicht über 2 px Regal hell) bei 60 % Farbe; die Klammer ist eine 1-px-Linie in Papier 70 % mit 4 px Ticks nach unten – ein Rahmen, kein Fortschrittsbalken.
 - **Wand-Banner**: Textur 9 % (statt der Systemstärke), Motiv 160 (≈ 1100: 124) auf dem Bühnenbrett.
-- **Leere Bibliothek**: kein Ticker. Das Brett (Regalkante) steht bei ≈ 46 % der Seitenhöhe, darauf die Linienzeichnung mit Figuren in Schachtelgröße (200 hoch, 1,5 px Papier 60 %) und 5 umrissene Plätze 150×200 (≈ 1100: 4), wie auf Start. Text 48 px unter dem Brett.
+- **Leere Bibliothek**: kein Ticker. Das Brett (Regalkante) steht bei ≈ 46 % der Seitenhöhe, darauf **eine angelehnte Schachtel** als Geste (2 px Text 3, 200 hoch; M5-QA: Buchstützen und gestrichelte Umrisse waren der generischste Leerzustand im Build) und 5 eingetiefte Fächer 150×200 (≈ 1100: 4), wie auf Start. Text 48 px unter dem Brett.
+- **Banner** (M5-QA): die Lichtzone der Wand ist fest 40 hoch (≈ 1100: 24) statt 38 %; die 38-%-Kante lief durch die Glyphen des Titels.
 - **Fußleiste** sagt „Regal“ statt „Raster“. **Demo-Modus** in der Kopfleiste ist Text (Etikett 15, Text 3) hinter einem 6×6-Quadrat in Warnung, kein Papierblock.
 
 ---
@@ -830,7 +835,7 @@ Ein horizontales Bühnenbrett voller **Systemrücken** (`Shelf` mit `SystemSpine
 - **Front**: 520×600, Wand komplett (zweifarbig, Band, Textur, Motiv 72 % rechts unten). Name in Plakat 44 (2 Zeilen, 40 px Innenrand), „Nintendo, 2001“ in `read` Text 2, „**7** Spiele“ in Zahl 40 unten links. Fokus: gefaster Ring in Licht.
 - **Wechsel**: Animiert wird **nur die Breite eines Clip-Containers** (128 ↔ 520, Glide 220 ms). Der Inhalt der Front hat fest 520 px Breite und bricht nie während der Animation um. Der Inhalt blendet 120 ms nach dem Wachsen ein (Step). Der Seitengrund wechselt per `BrushTransition` (Vollton) zur Wand des neuen Systems (280 ms).
 - **Anker**: Die Front steht in Slot 3. Der Versatz der Reihe wird aus den **Zielbreiten** berechnet und nicht aus den animierenden Breiten (kein Doppelruck). Unter `.nav-repeat` springt die Breite ohne Transition und die Reihe gleitet 90 ms linear.
-- **Ticker** darunter: Codes aller Systeme mit Spielen, rechts „Fach 3 von 13“.
+- **Positionsschiene** darunter (M5-QA, ersetzt den Ticker): eine Linie mit einem Strich je System, rechts „Fach 3 von 13“.
 - **Ohne Spiele**: Etikett „Noch leer“ am Brett, daneben Textbuttons in `ui` 16 Text 3. Bestätigen öffnet die Systemseite im Leerzustand.
 - **≈ 1100 px**: Front 380×460, Rücken 96×360, Name 36.
 
@@ -846,6 +851,14 @@ Ein horizontales Bühnenbrett voller **Systemrücken** (`Shelf` mit `SystemSpine
 - **Leere Bibliothek**: Wo die Front stünde, steht „Die Fächerwand ist noch leer“ (poster-s), ein Satz und **Importe öffnen** (erster Fokus); daneben warten acht gestrichelte Rückenplätze auf dem Brett, darunter alle Systeme als „Noch leer“.
 - **Fußleiste**: „Konsolen › Nintendo GameCube“ bzw. „Konsolen › Atari Lynx, noch leer“; Hinweise Öffnen, Zurück, Suche, Menü. Die Schultern wechseln auf dieser Seite weiter den Kanal (sie hat keine Abschnitte).
 - **Viele Systeme** (Harness `demoall`, 32 Systeme): die Reihe gleitet, die letzte Front bleibt am rechten Seitenrand (Versatz geklemmt).
+
+#### 7.4.2 Stand M5-QA (Entscheidungen nach der Bildprüfung)
+
+- **Die Front trägt ein inneres Fach** (Bildpräsenz; die 520×600-Front war eine leere Platte): bei 62 % der Fronthöhe ein 10-px-Brett im Brett-Ton der Wand (`ShelfBoard.DrawOnWall`), darauf bis zu **drei Spiele des Systems** (zuletzt gespielt zuerst, dann Titel; `SystemItemViewModel.Featured`, eine Abfrage pro System beim Laden) als echte Schachteln (`CoverArt`, Kontaktschatten 10 px auf dem Brett, Platzhalter nach 10.2, wenn ein Cover fehlt). Kunsthöhe 150 (≈ 1100: zwei Schachteln, 110), Abstand 12, ab dem Innenrand, im Fachformat des Systems; nie in Name und Hersteller hinein (die Höhe weicht, nicht der Text). Unter dem Brett links „4 Spiele“ (Zahl 40), rechts das Motiv mit Relief, so hoch wie der Raum unter dem Brett. **Abweichung von der QA-Vorgabe** („Motiv 56 %“): 56 % hätten die Schachteln überdeckt; das Motiv steht deshalb kleiner unter dem Brett. Die Schachteln entstehen erst, wenn die Front zum ersten Mal aufgeht, nach `DecodeDwell` und nie während einer gehaltenen Richtung; das Laden läuft über `AsyncImageLoader` abseits des UI-Threads.
+- **Positionsschiene statt Ticker** (`PositionRail`): Der Ticker wiederholte die Codes der Rücken direkt darüber (dritte Liste neben „Noch leer“) und lief bei 32 Systemen in „Fach 32 von 32“. Jetzt: eine 2-px-Linie in Kante über die Inhaltsbreite, je System ein 12×4-Strich in seiner Farbe, das aktuelle 24×6 mit seinem Code in Papier darüber (Rücken 17). Rechts „Fach n von m“ in einer festen 180er-Spalte, 48 px Abstand. Nicht fokussierbar; ein Klick auf einen Strich dreht diese Front nach vorn. Codes kommen überall aus `SystemDef.ShortName` (eine Tabelle; „GC“/„MD“ gibt es nur im Demo-Katalog).
+- **„Noch leer“ lesbar**: Rücken 48×148 (≈ 1100: 48×116), Code 16 in Text 2 (fokussiert Papier), hängend wie auf der Wand; still wird der Rücken über sein Band (50 %), nicht über unlesbare Schrift. 32 px Luft zwischen Schiene und Rücken (≈ 1100: 20).
+- **Ein Anker für den Code** auf allen Systemrücken: 16 px unter dem Band, von unten nach oben lesend (Start und Konsolen gleich).
+- **Leere Fächerwand**: acht eingetiefte Rückenplätze (wie 7.1) statt gestrichelter Umrisse.
 
 ### 7.5 Systemseite: „Das Fach“
 
@@ -867,6 +880,16 @@ Ein horizontales Bühnenbrett voller **Systemrücken** (`Shelf` mit `SystemSpine
 - **Fachende** (1–6 Spiele): unter der Reihe der Satz „Weitere Spiele kommen über Importe ins Fach.“ und **Importe öffnen** (`CoverGrid.Footer`). Statt einer eigenen Linienzeichnung genügt der Satz: die Regalkante läuft ohnehin über die volle Breite und zeigt den freien Platz.
 - **Leeres Fach** (System ohne Spiele, z. B. aus „Noch leer“): die Leerzustand-Sprache von Bibliothek und Start (Linienzeichnung auf einer Regalkante, drei gestrichelte Plätze), „Das Fach ist noch leer“, „Lege Spieldateien in games/virtualboy/ oder füge unter „Importe“ einen Ordner hinzu.“ und **Importe öffnen** (erster Fokus). ≈ 1100: Figuren und Plätze 150 hoch, damit der Button unter dem Banner sichtbar bleibt; er und „Systeminfo“ holen sich beim Fokus ihren Platz (`BringIntoView`), denn das Grid scrollt von sich aus nur zeilenweise.
 - Das Grid übernimmt die Fachformat-Logik der Bibliothek (Median der gespeicherten Cover-Maße ab 8, sonst Startwert), gesetzt vor den Spielen; Platzhalter nehmen dieses Format an.
+
+#### 7.5.2 Stand M5-QA (Entscheidungen nach der Bildprüfung)
+
+- **Feste Lichtzone**: Die obere Wandzone (Wand hell) ist fest **88** hoch (≈ 1100: 64) und trägt nur die Nachbarzeile (in ihr zentriert, x 96); ohne Nachbarn **24** (8-px-Band + 16), und das Banner wird um die Differenz niedriger (keine tote Streifenzone). `SystemWall.SplitHeight`. Der Titel beginnt mindestens 24 px unter der Kante: `FitText.MaxTextHeight` lässt eine Größe nur mit so vielen Zeilen zu, wie in den Raum zwischen Lichtzone und Satz/Statuszeile passen – zwei Zeilen 72 fallen auf 56/44 (≈ 1100: 44/36) zurück. Test `Banner_title_never_reaches_into_the_walls_light_zone`: alle 32 Namen des echten Katalogs bei 1920, 1600, 1100 und 2560.
+- **Kein Banner-Rest beim Scrollen**: Ab 70 % herausgescrollt erscheint ein **kompakter Kopf** (64: Wand des Systems, 4-px-Band, Name in Plakat 28 bei x 96, Motiv 44 auf einem 6-px-Brett rechts − 120, 12-px-Verlauf darunter; Einblenden 140 ms). Zeilen ab 1 rasten 24 px unter ihm ein (`CoverGrid.StickyInset`), und am Ende wächst ein Abstandhalter, damit jede Raststellung erreichbar ist (`CoverGrid.SnapToEnd`) – vorher klemmte der ScrollViewer kurze Fächer zwischen zwei Rasten und ließ einen Streifen Banner mit halbem Motiv stehen.
+- **Fachende in einer Zeile**: „Weitere Spiele kommen über Importe ins Fach.“ und **Importe öffnen** (48 hoch) nebeneinander; unter dem Footer bleibt eine Reserve für die Fußleisten-Blende (Rand 40 + Innenrand 64), und der Button holt sich beim Fokus seinen Platz samt 96 px darunter. **Offen**: Bei ≈ 1100 liegt die Zeile ungefokussiert noch in der Blende (die Rastgeometrie des Grids lässt sie nicht höher), erst der Fokus holt sie heraus.
+- **Leeres Fach**: eine angelehnte Schachtel (2 px Text 3) und drei eingetiefte Fächer statt Buchstützen und gestrichelter Umrisse; ≈ 1100: 120 hoch, Titel 32 unter dem Brett, damit **Importe öffnen** über der Blende steht.
+- **Satz**: Zeitangaben in ganzen Wörtern („zuletzt vor einer Woche“, „vor 3 Wochen“, „vor 5 Minuten“; `Fmt.LastPlayedInSentence`). Das Kürzel „Wo.“ verlor vorher mit `TrimEnd('.')` beide Punkte.
+- **Systeminfo als Karteikarte**: 8-px-Band in der Systemfarbe links, Name in Plakat 28, Motiv 64 oben rechts über einer 4-px-Brettlinie, Beschriftungen in Rücken 15 Text 2, Werte in Cascadia 15 Papier; R 0, 1 px Kante plus 1 px Lichtkante oben; Innenrand 32/48.
+- **Nicht umgesetzt** (QA-Vorschlag „Systemcode in Rücken 20 rechts in der Nachbarzeile“): der Name steht groß direkt darunter; ein zweiter Code wäre die Wiederholung, die auf Konsolen gerade entfernt wurde.
 
 ### 7.6 Werkbank: Emulatoren, Importe, Einstellungen (M6)
 
@@ -1123,7 +1146,7 @@ Texte für Leerzustände benennen, was fehlt, und die Lösung, z. B. „Kein Emu
 | **M2 Start** | `RoomBackdrop`, `PixelScreen`, Bühne (Bildschirm + Schachtel + Text, gemessener Titel), Bretter mit Ankern und Etiketten, `SystemShelf` (Rücken + Front, Motive vorläufig Cart8), Leerzustand. Core: Snaps/Titel | Screenshots 1920/1600/1100/2560 mit Demo- *und* echtem Katalog; „Kein Signal“ geprüft |
 | **M3 Bibliothek** | Ticker, `ShelfMirror`, Grid mit Regalkante und FocusLayer, Banner, Systemgrund, Aufkleber, Listen-Ansicht. Core: Cover-Maße | 1000-Spiele-Demo bei 60 fps; Bibliothek ohne Cover lesbar |
 | **M4 Detail** | Schachtel mit `BoxSpine`, Meta-Satz mit Zahl-Runs, Aktionen, Lösungs-Button, Rückseite (Text, Bildschirme, Startzeilen), Ausleihkarte, „Daneben im Regal“, Overlays (Stand: 7.3.1) | Detail ohne Beschreibung, Genre und Bild sieht vollständig aus |
-| **M5 Konsolen & System** | Motive final + Außenseiter-Test, Texturen komplett, Konsolen, Systemseite | Jedes System ist ohne Text unterscheidbar; kein Motiv wird als Produkt benannt. **Stand:** umgesetzt (6.2–6.5, 7.4.1, 7.5.1); Außenseiter-Test bisher nur als Selbstprüfung an den textfreien Bögen |
+| **M5 Konsolen & System** | Motive final + Außenseiter-Test, Texturen komplett, Konsolen, Systemseite | Jedes System ist ohne Text unterscheidbar; kein Motiv wird als Produkt benannt. **Stand:** umgesetzt (6.2–6.5, 7.4.1–7.4.2, 7.5.1–7.5.2); Außenseiter-Test bisher nur als Selbstprüfung an den textfreien Bögen |
 | **M6 Werkbank & Start** | Service-Menü, Emulatoren nach Systemen, Importe mit Lieferschein, Starttransition mit `FlightLayer`, Aufräumen (Poppins, StatTile, Glas-Keys) | Alle Seiten im QA grün |
 
 ### 11.4 Fachformat (Slot-Aspekt) ohne Neuberechnung beim Browsen

@@ -189,6 +189,19 @@ public class DesignPreviewTests
         Sheet("motive-farbig.png", 200, 16, id => new Controls.SystemWall { SystemId = id, MotifShare = 0.72, MotifInset = 14 });
         Sheet("motive-umriss.png", 160, 32, id => new Controls.MotifView { SystemId = id, SilhouetteBrush = paper });
         Sheet("motive-klein.png", 72, 10, id => new Controls.SystemWall { SystemId = id, MotifShare = 0.72, MotifInset = 4, BandHeight = 4 });
+        // hero size (≥ 160): the motif with its relief (edge light, foot, material) on its wall, as on the system page
+        Sheet("motive-held.png", 240, 16, id => new Avalonia.Controls.Panel
+        {
+            Children =
+            {
+                new Controls.SystemWall { SystemId = id, MotifShare = 0 },
+                new Controls.MotifView
+                {
+                    SystemId = id, Width = 176, Height = 176, Margin = new Avalonia.Thickness(0, 0, 14, 0),
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom,
+                },
+            },
+        });
     });
 
     // ===================== scratch roots =====================

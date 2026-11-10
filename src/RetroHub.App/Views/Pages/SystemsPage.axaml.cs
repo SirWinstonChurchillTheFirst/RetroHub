@@ -11,7 +11,7 @@ using RetroHub.App.ViewModels;
 namespace RetroHub.App.Views.Pages;
 
 /// <summary>
-/// Konsolen (DESIGN 7.4): the wall of spines on one board, the ticker, the "Noch leer" edge. Left/right walk along a
+/// Konsolen (DESIGN 7.4): the wall of spines on one board, the position rail, the "Noch leer" edge. Left/right walk along a
 /// row (boundary feedback at the ends), down reaches the "Noch leer" edge, up goes back to the remembered spine (and
 /// from the wall up into the header). The focused system becomes the page ground; a ticker click turns its front.
 /// </summary>
@@ -19,8 +19,6 @@ public partial class SystemsPage : PageBase
 {
     /// <summary>Below this page height the ≈1100 values apply (DESIGN 7.4: front 380 × 460, spines 96 × 360).</summary>
     public const double CompactBelowHeight = 860;
-
-    private static readonly Avalonia.Media.Color RoomDeep = Avalonia.Media.Color.Parse("#0A0908");
 
     private SystemsViewModel? _vm;
     private bool? _compact;
@@ -38,29 +36,16 @@ public partial class SystemsPage : PageBase
         Unused.ItemFocused += (_, item, _, _) => OnSpineFocused(item);
         SizeChanged += (_, e) => ApplySize(e.NewSize);
         Stack.SizeChanged += (_, _) => PlaceStack();
-        TickerScroll.ScrollChanged += (_, _) => UpdateFades();
-        TickerScroll.SizeChanged += (_, _) => UpdateFades();
+        Rail.TickClicked += index => Wall.FocusItem(index);
     }
 
     private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (_vm == null) return;
-        if (e.PropertyName == nameof(SystemsViewModel.Backdrop)) UpdateFadeColours();
-        else if (e.PropertyName == nameof(SystemsViewModel.Current)) Dispatcher.UIThread.Post(BringCurrentTickIntoView, DispatcherPriority.Loaded);
     }
 
     private void OnSpineFocused(Control item)
     {
         if (_vm != null && item.DataContext is SystemItemViewModel system) _vm.SetCurrent(system);
-    }
-
-    /// <summary>A ticker code turns that system's front forward (the ticker itself takes no focus).</summary>
-    private void OnTickerClick(object? sender, RoutedEventArgs e)
-    {
-        if (_vm == null || (sender as Control)?.Tag is not SystemItemViewModel system) return;
-        var index = _vm.Systems.ToList().IndexOf(system);
-        if (index >= 0) Wall.FocusItem(index);
-        e.Handled = true;
     }
 
     /// <summary>1080 values or the ≈1100 values (class "compact"), from the page height.</summary>
@@ -75,61 +60,25 @@ public partial class SystemsPage : PageBase
         EmptyPlaces.Height = wallHeight;
         foreach (var slot in EmptyPlaces.Children) slot.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom;
         EmptyText.Width = compact ? 380 : 520;
-        Unused.ItemHeight = compact ? 104 : 132;
-        UnusedShelf.Margin = new Thickness(0, compact ? 12 : 20, 0, 0);
-        TickerRow.Height = compact ? 44 : 48;
+        Unused.ItemHeight = compact ? 116 : 148;
+        // the rail and the "Noch leer" spines read as two bands, not one (M5 QA)
+        UnusedShelf.Margin = new Thickness(0, compact ? 20 : 32, 0, 0);
+        TickerRow.Height = compact ? 40 : 44;
     }
 
-    /// <summary>The wall, the ticker and the "Noch leer" edge stand in the middle of the page (top between 40 and 140).</summary>
+    /// <summary>Space the footer takes at the page's bottom (its bar; the fade above it may cover the label's last pixels).</summary>
+    private const double FooterReserve = 56;
+
+    /// <summary>
+    /// The wall, the rail and the "Noch leer" edge stand in the middle of the page above the footer (top between 40 and
+    /// 140; ≈1100: from 24, so the label of the "Noch leer" edge stays above the footer).
+    /// </summary>
     private void PlaceStack()
     {
-        var free = Bounds.Height - Stack.Bounds.Height;
+        var free = Bounds.Height - FooterReserve - Stack.Bounds.Height;
         if (Bounds.Height <= 0 || Stack.Bounds.Height <= 0) return;
-        var top = Math.Round(Math.Clamp(free / 2, 40, 140));
+        var top = Math.Round(Math.Clamp(free / 2, _compact == true ? 24 : 40, 140));
         if (Math.Abs(Stack.Margin.Top - top) > 0.5) Stack.Margin = new Thickness(0, top, 0, 0);
-    }
-
-    private void UpdateFadeColours()
-    {
-        var g = _vm?.Backdrop is { Kind: BackdropKind.Wall, SystemId: { } id } spec
-            ? Theming.ColorUtil.Mix(Theming.SystemPalette.Get(id, spec.Accent).Wall, RoomDeep, spec.WallShade)
-            : Theming.SystemPalette.Room;
-        FadeLeft.Background = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(g, 0), new GradientStop(Avalonia.Media.Color.FromArgb(0, g.R, g.G, g.B), 1) },
-        };
-        FadeRight.Background = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(Avalonia.Media.Color.FromArgb(0, g.R, g.G, g.B), 0), new GradientStop(g, 1) },
-        };
-    }
-
-    private void UpdateFades()
-    {
-        var extent = TickerScroll.Extent.Width;
-        var viewport = TickerScroll.Viewport.Width;
-        var x = TickerScroll.Offset.X;
-        FadeLeft.IsVisible = x > 1;
-        FadeRight.IsVisible = extent - viewport - x > 1;
-    }
-
-    /// <summary>The current code stays fully visible inside the 48 px edge fades.</summary>
-    private void BringCurrentTickIntoView()
-    {
-        if (_vm?.Current is not { } current) return;
-        var index = _vm.Systems.ToList().IndexOf(current);
-        if (index < 0 || Ticker.ContainerFromIndex(index) is not Control c || c.TranslatePoint(new Point(0, 0), Ticker) is not { } p) return;
-        const double fade = 48;
-        var view = TickerScroll.Viewport.Width;
-        var x = TickerScroll.Offset.X;
-        var left = p.X;
-        var right = p.X + c.Bounds.Width;
-        if (left <= 1) x = 0;
-        else if (left - fade < x) x = left - fade;
-        else if (right + fade > x + view) x = right + fade - view;
-        TickerScroll.Offset = TickerScroll.Offset.WithX(Math.Max(0, x));
     }
 
     /// <summary>

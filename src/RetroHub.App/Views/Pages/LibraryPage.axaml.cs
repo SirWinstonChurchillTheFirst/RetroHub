@@ -162,6 +162,8 @@ public partial class LibraryPage : PageBase
         Tools.Classes.Set("compact", _compact);
         Covers.Spacing = width >= 1600 ? 28 : 20;
         Banner.Height = _compact ? 160 : 200;
+        // the wall's light zone has a fixed height above the title (M5 QA: the 38 % edge ran through the title's glyphs)
+        BannerWall.SplitHeight = _compact ? 24 : 40;
         // the motif stands on the banner's stage board at ≈ 72 % of the wall above it (M3 QA: 144 looked pushed aside)
         BannerMotif.Width = BannerMotif.Height = _compact ? 124 : 160;
         // the empty shelf's board at ≈ 46 % of the page (1080: y ≈ 510, 1100 px: y ≈ 415 in window pixels)
