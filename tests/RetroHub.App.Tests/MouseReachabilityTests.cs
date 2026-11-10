@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Chrome;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.VisualTree;
@@ -70,6 +71,94 @@ public class MouseReachabilityTests
         TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel { Game: not null } d && d.Game.Id == game.Id, 8000);
         TestSupport.Settle(200);
     }
+
+    // ===================== header: client area vs. the window's drag area (R3 owner test) =====================
+
+    /// <summary>
+    /// The window-chrome role at a point, resolved by Avalonia's own code – the same internal
+    /// <c>IInputRoot.HitTestChromeElement</c> the Win32 backend asks on WM_NCHITTEST (nearest role above the hit visual).
+    /// Headless pointer input never passes through it, which is why the old TitleBar role on the whole header (no mouse
+    /// clicks on a real window) went unnoticed.
+    /// </summary>
+    private static WindowDecorationsElementRole? ChromeRoleAt(Window w, Point p)
+    {
+        const System.Reflection.BindingFlags any = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                                                   | System.Reflection.BindingFlags.NonPublic;
+        var root = typeof(TopLevel).GetProperty("InputRoot", any)!.GetValue(w)!;
+        var hitTest = typeof(IInputRoot).GetMethod("HitTestChromeElement", any)!;
+        return (WindowDecorationsElementRole?)hitTest.Invoke(root, [p]);
+    }
+
+    /// <summary>What Win32 makes of a role (Avalonia 12.1.5 WindowImpl.CustomCaptionProc): User/DecorationsElement → client.</summary>
+    private static bool IsClient(WindowDecorationsElementRole? role) =>
+        role is WindowDecorationsElementRole.User or WindowDecorationsElementRole.DecorationsElement;
+
+    [Fact]
+    public Task Every_header_button_is_client_area_and_only_bare_header_space_drags_the_window() => UiTest.Run(() =>
+    {
+        foreach (var (width, height) in new[] { (1920, 1080), (1100, 700) })
+        {
+            var (w, vm) = Open(width, height);
+            var top = w.GetVisualDescendants().OfType<Grid>().First(g => g.Name == "TopBar");
+            var buttons = top.GetVisualDescendants().OfType<Button>().Where(b => b.IsEffectivelyVisible).ToList();
+            Assert.True(buttons.Count >= 7, $"{buttons.Count} header buttons"); // 3 channels, search, 3 tools
+            foreach (var b in buttons)
+            {
+                // the centre and points 2 px inside each corner: the whole button, including the part in the 40 px band
+                var probes = new[]
+                {
+                    new Point(b.Bounds.Width / 2, b.Bounds.Height / 2), new Point(2, 2), new Point(b.Bounds.Width - 2, 2),
+                    new Point(2, b.Bounds.Height - 2), new Point(b.Bounds.Width - 2, b.Bounds.Height - 2),
+                };
+                foreach (var probe in probes)
+                {
+                    var p = b.TranslatePoint(probe, w)!.Value;
+                    var role = ChromeRoleAt(w, p);
+                    Assert.True(IsClient(role), $"{b.GetValue(Avalonia.Automation.AutomationProperties.NameProperty)} at {p} ({width}): role {role?.ToString() ?? "none"}");
+                }
+                // and no drag role anywhere above it (the root cause of the R3 owner report)
+                Assert.DoesNotContain(b.GetVisualAncestors().OfType<Visual>(),
+                    a => WindowDecorationProperties.GetElementRole(a) == WindowDecorationsElementRole.TitleBar);
+            }
+            // the bare space between the channels and the search, and the word mark, still drag the window
+            var channels = w.GetVisualDescendants().OfType<ItemsControl>().First(i => i.Name == "ChannelList");
+            var search = w.GetVisualDescendants().OfType<Button>().First(b => b.Name == "SearchButton");
+            var gapX = (channels.TranslatePoint(new Point(channels.Bounds.Width, 0), w)!.Value.X + search.TranslatePoint(default, w)!.Value.X) / 2;
+            Assert.Equal(WindowDecorationsElementRole.TitleBar, ChromeRoleAt(w, new Point(gapX, 20)));
+            Assert.Equal(WindowDecorationsElementRole.TitleBar, ChromeRoleAt(w, new Point(gapX, 50)));
+            var brand = w.GetVisualDescendants().OfType<StackPanel>().First(s => s.Name == "BrandBar");
+            Assert.Equal(WindowDecorationsElementRole.TitleBar, ChromeRoleAt(w, Center(w, brand)));
+            Assert.Equal(WindowDecorationsElementRole.TitleBar, ChromeRoleAt(w, new Point(10, 10))); // left of the word mark
+            // the caption buttons keep their system roles
+            Assert.Equal(WindowDecorationsElementRole.CloseButton, ChromeRoleAt(w, Center(w, w.FindControl<Button>("CloseButton")!)));
+            // the page below the header is plain client area
+            Assert.Null(ChromeRoleAt(w, new Point(width / 2.0, height / 2.0)));
+            w.Close();
+        }
+    });
+
+    [Fact]
+    public Task Every_header_button_navigates_on_a_click() => UiTest.Run(() =>
+    {
+        var (w, vm) = Open();
+        Button Tool(PageKey key) => w.GetVisualDescendants().OfType<Button>()
+            .First(b => b.DataContext is NavItemViewModel n && n.Key == key && b.IsEffectivelyVisible);
+        foreach (var (key, expected) in new (PageKey, Type)[]
+                 {
+                     (PageKey.Library, typeof(LibraryViewModel)), (PageKey.Systems, typeof(SystemsViewModel)),
+                     (PageKey.Imports, typeof(ImportsViewModel)), (PageKey.Emulators, typeof(EmulatorsViewModel)),
+                     (PageKey.Settings, typeof(SettingsViewModel)), (PageKey.Home, typeof(HomeViewModel)),
+                 })
+        {
+            Click(w, Tool(key));
+            TestSupport.Pump(() => vm.CurrentPage?.GetType() == expected, 3000);
+            Assert.IsType(expected, vm.CurrentPage);
+        }
+        Click(w, w.GetVisualDescendants().OfType<Button>().First(b => b.Name == "SearchButton"));
+        TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel, 3000);
+        Assert.IsType<LibraryViewModel>(vm.CurrentPage);
+        w.Close();
+    });
 
     // ===================== back: mouse button, footer hint, breadcrumb =====================
 

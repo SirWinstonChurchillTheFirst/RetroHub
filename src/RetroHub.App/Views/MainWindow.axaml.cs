@@ -49,15 +49,27 @@ public partial class MainWindow : Window
         if (vm == null) return;
         DataContext = vm;
 
-        WindowDecorationProperties.SetElementRole(TopBar, WindowDecorationsElementRole.TitleBar);
+        // drag area = the bare strip behind the header + the word mark; never an ancestor of a button. Avalonia 12.1.5's
+        // Win32 WindowImpl answers WM_NCHITTEST with the nearest ElementRole above the hit visual (TitleBar → HTCAPTION,
+        // User → HTCLIENT; none → Win32Properties.NonClientHitTestResult, default Client). The old role on the whole
+        // TopBar grid made every channel and tool button HTCAPTION: Windows started a window move instead of a click
+        // (R3 owner test – keyboard worked, the mouse did not). Every header button also says User explicitly, so no
+        // later role on a container can swallow it again (MouseReachabilityTests pins this).
+        WindowDecorationProperties.SetElementRole(DragBar, WindowDecorationsElementRole.TitleBar);
         WindowDecorationProperties.SetElementRole(BrandBar, WindowDecorationsElementRole.TitleBar);
+        TopBar.Styles.Add(new Avalonia.Styling.Style(x => Avalonia.Styling.Selectors.OfType<Button>(x))
+        {
+            Setters = { new Avalonia.Styling.Setter(WindowDecorationProperties.ElementRoleProperty, WindowDecorationsElementRole.User) },
+        });
+        WindowDecorationProperties.SetElementRole(DemoChip, WindowDecorationsElementRole.User);
         WindowDecorationProperties.SetElementRole(MinimizeButton, WindowDecorationsElementRole.MinimizeButton);
         WindowDecorationProperties.SetElementRole(MaximizeButton, WindowDecorationsElementRole.MaximizeButton);
         WindowDecorationProperties.SetElementRole(CloseButton, WindowDecorationsElementRole.CloseButton);
         MinimizeButton.Click += (_, _) => WindowState = WindowState.Minimized;
         MaximizeButton.Click += (_, _) => ToggleMaximize();
         CloseButton.Click += (_, _) => Close();
-        TopBar.DoubleTapped += (_, e) => { if (e.Source == TopBar) ToggleMaximize(); };
+        // on Win32 a double click into the caption is the OS's own (it never reaches Avalonia); this covers the rest
+        DragBar.DoubleTapped += (_, e) => { if (e.Source == DragBar) ToggleMaximize(); };
 
         // auto-repeat detection (DESIGN 8.4): ".nav-repeat" on the root while a direction is held
         NavRepeatTracker.Current = _repeat;

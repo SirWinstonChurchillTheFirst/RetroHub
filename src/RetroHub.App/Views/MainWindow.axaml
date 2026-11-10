@@ -46,8 +46,13 @@
              open overlay; both follow the current page (code-behind) -->
         <Border Name="HeaderGround" IsHitTestVisible="False" />
         <Border Name="HeaderDim" IsHitTestVisible="False" />
-        <!-- ============ Header "Kanäle" (drag area; caption buttons keep 170 px free on the right) ============ -->
-        <Grid Name="TopBar" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Background="Transparent" Margin="48,0,170,0">
+        <!-- ============ Header "Kanäle" (caption buttons keep 170 px free on the right) ============ -->
+        <!-- the window's drag area is ONLY this bare strip behind the header (role TitleBar, code-behind) plus the word mark:
+             Win32 resolves a mouse press by the nearest element role above the hit visual, so a role on the header grid
+             itself made every channel and tool button caption (no clicks, R3 owner test). The header grid has no background
+             – its gaps fall through to this strip; every button in it carries the client role User. -->
+        <Border Name="DragBar" Background="Transparent" />
+        <Grid Name="TopBar" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="48,0,170,0">
           <StackPanel Name="BrandBar" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Background="Transparent">
             <!-- the standby LED: the one Bernstein square of the word mark -->
             <Border Width="8" Height="8" Background="{DynamicResource RhAccentBrush}" VerticalAlignment="Center" Margin="0,2,0,0" />
@@ -97,7 +102,7 @@
           <!-- demo mode: plain text (label 15, Text 3) after a 6 × 6 square in Text 3 – no fill: a paper block was the
                brightest thing in the header and competed with the active channel (M3 QA); an orange square read as a
                second standby light beside the word mark's (M6 QA). Bernstein stays reserved (2.2). -->
-          <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowDemoChip}" Background="Transparent"
+          <StackPanel Name="DemoChip" Grid.Column="4" Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowDemoChip}" Background="Transparent"
                       ToolTip.Tip="{l:T shell.demo.tip}" VerticalAlignment="Center" Margin="24,0,0,0">
             <Border Width="6" Height="6" Background="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />
             <TextBlock Classes="label" Text="{Binding DemoText}" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />
