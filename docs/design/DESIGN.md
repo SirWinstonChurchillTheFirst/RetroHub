@@ -166,7 +166,7 @@ Neu in v1.1: Die Wand wird **aus dem Gehäusematerial** abgeleitet und nicht meh
 | gbc | beere | Handheld hoch (doppelt) | #8E3BD0 | #2FB8A6 | #BD8CE3 | 5,8 | Papier 4,9 |
 | gba | violett | Handheld quer | #5A46D9 | #A9A2E8 | #A499EA | 6,0 | Papier 5,4 |
 | gamecube | violett | MiniDisc | #6450CC | #F29A3B | #A498E1 | 5,9 | Papier 5,0 |
-| wii | weiß | SlotDisc (flache Disc gleitet in den Schlitz) | #3FC0EE | #E6EEF2 | #7CD4F3 | 6,3 | Tinte 8,9 |
+| wii | weiß | Remote (Fernbedienung, geschwenkt; R2) | #3FC0EE | #E6EEF2 | #7CD4F3 | 6,3 | Tinte 8,9 |
 | wiiu | weiß | Tablet (zweiter Bildschirm) | #12A0CC | #F0F0F0 | #7CD7F3 | 6,5 | Tinte 6,2 |
 | nds | kühlgrau | Klappe | #8FA3B8 | #3C4654 | #A6B7C9 | 6,4 | Tinte 7,2 |
 | 3ds | anthrazit | ClamshellWide (Klappe mit Tiefen-Treppe) | #C21D26 | #2B2B30 | #EC8389 | 5,6 | Papier 5,1 |
@@ -210,10 +210,10 @@ Neu in v1.1: Die Wand wird **aus dem Gehäusematerial** abgeleitet und nicht meh
 
 **Pipeline** (Control `RoomBackdrop`, eine Instanz *außerhalb* des skalierten Seitenbaums, siehe 7.0):
 1. **Quelle**: fokussiertes Spiel → Snap → Titelbild → Cover → Systemwand.
-2. **Weichzeichnen, vorab und abseits des UI-Threads**: Der Job decodiert das Bild auf 96 px Breite, wendet in SkiaSharp `SKImageFilter.CreateBlur(3, 3)` an, beschneidet auf 16:9 und skaliert auf **64×36**. Das Ergebnis kommt als `Bitmap` in einen eigenen LRU-Cache (64 Einträge, Schlüssel Pfad + Änderungszeit). Dargestellt wird es als `Image Stretch=UniformToFill` mit `RenderOptions.BitmapInterpolationMode="HighQuality"` und Deckkraft 0,38. **Kein `BlurEffect`.**
+2. **Weichzeichnen, vorab und abseits des UI-Threads**: Der Job decodiert das Bild auf 96 px Breite, beschneidet auf 16:9, rechnet auf **64×36** herunter und zeichnet in float weich (drei Box-Durchgänge ≈ Gauß). **R2**: Das Feld wird bilinear auf **256×144** hochgerechnet und mit Interleaved-Gradient-Noise (±½ LSB) auf 8 bit gebracht – die 8-bit-Stufen des alten 64×36-Bitmaps wurden bei 1920 zu 30 px breiten Bändern. Das Ergebnis kommt in einen eigenen LRU-Cache (64 Einträge, Schlüssel Pfad + Änderungszeit). Dargestellt wird es als `Image Stretch=UniformToFill` mit `RenderOptions.BitmapInterpolationMode="HighQuality"` und Deckkraft 0,38. **Kein `BlurEffect`.**
 3. **Bildlicht**: Im selben Job wird aus den 64×36 Pixeln die nach Sättigung gewichtete Mittelfarbe gebildet und auf L 0,55–0,70 und S ≤ 0,70 geklemmt. Sie wird pro Spiel gecacht (`Dictionary<long, Color>`).
-4. **Scrims, zu einem Bitmap geflacht**: (a) horizontal Raum 94 % → 52 %, (b) vertikal transparent bis 60 % der Bühnenhöhe → Raum 100 % an der Brettoberkante, (c) Vignette Raum-Tief. Sie werden einmal pro Fenstergrößen-Bucket (64-px-Raster, 150 ms nach dem letzten Resize) per `RenderTargetBitmap` gerendert und dann als **ein** Image angezeigt.
-5. **Schein an der Quelle**: Ein RadialGradient in Bildlicht 16 % → 0, Radius 55 % der Fensterbreite. Er sitzt auf Start in der Mitte des Bildschirm-Objekts und im Detail in der Mitte der Schachtel. Es ist ein eigenes, statisches Element pro Seite und wird beim Lichtwechsel nur umgefärbt.
+4. **Scrims und Schein, zusammen in float gerechnet (R2)**: (a) horizontal Raum 94 % → 52 %, (b) vertikal transparent bis 60 % der Bühnenhöhe → Raum 100 % an der Brettoberkante, (c) Vignette Raum-Tief, (d) Kopfblende, (e) der Schein (Punkt 5) werden pro Pixel vormultipliziert übereinander gelegt und die Farbe mit Interleaved-Gradient-Noise (±½ LSB) quantisiert – **ein** Bitmap in Geräteauflösung (höchstens 2560 breit), auf einem Hintergrund-Thread (`RoomBackdrop.LightPixels`). Als Skia-Verläufe gezeichnet stuften sie sich in Konturringe und senkrechte Bänder, und das Korn unter den Scrims erreichte sie nicht. Neu gerechnet wird pro Fenstergrößen-Bucket (64-px-Raster) und Bühnenhöhe (150 ms nach dem letzten Resize) sowie sofort bei neuer Lichtfarbe/-stärke/-position.
+5. **Schein an der Quelle**: Bildlicht 16 % → 0, Radius 55 % der Fensterbreite, nur über dem Brett. Er sitzt auf Start in der Mitte des Bildschirm-Objekts und im Detail in der Mitte der Schachtel; er ist Teil des Licht-Bitmaps aus Punkt 4.
 6. **Brettlicht**: `RhBoardLightBrush` ist eine einzige, app-weit geteilte `SolidColorBrush` mit `ColorTransition` 420 ms. Auf Start und Detail ist sie Bildlicht bei 35 %, in Bibliothek und Systemkontext die Kontext-Lichtfarbe bei 22 % (Bernstein bzw. Licht), sonst #17FFF3E0. Jedes Brett nutzt diese Instanz, also kostet ein Wechsel eine Farbe.
 7. **Korn**: `korn-128.png` bei **6 %** *nur innerhalb von `RoomBackdrop`* (unter dem Inhalt), als Dither gegen Banding (QA 2: bei 2,5 % blieb es unter einem LSB, der weichgezeichnete Hintergrund stufte sich bei 2560 sichtbar in Konturringe; 6 % ≈ ±2 LSB auf Raum, ein statisches Bitmap, keine Kosten pro Frame).
 8. **Überblendung**: zwei Bildebenen A/B, `DoubleTransition` auf Opacity, 420 ms SineEaseInOut. Der Wechsel startet erst, wenn der Fokus `Dwell` (220 ms) ruht, und nie während `.nav-repeat`. Endet ein Repeat, wird nur der Dwell-Timer neu gestartet, und auch nur dann, wenn das Zielspiel vom angezeigten abweicht (8.4).
@@ -364,7 +364,7 @@ Texturen werden programmatisch erzeugt: `tools/TextureGen` (C#, SkiaSharp, feste
 
 ### 4.6 Transluzenz (selten)
 
-Erlaubt nur: (1) Scrims in `RoomBackdrop`, (2) Fußleiste: Raum-Verlauf 0 → 96 % über 40 px oberhalb, (3) Dialog-Hintergrund Raum-Tief 72 % ohne Blur, (4) Overlay „Läuft“ Raum-Tief 94 %. Die Glas-, Gradient-, Glow- und Ambient-Keys aus v0 sind seit M6 gelöscht, ebenso `StatTile`, `Border.glass/.card`, die Chip-Pillen und die Stile für ComboBox, ToggleSwitch, Slider und ProgressBar (keiner davon kommt in RetroHub noch vor).
+Erlaubt nur: (1) Scrims in `RoomBackdrop`, (2) Fußleiste: Raum-Verlauf 0 → 94 % über 40 px oberhalb – der Schatten ihrer **Vorderkante** (`FooterLip`, R2: 6 px Oberseite mit Lichtkante und Maserung; Listen laufen unter die Kante der Werkbank, statt in einer 56-px-Blende auszulaufen), (3) Dialog-Hintergrund Raum-Tief 72 % ohne Blur, (4) Overlay „Läuft“ Raum-Tief 94 %. Die Glas-, Gradient-, Glow- und Ambient-Keys aus v0 sind seit M6 gelöscht, ebenso `StatTile`, `Border.glass/.card`, die Chip-Pillen und die Stile für ComboBox, ToggleSwitch, Slider und ProgressBar (keiner davon kommt in RetroHub noch vor).
 
 ### 4.7 Gezeichnet, nicht gesetzt (M7, Owner-Feedback „fühlt sich hingecodet an“)
 
@@ -472,7 +472,7 @@ DiscBands     saturn     Disc mit zwei harten konzentrischen Bändern (Zweitfarb
 DiscHalftone  dreamcast  Disc mit Halbtonpunkten, nach rechts zunehmend
 MiniDisc      gamecube   kleine Disc (60,82) r 38, Loch r 13, 6-px-Ring in Zweitfarbe
 Tray          segacd     große Disc (60,58) r 46 hinter einer breiten, flachen Schubladenfront M4,92 H116 V120 mit Griffmulde
-SlotDisc      wii        flacher, breiter Block M4,84 H116 V120; die Disc liegt perspektivisch flach (Ellipse 96×40) und gleitet entlang der Oberkante in den Schlitz – nur ihre hintere Hälfte mit Nabe und einem 2-px-Ringsegment ist zu sehen; keine Disc-Fläche, die über dem Block steht (M5-QA: „Kopf auf Körper“)
+Remote        wii        R2 (ersetzt SlotDisc, das schwächste Motiv): eine Fernbedienung, geschwenkt – schlanker Stab (32 × 106, runde Enden) in Zweitfarbe mit Kreuz, einer großen Taste in Farbe, zwei kleinen Tasten und vier Lämpchen, die Handschlaufe kringelt sich am Fuß, zwei Bewegungsbögen neben dem Kopf
 Tablet        wiiu       zweiter Bildschirm: ein Tablett mit Kreuz und Tasten steht VOR einem großen Bildschirm-Umriss (2 px); kein Monitorfuß
 Dock          switch     Hybrid: ein einteiliges Handgerät, 8 px über dem Schlitz eines flachen Sockels angehoben; keine Dock-Wände über dem Bildschirm, keine Seitenteile, kein Farbpaar
 Andere Geräte
@@ -482,7 +482,7 @@ Stick         atari2600   flacher Sockel, dünner Stab mit Kugel, eine Taste
 StickGrip     atari7800   dicker Griff ohne Kugel, zwei Tasten auf dem Sockel
 Floppy        pc          Diskette mit Schieber und Etikett
 KeyBlock      msx         3 Reihen à 5 gefaste Tasten auf einem Block
-Tower         ps2         Turm in Farbe angehoben (Paint.Lift: L ≥ 0,55 und ≥ 3,2 : 1 zur Wand), ein Disc-Schlitz bei 30 % Höhe, fünf 2-px-Fugen darunter, auf einer 6-px-Fußplatte (M5-QA: fast schwarz auf schwarz, ≈ 1,3 : 1)
+Tower         ps2         R2: stehende Platte statt Turm – Vorderseite in Farbe angehoben (Paint.Lift), Ober- und Seitenfläche in Zweitfarbe (Tiefe), ein senkrechter Schubladenschlitz mit zwei Tasten, zwei Kartenschlitze am Fuß, kurze schräge Rippen an der Seite, auf einem **ovalen Ständer** (den kein PC-Gehäuse hat; die fünf waagerechten Fugen lasen sich als PC-Turm)
 ```
 
 **Kontrast** (M5-QA, `DesignM5Tests.Every_motif_reads_against_its_wall`): Jedes Motiv hat mindestens ein gemaltes Teil mit ≥ 3 : 1 gegen seine Wand. Unter der Regel lagen ps2 (≈ 1,3), gba (2,8), 3ds (2,8) und switch (2,9); ihr Hauptteil ist jetzt `Paint.Lift` (die eigene Farbe, L ≥ 0,55 und so lange in 0,02-Schritten heller, bis ≥ 3,2 : 1).
@@ -554,7 +554,7 @@ Die Motiv- und Gehäusezuordnung steht in der Systemtabelle 2.4 (Motivnamen dort
 | DiscHalftone (dreamcast) | „eine CD“ | Punktraster, **keine Spirale** |
 | MiniDisc (gamecube) | „eine kleine Disc“ | das Medium, nicht der Würfel; kein Griff, kein Würfel-im-Würfel |
 | Tray (segacd) | „ein CD-Laufwerk mit Schublade“ | Allerweltslaufwerk |
-| SlotDisc (wii) | „ein CD-Schlitz / Autoradio“ | **geändert in M5 und M5-QA**: der schmale aufrechte Ständer (v1.1) war die Silhouette des Geräts; die runde Disc über dem Block las sich danach als Avatar („Kopf auf Körper“). Jetzt gleitet eine perspektivisch flache Disc in den Schlitz eines flachen Blocks |
+| Remote (wii) | „eine Fernbedienung, geschwenkt“ | **R2 geändert**: die flache Disc im Schlitzblock war das schwächste Motiv (weißer Block mit Sichel). Eine Fernbedienung mit Kreuz und Tasten ist eine Kategorie (jede TV-Fernbedienung), die Bewegungsbögen sagen „bewegungsgesteuert“; kein Gerätegehäuse |
 | Tablet (wiiu) | „ein Tablet vor einem Fernseher“ | **geändert in M5**: das Tablett auf einem Monitorfuß las sich als Monitor. Jetzt „zweiter Bildschirm“: Tablett vor einem Bildschirm-Umriss, keine Sticks an Produktpositionen |
 | Dock (switch) | „ein Handgerät über seiner Ladeschale“ | **geändert in M5**: der Bildschirm halb im Block entsprach dem Dock des Produkts. Jetzt ein einteiliges Handgerät über einem flachen Sockel mit Schlitz; keine abnehmbaren Seitenteile, kein Rot/Blau |
 | TwinLens (virtualboy) | „eine VR-Brille“ | **geändert in M5**: Rahmen auf Zweibein war das Gerät; mit Bügel oben las es sich als Radio. Jetzt Visier mit Nasenkerbe und Riemen, ohne Fuß |
@@ -563,9 +563,9 @@ Die Motiv- und Gehäusezuordnung steht in der Systemtabelle 2.4 (Motivnamen dort
 | StickGrip (atari7800) | „ein Joystick mit Griff“ | Griff ohne Kugel, Tasten am Sockel |
 | Floppy (pc) | „eine Diskette“ | Allgemeingut („Speichern“-Symbol) |
 | KeyBlock (msx) | „eine Tastatur“ | Tastenblock ohne Layout |
-| Tower (ps2) | „ein Turm-Gerät“ | **M5-QA**: auf Fußplatte, Disc-Schlitz oben, Fugen; in eigener Farbe statt fast schwarz. Restrisiko „PC-Turm“ (Kategorie, kein Produkt) |
+| Tower (ps2) | „ein stehendes Gerät auf einem Ständer“ | **R2**: Platte mit Tiefe auf ovalem Ständer, senkrechter Schlitz, keine waagerechten Fugen – das Restrisiko „PC-Turm“ ist damit kleiner; keine Logos, kein Gehäuseprofil des Produkts |
 
-**Unterscheidbarkeit ohne Text**: Auf `motive-farbig.png` und `motive-klein.png` unterscheiden sich alle 32 Systeme durch die Kombination aus Motiv (jedes einzigartig), Wandton und Farbband; die Disc-Familie (ps1, saturn, dreamcast, gamecube, segacd, wii) trennt sich über Details (Spur, Bänder, Punkte, Größe, Schublade, Schlitzblock) und Farbe. Am knappsten sind ps1 und saturn in Platzhaltergröße (graue gegen indigofarbene Disc).
+**Unterscheidbarkeit ohne Text**: Auf `motive-farbig.png` und `motive-klein.png` unterscheiden sich alle 32 Systeme durch die Kombination aus Motiv (jedes einzigartig), Wandton und Farbband; die Disc-Familie (ps1, saturn, dreamcast, gamecube, segacd) trennt sich über Details (Spur, Bänder, Punkte, Größe, Schublade) und Farbe; wii ist seit R2 keine Disc mehr (Fernbedienung). Am knappsten sind ps1 und saturn in Platzhaltergröße (graue gegen indigofarbene Disc).
 
 ---
 
@@ -917,7 +917,7 @@ Ein horizontales Bühnenbrett voller **Systemrücken** (`Shelf` mit `SystemSpine
 
 - **Feste Lichtzone**: Die obere Wandzone (Wand hell) ist fest **88** hoch (≈ 1100: 64) und trägt nur die Nachbarzeile (in ihr zentriert, x 96); ohne Nachbarn **24** (8-px-Band + 16), und das Banner wird um die Differenz niedriger (keine tote Streifenzone). `SystemWall.SplitHeight`. Der Titel beginnt mindestens 24 px unter der Kante: `FitText.MaxTextHeight` lässt eine Größe nur mit so vielen Zeilen zu, wie in den Raum zwischen Lichtzone und Satz/Statuszeile passen – zwei Zeilen 72 fallen auf 56/44 (≈ 1100: 44/36) zurück. Test `Banner_title_never_reaches_into_the_walls_light_zone`: alle 32 Namen des echten Katalogs bei 1920, 1600, 1100 und 2560.
 - **Kein Banner-Rest beim Scrollen**: Ab 70 % herausgescrollt erscheint ein **kompakter Kopf** (64: Wand des Systems, 4-px-Band, Name in Plakat 28 bei x 96, Motiv 44 auf einem 6-px-Brett rechts − 120, 12-px-Verlauf darunter; Einblenden 140 ms). Zeilen ab 1 rasten 24 px unter ihm ein (`CoverGrid.StickyInset`), und am Ende wächst ein Abstandhalter, damit jede Raststellung erreichbar ist (`CoverGrid.SnapToEnd`) – vorher klemmte der ScrollViewer kurze Fächer zwischen zwei Rasten und ließ einen Streifen Banner mit halbem Motiv stehen.
-- **Fachende in einer Zeile**: „Weitere Spiele kommen über Importe ins Fach.“ und **Importe öffnen** (48 hoch) nebeneinander; unter dem Footer bleibt eine Reserve für die Fußleisten-Blende (Rand 40 + Innenrand 64), und der Button holt sich beim Fokus seinen Platz samt 96 px darunter. **Offen**: Bei ≈ 1100 liegt die Zeile ungefokussiert noch in der Blende (die Rastgeometrie des Grids lässt sie nicht höher), erst der Fokus holt sie heraus.
+- **Fachende in einer Zeile**: „Weitere Spiele kommen über Importe ins Fach.“ und **Importe öffnen** (48 hoch) nebeneinander; unter dem Footer bleibt eine Reserve für die Fußleisten-Blende (Rand 40 + Innenrand 64), und der Button holt sich beim Fokus seinen Platz samt 96 px darunter. ~~**Offen**: Bei ≈ 1100 liegt die Zeile ungefokussiert noch in der Blende.~~ **R2 gelöst**: Bei einer Reihe steht das Fachende als Papiernotiz im Fach neben der letzten Schachtel (7.8).
 - **Leeres Fach**: eine angelehnte Schachtel (2 px Text 3) und drei eingetiefte Fächer statt Buchstützen und gestrichelter Umrisse; ≈ 1100: 120 hoch, Titel 32 unter dem Brett, damit **Importe öffnen** über der Blende steht.
 - **Satz**: Zeitangaben in ganzen Wörtern („zuletzt vor einer Woche“, „vor 3 Wochen“, „vor 5 Minuten“; `Fmt.LastPlayedInSentence`). Das Kürzel „Wo.“ verlor vorher mit `TrimEnd('.')` beide Punkte.
 - **Systeminfo als Karteikarte** (QA 2: ersetzt durch die eine Vorlage in 7.7): 8-px-Band in der Systemfarbe links, Name in Plakat 28, Motiv 64 oben rechts über einer 4-px-Brettlinie, Beschriftungen in Rücken 15 Text 2, Werte in Cascadia 15 Papier; R 0, 1 px Kante plus 1 px Lichtkante oben; Innenrand 32/48.
@@ -1002,6 +1002,22 @@ Gesamtbefund: Start, Bibliothek, Detail, Konsolen und Systemseite lesen sich als
 - **Testbild**: Schachteln in Wand hell + 14 % Papier mit 6-px-Farbband oben und Rückenband, Raster in Text 3 zu 20 %, das Regal 24 px höher.
 - **Nicht umgesetzt**: (a) Grid-Bildunterschriften am „ – “ teilen und den Rest in die Etikettzeile setzen – die Etikettzeile trägt schon Fassung/Sprache, und „… Kapitel 1“ ist die M3-Entscheidung „der unterscheidende Schluss bleibt“ (10.2); die Zeile 1 wird dabei nie mitten im Titel gekürzt. (b) „Cover wählen...“ mit drei Punkten: Der Text ist bereits U+2026; Archivo zeichnet die Ellipse eng. (c) Systeminfo als Falte im Banner (siehe oben).
 ---
+
+### 7.8 Stand R2 „offen“ (die letzten offenen Punkte, Entscheidungen nach der Bildprüfung)
+
+- **Raumlicht ohne Stufen** (2.5): Scrims und Schein in float, vormultipliziert, mit ±½ LSB Interleaved-Gradient-Noise in ein Bitmap in Geräteauflösung; das weiche Spielbild 256×144 geditht. Bei 25-facher Kontrastverstärkung sind die Konturringe und senkrechten Bänder weg.
+- **Konsolen-Front mit 1–2 Spielen**: Die Schachteln werden größer (bis 196, ≈ 1100: 140), soweit das Fach reicht; bleibt neben der letzten Schachtel Platz, hält eine **Buchstütze** die kurze Reihe (`Bookend.Draw`, 70 % der Schachtelhöhe). Das Jahr unter dem Namen („Nintendo, **1996**“) steht in der Zahl-Schrift (`Sentence.WithNumbers` für gezeichneten Text).
+- **Schwarzes Gehäuse** (Virtual Boy, PS2, Mega Drive …): Leere Hüllen (`SystemLook.CaseHi/CaseLo` #27272C/#1C1C20) und das innere Fach der Front (`SystemLook.Recess` #1D1C20) sind angehoben – auf #0F0F11 waren sie mit 1,1 : 1 schwarze Löcher.
+- **Systemseite, Fachende**: Bei einer Reihe weniger Spiele (1–6, weniger als Spalten, ≥ 300 px frei) steht der Satz als **Papiernotiz** (`PaperNote`, −1,2°, Klebeband) mit „Importe öffnen“ darunter **im Fach rechts der letzten Schachtel**, der Fuß des Knopfs 8 px über dem Brett. Rechts/Runter von der letzten Schachtel erreicht den Knopf, Links/Hoch führt zurück. Bei ≈ 1100 liegt nichts mehr in der Blende. Der Fußbereich des Grids schneidet nicht mehr ab (`ClipToBounds=false`).
+- **Detail**: Die Fernseher tragen „Titelbild“/„Im Spiel“ als **Papierstreifen am Kinn** (`PixelScreen.Caption`) statt einer Zeile unter dem Brett, die bei 1920 in der Blende lag; Geräte 360 breit auch bei 1920. Von der Bühne in eine Rückseite, die nicht darunter passt, geht die Seite auf den **Brett-Stopp**; Auswahlliste und Dateiinfo klappen auf einem Stopp auf (0 / Aktionen / Brett / frei darunter), nie auf einem Versatz, der den Titel unter dem Kopf schneidet. „Auch im Regal“ bricht auf zwei Zeilen um, Zeilen kürzen an Wortgrenzen.
+- **Werkbank, Wertanzeige**: Der Wert der fokussierten Zeile steht auf einer **Fallblatt-Karte** (`FlapPlate`: oberes und unteres Blatt, Spalt über den Ziffern, Stifte in der Lichtfarbe, in die Werkbank eingelassen); ein Schritt klappt ein Blatt um (`FlapLeaf`, 180 ms, nur bei voller Bewegung, über Animations-Frames). Das schwarze 320×40-Fenster mit Lichtkante entfällt.
+- **Emulatoren, Seitenspalte**: Unter dem Gerätefach ein **Schaukasten** (`SystemNiche`, 300 hoch): das fokussierte System auf seiner Wand mit Band und Textur, sein Motiv auf einem kleinen Brett, Lippe und Innenschatten; ein Wechsel schiebt das Motiv 14 px hoch und blendet es ein (Glide).
+- **Testbild**: Schachteln ein Drittel größer (70 × 95 bei 384), mit Etikett und Kanten, die äußeren laufen aus dem Bild; Raster Text 3 zu 30 %.
+- **Lieferschein im Demo**: Der erste vom Nutzer gestartete Demo-Scan findet drei neue Spiele, damit die neuen Rücken unter dem Lieferschein geprüft werden können; der stille Start-Scan nicht (`ScanOptions.Startup`).
+- **Überlagerungen als Objekte**: **Systeminfo** ist eine **Karteikarte** aus hellem Papier (rote Kopflinie, Linien alle 32 px, Klebeband, Reiter in der Systemfarbe, Tinte; „Schließen“ als Tinten-Rahmen, fokussiert gefüllt) und fällt beim Öffnen 16 px herab (Glide; reduziert: nur Einblenden). Rechtsklick-Liste, „Mehr“ und Dialoge sind **genietete Werkbank-Platten** (`PanelPlate`: Fasen 6, Maserung, Lichtkanten, Schmutz am Fuß, vier Nieten, eigener Schatten) statt BoxShadow-Karten. **Meldungen** sind ein aufgeklebter **Papierstreifen** in der Fußleiste und gleiten aus ihr hoch (Step). Programmnamen in Sätzen tragen die Stilklasse `Run.name` (auf Papier Tinte).
+- **Seitenende**: Die Fußleiste hat eine **Vorderkante** (`FooterLip`); Listen und Regale laufen unter die Kante der Werkbank, die Blende darüber ist nur noch ihr Schatten (40 px).
+- **Mehr Bewegung** (alle mit 9.4): Fallblatt, Schaukasten, Karteikarte, Meldungsstreifen; ein Schuber unter der ruhenden Maus wird halb herausgezogen (Pull 0,45).
+- **Funktion**: Dolphin-Version aus der Datei (`Dolphin 2609b`, ohne Start, gecacht); Vorschaubild-Cache räumt beim Start entfernte und geänderte Cover auf (Namen mit Pfad- und Stand-Hash).
 
 ## 8. Fokus- und Auswahl-Sprache (Controller)
 
