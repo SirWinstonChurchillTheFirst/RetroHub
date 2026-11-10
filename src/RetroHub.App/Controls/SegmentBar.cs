@@ -92,7 +92,7 @@ public sealed class SegmentBar : Control
             bool on = IsIndeterminate
                 ? (still ? i is >= Segments / 2 - 1 and <= Segments / 2 + 1 : WanderLit(i, _step))
                 : i < count;
-            context.FillRectangle(on ? lit : unlit, new Rect(i * (SegmentWidth + Gap), 0, SegmentWidth, SegmentHeight));
+            Lamp.Draw(context, new Rect(i * (SegmentWidth + Gap), 0, SegmentWidth, SegmentHeight), on ? lit : unlit);
         }
     }
 }

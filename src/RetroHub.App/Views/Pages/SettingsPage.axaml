@@ -29,7 +29,7 @@
                 <c:ShelfLabel Text="{Binding Title}" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding Note}" Classes="meta" VerticalAlignment="Center" IsVisible="{Binding HasNote}" />
               </StackPanel>
-              <Border Height="1" Background="{DynamicResource RhLineBrush}" />
+              <c:Groove />
               <ItemsControl ItemsSource="{Binding Rows}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:ServiceSetting">

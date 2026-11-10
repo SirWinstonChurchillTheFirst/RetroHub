@@ -57,7 +57,11 @@ public sealed class MiniSpine : Control
         ctx.FillRectangle(look.WallBrush, new Rect(0, split, r.Width, r.Height - split));
         ctx.FillRectangle(LightEdge, new Rect(0, split, r.Width, 1));
         var band = Math.Min(Band, Math.Round(r.Width * 0.25));
-        ctx.FillRectangle(look.ColorBrush, new Rect(0, 0, r.Width, band));
+        // a printed box spine (M7): curvature, the band printed with a hair of margin, edges
+        ctx.FillRectangle(Craft.Curvature, r);
+        ctx.FillRectangle(look.ColorBrush, new Rect(2, 2, r.Width - 4, band - 1));
+        ctx.FillRectangle(Craft.Dark(0.30), new Rect(2, band + 1, r.Width - 4, 1));
+        Craft.Edges(ctx, r, lit: 0.09, dark: 0.32, grime: 0.18, grimeHeight: 8, topLit: 0.10, softRight: 3);
 
         var code = Text(look, r);
         var motifTop = r.Height - Inset - MotifSize;

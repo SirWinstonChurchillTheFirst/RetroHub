@@ -362,8 +362,20 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
             Craft.Dark(0.55)) : null;
         _codeLit = Opens ? null : new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, Paper);
         // the sleeve's label is printed in ink (a compact sleeve: 15)
-        _codeInk = Opens ? null : new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace,
-            Bounds.Height < 130 ? 15 : spineSize, Craft.Solid(Craft.LabelInk));
+        _codeInk = null;
+        if (!Opens)
+        {
+            // a long code on a short (compact) sleeve steps down to 13 so the label holds it whole
+            var size = Bounds.Height < 130 ? 15.0 : spineSize;
+            var room = Bounds.Height - SleeveTop - 8 - 14 - 22;
+            while (true)
+            {
+                _codeInk = new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, size,
+                    Craft.Solid(Craft.LabelInk));
+                if (_codeInk.Width <= room || size <= 13) break;
+                size--;
+            }
+        }
         var countSize = SpineWidth >= 96 ? Math.Min(28, Math.Round(SpineWidth * 0.22)) : 15;
         _count = new FormattedText(s.GameCount.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
             FontRoles.NumberFace, countSize, SpineWidth >= 96 ? Paper : Text2);
@@ -788,11 +800,10 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         if (_codeInk is not { } code) return;
         var f = s.Front;
         var lw = Math.Min(f.Width - 8, Math.Ceiling(code.Height) + 10);
-        var room = f.Height - 26;
-        var lh = Math.Min(Math.Ceiling(code.Width) + 22, room);
+        var y = 7 + Craft.Pick(s.Seed, 9, 0, 5);
+        var lh = Math.Min(Math.Ceiling(code.Width) + 22, f.Height - y - 7);
         if (lw < 10 || lh < 20) return;
         var x = Math.Round((f.Width - lw) / 2 + Craft.Range(s.Seed, 8, -1.2, 1.2), 1);
-        var y = 10 + Craft.Pick(s.Seed, 9, 0, 6);
         var tilt = Craft.Range(s.Seed, 10, -1.5, 1.5) * (1 - 0.6 * pull);
         var r = new Rect(x, y, lw, lh);
         // a quiet sleeve's label is paper in the shade of the row; the pulled one comes into the light

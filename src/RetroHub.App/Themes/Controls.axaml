@@ -85,7 +85,7 @@
       <ControlTemplate>
         <Panel>
           <c:FocusRing Name="PART_Ring" Brush="{DynamicResource RhPaperBrush}" Chamfer="6" Opacity="0" />
-          <c:ChamferPlate Name="PART_Plate" Background="{TemplateBinding Background}" Chamfer="4" />
+          <c:ChamferPlate Name="PART_Plate" Background="{TemplateBinding Background}" Chamfer="4" Depth="3" />
           <ContentPresenter Name="PART_ContentPresenter"
                             Background="Transparent"
                             Padding="{TemplateBinding Padding}"
@@ -106,6 +106,7 @@
     </Style>
     <Style Selector="^:pressed /template/ c|ChamferPlate#PART_Plate">
       <Setter Property="Background" Value="{DynamicResource RhAccentPressedBrush}" />
+      <Setter Property="Depth" Value="1" />
     </Style>
     <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
@@ -436,7 +437,7 @@
         <Panel>
           <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
-          <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource RhLineBrush}" />
+          <c:Groove VerticalAlignment="Bottom" />
           <Border Name="PART_Bar" Width="4" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{Binding SystemColorBrush}" />
           <Grid ColumnDefinitions="*,Auto,40" Margin="24,0,16,0">
             <Border Name="PART_Chip" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="8,4" CornerRadius="2" Background="Transparent" Margin="-8,0,0,0">
@@ -551,7 +552,7 @@
         <Panel>
           <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
-          <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource RhLineBrush}" />
+          <c:Groove VerticalAlignment="Bottom" />
           <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
           <Grid ColumnDefinitions="200,*,Auto" Margin="16,0,16,0">
             <Border Name="PART_Chip" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="8,4" CornerRadius="2" Margin="-8,0,0,0" Background="Transparent">
@@ -654,7 +655,7 @@
         <Panel>
           <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
-          <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource RhLineBrush}" />
+          <c:Groove VerticalAlignment="Bottom" />
           <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
           <Grid Name="PART_Columns" ColumnDefinitions="Auto,*,392" Margin="24,0,8,0">
             <!-- the service-menu number "01" … (Rücken 17, Text 3); the label follows 48 px further on -->
@@ -675,12 +676,18 @@
                  Papier – the one lit display of the list, as on a TV's OSD). A fixed value ("Immer aktiv") is plain Text 2. -->
             <Grid Name="PART_Value" Grid.Column="2" ColumnDefinitions="36,320,36" IsVisible="{Binding IsChoice}" VerticalAlignment="Stretch" HorizontalAlignment="Center">
               <Border Name="PART_Previous" Background="Transparent" Cursor="Hand" IsVisible="{Binding !IsFixed}">
-                <Path Name="PART_PrevIcon" Data="M12,0 L12,20 L0,10 Z" Width="12" Height="20" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"
-                      Fill="{DynamicResource RhText3Brush}" Classes.end="{Binding !CanPrevious}" />
+                <Panel>
+                  <!-- a small rocker key under the arrow (M7): shown with the focused row's display window -->
+                  <c:KeyCap Name="PART_PrevKey" Width="26" Height="34" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,5,0" Opacity="0" />
+                  <Path Name="PART_PrevIcon" Data="M12,0 L12,20 L0,10 Z" Width="12" Height="20" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,2"
+                        Fill="{DynamicResource RhText3Brush}" Classes.end="{Binding !CanPrevious}" />
+                </Panel>
               </Border>
               <Border Name="PART_Window" Grid.Column="1" Height="40" VerticalAlignment="Center" Background="Transparent"
                       BorderBrush="Transparent" BorderThickness="1" CornerRadius="0" Classes.fixed="{Binding IsFixed}">
                 <Panel>
+                  <!-- the window is set into the bench: inner shadow, light lower edge, a faint reflection (M7) -->
+                  <c:WindowGlass Name="PART_Glass" Opacity="0" />
                   <Border Name="PART_WindowEdge" Height="2" VerticalAlignment="Top" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
                   <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Border Width="16" Height="16" Background="{Binding Swatch}" IsVisible="{Binding HasSwatch}" VerticalAlignment="Center" />
@@ -690,8 +697,11 @@
                 </Panel>
               </Border>
               <Border Name="PART_Next" Grid.Column="2" Background="Transparent" Cursor="Hand" IsVisible="{Binding !IsFixed}">
-                <Path Name="PART_NextIcon" Data="M0,0 L0,20 L12,10 Z" Width="12" Height="20" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"
-                      Fill="{DynamicResource RhText3Brush}" Classes.end="{Binding !CanNext}" />
+                <Panel>
+                  <c:KeyCap Name="PART_NextKey" Width="26" Height="34" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5,0,0,0" Opacity="0" />
+                  <Path Name="PART_NextIcon" Data="M0,0 L0,20 L12,10 Z" Width="12" Height="20" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,2"
+                        Fill="{DynamicResource RhText3Brush}" Classes.end="{Binding !CanNext}" />
+                </Panel>
               </Border>
             </Grid>
             <!-- action: "Öffnen ›" right-aligned on the arrows' outer edge -->
@@ -738,13 +748,25 @@
     <Style Selector="^:pointerover /template/ Border#PART_Bg">
       <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
     </Style>
-    <Style Selector="^ /template/ Border#PART_Previous:pointerover > Path, ^ /template/ Border#PART_Next:pointerover > Path">
+    <Style Selector="^ /template/ Border#PART_Previous:pointerover Path, ^ /template/ Border#PART_Next:pointerover Path">
       <Setter Property="Fill" Value="{DynamicResource RhText1Brush}" />
     </Style>
-    <!-- the arrow clicked (R2): accent and pressed in for 90 ms -->
-    <Style Selector="^ /template/ Border#PART_Previous.pressed > Path, ^ /template/ Border#PART_Next.pressed > Path">
+    <!-- the arrow clicked (R2): accent, the key goes down onto its edge for 90 ms -->
+    <Style Selector="^ /template/ Border#PART_Previous.pressed Path, ^ /template/ Border#PART_Next.pressed Path">
       <Setter Property="Fill" Value="{DynamicResource RhAccentBrush}" />
-      <Setter Property="RenderTransform" Value="scale(0.85)" />
+      <Setter Property="RenderTransform" Value="translate(0px, 2px) scale(0.9)" />
+    </Style>
+    <Style Selector="^ /template/ Border#PART_Previous.pressed c|KeyCap, ^ /template/ Border#PART_Next.pressed c|KeyCap">
+      <Setter Property="Pressed" Value="True" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ c|KeyCap, ^.open /template/ c|KeyCap, ^ /template/ Border#PART_Previous:pointerover c|KeyCap, ^ /template/ Border#PART_Next:pointerover c|KeyCap">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ c|WindowGlass, ^.open /template/ c|WindowGlass">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^ /template/ Border#PART_Window.fixed c|WindowGlass">
+      <Setter Property="Opacity" Value="0" />
     </Style>
     <Style Selector="^:focus-visible /template/ Path">
       <Setter Property="Fill" Value="{DynamicResource RhText1Brush}" />

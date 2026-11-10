@@ -35,14 +35,21 @@ public sealed class Sawtooth : Control
             _width = w;
             _geometry = new StreamGeometry();
             using var g = _geometry.Open();
-            var step = ToothHeight * 2;
-            // the room's tone above the teeth: a strip with V-notches pointing down into the slip
+            // the room's tone above the teeth: a strip with notches pointing down into the slip, torn by hand (M7: the
+            // regular zigzag read as a CSS trick) – pitch 12–20 px and depth 4–9 px per tooth, seeded by the width
+            var seed = Craft.Seed("tear" + (int)w);
             g.BeginFigure(new Point(0, 0), true);
-            for (var x = 0.0; x < w; x += step)
+            var x = 0.0;
+            for (var i = 0; x < w; i++)
             {
-                g.LineTo(new Point(Math.Min(w, x + step / 2), ToothHeight));
-                g.LineTo(new Point(Math.Min(w, x + step), 0));
+                var step = Craft.Range(seed, 3 * i, 12, 20);
+                var depth = Craft.Range(seed, 3 * i + 1, 4, ToothHeight + 1);
+                var peak = Craft.Range(seed, 3 * i + 2, 0.35, 0.65);
+                g.LineTo(new Point(Math.Min(w, x + step * peak), depth));
+                g.LineTo(new Point(Math.Min(w, x + step), Craft.Range(seed, 3 * i + 7, 0, 1.5)));
+                x += step;
             }
+            g.LineTo(new Point(w, 0));
             g.EndFigure(true);
         }
         ctx.DrawGeometry(Fill, null, _geometry);
@@ -66,6 +73,10 @@ public sealed class DotLeader : Control
     public override void Render(DrawingContext ctx)
     {
         var w = Bounds.Width;
-        for (var x = 0.0; x + 2 <= w; x += 6) ctx.FillRectangle(Dot, new Rect(Math.Round(x), 0, 2, 2));
+        // printed dots (thermal print): each a little lighter or darker
+        var i = 0;
+        for (var x = 0.0; x + 2 <= w; x += 6, i++)
+            using (ctx.PushOpacity(0.65 + 0.35 * Craft.Rand(77u, i)))
+                ctx.FillRectangle(Dot, new Rect(Math.Round(x), 0, 2, 2));
     }
 }

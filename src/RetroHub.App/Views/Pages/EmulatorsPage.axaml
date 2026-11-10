@@ -123,7 +123,7 @@
         </TextBlock>
         <Button Theme="{StaticResource RhGhostButton}" Command="{Binding ShowAllCommand}" Content="{l:T emulators.showAll}" IsVisible="{Binding IsFiltered}" MinHeight="36" />
       </StackPanel>
-      <Border Height="1" Background="{DynamicResource RhLineBrush}" />
+      <c:Groove />
       <TextBlock Text="{l:T emulators.noSystems}" Classes="read" IsVisible="{Binding NoSystems}" Margin="0,20,0,0" />
 
       <ItemsControl Name="List" ItemsSource="{Binding Rows}">
@@ -215,7 +215,7 @@
                   </StackPanel>
                 </StackPanel>
               </c:FoldPanel>
-              <Border Height="1" Background="{DynamicResource RhLineBrush}" />
+              <c:Groove />
             </StackPanel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
@@ -224,7 +224,7 @@
       <!-- Weitere erkannte Programme (folded) -->
       <Panel IsVisible="{Binding OthersRow, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,40,0,0">
       <StackPanel DataContext="{Binding OthersRow}" x:DataType="vm:EmulatorRowViewModel">
-        <Border Height="1" Background="{DynamicResource RhLineBrush}" />
+        <c:Groove />
         <Button Name="OthersButton" Theme="{StaticResource RhFoldRow}" Classes="fold-row" AutomationProperties.Name="{Binding Title}"
                 Command="{Binding $parent[p:PageBase].((vm:EmulatorsViewModel)DataContext).ToggleCommand}" CommandParameter="{Binding}">
           <Grid ColumnDefinitions="*,Auto" MinHeight="64">
@@ -273,7 +273,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </c:FoldPanel>
-        <Border Height="1" Background="{DynamicResource RhLineBrush}" />
+        <c:Groove />
       </StackPanel>
       </Panel>
     </StackPanel>
@@ -287,7 +287,7 @@
       <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,12" Height="24">
         <c:ShelfLabel Text="{l:T emulators.readyLabel}" VerticalAlignment="Center" />
       </StackPanel>
-      <Border Height="1" Background="{DynamicResource RhLineBrush}" Margin="0,0,0,20" />
+      <c:Groove Margin="0,0,0,20" />
       <TextBlock Name="ReadyCount" Classes="number" FontSize="28" LineHeight="32" Text="{Binding ReadyText}" Foreground="{DynamicResource RhText1Brush}" />
       <ItemsControl Name="ReadySegments" ItemsSource="{Binding Segments}" Margin="0,14,0,0">
         <ItemsControl.ItemsPanel>
@@ -300,7 +300,7 @@
             <!-- a click opens that system's row in the list (R2) -->
             <Button Theme="{StaticResource RhTickerItem}" Classes="segment" Width="24" Height="10" Focusable="False" ToolTip.Tip="{Binding Code}"
                     Command="{Binding $parent[ItemsControl].((vm:EmulatorsViewModel)DataContext).OpenSegmentCommand}" CommandParameter="{Binding}">
-              <Border Width="24" Height="10" Background="{Binding Brush}" />
+              <c:Lamp Width="24" Height="10" Fill="{Binding Brush}" />
             </Button>
           </DataTemplate>
         </ItemsControl.ItemTemplate>

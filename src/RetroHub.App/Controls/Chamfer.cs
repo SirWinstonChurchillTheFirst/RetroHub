@@ -100,11 +100,22 @@ public sealed class ChamferPlate : Control
         AvaloniaProperty.Register<ChamferPlate, double>(nameof(OutlineThickness), 2);
     public static readonly StyledProperty<double> ChamferProperty =
         AvaloniaProperty.Register<ChamferPlate, double>(nameof(Chamfer), 4);
+    /// <summary>
+    /// Key travel (M7): the plate stands on a darker edge this many px deep at its foot (3 on the primary button; 1 while
+    /// pressed – the face goes down), with a lit top edge. 0 = a flat plate.
+    /// </summary>
+    public static readonly StyledProperty<double> DepthProperty =
+        AvaloniaProperty.Register<ChamferPlate, double>(nameof(Depth));
 
     static ChamferPlate()
     {
-        AffectsRender<ChamferPlate>(BackgroundProperty, OutlineProperty, OutlineThicknessProperty, ChamferProperty);
+        AffectsRender<ChamferPlate>(BackgroundProperty, OutlineProperty, OutlineThicknessProperty, ChamferProperty, DepthProperty);
     }
+
+    public double Depth { get => GetValue(DepthProperty); set => SetValue(DepthProperty, value); }
+
+    /// <summary>The most a plate with <see cref="Depth"/> stands up: its face always leaves this much at the foot.</summary>
+    public const double MaxDepth = 3;
 
     public IBrush? Background { get => GetValue(BackgroundProperty); set => SetValue(BackgroundProperty, value); }
     public IBrush? Outline { get => GetValue(OutlineProperty); set => SetValue(OutlineProperty, value); }
@@ -117,8 +128,20 @@ public sealed class ChamferPlate : Control
         if (r.Width <= 0 || r.Height <= 0) return;
         var outline = Outline;
         var t = outline != null ? OutlineThickness : 0;
+        var depth = Math.Clamp(Depth, 0, MaxDepth);
+        if (Depth > 0 && Background is ISolidColorBrush solid)
+        {
+            // the edge under the face, then the face pushed down by the travel already used
+            var travel = MaxDepth - depth;
+            context.DrawGeometry(Craft.Solid(Theming.ColorUtil.Mix(solid.Color, Colors.Black, 0.34)), null,
+                Controls.Chamfer.Octagon(new Rect(0, travel + 1, r.Width, r.Height - travel - 1), Chamfer));
+            r = new Rect(0, travel, r.Width, r.Height - MaxDepth);
+        }
         var geo = Controls.Chamfer.Octagon(r.Deflate(t / 2), Math.Max(0, Chamfer - t / 2));
         context.DrawGeometry(Background, outline != null ? new Pen(outline, t, lineJoin: PenLineJoin.Miter) : null, geo);
+        if (Depth > 0)
+            using (context.PushGeometryClip(geo))
+                context.FillRectangle(Craft.Hi(0.30), new Rect(r.X, r.Y, r.Width, 1));
     }
 }
 

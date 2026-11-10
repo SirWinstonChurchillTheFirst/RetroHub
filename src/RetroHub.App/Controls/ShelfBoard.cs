@@ -162,7 +162,7 @@ public sealed class ShelfBoard : Control
 /// Object "Etikett" (DESIGN 1.2): a paper price label hanging on a board – paper #F4ECDF, ink, Archivo SemiCondensed
 /// SemiBold 15, padding 8×3, square. <see cref="IsNew"/> = the "Neu" sticker variant in Bernstein.
 /// </summary>
-public sealed class ShelfLabel : Border
+public sealed class ShelfLabel : Decorator
 {
     public static readonly StyledProperty<string?> TextProperty =
         AvaloniaProperty.Register<ShelfLabel, string?>(nameof(Text));
@@ -185,11 +185,35 @@ public sealed class ShelfLabel : Border
     public string? Text { get => GetValue(TextProperty); set => SetValue(TextProperty, value); }
     public bool IsNew { get => GetValue(IsNewProperty); set => SetValue(IsNewProperty, value); }
 
+    /// <summary>The paper (paper, or the accent for the "Neu" sticker).</summary>
+    public static readonly StyledProperty<IBrush?> BackgroundProperty = AvaloniaProperty.Register<ShelfLabel, IBrush?>(nameof(Background));
+
+    public IBrush? Background { get => GetValue(BackgroundProperty); set => SetValue(BackgroundProperty, value); }
+
+    static ShelfLabel()
+    {
+        AffectsRender<ShelfLabel>(BackgroundProperty, TextProperty);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
         if (change.Property == TextProperty) _text.Text = Text;
         else if (change.Property == IsNewProperty) UpdateLook();
+    }
+
+    /// <summary>
+    /// The label is cut paper (M7 "gezeichnet"; the crisp rectangles read as CSS badges): an irregular outline seeded by
+    /// its text, tilted by up to 0.8°, a darker bottom edge for its thickness, a soft shadow and faint fibres. The text
+    /// stays upright (a hair off the paper's tilt, like a hand-applied sticker).
+    /// </summary>
+    public override void Render(DrawingContext context)
+    {
+        var r = new Rect(Bounds.Size);
+        if (r.Width <= 0 || r.Height <= 0) return;
+        var color = (Background as ISolidColorBrush)?.Color ?? SystemPalette.Paper;
+        var seed = Craft.Seed(Text);
+        Craft.DrawPaper(context, this, r, seed, color, Craft.Range(seed, 40, -0.8, 0.8), jitter: 0.6, shadow: 0.35, fibres: 0.35);
     }
 
     private static readonly IImmutableSolidColorBrush InkBrush = new ImmutableSolidColorBrush(SystemPalette.Ink);

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using RetroHub.App.Theming;
 
 namespace RetroHub.App.Controls;
 
@@ -133,21 +134,30 @@ public sealed class EmptySlot : Control
         if (size.Width <= 0 || size.Height <= 0) return;
         if (Baseline)
         {
-            ctx.DrawLine(BaselineDash, new Point(0, size.Height - 0.5), new Point(size.Width, size.Height - 0.5));
+            // a groove waiting for its stamp (M7: no dashed line)
+            Craft.Groove(ctx, 0, size.Height - 2, size.Width, 0.45, 0.06);
             return;
         }
         var outer = new Rect(size);
         var r = Aspect > 0 ? CoverArt.Compute(outer, null, false, Aspect) : outer;
         if (Recessed)
         {
+            // an empty compartment cut into the wall: darker ground, 3 px shadow at its top and left, light at its foot
             ctx.FillRectangle(RecessFill, r);
-            ctx.FillRectangle(RecessTop, new Rect(r.X, r.Y, r.Width, 2));
-            ctx.FillRectangle(RecessSide, new Rect(r.X, r.Y, 1, r.Height));
-            ctx.FillRectangle(RecessSide, new Rect(r.Right - 1, r.Y, 1, r.Height));
+            Craft.Recess(ctx, r, 4, 0.55, 0.06);
+            ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.25, Craft.Toward.Right), new Rect(r.Right - 3, r.Y, 3, r.Height));
             return;
         }
-        r = r.Deflate(0.5);
-        if (r.Width <= 0 || r.Height <= 0) return;
-        ctx.DrawRectangle(null, Dash, r);
+        if (r.Width <= 4 || r.Height <= 4) return;
+        // the place where a box stood (M7: the dashed outline read as a wireframe or a failed image): the wall behind it
+        // a touch cleaner, dust settled all around it – thickest on the board at its foot – and a soft rim
+        ctx.FillRectangle(Craft.Hi(0.025), r);
+        TextureFill.Draw(ctx, this, new Rect(r.X - 6, r.Y - 5, r.Width + 12, 5), Texture.Dust, 0.30);
+        TextureFill.Draw(ctx, this, new Rect(r.X - 6, r.Y, 6, r.Height), Texture.Dust, 0.30);
+        TextureFill.Draw(ctx, this, new Rect(r.Right, r.Y, 6, r.Height), Texture.Dust, 0.30);
+        TextureFill.Draw(ctx, this, new Rect(r.X - 8, r.Bottom - 4, r.Width + 16, 4), Texture.Dust, 0.55);
+        ctx.FillRectangle(Craft.Hi(0.06), new Rect(r.X, r.Y, r.Width, 1));
+        ctx.FillRectangle(Craft.Hi(0.05), new Rect(r.X, r.Y + 1, 1, r.Height - 1));
+        ctx.FillRectangle(Craft.Hi(0.05), new Rect(r.Right - 1, r.Y + 1, 1, r.Height - 1));
     }
 }
