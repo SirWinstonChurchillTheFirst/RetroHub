@@ -368,8 +368,10 @@ public sealed class CoverArt : Control
                     ctx.FillRectangle(tex.Brush, new Rect(ox, oy, w, r.Height));
             }
             if (split > 0) ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y + split, w, 1));
-            // the case is plastic: a soft sheen falls diagonally from the top left (one shared brush)
-            ctx.FillRectangle(Sheen, r);
+            // the case is plastic: a soft sheen falls diagonally from the top left (one shared brush; only on stage-size
+            // boxes – in the grid a full-tile gradient per tile costs more than it shows)
+            var stage = w >= StageDetailWidth;
+            if (stage) ctx.FillRectangle(Sheen, r);
             // the motif silhouette (DESIGN 10.2): ONE geometry in the system colour at 18 %, 45 % of the height, anchored
             // bottom right with a 14 px inset – always inside the lower 62 % (never across the 38/62 split)
             var band = Band(w);
@@ -389,7 +391,7 @@ public sealed class CoverArt : Control
                     var tw = Math.Max(tt.Width, _subText?.Width ?? 0);
                     if (new Rect(r.X + band + pad, r.Bottom - pad - th, tw, th).Intersects(motifRect)) motifOpacity = 0.07;
                 }
-                DrawEmbossedMotif(ctx, look, motifRect, motifOpacity);
+                DrawEmbossedMotif(ctx, look, motifRect, motifOpacity, stage);
             }
             // spine band: full colour, printed like a real spine - code at the top, the title from the foot upwards,
             // the year at the foot (all -90 degrees, read bottom to top); a 1 px fold line where the spine meets the front
@@ -427,7 +429,7 @@ public sealed class CoverArt : Control
             // the detail: on top under the colour band, like a printed box front)
             // the case's edges and a little wear (seeded by the title)
             var seed = Hash(Title ?? "");
-            Craft.Edges(ctx, r, lit: 0.07, dark: 0.35, grime: 0, topLit: 0, softRight: 3);
+            Craft.Edges(ctx, r, lit: 0.07, dark: 0.35, grime: 0, topLit: 0, softRight: stage ? 3 : 0);
             Craft.Scuffs(ctx, r, seed, (int)(seed % 3), 0.05);
             // title and subtitle on a paper label applied by hand: left after the band, anchored at the bottom with the
             // inner margin (the pulled box of the detail: on top under the colour band, like a printed box front)
@@ -440,11 +442,14 @@ public sealed class CoverArt : Control
                 var y = TitleOnTop(r) ? r.Y + TopBand(r) + pad : r.Bottom - pad - th;
                 var label = new Rect(x - lp, y - lp * 0.75, tw + 2 * lp, th + 1.5 * lp);
                 var tilt = Craft.Range(seed, 30, -1.2, 1.2);
-                Craft.DrawPaper(ctx, this, label, seed, Craft.LabelPaper, tilt, jitter: 0.7, shadow: 0.40, fibres: 0.45);
+                // stage-size boxes get their own outline and fibres; grid and shelf boxes share 16 outlines and no fibres
+                // (a clip and a texture pass per tile, not seen at that size)
+                if (stage) Craft.DrawPaper(ctx, this, label, seed, Craft.LabelPaper, tilt, jitter: 0.7, shadow: 0.40, fibres: 0.45);
+                else Craft.DrawPaperShared(ctx, label, seed, Craft.LabelPaper, tilt);
                 using (Craft.PushLabel(ctx, label, tilt))
                 {
                     var origin = new Point(lp, lp * 0.75);
-                    Craft.Print(ctx, title, origin);
+                    Craft.Print(ctx, title, origin, stage ? 0.25 : 0);
                     if (_subText is { } sub) ctx.DrawText(sub, new Point(origin.X, origin.Y + Math.Ceiling(title.Height) + SubGap));
                 }
                 DrawTape(ctx, label, seed, w);
@@ -457,6 +462,13 @@ public sealed class CoverArt : Control
         [new ImmutableGradientStop(0, Craft.A(Craft.Light, 0.09)), new ImmutableGradientStop(0.32, Craft.A(Craft.Light, 0.02)),
          new ImmutableGradientStop(0.5, Craft.A(Craft.Light, 0))],
         startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(1, 1, RelativeUnit.Relative));
+
+    /// <summary>
+    /// From this width a placeholder is drawn with its full detail (sheen, relief, label fibres, printed ghost): the stage
+    /// boxes of Start and Detail. Grid and shelf boxes keep the cheap parts – they are re-rendered on every focus move
+    /// (M7 perf: the full detail cost ≈ 0.4 ms per tile on the CPU rasteriser).
+    /// </summary>
+    public const double StageDetailWidth = 240;
 
     /// <summary>Inner margin of the paper label around the title: 5–10 px with the box width.</summary>
     public static double LabelPad(double w) => Math.Clamp(Math.Round(w * 0.04), 5, 10);
@@ -485,19 +497,18 @@ public sealed class CoverArt : Control
     }
 
     /// <summary>
-    /// The motif pressed into the case plastic (relief): a dark copy one pixel down-right, a light copy one pixel
-    /// up-left and the shape itself in the case tone with a hint of the system colour (DESIGN 10.2, M7).
+    /// The motif pressed into the case plastic (relief): a dark copy one pixel down-right and the shape itself in the
+    /// case tone with a hint of the system colour (DESIGN 10.2, M7). Two geometry draws per tile.
     /// </summary>
-    private static void DrawEmbossedMotif(DrawingContext ctx, SystemLook look, Rect box, double opacity)
+    private static void DrawEmbossedMotif(DrawingContext ctx, SystemLook look, Rect box, double opacity, bool relief)
     {
         var k = opacity / 0.18;
         var scale = Math.Min(box.Width, box.Height) / 120.0;
         var m = Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(box.Right - 120 * scale, box.Bottom - 120 * scale);
         var g = MotifCatalog.Silhouette(look.Motif);
-        using (ctx.PushTransform(m * Matrix.CreateTranslation(1, 1)))
-            ctx.DrawGeometry(Craft.Dark(0.30 * k), null, g);
-        using (ctx.PushTransform(m * Matrix.CreateTranslation(-1, -1)))
-            ctx.DrawGeometry(Craft.Hi(0.07 * k), null, g);
+        if (relief)
+            using (ctx.PushTransform(m * Matrix.CreateTranslation(1, 1)))
+                ctx.DrawGeometry(Craft.Dark(0.30 * k), null, g);
         using (ctx.PushOpacity(Math.Min(1, k)))
         using (ctx.PushTransform(m))
             ctx.DrawGeometry(Craft.Solid(ColorUtil.Mix(look.Wall, look.Color, 0.16)), null, g);

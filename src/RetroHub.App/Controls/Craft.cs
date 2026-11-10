@@ -265,6 +265,72 @@ public static class Craft
         }
     }
 
+    private static readonly StreamGeometry?[] UnitPapers = new StreamGeometry?[16];
+
+    /// <summary>
+    /// One of 16 shared label outlines on the unit square (cut by hand like <see cref="PaperOutline"/>, the jitter
+    /// relative to the size), drawn scaled to a label: the many labels of a grid share 16 geometries instead of one per
+    /// title (no geometry churn while 1000 games scroll past).
+    /// </summary>
+    public static Geometry UnitPaper(uint seed)
+    {
+        var i = (int)(seed % 16);
+        lock (UnitPapers)
+            return UnitPapers[i] ??= (StreamGeometry)BuildUnit(i);
+
+        static Geometry BuildUnit(int variant)
+        {
+            var g = new StreamGeometry();
+            using (var c = g.Open())
+            {
+                var pts = new List<Point>();
+                var seed = Mix(0xC0FFEEu, variant);
+                var salt = 0;
+                // ± 0.6 % of the size: ≈ ± 0.8 px across a 140 px label, a hair along its height
+                double J() => (Rand(seed, salt++) * 2 - 1) * 0.006;
+                void Edge(Point a, Point b, bool horizontal)
+                {
+                    pts.Add(new Point(a.X + J(), a.Y + J()));
+                    var extra = 2;
+                    for (var k = 1; k <= extra; k++)
+                    {
+                        var t = (k + (Rand(seed, salt++) - 0.5) * 0.4) / (extra + 1);
+                        var p = new Point(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
+                        pts.Add(horizontal ? new Point(p.X, p.Y + J()) : new Point(p.X + J(), p.Y));
+                    }
+                }
+                Edge(new Point(0, 0), new Point(1, 0), true);
+                Edge(new Point(1, 0), new Point(1, 1), false);
+                Edge(new Point(1, 1), new Point(0, 1), true);
+                Edge(new Point(0, 1), new Point(0, 0), false);
+                c.BeginFigure(pts[0], true);
+                for (var k = 1; k < pts.Count; k++) c.LineTo(pts[k]);
+                c.EndFigure(true);
+            }
+            return g;
+        }
+    }
+
+    /// <summary>
+    /// A grid label: like <see cref="DrawPaper"/> without fibres and thickness edge, on one of the 16 shared outlines
+    /// scaled to <paramref name="r"/> (shadow, paper).
+    /// </summary>
+    public static void DrawPaperShared(DrawingContext ctx, Rect r, uint seed, Color paper, double degrees, double shadow = 0.40)
+    {
+        if (r.Width <= 0 || r.Height <= 0) return;
+        var g = UnitPaper(seed);
+        using (PushLabel(ctx, r, degrees))
+        {
+            var scale = Matrix.CreateScale(r.Width, r.Height);
+            // one shadow pass (it also reads as the paper's thickness at grid size), then the paper
+            if (shadow > 0)
+                using (ctx.PushTransform(scale * Matrix.CreateTranslation(1, 1.5)))
+                    ctx.DrawGeometry(Dark(shadow), null, g);
+            using (ctx.PushTransform(scale))
+                ctx.DrawGeometry(Solid(paper), null, g);
+        }
+    }
+
     /// <summary>
     /// A paper label in <paramref name="r"/> tilted by <paramref name="degrees"/> about its centre: a soft shadow
     /// (offset 1, 2), a darker bottom edge (its thickness), the paper itself and its fibres. Draw the content inside
