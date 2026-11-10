@@ -294,12 +294,23 @@ public sealed class PixelScreen : Panel
             foreach (var fx in new[] { Math.Round(w * 0.12), Math.Round(w * 0.88 - fw) })
                 ctx.FillRectangle(RoomDeep, new Rect(fx, body.Bottom, fw, feet));
             ctx.FillRectangle(Cabinet, body);
+            // the cabinet is moulded plastic (M7 "gezeichnet"): a faint grain, rounded sides (light left, dark right),
+            // a lit top edge, a darker foot and one seeded scuff
+            TextureFill.Draw(ctx, this, body, Texture.Grain, 0.5);
+            ctx.FillRectangle(Craft.Curvature, body);
+            Craft.Edges(ctx, body, lit: 0.10, dark: 0.40, grime: 0.28, grimeHeight: Math.Round(14 * k), topLit: 0, softRight: Math.Round(6 * k));
             ctx.FillRectangle(TopLight, new Rect(0, 0, w, 1));
+            ctx.FillRectangle(Craft.Fade(Craft.Light, 0.05, 0, Craft.Toward.Down), new Rect(0, 1, w, Math.Round(6 * k)));
             ctx.FillRectangle(Edge, new Rect(0, body.Bottom - 1, w, 1));
-            // the recess around the glass (square: the glass itself has the tube's 6 px corners)
+            Craft.Scuffs(ctx, body, Craft.Seed(owner.Name ?? "tv"), 1, 0.06);
+            // the recess around the glass (square: the glass itself has the tube's 6 px corners): a stepped bevel into it
             var pic = PictureRect(size);
             var recess = pic.Inflate(RecessFor(w));
+            ctx.FillRectangle(Craft.Dark(0.35), recess.Inflate(1));
+            ctx.FillRectangle(Craft.Hi(0.08), new Rect(recess.X - 1, recess.Bottom + 1, recess.Width + 2, 1));
             ctx.FillRectangle(RoomDeep, recess);
+            var step = Math.Max(2, Math.Round(4 * k));
+            ctx.FillRectangle(Craft.Fade(Craft.Light, 0.06, 0, Craft.Toward.Down), new Rect(recess.X, recess.Bottom - step, recess.Width, step));
             // chin: power LED left under the glass, speaker grille right under the glass
             var chinTop = recess.Bottom;
             var chin = body.Bottom - 1 - chinTop;
@@ -313,7 +324,11 @@ public sealed class PixelScreen : Panel
             var gw = Math.Round(120 * k);
             var gy = Math.Round(chinTop + (chin - ((lines - 1) * pitch + 1)) / 2);
             for (var i = 0; i < lines; i++)
+            {
+                // each slot of the grille is cut: dark, with its lit lower lip
                 ctx.FillRectangle(RoomDeep, new Rect(pic.Right - gw, gy + i * pitch, gw, 1));
+                ctx.FillRectangle(Craft.Hi(0.07), new Rect(pic.Right - gw, gy + i * pitch + 1, gw, 1));
+            }
         }
     }
     /// <summary>One picture (snap, test card or the dark tube); two of them cross-fade.</summary>

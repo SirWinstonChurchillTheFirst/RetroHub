@@ -138,7 +138,13 @@ public sealed class ShelfMirror : Control
         {
             var x = Math.Round((FocusIndex + 0.5) * unit - 1);
             x = Math.Clamp(x, 0, band.Width - 2);
-            ctx.FillRectangle(new ImmutableSolidColorBrush(MarkColor ?? ThemeManager.CurrentAccent), new Rect(x, band.Y - 6, 2, 20));
+            // a clip pushed onto the row (M7 "gezeichnet"): the 2 px pin with a small chamfered head, lit on top
+            var mark = Craft.Solid(MarkColor ?? ThemeManager.CurrentAccent);
+            ctx.FillRectangle(mark, new Rect(x, band.Y - 4, 2, 18));
+            var head = new Rect(x - 2, band.Y - 9, 6, 6);
+            ctx.DrawGeometry(Craft.Dark(0.5), null, Chamfer.Octagon(head.Translate(new Vector(1, 1)), 1.5));
+            ctx.DrawGeometry(mark, null, Chamfer.Octagon(head, 1.5));
+            ctx.FillRectangle(Craft.Hi(0.45), new Rect(head.X + 1.5, head.Y, 3, 1));
         }
         // hover (R2): a 1 × 12 paper tick at 60 % where a click would jump to
         if (_hover >= 0 && _hover < n && !_dragging)
@@ -163,12 +169,14 @@ public sealed class ShelfMirror : Control
     {
         var n = systems.Count;
         var pixels = new int[pw * ph];
-        var colours = new Dictionary<Spine, (int Argb, double Share)>();
-        (int, double) Look(Spine s)
+        var colours = new Dictionary<Spine, (int Argb, int Top, double Share)>();
+        static int Argb(Color c) => unchecked((int)(0xFF000000u | (uint)c.R << 16 | (uint)c.G << 8 | c.B));
+        (int, int, double) Look(Spine s)
         {
             if (colours.TryGetValue(s, out var c)) return c;
             var mixed = ColorUtil.Mix(ground, s.Color, SpineStrength);
-            c = (unchecked((int)(0xFF000000u | (uint)mixed.R << 16 | (uint)mixed.G << 8 | mixed.B)), SpineShare(s.SystemId));
+            // each spine seen from above has a lit top edge (M7 "gezeichnet")
+            c = (Argb(mixed), Argb(ColorUtil.Mix(mixed, SystemPalette.Paper, 0.28)), SpineShare(s.SystemId));
             colours[s] = c;
             return c;
         }
@@ -193,9 +201,11 @@ public sealed class ShelfMirror : Control
                 var end = (int)Math.Floor((first + 1) * perPixel) - 1;
                 if (x == end && first < n - 1) continue;
             }
-            var (argb, share) = Look(id);
+            var (argb, topArgb, share) = Look(id);
             var h = Math.Max(2, (int)Math.Round(ph * share));
-            for (var y = ph - h; y < ph; y++) pixels[y * pw + x] = argb;
+            // single spines are never cut to one height: ±1 device px, seeded by the game's place in the row
+            if (gap && h > 4) h = Math.Clamp(h + (int)(Craft.Mix((uint)first, 61) % 3) - 1, 2, ph);
+            for (var y = ph - h; y < ph; y++) pixels[y * pw + x] = y == ph - h && h > 3 ? topArgb : argb;
         }
         var bmp = new WriteableBitmap(new PixelSize(pw, ph), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
         using (var fb = bmp.Lock())

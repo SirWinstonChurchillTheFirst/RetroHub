@@ -275,7 +275,8 @@ Regeln:
 - **Mindestgröße** für Lesbares ist 15 px. Text 3 erst ab 15 px.
 - **Titel auf Start und Detail werden gemessen**, Bildunterschriften nicht. Ein `TextLayout` misst den Titel bei 72, 56 und 40 px mit der Spaltenbreite und `MaxLines=2`. Gewählt wird die größte Stufe ohne Kürzung. Passt keine, gilt 40 px mit `CharacterEllipsis`. Das passiert einmal pro Titelwechsel (drei Layouts, vernachlässigbar). Grid-Bildunterschriften: 2 Zeilen, dann Ellipse. Listenzeilen: 1 Zeile, der fokussierte Titel läuft nach 600 ms Verweilen als Laufschrift (40 px/s).
 - **Zahlen** stehen immer in der Zahl-Rolle mit `+tnum`, auch in Sätzen (Run-Inline).
-- **Mono** (QA 2): Pfade, Dateiendungen und Prüfsummen immer in Cascadia Mono Regular 15, Text 2. **Programmnamen** in ead SemiBold Papier (in Sätzen über Sentence.Name), ihre **Versionen** in Zahl Text 3. Eine Regel für Lieferschein, Scan-Datei, Dateiinfo, Systeminfo und Emulatoren.
+- **Mono** (QA 2): Pfade, Dateiendungen und Prüfsummen immer in Cascadia Mono Regular 15, Text 2. **Programmnamen** in 
+ead SemiBold Papier (in Sätzen über Sentence.Name), ihre **Versionen** in Zahl Text 3. Eine Regel für Lieferschein, Scan-Datei, Dateiinfo, Systeminfo und Emulatoren.
 - **Meta-Sätze statt Ketten**: `"{Genre} von {Entwickler}, {Jahr}. {Spieler}."` Fehlende Teile fallen samt Satzzeichen weg. Ist nur das System bekannt: „Game Boy Advance.“ Es gibt keine `A · B · C`-Ketten.
 
 ---
@@ -313,7 +314,7 @@ Regeln:
 
 ### 4.3 Kanten und Linien
 
-- **Trennlinie** in Listen: 1 px Kante. Listen haben keine Rahmen.
+- **Trennlinie** in Listen: seit M7 eine **eingravierte Rille** (`Groove`, 2 px: 1 px #000 50 %, darunter 1 px #FFF3E0 5 %), keine Haarlinie. Listen haben keine Rahmen.
 - **Overlay-Rahmen**: 1 px Kante, oben zusätzlich 1 px Lichtkante.
 - **Keine Rahmen um Inhaltsgruppen.** Gruppen entstehen durch Abstand (48/16 px) und Etiketten.
 
@@ -351,11 +352,32 @@ Texturen werden programmatisch erzeugt: `tools/TextureGen` (C#, SkiaSharp, feste
 
 **Pixelgenau trotz UiScale** (`TextureFill`, Control mit Render-Override): Pixelmuster werden **in Gerätepixeln** gezeichnet. Der Control ermittelt die Gesamttransformation zum TopLevel (`TransformToVisual`) und setzt mit `PushTransform` die inverse Skalierung. Gezeichnet wird mit einer gemeinsamen `ImageBrush`, deren `DestinationRect` = Kachelgröße × k Gerätepixel ist, mit k = max(1, round(UiScale × RenderScaling)), Ursprung auf ganze Gerätepixel gerundet, `BitmapInterpolationMode=None`. Dadurch entsteht bei UiScale 0,8 oder 1,33 keine Moiré, und bei 4K/200 % bleibt das Muster proportional (k = 2 bzw. 3). Pro Textur gibt es eine Brush-Instanz, nie eine pro Kachel.
 
-**Wo nie Textur:** hinter dem Grid, auf Text-Flächen von Dialogen, auf Buttons, auf Etiketten.
+**Materialtexturen (M7)** – nie als Epochentextur einer Wand, nur für gezeichnete Objekte (4.7):
+
+| Datei | Größe | Muster | Einsatz | Deckkraft (`TextureFill`-Stärke) |
+|---|---|---|---|---|
+| `pappe-64.png` | 64×64 | senkrechte Fasern hell/dunkel, Alpha 0–22 | Pappschuber, Papier-Etiketten, Lieferschein | 0,35–0,7 |
+| `brett-512x24.png` | 512×24 | lange, flache Maserung, Alpha 0–18 | Front aller Bretter, Senderskala | 0,8–1 |
+| `staub-64.png` | 64×64 | lockere helle Staubpunkte | Staubspur eines leeren Platzes | 0,3–0,55 |
+
+**Wo nie Textur:** hinter dem Grid, auf Text-Flächen von Dialogen, auf Buttons. Etiketten tragen seit M7 ihre Papierfasern (≤ 3 % effektiv).
 
 ### 4.6 Transluzenz (selten)
 
 Erlaubt nur: (1) Scrims in `RoomBackdrop`, (2) Fußleiste: Raum-Verlauf 0 → 96 % über 40 px oberhalb, (3) Dialog-Hintergrund Raum-Tief 72 % ohne Blur, (4) Overlay „Läuft“ Raum-Tief 94 %. Die Glas-, Gradient-, Glow- und Ambient-Keys aus v0 sind seit M6 gelöscht, ebenso `StatTile`, `Border.glass/.card`, die Chip-Pillen und die Stile für ComboBox, ToggleSwitch, Slider und ProgressBar (keiner davon kommt in RetroHub noch vor).
+
+### 4.7 Gezeichnet, nicht gesetzt (M7, Owner-Feedback „fühlt sich hingecodet an“)
+
+Jedes Objekt wird aus denselben Teilen gebaut (`Controls/Craft.cs`, `CraftParts.cs`) statt als flaches Rechteck mit Text:
+
+- **Material**: Pappe (Fasern), Kunststoff (diagonaler Glanz `Sheen`, Wölbung `Curvature`: links 6 % Licht, Mitte 0, rechts 16 % Schwarz), Brett (Maserung), Blech (Buchstütze, Knopf).
+- **Kanten**: links 1 px Licht, oben 1 px Licht, rechts 1 px #000 + weiche Abschattung, am Fuß Schmutz (#000 → 0 über 6–14 px).
+- **Tiefe**: stehende Objekte zeigen eine **Seitenfläche** rechts (4–5 px, Ton × 0,55) und eine **Oberfläche** oben (3 px, + 12 % Licht), schräg nach hinten rechts – wir blicken leicht von oben ins Regal. Bretter zeigen ihre Oberseite (5 px bzw. 3 px) vor der Lichtkante.
+- **Schatten**: Schlagschatten als Parallelogramm nach hinten rechts auf die Wand (10 px, #000 38 % → 0), Kontaktschatten wie bisher.
+- **Papier**: Etiketten haben einen **geschnittenen Rand** (Polygon mit Ecken + 1–2 Punkten je Kante, ± 0,6–0,7 px), sind bis ± 1,5° geneigt, haben eine dunklere Unterkante (Dicke), einen weichen Schatten (1, 2) und Fasern; Druck auf Papier steht einen Hauch neben dem Register (zweiter Durchgang 25 %, 0,5 px).
+- **Abnutzung**: 1–2 Kratzer, Macken an Brettkanten, eine eingedrückte Ecke, ± 1 px gedruckte Skalenstriche.
+- **Variation** immer **geseedet** aus einem stabilen Hash der Id (FNV-1a, `Craft.Seed`) – nie `string.GetHashCode` (wechselt pro Prozess). Jedes Objekt sieht bei jedem Start gleich aus.
+- **Kosten**: geteilte Brushes (eine pro Farbe/Alpha, Verläufe relativ), Geometrien pro Größe gecacht, keine Bitmaps pro Kachel, kein Blur. Im Grid kostet der Platzhalter pro Kachel ein Papier-Polygon (gecacht) und zwei Klebestreifen.
 
 ---
 
@@ -870,6 +892,15 @@ Ein horizontales Bühnenbrett voller **Systemrücken** (`Shelf` mit `SystemSpine
 - **Systemwechsel** per Schulter: Wandfarben `BrushTransition` 280 ms. Das alte Motiv gleitet 32 px aus (160 ms), das neue gleitet ein (220 ms). Das Grid wird ausgetauscht (Scene).
 - **Wenige Spiele (≤ 6)**: „Fachende“-Linienzeichnung plus „Weitere Spiele kommen über Importe ins Fach.“ und **Importe öffnen**.
 
+#### 7.4.3 Stand M7 „gezeichnet“ (Owner: „besonders unten, wo die Konsolen aufgelistet sind“)
+
+- **„Noch leer“ = Pappschuber** statt 48 × 148 Farbfelder: Front 40–46 px breit (geseedet), 0–8 px niedriger als die Reihe, Pappton (Wand hell 30 % zu #6B5E4C) mit Fasern, Seitenfläche 5 px, Oberfläche 3 px mit dem **offenen Mund** (dunkler Schlitz), Kanten, Schmutz am Fuß, 1–2 Kratzer, jede zweite mit eingedrückter Ecke. Etwa jeder vierte lehnt (nie der erste) am linken Nachbarn, so weit, dass seine Oberkante aufliegt (asin(7/h)). Darauf ein **Papieretikett** mit Streifen in der Systemfarbe und dem Code in Tinte (Rücken 16; kurze Schuber bis 13, damit lange Codes ganz stehen), im Schatten der Reihe abgetönt.
+- **Fokus zieht den Schuber heraus**: gerade gerichtet, 8 px hoch, Etikett in vollem Papier (Step 140 ms; Reduziert/Aus: ohne Hub, sofort). Kein Lift 1,03 für Schuber.
+- Die Reihe endet an einer **Buchstütze** (`Bookend`, Blech-L mit Stanzschlitz, eigener Schatten; `Shelf.Bookend`), nicht abgeschnitten. Die Breite zählt beim Scrollen mit.
+- **Rücken der Fächerwand und von Start**: Seiten- und Oberfläche, Wölbung, **gedrucktes Farbband** (eingerückt 7/5 px, 10/8 px hoch, Druckkante) statt bündiger Oberkante, Code mit 1-px-Prägung, Spielzahl auf einer **aufgesetzten Plakette** (gefast, zwei Nieten), Motiv mit Relief, Höhe 0/4/8 px niedriger (Start 0/2/4), jede dritte mit abgestoßener Ecke. Die „Alle“-Spine von Start ist dasselbe Objekt (`BoxFace`).
+- **Offene Front**: Lippe (6 px) rundum, das innere Fach ist **eingelassen** (dunklere Rückwand, Innenschatten, Seitenkanten), die Schachteln werfen Schatten auf die Rückwand.
+- **Positionsschiene = Senderskala**: 18-px-Leiste mit gefasten Enden, Maserung, eingravierter Nut; ein Hauptstrich je System in seiner Farbe (± 0,5 px, Länge ± 1, wie Druck), zwei Nebenstriche dazwischen; der **Knopf** (20 × 13, gefast, Griffrillen) mit der Nadel im Systemlicht **gleitet** zum neuen System (Glide 220 ms; bei gehaltener Richtung und Reduziert/Aus springt er), der Code steht auf einem **Papierfähnchen**. „Fach 4 von 12“ steht in einem eingelassenen Fenster mit Rahmen.
+
 #### 7.5.1 Stand M5 (umgesetzt, Entscheidungen beim Bau)
 
 - **Banner** 392 hoch (Wand 368 + Brett 24; ≈ 1100: 320), randlos über die Seitenränder, Textur 8 %. Oben links die Nachbarn als Textbuttons „◤ Game Boy Color  Nintendo DS ◥“ (`ui` 16, Fokus Inversion; nur wenn es Nachbarn gibt), unten links bündig zum Brett: Name gemessen 72/56/44 (≈ 1100: 56/44/36, höchstens 2 Zeilen), der Satz in `read-l`, die Statuszeile mit **Einrichten** (nur ohne Emulator, öffnet Emulatoren) und **⋯ Systeminfo**. Rechts das Motiv 300 (≈ 1100: 220) auf dem Brett, mit Kontaktschatten.
@@ -943,6 +974,16 @@ Kanalanzeige                                       ◀  An  ▶
 - **Lieferschein als Zettel**: Fläche Regal, oben eine 6-px-Zahnung (Abrisskante) in Raum (`Controls/Sawtooth`), Kopf „Lieferschein“ in Rücken 17 Text 2 mit dem Zeitpunkt rechts, Zeilen Wort – gepunktete Führungslinie (Kante, 2 an / 4 aus, `DotLeader`) – Zahl rechtsbündig. Hat der Scan Spiele gebracht, stehen sie als kleine Rücken (24 × 96, Band in Systemfarbe, Titel in Rücken 14) unter den Zahlen. Eine laufende Nummer („Nr. 0042“) gibt es nicht: RetroHub zählt Scans nicht, eine erfundene Nummer wäre unehrlich.
 - **Detail-Auswahl**: Die Auswahlliste für Emulator und Startmodus ist kein Popup mehr, sondern klappt **unter ihrer Zeile** auf (180 ms, schiebt die folgenden Zeilen nach unten), Zeilen 56 px, der Text beginnt genau in der Wertspalte (Zeile + 216), das Häkchen steht links davor. Vor dem Öffnen holt die Seite Zeile und Liste mit 260 px Luft unten in Sicht. Kein Abdunkeln.
 - **Shell**: Das Quadrat vor „Demo-Modus“ ist Text 3 (ein orangefarbenes Quadrat las sich neben der Wortmarke als zweite Standby-LED). Die Fußleiste eines Spiels oder Systems beginnt nie mit einer Werkbank-Seite: von Importe/Emulatoren/Einstellungen aus geöffnet heißt sie „Bibliothek › …“.
+
+#### 7.6.3 Stand M7 „gezeichnet“
+
+- Trennlinien sind **Rillen** (4.3). Das Wertfenster der fokussierten Zeile ist **eingelassen** (`WindowGlass`: Innenschatten oben/links, helle Unterkante, schwache diagonale Spiegelung). Die Pfeile ◀ ▶ sitzen dann auf kleinen **Tasten** (`KeyCap`, 26 × 34, Tiefenkante 3 px), die beim Klick auf 1 px nachgeben.
+- Die „Bereit“-Segmente und der Scan-Balken sind **Kontrolllampen** (`Lamp`: gefaste Linse, Glasglanz oben links, dunkler Fuß, Rand).
+- Die Mini-Rücken der Emulatoren tragen Wölbung, gedrucktes Band und Kanten.
+- **Lieferschein**: unregelmäßig abgerissen (Zahnteilung 12–20 px, Tiefe 4–9 px, geseedet), Papierfasern, Wölbung rechts, Schatten unter der Unterkante, Leitpunkte in leicht wechselnder Stärke (Thermodruck). Der dunkle Papierton bleibt (Kontrast).
+- Die **Spielen-Taste** (und jede `ChamferPlate` mit `Depth`) hat Tastenhub: 3 px dunklere Kante (Ton × 0,66) unter der Fläche, 1 px Licht oben; gedrückt sinkt die Fläche auf 1 px Kante.
+- Der **Fernseher**: Gehäuse mit Korn, Wölbung, Kanten, Schmutz am Fuß, Stufe in die Mulde, Lautsprecherschlitze mit heller Unterlippe.
+- Der **Regalspiegel** zeigt die Rücken mit heller Oberkante und ± 1 px Höhe; die Fokusmarke ist ein Klipp mit gefastem Kopf.
 
 ### 7.7 Stand QA 2 (Gesamt-QA nach M6, Entscheidungen nach der Bildprüfung)
 
@@ -1048,6 +1089,9 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 - **Bretter**: TranslateX der Reihe (Glide bzw. GlideRepeat). Der Ring wandert nicht, er erscheint an der neuen Schachtel.
 - **Konsolen**: Breite des Clip-Containers 128 ↔ 520 (Glide), Inhalt der Front +120 ms (Step), Wand 280 ms.
 - **Aufkleber „Neu“**: 250 ms auspacken.
+- **Schuber „Noch leer“** (M7): Fokus zieht ihn heraus – gerade richten und 8 px heben (Step 140 ms, CubicEaseOut); Reduziert/Aus: kein Hub, Zustand sofort.
+- **Senderskala** (M7): die Nadel gleitet zum neuen System (Glide 220 ms); bei gehaltener Richtung, Reduziert und Aus springt sie.
+- **Tasten** (M7): Spielen-Taste und Pfeiltasten geben beim Drücken nach (Tiefe 3 → 1 px).
 - **Kanalanzeige**: hart, ohne Bewegung.
 
 ### 9.3 Starttransition „Einschalten“ (der eine inszenierte Moment)
@@ -1123,6 +1167,9 @@ Gezeichnet in `CoverArt.DrawPlaceholder`, Seitenverhältnis 0,72 (B/H) hochkant,
 - **Bedruckter Rücken (M3)**: Ab 28 px Bandbreite trägt das Band wie ein echter Rücken oben den Code, darunter den Haupttitel (vor „ – “/„: “) von unten nach oben und am Fuß das Jahr (Archivo Condensed, Text auf Farbe, ≥ 15 px). Dazu kommt eine 1-px-Falzlinie zur Front. Der Titel steht **ganz oder gar nicht**, es gibt nie „Banjo-K…“. **Das Jahr hat Vorrang** (M3-QA): Es steht immer (wenn bekannt), der Titel nur, wenn er daneben ganz passt. So liest sich eine Reihe als ein Druck (Code + Jahr überall, Titel wo Platz ist) statt „nur Titel“ neben „nur Jahr“.
 - **Untertitel mit Schluss** (M3-QA): Passt der Untertitel nicht in seine Zeilen, entfällt die gemeinsame Mitte und nur der letzte Teil wird gedruckt („Ancient Stone Tablets – Kapitel 1“ → „Kapitel 1“). Der unterscheidende Schluss bekommt nie eine Ellipse.
 - **Schmale Hüllen (M1-Rest, M3)**: Passt ein Wort in Archivo Expanded nicht in die Zeile (Wii/Switch), wird der Titel in derselben Größe in **Archivo Condensed** gesetzt, statt die Plakatschrift auf 13 px schrumpfen zu lassen. Die Untergrenze ist dann 15 px.
+
+- **Stand M7 „gezeichnet“**: Der Platzhalter ist eine **leere Hülle mit handbeklebtem Etikett**: Kunststoffglanz (diagonal, 9 % → 0), Scharnier-Rille neben dem Rücken (ab 120 px Breite), das Motiv **eingeprägt** (dunkle Kopie +1/+1, helle −1/−1, Fläche im Wandton mit 16 % Systemfarbe), Kanten, 0–2 Kratzer. Titel und Untertitel stehen in **Tinte auf einem Papieretikett** (#E9DFCC, geschnittener Rand, ± 1,2° geneigt, Innenrand 5–10 px = `CoverArt.LabelPad`, um den die Textbreite schrumpft) mit 1–2 Klebestreifen an den oberen Ecken. Alles geseedet aus dem Titel. Das ersetzt keine Cover-Suche (Switch: GameTDB, 10.1).
+- **Leerer Platz** (`EmptySlot`): statt Strichlinie eine **Staubspur** – die Stelle, an der eine Schachtel stand: Wand minimal sauberer, Staub ringsum (am Fuß am dichtesten), weicher heller Rand. „Daneben im Regal“ zeigt so den Platz der herausgezogenen Schachtel. Vertiefte Fächer (Konsolen leer) mit Innenschatten; die „Gespielt“-Linie ist eine Rille.
 
 ### 10.3 Fehlende Metadaten
 
