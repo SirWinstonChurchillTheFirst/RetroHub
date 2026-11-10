@@ -89,7 +89,7 @@
         <StackPanel Name="Ending" Spacing="0" Margin="0,4,0,0">
           <StackPanel Name="EmptyEnding" IsVisible="{Binding IsEmpty}" Margin="0,24,0,0">
             <StackPanel Name="EmptyPlaces" Orientation="Horizontal" Spacing="24" ClipToBounds="True">
-              <c:EmptyShelfDrawing Tight="True" Width="380" Height="200" VerticalAlignment="Bottom" Margin="0,0,24,0" />
+              <c:EmptyShelfDrawing Name="EmptyDrawing" Tight="True" Width="380" Height="200" VerticalAlignment="Bottom" Margin="0,0,24,0" />
               <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
               <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
               <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />

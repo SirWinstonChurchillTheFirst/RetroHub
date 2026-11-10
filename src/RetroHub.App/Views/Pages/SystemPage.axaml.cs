@@ -43,6 +43,9 @@ public partial class SystemPage : PageBase
             ApplyLight();
         };
         BannerBoard.Casters = [BannerMotif];
+        // the grid does not scroll to focused elements by itself (it snaps rows): the footer's button asks for its place
+        ImportsButton.GotFocus += (_, _) => ImportsButton.BringIntoView();
+        InfoButton.GotFocus += (_, _) => Banner.BringIntoView();
         SizeChanged += (_, e) => ApplySize(e.NewSize);
         InfoScrim.PointerPressed += (_, e) =>
         {
@@ -88,7 +91,14 @@ public partial class SystemPage : PageBase
         BannerText.Margin = new Thickness(0, 0, compact ? 280 : 380, compact ? 36 : 48);
         Neighbours.Margin = new Thickness(-10, compact ? 20 : 28, 0, 0);
         Covers.Spacing = size.Width >= 1600 ? 28 : 20;
-        foreach (var slot in EmptyPlaces.Children.OfType<EmptySlot>().Skip(compact ? 2 : 3)) slot.IsVisible = !compact;
+        // the empty compartment at ≈ 1100: figures 150 high, so the way to the imports stays in view under the banner
+        EmptyDrawing.Width = compact ? 285 : 380;
+        EmptyDrawing.Height = compact ? 150 : 200;
+        foreach (var slot in EmptyPlaces.Children.OfType<EmptySlot>())
+        {
+            slot.Width = compact ? 112 : 150;
+            slot.Height = compact ? 150 : 200;
+        }
     }
 
     /// <summary>
