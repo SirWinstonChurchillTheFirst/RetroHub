@@ -6,20 +6,20 @@
     (SystemAccentColor*) are set at runtime by ThemeManager.
   -->
   <!-- text fields: Regal, 2 px light frame when focused -->
-  <SolidColorBrush x:Key="TextControlForeground" Color="#F4ECDF" />
-  <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#F4ECDF" />
-  <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#F4ECDF" />
-  <SolidColorBrush x:Key="TextControlBackground" Color="#1E1B17" />
-  <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#2A2620" />
-  <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#1E1B17" />
-  <SolidColorBrush x:Key="TextControlBorderBrush" Color="#3A342B" />
-  <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#4A4337" />
-  <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#FFB547" />
-  <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#948A7A" />
-  <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#A79D8C" />
-  <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#948A7A" />
-  <SolidColorBrush x:Key="TextControlButtonForeground" Color="#C9BFAF" />
-  <SolidColorBrush x:Key="TextControlButtonForegroundPointerOver" Color="#F4ECDF" />
+  <SolidColorBrush x:Key="TextControlForeground" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="TextControlBackground" Color="#1A1C20" />
+  <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#24272D" />
+  <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#1A1C20" />
+  <SolidColorBrush x:Key="TextControlBorderBrush" Color="#343840" />
+  <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#474C55" />
+  <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#2FD3F5" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#A0A7B2" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#ADB3BD" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#A0A7B2" />
+  <SolidColorBrush x:Key="TextControlButtonForeground" Color="#C3C8D1" />
+  <SolidColorBrush x:Key="TextControlButtonForegroundPointerOver" Color="#F5F7FA" />
   <Thickness x:Key="TextControlBorderThemeThickness">1</Thickness>
   <Thickness x:Key="TextControlBorderThemeThicknessFocused">2</Thickness>
 
@@ -29,7 +29,7 @@
 
 
   <!-- popups / tooltips -->
-  <SolidColorBrush x:Key="ToolTipBackground" Color="#1E1B17" />
-  <SolidColorBrush x:Key="ToolTipForeground" Color="#F4ECDF" />
-  <SolidColorBrush x:Key="ToolTipBorderBrush" Color="#3A342B" />
+  <SolidColorBrush x:Key="ToolTipBackground" Color="#1A1C20" />
+  <SolidColorBrush x:Key="ToolTipForeground" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="ToolTipBorderBrush" Color="#343840" />
 </ResourceDictionary>

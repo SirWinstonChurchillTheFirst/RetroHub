@@ -368,12 +368,10 @@
   "settings.openFolder": "Ordner öffnen",
   "settings.saveFailed": "Einstellungen konnten nicht gespeichert werden.",
 
-  "accent.amber": "Bernstein",
-  "accent.phosphor": "Phosphor",
-  "accent.tube": "Röhrenweiß",
-  "accent.ice": "Eisblau",
-  "accent.cherry": "Kirsche",
-  "accent.neon": "Neonrosa",
+  "accent.cyan": "Cyan",
+  "accent.white": "Weiß",
+  "accent.signal": "Signalrot",
+  "accent.green": "Grün",
 
   "time.never": "–",
   "time.neverPlayed": "noch nie",

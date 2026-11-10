@@ -90,7 +90,7 @@ public sealed class ShelfMirror : Control
         {
             _systems = (Items?.Cast<object>() ?? []).Select(o => o is GameItemViewModel g
                 ? new Spine(g.SystemId, (g.SystemColorBrush as ISolidColorBrush)?.Color ?? SystemPalette.Get(g.SystemId).Color)
-                : new Spine(null, Color.Parse("#948A7A"))).ToList();
+                : new Spine(null, Color.Parse("#A0A7B2"))).ToList();
             _version++;
             InvalidateVisual();
         }

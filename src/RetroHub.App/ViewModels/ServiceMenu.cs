@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace RetroHub.App.ViewModels;
 
-/// <summary>One value of a service-menu row ("Bernstein", "An", "1,5 s"), optionally with a 16 × 16 colour swatch.</summary>
+/// <summary>One value of a service-menu row ("Cyan", "An", "1,5 s"), optionally with a 16 × 16 colour swatch.</summary>
 public sealed record ServiceValue(object? Value, string Label, IBrush? Swatch = null);
 
 /// <summary>

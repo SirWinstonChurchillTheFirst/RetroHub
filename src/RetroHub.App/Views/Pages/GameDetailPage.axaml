@@ -27,13 +27,13 @@
          date (15, Text 2) over duration (18, Papier), both on 20 px lines, the numbers in Zahl (Archivo SemiExpanded) and
          the words in the UI face so "unter 1 Min." fits the stamp; tilted by hand (static) -->
     <Style Selector="Border.stamp">
-      <Setter Property="BorderBrush" Value="#B3948A7A" />
+      <Setter Property="BorderBrush" Value="#B3A0A7B2" />
       <Setter Property="BorderThickness" Value="2" />
       <Setter Property="Padding" Value="3" />
       <Setter Property="Height" Value="64" />
     </Style>
     <Style Selector="Border.stamp-rule">
-      <Setter Property="BorderBrush" Value="#B3948A7A" />
+      <Setter Property="BorderBrush" Value="#B3A0A7B2" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="Padding" Value="10,0" />
     </Style>
@@ -143,8 +143,8 @@
               <Border Name="DescriptionFade" Height="12" VerticalAlignment="Bottom" IsHitTestVisible="False" IsVisible="False">
                 <Border.Background>
                   <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                    <GradientStop Offset="0" Color="#0014120F" />
-                    <GradientStop Offset="1" Color="#FF14120F" />
+                    <GradientStop Offset="0" Color="#000B0C0E" />
+                    <GradientStop Offset="1" Color="#FF0B0C0E" />
                   </LinearGradientBrush>
                 </Border.Background>
               </Border>
@@ -352,15 +352,15 @@
     <Border Name="TopFade" Height="12" VerticalAlignment="Top" IsHitTestVisible="False" IsVisible="False">
       <Border.Background>
         <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-          <GradientStop Offset="0" Color="#FF14120F" />
-          <GradientStop Offset="1" Color="#0014120F" />
+          <GradientStop Offset="0" Color="#FF0B0C0E" />
+          <GradientStop Offset="1" Color="#000B0C0E" />
         </LinearGradientBrush>
       </Border.Background>
     </Border>
 
     <!-- ===== overlays: the page dims (room-deep, no blur); header and footer stay ===== -->
     <Panel Name="SheetLayer" IsVisible="False" Focusable="True" Background="Transparent">
-      <Border Name="SheetScrim" Background="#B80A0908" />
+      <Border Name="SheetScrim" Background="#B8060708" />
       <!-- Mehr and "Auch im Regal": a list that hangs at its button (Dateiinfo and Weiterlesen fold open in the page) -->
       <!-- R2: the list is a riveted plate of the workbench hanging at its button, not a floating card -->
       <Border Name="SheetPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Width="420" Background="Transparent"

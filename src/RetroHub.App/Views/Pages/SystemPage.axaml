@@ -47,10 +47,10 @@
       <Setter Property="Opacity" Value="1" />
     </Style>
     <Style Selector="Button.wall-tag c|PaperNote">
-      <Setter Property="Paper" Value="#D9CFBC" />
+      <Setter Property="Paper" Value="#DDE1E7" />
     </Style>
     <Style Selector="Button.wall-tag:pointerover c|PaperNote, Button.wall-tag:focus-visible c|PaperNote">
-      <Setter Property="Paper" Value="#EFE6D3" />
+      <Setter Property="Paper" Value="#F2F4F7" />
     </Style>
     <Style Selector="Button.wall-tag:pointerover c|ButtonGlyph">
       <Setter Property="Hot" Value="True" />
@@ -72,7 +72,7 @@
                  StickyInset="64" SnapToEnd="True">
       <c:CoverGrid.Header>
         <Panel Name="Banner" Height="392" ClipToBounds="True">
-          <c:SystemWall Name="BannerWall" Margin="0,0,0,24" SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#948A7A}"
+          <c:SystemWall Name="BannerWall" Margin="0,0,0,24" SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#A0A7B2}"
                         MotifShare="0" TextureOpacity="0.08" SplitHeight="88" Rail="True" />
           <c:ShelfBoard Name="BannerBoard" Height="24" VerticalAlignment="Bottom" WallLook="{Binding System.Look, FallbackValue={x:Null}}" />
           <Panel Name="BannerContent" Margin="{DynamicResource RhPageInsetX}">
@@ -86,7 +86,7 @@
                     <c:PaperNote.RenderTransform>
                       <RotateTransform Angle="-1.4" />
                     </c:PaperNote.RenderTransform>
-                    <TextBlock Classes="ui" FontSize="16" Foreground="#1A1714" Text="{Binding Previous.Name, FallbackValue={x:Null}}" />
+                    <TextBlock Classes="ui" FontSize="16" Foreground="#0B0C0E" Text="{Binding Previous.Name, FallbackValue={x:Null}}" />
                   </c:PaperNote>
                 </StackPanel>
               </Button>
@@ -96,7 +96,7 @@
                     <c:PaperNote.RenderTransform>
                       <RotateTransform Angle="1.1" />
                     </c:PaperNote.RenderTransform>
-                    <TextBlock Classes="ui" FontSize="16" Foreground="#1A1714" Text="{Binding Next.Name, FallbackValue={x:Null}}" />
+                    <TextBlock Classes="ui" FontSize="16" Foreground="#0B0C0E" Text="{Binding Next.Name, FallbackValue={x:Null}}" />
                   </c:PaperNote>
                   <c:ButtonGlyph Action="PageRight" Quiet="True" VerticalAlignment="Center" />
                 </StackPanel>
@@ -125,7 +125,7 @@
               </StackPanel>
             </StackPanel>
             <c:MotifView Name="BannerMotif" Width="300" Height="300" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,24"
-                         SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#948A7A}" />
+                         SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#A0A7B2}" />
           </Panel>
         </Panel>
       </c:CoverGrid.Header>
@@ -153,7 +153,7 @@
               <c:PaperNote.RenderTransform>
                 <RotateTransform Angle="-1.2" />
               </c:PaperNote.RenderTransform>
-              <TextBlock Name="FewText" Classes="read-l" Text="{l:T system.fewGames}" Foreground="#1A1714" TextWrapping="Wrap" />
+              <TextBlock Name="FewText" Classes="read-l" Text="{l:T system.fewGames}" Foreground="#0B0C0E" TextWrapping="Wrap" />
             </c:PaperNote>
             <Button Name="ImportsButton" MinHeight="48" Padding="24,0" Command="{Binding OpenImportsCommand}" VerticalAlignment="Center" HorizontalAlignment="Left">
               <Button.IsVisible>
@@ -207,7 +207,7 @@
         </Button>
       </StackPanel>
       <c:MotifView Name="CompactMotif" Width="44" Height="44" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,120,0"
-                   SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#948A7A}" />
+                   SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#A0A7B2}" />
       <c:ShelfBoard Name="CompactBoard" Height="6" Width="76" HorizontalAlignment="Right" Margin="0,58,104,0"
                     WallLook="{Binding System.Look, FallbackValue={x:Null}}" />
     </Panel>
@@ -216,29 +216,29 @@
          system's colour band, the name in the poster face, the motif top right on a board line, labels in the code face,
          values in Cascadia. Square (R 0), 1 px edge plus a 1 px light edge on top. ===== -->
     <Panel Name="InfoLayer" IsVisible="{Binding IsInfoOpen}" Background="Transparent">
-      <Border Name="InfoScrim" Background="#B80A0908" />
+      <Border Name="InfoScrim" Background="#B8060708" />
       <!-- QA 2: the one sheet left in the product, one template – Regal, the 8 px system band on top, the name in
            Rücken 22, the key/value grid of an opened Emulatoren row (keys Etikett 15 Text 3, 168 wide; values read
            Text 2 at + 200; folders and extensions in Cascadia Mono Regular 15). It hangs under the banner's action row
            like the detail's "Mehr" list hangs at its button – no centred modal. -->
       <!-- R2: an index card (Karteikarte) of light paper taped onto the page – the head line in red, ruled lines every
            32 px, ink text; a tab in the system's colour on its top edge. It drops in from 16 px above and settles. -->
-      <c:PaperNote Name="InfoPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Width="760" SeedText="systeminfo" Paper="#ECE3D1"
+      <c:PaperNote Name="InfoPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Width="760" SeedText="systeminfo" Paper="#F2F4F7"
                    RuleStep="32" RuleTop="62" RenderTransformOrigin="50%,0%">
         <c:PaperNote.Styles>
           <Style Selector="TextBlock.kv-key">
-            <Setter Property="Foreground" Value="#6E6457" />
+            <Setter Property="Foreground" Value="#5A616C" />
           </Style>
           <Style Selector="TextBlock.kv-value, TextBlock.kv-mono">
-            <Setter Property="Foreground" Value="#2A241D" />
+            <Setter Property="Foreground" Value="#1C1F24" />
           </Style>
           <Style Selector="Run.name">
-            <Setter Property="Foreground" Value="#1A1714" />
+            <Setter Property="Foreground" Value="#0B0C0E" />
           </Style>
           <!-- the close key: an ink outline on the card, filled ink when focused (the card's own inversion) -->
           <Style Selector="Button#InfoCloseButton">
-            <Setter Property="Foreground" Value="#1A1714" />
-            <Setter Property="BorderBrush" Value="#1A1714" />
+            <Setter Property="Foreground" Value="#0B0C0E" />
+            <Setter Property="BorderBrush" Value="#0B0C0E" />
             <Setter Property="BorderThickness" Value="1.5" />
             <Setter Property="Background" Value="Transparent" />
           </Style>
@@ -249,17 +249,17 @@
             <Setter Property="Background" Value="#22000000" />
           </Style>
           <Style Selector="Button#InfoCloseButton:focus-visible">
-            <Setter Property="Foreground" Value="#ECE3D1" />
+            <Setter Property="Foreground" Value="#F2F4F7" />
           </Style>
           <Style Selector="Button#InfoCloseButton:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#1A1714" />
+            <Setter Property="Background" Value="#0B0C0E" />
           </Style>
         </c:PaperNote.Styles>
         <StackPanel Spacing="0">
           <Border Height="8" Width="120" HorizontalAlignment="Left" Margin="32,0,0,0" Background="{Binding System.AccentBrush, FallbackValue={x:Null}}" />
           <StackPanel Spacing="0" Margin="32,18,32,24">
             <TextBlock Name="InfoTitle" FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="22" LineHeight="28" LetterSpacing="0.6"
-                       Foreground="#1A1714" Margin="0,0,0,14" Text="{Binding System.Name, FallbackValue={x:Null}}" TextWrapping="Wrap" />
+                       Foreground="#0B0C0E" Margin="0,0,0,14" Text="{Binding System.Name, FallbackValue={x:Null}}" TextWrapping="Wrap" />
             <ItemsControl ItemsSource="{Binding InfoLines}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:InfoLine">

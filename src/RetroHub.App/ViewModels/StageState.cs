@@ -39,7 +39,7 @@ public sealed record StageState(
     /// <summary>The box on the stage: the game itself, or the last played game of the system.</summary>
     public GameItemViewModel? Box => Game;
 
-    /// <summary>The label line in the "Licht" of the subject's system (DESIGN 7.1: "Etikett 18, Licht"; Bernstein is not on the list).</summary>
+    /// <summary>The label line in the "Licht" of the subject's system (DESIGN 7.1: "Etikett 18, Licht"; Cyan is not on the list).</summary>
     public IBrush LabelBrush => SystemId != null ? Theming.SystemPalette.Get(SystemId, Accent).LightBrush : Brushes.Transparent;
 
     /// <summary>Same subject (the view only re-animates the text when the subject changed).</summary>

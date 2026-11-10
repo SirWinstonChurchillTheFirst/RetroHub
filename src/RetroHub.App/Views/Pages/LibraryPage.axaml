@@ -73,7 +73,7 @@
     <Style Selector="Button.shoulder:pressed c|ButtonGlyph">
       <Setter Property="Hot" Value="True" />
     </Style>
-    <!-- favourites tool on: the star filled in favourite yellow (the status colour, never Bernstein) -->
+    <!-- favourites tool on: the star filled in favourite yellow (the status colour, never Cyan) -->
     <Style Selector="ToggleButton#FavToggle:checked c|RhIcon#FavIcon">
       <Setter Property="Filled" Value="True" />
       <Setter Property="Foreground" Value="{DynamicResource RhFavoriteBrush}" />
@@ -103,7 +103,7 @@
               <DataTemplate x:DataType="vm:FilterChip">
                 <Button Theme="{StaticResource RhTickerItem}" Classes="ticker" Classes.selected="{Binding IsSelected}"
                         Command="{Binding $parent[p:PageBase].((vm:LibraryViewModel)DataContext).SelectChipCommand}" CommandParameter="{Binding}">
-                  <!-- code chip and count on one line; the 3 px underline in the system's colour (Bernstein for "Alle")
+                  <!-- code chip and count on one line; the 3 px underline in the system's colour (Cyan for "Alle")
                        sits under the code, 6 px below the baseline -->
                   <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto" Margin="0,7,0,0">
                     <Border Classes="code-chip">
@@ -161,7 +161,7 @@
             <TextBlock Classes="tool-label" Text="{l:T library.favorites}" VerticalAlignment="Center" />
           </StackPanel>
         </ToggleButton>
-        <!-- one view tool (no second "selected" underline: Bernstein belongs to the ticker's "Alle") -->
+        <!-- one view tool (no second "selected" underline: Cyan belongs to the ticker's "Alle") -->
         <Button Name="ViewToggle" Theme="{StaticResource RhGhostButton}" Height="44" MinHeight="44" Padding="11,0" Command="{Binding ToggleViewCommand}"
                 ToolTip.Tip="{l:T library.view}" AutomationProperties.Name="{l:T library.view}">
           <StackPanel Orientation="Horizontal" Spacing="8">

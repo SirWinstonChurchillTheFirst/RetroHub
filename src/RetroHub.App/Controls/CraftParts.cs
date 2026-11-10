@@ -63,7 +63,7 @@ public sealed class WindowGlass : Control
 public sealed class KeyCap : Control
 {
     public static readonly StyledProperty<bool> PressedProperty = AvaloniaProperty.Register<KeyCap, bool>(nameof(Pressed));
-    private static readonly Color Face = Color.Parse("#36312A");
+    private static readonly Color Face = Color.Parse("#32353C");
 
     static KeyCap()
     {
@@ -131,7 +131,7 @@ public sealed class Lamp : Control
 /// </summary>
 public sealed class PaperSlip : Control
 {
-    /// <summary>Light paper (R3: the Lieferschein is #E9E1CF printed in ink): darker fibres, a warm age tone at the edges.</summary>
+    /// <summary>Light paper (R3: the Lieferschein is #F2F4F7 printed in ink): darker fibres, a cool grey age tone at the edges.</summary>
     public static readonly StyledProperty<bool> LightProperty = AvaloniaProperty.Register<PaperSlip, bool>(nameof(Light));
 
     public bool Light { get => GetValue(LightProperty); set => SetValue(LightProperty, value); }
@@ -143,7 +143,7 @@ public sealed class PaperSlip : Control
         ClipToBoundsProperty.OverrideDefaultValue<PaperSlip>(false);
     }
 
-    private static readonly Color Age = Color.Parse("#8A6A3C");
+    private static readonly Color Age = Color.Parse("#8C95A3");
 
     public override void Render(DrawingContext ctx)
     {
@@ -202,7 +202,7 @@ public sealed class PaperNote : Decorator
     public Color Paper { get => GetValue(PaperProperty); set => SetValue(PaperProperty, value); }
     public bool Tape { get => GetValue(TapeProperty); set => SetValue(TapeProperty, value); }
 
-    private static readonly IImmutableSolidColorBrush TapeBrush = new ImmutableSolidColorBrush(Craft.A(Color.Parse("#F2EAD8"), 0.42));
+    private static readonly IImmutableSolidColorBrush TapeBrush = new ImmutableSolidColorBrush(Craft.A(Color.Parse("#EEF2F6"), 0.42));
 
     public override void Render(DrawingContext ctx)
     {
@@ -237,7 +237,7 @@ public sealed class PaperNote : Decorator
 
 /// <summary>
 /// The value plate of the focused service row (R2, replaces the black 320 × 40 display box that read as a stock spin
-/// box): a split-flap card set into the bench – an upper and a lower leaf in warm grey (the upper one lit), the gap
+/// box): a split-flap card set into the bench – an upper and a lower leaf in neutral grey (the upper one lit), the gap
 /// between them, a hinge pin at each side in the light colour, a recessed frame and the card's shadow on the bench.
 /// The text lies on it; <see cref="FlapLeaf"/> above the text draws the split across the figures and the flip.
 /// </summary>
@@ -245,8 +245,8 @@ public sealed class FlapPlate : Control
 {
     public static readonly StyledProperty<IBrush?> PinProperty = AvaloniaProperty.Register<FlapPlate, IBrush?>(nameof(Pin));
 
-    internal static readonly Color Upper = Color.Parse("#302B25");
-    internal static readonly Color Lower = Color.Parse("#28241E");
+    internal static readonly Color Upper = Color.Parse("#2C2F35");
+    internal static readonly Color Lower = Color.Parse("#24272C");
 
     static FlapPlate()
     {
@@ -404,7 +404,7 @@ public sealed class SystemNiche : Control
         var r = new Rect(Bounds.Size);
         if (r.Width < 40 || r.Height < 40 || Look is not { } look) return;
         // the lip of the compartment, then the wall set back into it
-        ctx.FillRectangle(Craft.Solid(Color.Parse("#1B1814")), r);
+        ctx.FillRectangle(Craft.Solid(Color.Parse("#17191C")), r);
         var inner = r.Deflate(6);
         SystemWall.Draw(ctx, this, inner, look, band: 6, motifShare: 0, motifInset: 0);
         var boardY = Math.Round(inner.Bottom - 26);
@@ -431,7 +431,7 @@ public sealed class SystemNiche : Control
 /// </summary>
 public sealed class PanelPlate : Control
 {
-    internal static readonly Color Body = Color.Parse("#25211C");
+    internal static readonly Color Body = Color.Parse("#212328");
 
     static PanelPlate()
     {
@@ -461,7 +461,7 @@ public sealed class PanelPlate : Control
         foreach (var (x, y) in new[] { (r.X + 10, r.Y + 10), (r.Right - 14, r.Y + 10), (r.X + 10, r.Bottom - 14), (r.Right - 14, r.Bottom - 14) })
         {
             ctx.DrawEllipse(Craft.Dark(0.55), null, new Rect(x, y + 0.5, 4, 4));
-            ctx.DrawEllipse(Craft.Solid(Color.Parse("#4A443A")), null, new Rect(x, y, 4, 4));
+            ctx.DrawEllipse(Craft.Solid(Color.Parse("#454A53")), null, new Rect(x, y, 4, 4));
             ctx.DrawEllipse(Craft.Hi(0.25), null, new Rect(x + 0.8, y + 0.6, 1.6, 1.4));
         }
     }
@@ -474,7 +474,7 @@ public sealed class PanelPlate : Control
 /// </summary>
 public sealed class FooterLip : Control
 {
-    private static readonly IImmutableSolidColorBrush Face = new ImmutableSolidColorBrush(Color.Parse("#1F1B17"));
+    private static readonly IImmutableSolidColorBrush Face = new ImmutableSolidColorBrush(Color.Parse("#1C1E22"));
 
     static FooterLip()
     {

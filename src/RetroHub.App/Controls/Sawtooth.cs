@@ -62,7 +62,7 @@ public sealed class Sawtooth : Control
 /// </summary>
 public sealed class DotLeader : Control
 {
-    private static readonly IImmutableSolidColorBrush Dot = new ImmutableSolidColorBrush(Color.Parse("#3A342B"));
+    private static readonly IImmutableSolidColorBrush Dot = new ImmutableSolidColorBrush(Color.Parse("#343840"));
 
     static DotLeader()
     {

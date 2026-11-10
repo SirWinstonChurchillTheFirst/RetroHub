@@ -39,14 +39,14 @@ public sealed class FlightLayer : Canvas
     private readonly Image _copy = new() { Stretch = Stretch.Fill, IsVisible = false };
     private readonly Border _line = new() { IsVisible = false };
     private readonly Border _edgeTop = new() { IsVisible = false }, _edgeBottom = new() { IsVisible = false };
-    private readonly Border _flash = new() { IsVisible = false, Background = new ImmutableSolidColorBrush(Color.FromArgb(0x40, 0xF4, 0xEC, 0xDF)) };
-    private readonly Border _off = new() { IsVisible = false, Background = new ImmutableSolidColorBrush(Color.FromRgb(0x0A, 0x09, 0x08)) };
+    private readonly Border _flash = new() { IsVisible = false, Background = new ImmutableSolidColorBrush(Color.FromArgb(0x40, 0xF5, 0xF7, 0xFA)) };
+    private readonly Border _off = new() { IsVisible = false, Background = new ImmutableSolidColorBrush(Color.FromRgb(0x06, 0x07, 0x08)) };
     /// <summary>The picture collapsing on the switch-off: a lit tube (Regal) on the closed room-deep backdrop.</summary>
-    private readonly Border _tube = new() { IsVisible = false, Background = new ImmutableSolidColorBrush(Color.FromRgb(0x1E, 0x1B, 0x17)) };
+    private readonly Border _tube = new() { IsVisible = false, Background = new ImmutableSolidColorBrush(Color.FromRgb(0x1A, 0x1C, 0x20)) };
     private readonly DispatcherTimer _timer;
     private readonly System.Diagnostics.Stopwatch _clock = new();
     private Rect _from;
-    private Color _light = Color.Parse("#FFB547");
+    private Color _light = Color.Parse("#2FD3F5");
     private EffectiveMotion _motion = EffectiveMotion.Full;
     private bool _off_mode, _running;
     private Control? _hidden;

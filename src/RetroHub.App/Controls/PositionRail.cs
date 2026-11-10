@@ -35,10 +35,10 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
     public static readonly StyledProperty<double> NeedleProperty =
         AvaloniaProperty.Register<PositionRail, double>(nameof(Needle), double.NaN);
 
-    private static readonly IImmutableSolidColorBrush Text2 = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
-    private static readonly IImmutableSolidColorBrush Text3 = new ImmutableSolidColorBrush(Color.Parse("#8C8273"));
-    private static readonly Color Strip = Color.Parse("#38332B");
-    private static readonly Color Knob = Color.Parse("#5C5548");
+    private static readonly IImmutableSolidColorBrush Text2 = new ImmutableSolidColorBrush(Color.Parse("#C3C8D1"));
+    private static readonly IImmutableSolidColorBrush Text3 = new ImmutableSolidColorBrush(Color.Parse("#979EA9"));
+    private static readonly Color Strip = Color.Parse("#30333A");
+    private static readonly Color Knob = Color.Parse("#575C66");
 
     /// <summary>The dial strip: 16 px, its bottom 4 px above the control's bottom; the groove runs through its middle.</summary>
     private const double StripHeight = 18, StripFromBottom = 3;

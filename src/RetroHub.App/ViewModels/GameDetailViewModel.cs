@@ -214,8 +214,8 @@ public sealed partial class GameDetailViewModel : PageViewModel
     }
 
     /// <summary>Raum-Tief 72 % (the lists) and 96 % (the cover and the screens large: QA 2, nothing of the page reads through).</summary>
-    public static readonly Avalonia.Media.Color SheetDim = Avalonia.Media.Color.FromArgb(0xB8, 0x0A, 0x09, 0x08),
-        SheetDimDeep = Avalonia.Media.Color.FromArgb(0xF5, 0x0A, 0x09, 0x08);
+    public static readonly Avalonia.Media.Color SheetDim = Avalonia.Media.Color.FromArgb(0xB8, 0x06, 0x07, 0x08),
+        SheetDimDeep = Avalonia.Media.Color.FromArgb(0xF5, 0x06, 0x07, 0x08);
 
     /// <summary>Shoulder left/right: the view jumps to the previous/next section (Bühne, Über das Spiel, Start).</summary>
     public event Action<int>? SectionRequested;

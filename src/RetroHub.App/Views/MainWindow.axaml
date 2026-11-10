@@ -54,7 +54,7 @@
         <Border Name="DragBar" Background="Transparent" />
         <Grid Name="TopBar" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="48,0,170,0">
           <StackPanel Name="BrandBar" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Background="Transparent">
-            <!-- the standby LED: the one Bernstein square of the word mark -->
+            <!-- the standby LED: the one Cyan square of the word mark -->
             <Border Width="8" Height="8" Background="{DynamicResource RhAccentBrush}" VerticalAlignment="Center" Margin="0,2,0,0" />
             <TextBlock Text="RetroHub" FontFamily="{DynamicResource RhFontPoster}" FontWeight="ExtraBold" FontSize="20" VerticalAlignment="Center" />
           </StackPanel>
@@ -101,7 +101,7 @@
           </StackPanel>
           <!-- demo mode: plain text (label 15, Text 3) after a 6 × 6 square in Text 3 – no fill: a paper block was the
                brightest thing in the header and competed with the active channel (M3 QA); an orange square read as a
-               second standby light beside the word mark's (M6 QA). Bernstein stays reserved (2.2). -->
+               second standby light beside the word mark's (M6 QA). Cyan stays reserved (2.2). -->
           <StackPanel Name="DemoChip" Grid.Column="4" Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowDemoChip}" Background="Transparent"
                       ToolTip.Tip="{l:T shell.demo.tip}" VerticalAlignment="Center" Margin="24,0,0,0">
             <Border Width="6" Height="6" Background="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />
@@ -135,15 +135,15 @@
         <Border Grid.Row="1" Height="40" VerticalAlignment="Bottom" IsHitTestVisible="False">
           <Border.Background>
             <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-              <GradientStop Offset="0" Color="#0014120F" />
-              <GradientStop Offset="0.45" Color="#8014120F" />
-              <GradientStop Offset="1" Color="#F014120F" />
+              <GradientStop Offset="0" Color="#000B0C0E" />
+              <GradientStop Offset="0.45" Color="#800B0C0E" />
+              <GradientStop Offset="1" Color="#F00B0C0E" />
             </LinearGradientBrush>
           </Border.Background>
         </Border>
 
         <!-- ============ Footer: location sentence + context hints ============ -->
-        <Border Name="HintBar" Grid.Row="2" Background="#FA14120F">
+        <Border Name="HintBar" Grid.Row="2" Background="#FA0B0C0E">
           <Panel>
           <c:FooterLip VerticalAlignment="Top" />
           <Grid ColumnDefinitions="*,Auto" Margin="48,0,40,0">
@@ -282,13 +282,13 @@
                 </c:PaperNote.RenderTransform>
                 <Grid ColumnDefinitions="Auto,10,*" VerticalAlignment="Center">
                   <Panel VerticalAlignment="Center">
-                    <c:RhIcon Data="{StaticResource Icon.Info}" Width="18" Height="18" Foreground="#4A4238" IsVisible="{Binding IsInfo}" />
+                    <c:RhIcon Data="{StaticResource Icon.Info}" Width="18" Height="18" Foreground="#3C424B" IsVisible="{Binding IsInfo}" />
                     <c:RhIcon Data="{StaticResource Icon.Ok}" Width="18" Height="18" Foreground="#2F6B3F" IsVisible="{Binding IsSuccess}" />
-                    <c:RhIcon Data="{StaticResource Icon.Warning}" Width="18" Height="18" Foreground="#94570A" IsVisible="{Binding IsWarning}" />
+                    <c:RhIcon Data="{StaticResource Icon.Warning}" Width="18" Height="18" Foreground="#C2410C" IsVisible="{Binding IsWarning}" />
                     <c:RhIcon Data="{StaticResource Icon.Error}" Width="18" Height="18" Foreground="#A2302A" IsVisible="{Binding IsError}" />
                   </Panel>
                   <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="16" TextTrimming="CharacterEllipsis" MaxLines="1">
-                    <Run Text="{Binding Text}" FontWeight="SemiBold" Foreground="#1A1714" /><Run Text="{Binding DetailRun}" Foreground="#5A5248" />
+                    <Run Text="{Binding Text}" FontWeight="SemiBold" Foreground="#0B0C0E" /><Run Text="{Binding DetailRun}" Foreground="#4F5560" />
                   </TextBlock>
                 </Grid>
               </c:PaperNote>

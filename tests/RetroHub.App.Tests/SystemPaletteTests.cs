@@ -7,8 +7,8 @@ namespace RetroHub.App.Tests;
 /// <summary>The rules of DESIGN 2.4 for the per-system colours (housing walls, colour band, light).</summary>
 public class SystemPaletteTests
 {
-    private static readonly Color Room = Color.Parse("#14120F");
-    private static readonly Color Paper = Color.Parse("#F4ECDF");
+    private static readonly Color Room = Color.Parse("#0B0C0E");
+    private static readonly Color Paper = Color.Parse("#F5F7FA");
 
     public static TheoryData<string> Systems()
     {
@@ -119,7 +119,7 @@ public class SystemPaletteTests
     [Theory]
     [InlineData("nes", "#EE8481")]
     [InlineData("gb", "#DAF47C")]
-    [InlineData("gba", "#A499EA")]
+    [InlineData("gba", "#9D91E8")] // v2: brighter paper keeps the colour undarkened
     [InlineData("wii", "#7CD4F3")]
     [InlineData("ps2", "#899DE6")]
     [InlineData("psp", "#A6B2C9")]
@@ -172,8 +172,8 @@ public class SystemPaletteTests
         Assert.Equal(21.0, ColorUtil.Contrast(Colors.Black, Colors.White), 2);
         Assert.Equal(1.0, ColorUtil.Contrast(Room, Room), 3);
         Assert.Equal(0.0, ColorUtil.DeltaE2000(Paper, Paper), 6);
-        // DESIGN 2.1: paper on the room 15.9 : 1, Bernstein 10.6 : 1
-        Assert.InRange(ColorUtil.Contrast(Paper, Room), 15.7, 16.1);
-        Assert.InRange(ColorUtil.Contrast(Color.Parse("#FFB547"), Room), 10.4, 10.8);
+        // DESIGN 2.1 (v2): paper on the room 18.3 : 1, Cyan 11.0 : 1
+        Assert.InRange(ColorUtil.Contrast(Paper, Room), 18.1, 18.5);
+        Assert.InRange(ColorUtil.Contrast(Color.Parse("#2FD3F5"), Room), 10.8, 11.2);
     }
 }

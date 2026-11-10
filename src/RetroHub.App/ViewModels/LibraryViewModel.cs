@@ -27,7 +27,7 @@ public sealed partial class FilterChip : ObservableObject
 {
     public string? SystemId { get; init; }
     public required string Label { get; init; }
-    /// <summary>The system's "Farbe" for the 3 px underline (null for "Alle": Bernstein, DESIGN 2.2 (4)).</summary>
+    /// <summary>The system's "Farbe" for the 3 px underline (null for "Alle": Cyan, DESIGN 2.2 (4)).</summary>
     public IBrush? MarkBrush { get; init; }
     public bool IsAll => SystemId == null;
     [ObservableProperty] public partial int Count { get; set; }
@@ -277,7 +277,7 @@ public sealed partial class LibraryViewModel : PageViewModel
             Backdrop = new BackdropSpec(BackdropKind.Room, AccentBoard: true);
             return;
         }
-        var accent = ColorUtil.Parse(def.Accent, Color.Parse("#948A7A"));
+        var accent = ColorUtil.Parse(def.Accent, Color.Parse("#A0A7B2"));
         var look = SystemPalette.Get(systemId, accent);
         SlotAspect = SlotAspectFor(systemId, sized ?? []);
         BannerTitle = def.Name;
@@ -376,7 +376,7 @@ public sealed partial class LibraryViewModel : PageViewModel
         {
             var n = stats.GamesPerSystem.GetValueOrDefault(sys.Id);
             if (n <= 0) continue;
-            var look = SystemPalette.Get(sys.Id, ColorUtil.Parse(sys.Accent, Color.Parse("#948A7A")));
+            var look = SystemPalette.Get(sys.Id, ColorUtil.Parse(sys.Accent, Color.Parse("#A0A7B2")));
             wanted.Add((sys.Id, string.IsNullOrEmpty(sys.ShortName) ? sys.Name : sys.ShortName, n, look.ColorBrush));
         }
         var same = Chips.Count == wanted.Count && Chips.Select(c => c.SystemId).SequenceEqual(wanted.Select(w => w.Id));

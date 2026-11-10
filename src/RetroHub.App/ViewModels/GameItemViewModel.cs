@@ -87,7 +87,7 @@ public sealed partial class GameItemViewModel : ObservableObject
         SystemId = game.SystemId;
         SystemName = sys?.Name ?? game.SystemId;
         SystemShort = string.IsNullOrEmpty(sys?.ShortName) ? game.SystemId.ToUpperInvariant() : sys!.ShortName;
-        Accent = ColorUtil.Parse(sys?.Accent, Color.Parse("#948A7A"));
+        Accent = ColorUtil.Parse(sys?.Accent, Color.Parse("#A0A7B2"));
         var look = SystemPalette.Get(game.SystemId, Accent);
         AccentBrush = look.ColorBrush;
         SystemColorBrush = look.ColorBrush;

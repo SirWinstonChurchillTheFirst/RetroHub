@@ -160,6 +160,132 @@ public class MouseReachabilityTests
         w.Close();
     });
 
+    // ===================== every page: nothing a mouse can see is covered or caption =====================
+
+    /// <summary>Whether a window point lies inside every clipping ancestor of <paramref name="v"/> (else the user cannot see it there).</summary>
+    private static bool Unclipped(Window w, Visual v, Point p)
+    {
+        if (p.X < 1 || p.Y < 1 || p.X > w.Bounds.Width - 1 || p.Y > w.Bounds.Height - 1) return false;
+        foreach (var a in v.GetVisualAncestors().OfType<Visual>())
+        {
+            if (!a.ClipToBounds) continue;
+            var q = w.TranslatePoint(p, a);
+            if (q is not { } local || local.X < 0 || local.Y < 0 || local.X > a.Bounds.Width || local.Y > a.Bounds.Height) return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Every visible, enabled button of the current window state whose centre the user can see: the pointer's hit test
+    /// there lands on the button (no transparent layer, fade or stage over it) and the window answers "client" (no
+    /// caption role above it). Returns the offenders.
+    /// </summary>
+    private static List<string> CoveredButtons(Window w, Func<Visual, bool>? allowedCover = null)
+    {
+        var offenders = new List<string>();
+        var buttons = w.GetVisualDescendants().OfType<Button>()
+            .Where(b => b.IsEffectivelyVisible && b.IsEffectivelyEnabled && b.IsHitTestVisible && b.Bounds.Width >= 8 && b.Bounds.Height >= 8)
+            .Where(b => b.FindAncestorOfType<Button>() == null) // a button inside a button is the outer one's part
+            // switched off with its layer (e.g. the Systemseite's compact header while the banner shows: transparent, not hit-testable)
+            .Where(b => b.GetVisualAncestors().OfType<Visual>().All(a => a.Opacity > 0.05 && (a is not InputElement ie || ie.IsHitTestVisible)))
+            .Where(b => b.Name is not ("MinimizeButton" or "MaximizeButton" or "CloseButton")) // the caption buttons keep their system roles
+            .ToList();
+        foreach (var b in buttons)
+        {
+            var p = b.TranslatePoint(new Point(b.Bounds.Width / 2, b.Bounds.Height / 2), w);
+            if (p is not { } c || !Unclipped(w, b, c)) continue;
+            var hit = w.InputHitTest(c) as Visual;
+            var name = b.Name ?? b.GetValue(Avalonia.Automation.AutomationProperties.NameProperty) ?? b.DataContext?.ToString() ?? b.GetType().Name;
+            if (hit != b && (hit == null || !b.IsVisualAncestorOf(hit)))
+            {
+                if (hit != null && allowedCover != null && hit.GetSelfAndVisualAncestors().OfType<Visual>().Any(allowedCover)) continue;
+                offenders.Add($"{b.GetType().Name} '{name}' at {c}: hit {hit?.GetType().Name ?? "nothing"} '{(hit as Control)?.Name}'");
+                continue;
+            }
+            var role = ChromeRoleAt(w, c);
+            if (role is not (null or WindowDecorationsElementRole.User or WindowDecorationsElementRole.DecorationsElement))
+                offenders.Add($"{b.GetType().Name} '{name}' at {c}: window role {role}");
+        }
+        return offenders;
+    }
+
+    [Theory]
+    [InlineData(1920, 1080)]
+    [InlineData(1100, 700)]
+    public Task Every_visible_button_on_every_page_takes_the_mouse(int width, int height) => UiTest.Run(() =>
+    {
+        var (w, vm) = Open(width, height);
+        var game = AnyGame(vm);
+        var report = new List<string>();
+        void Check(string page, Func<Visual, bool>? allowed = null)
+        {
+            TestSupport.Settle(250);
+            report.AddRange(CoveredButtons(w, allowed).Select(o => $"{page}: {o}"));
+        }
+        // Start: the boxes of the shelves below the active one lie under the fade on purpose (a click there brings the
+        // next shelf up – its own test)
+        Check("Start", v => v is Control { Name: "ShelfFade" });
+        vm.Navigator.Navigate(PageKey.Library);
+        TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true, Items.Count: > 0 }, 8000);
+        Check("Bibliothek");
+        ((LibraryViewModel)vm.CurrentPage!).IsListView = true;
+        Check("Bibliothek/Liste");
+        ((LibraryViewModel)vm.CurrentPage!).IsListView = false;
+        vm.Navigator.Navigate(PageKey.Systems);
+        TestSupport.Pump(() => vm.CurrentPage is SystemsViewModel { IsLoaded: true }, 8000);
+        Check("Konsolen");
+        vm.Navigator.Navigate(PageKey.System, game.SystemId);
+        TestSupport.Pump(() => vm.CurrentPage is SystemViewModel { IsLoaded: true }, 8000);
+        Check("Systemseite");
+        vm.Navigator.Navigate(PageKey.GameDetail, game);
+        TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel { Game: not null }, 8000);
+        Check("Detail");
+        vm.Navigator.Navigate(PageKey.Emulators);
+        TestSupport.Pump(() => vm.CurrentPage is EmulatorsViewModel, 8000);
+        Check("Emulatoren");
+        vm.Navigator.Navigate(PageKey.Imports);
+        TestSupport.Pump(() => vm.CurrentPage is ImportsViewModel, 8000);
+        Check("Importe");
+        vm.Navigator.Navigate(PageKey.Settings);
+        TestSupport.Pump(() => vm.CurrentPage is SettingsViewModel, 8000);
+        Check("Einstellungen");
+        Assert.True(report.Count == 0, string.Join("\n", report));
+        w.Close();
+    });
+
+    [Fact]
+    public Task Systemseite_wheel_scrolls_and_the_compact_header_keeps_the_neighbours_for_the_mouse() => UiTest.Run(() =>
+    {
+        var (w, vm) = Open(1100, 700);
+        var biggest = vm.Ctx.Services.Games.Query(new GameQuery()).Select(id => vm.Ctx.Items.Get(id))
+            .GroupBy(g => g.SystemId).OrderByDescending(g => g.Count()).First().Key;
+        vm.Navigator.Navigate(PageKey.System, biggest);
+        TestSupport.Pump(() => vm.CurrentPage is SystemViewModel { IsLoaded: true }, 8000);
+        TestSupport.Settle(300);
+        var page = (SystemViewModel)vm.CurrentPage!;
+        var covers = w.GetVisualDescendants().OfType<CoverGrid>().First(c => c.Name == "Covers" && c.IsEffectivelyVisible);
+        var compact = w.GetVisualDescendants().OfType<Panel>().First(p => p.Name == "CompactHeader" && p.IsEffectivelyVisible);
+        var p = Center(w, covers);
+        w.MouseMove(p);
+        for (var i = 0; i < 12 && !compact.IsHitTestVisible; i++)
+        {
+            w.MouseWheel(p, new Vector(0, -1));
+            TestSupport.Settle(80);
+        }
+        Assert.True(covers.ScrollOffsetY > 0, "the wheel did not scroll the Systemseite");
+        Assert.True(compact.IsHitTestVisible, $"compact header not live at offset {covers.ScrollOffsetY}");
+        TestSupport.Settle(250);
+        // the banner's own buttons scroll under the compact header that takes their place
+        var covered = CoveredButtons(w, v => v == compact);
+        Assert.True(covered.Count == 0, string.Join("\n", covered));
+        var next = compact.GetVisualDescendants().OfType<Button>().First(b => b.Name == "CompactNext");
+        var before = page.System?.Id;
+        Click(w, next);
+        TestSupport.Pump(() => (vm.CurrentPage as SystemViewModel)?.System?.Id != before, 3000);
+        Assert.NotEqual(before, (vm.CurrentPage as SystemViewModel)?.System?.Id);
+        w.Close();
+    });
+
     // ===================== back: mouse button, footer hint, breadcrumb =====================
 
     [Fact]
@@ -312,6 +438,156 @@ public class MouseReachabilityTests
         w.MouseWheel(p, new Vector(0, -1));
         TestSupport.Settle(120);
         Assert.NotSame(first, page.Current);
+        w.Close();
+    });
+
+    [Fact]
+    public Task Konsolen_rail_click_turns_that_front_forward() => UiTest.Run(() =>
+    {
+        var (w, vm) = Open();
+        vm.Navigator.Navigate(PageKey.Systems);
+        TestSupport.Pump(() => vm.CurrentPage is SystemsViewModel { IsLoaded: true }, 8000);
+        TestSupport.Pump(() => w.FocusManager?.GetFocusedElement() is SystemSpine, 3000);
+        TestSupport.Settle(200);
+        var page = (SystemsViewModel)vm.CurrentPage!;
+        var rail = w.GetVisualDescendants().OfType<PositionRail>().First(r => r.IsEffectivelyVisible);
+        // the right end of the rail: the last system on the wall
+        Click(w, rail.TranslatePoint(new Point(rail.Bounds.Width - 2, rail.Bounds.Height / 2), w)!.Value);
+        TestSupport.Pump(() => page.Current == page.Systems[^1], 2000);
+        Assert.Same(page.Systems[^1], page.Current);
+        Assert.IsType<SystemsViewModel>(vm.CurrentPage);
+        w.Close();
+    });
+
+    [Fact]
+    public Task Konsolen_a_click_on_a_Noch_leer_sleeve_opens_that_empty_system() => UiTest.Run(() =>
+    {
+        var (w, vm) = Open();
+        // the demo catalog only lists systems with games: empty one (the smallest) so it lands on the "Noch leer" edge
+        var games = vm.Ctx.Services.Games;
+        var smallest = games.Query(new GameQuery()).Select(id => vm.Ctx.Items.Get(id)).GroupBy(g => g.SystemId).OrderBy(g => g.Count()).First();
+        foreach (var g in smallest) games.Delete(g.Id);
+        vm.Navigator.Navigate(PageKey.Systems);
+        TestSupport.Pump(() => vm.CurrentPage is SystemsViewModel { IsLoaded: true, HasEmptySystems: true }, 8000);
+        TestSupport.Settle(300);
+        var page = (SystemsViewModel)vm.CurrentPage!;
+        Assert.True(page.HasEmptySystems, "no system on the Noch-leer edge");
+        var sleeve = w.GetVisualDescendants().OfType<SystemSpine>().First(s => !s.Opens && s.IsEffectivelyVisible);
+        var id = ((SystemItemViewModel)sleeve.DataContext!).Id;
+        // the first click may only pick it out of its row (pointer activation); a second one opens it
+        Click(w, sleeve);
+        if (!TestSupport.Pump(() => vm.CurrentPage is SystemViewModel, 1500)) Click(w, sleeve);
+        TestSupport.Pump(() => vm.CurrentPage is SystemViewModel, 3000);
+        Assert.Equal(id, (vm.CurrentPage as SystemViewModel)?.System?.Id);
+        w.Close();
+    });
+
+    [Fact]
+    public Task Bibliothek_ticker_favourites_view_and_mirror_take_the_mouse() => UiTest.Run(() =>
+    {
+        var (w, vm) = Open();
+        vm.Navigator.Navigate(PageKey.Library);
+        TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true, Items.Count: > 0 }, 8000);
+        TestSupport.Settle(300);
+        var lib = (LibraryViewModel)vm.CurrentPage!;
+        // a system on the ticker
+        var chip = w.GetVisualDescendants().OfType<Button>()
+            .First(b => b.DataContext is FilterChip { IsAll: false } && b.IsEffectivelyVisible && b.FindAncestorOfType<ItemsControl>()?.Name == "Ticker");
+        var id = ((FilterChip)chip.DataContext!).SystemId;
+        Click(w, chip);
+        TestSupport.Pump(() => lib.SelectedSystemId == id, 3000);
+        Assert.Equal(id, lib.SelectedSystemId);
+        // and back to "Alle"
+        Click(w, w.GetVisualDescendants().OfType<Button>().First(b => b.DataContext is FilterChip { IsAll: true } && b.IsEffectivelyVisible));
+        TestSupport.Pump(() => lib.SelectedSystemId == null, 3000);
+        Assert.Null(lib.SelectedSystemId);
+        TestSupport.Settle(300);
+        // the Regalspiegel: a press at its right end scrubs the shelf down
+        var covers = w.GetVisualDescendants().OfType<CoverGrid>().First(c => c.Name == "Covers" && c.IsEffectivelyVisible);
+        var mirror = w.GetVisualDescendants().OfType<ShelfMirror>().First(m => m.IsEffectivelyVisible);
+        Click(w, mirror.TranslatePoint(new Point(mirror.Bounds.Width - 3, mirror.Bounds.Height / 2), w)!.Value);
+        TestSupport.Pump(() => covers.ScrollOffsetY > 0, 2000);
+        Assert.True(covers.ScrollOffsetY > 0, "a click on the mirror's end did not move the shelf");
+        // favourites only, by mouse, on and off
+        var fav = w.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>().First(t => t.Name == "FavToggle");
+        Click(w, fav);
+        Assert.True(lib.FavoritesOnly);
+        Click(w, fav);
+        Assert.False(lib.FavoritesOnly);
+        // shelf ↔ list
+        Click(w, w.GetVisualDescendants().OfType<Button>().First(b => b.Name == "ViewToggle"));
+        Assert.True(lib.IsListView);
+        Click(w, w.GetVisualDescendants().OfType<Button>().First(b => b.Name == "ViewToggle" && b.IsEffectivelyVisible));
+        Assert.False(lib.IsListView);
+        // let the reloads, the settings save and the cover decodes this test set off finish inside the session (a pool
+        // continuation that outlives it would take the next test's dispatcher)
+        TestSupport.Settle(1500);
+        w.Close();
+        TestSupport.Settle(300);
+    });
+
+    [Fact]
+    public Task Emulatoren_and_Importe_rows_fold_open_on_a_click() => UiTest.Run(() =>
+    {
+        var (w, vm) = Open();
+        vm.Navigator.Navigate(PageKey.Emulators);
+        TestSupport.Pump(() => vm.CurrentPage is EmulatorsViewModel { Rows.Count: > 0 }, 8000);
+        TestSupport.Settle(300);
+        var emus = (EmulatorsViewModel)vm.CurrentPage!;
+        var rowButton = w.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("sysrow") && b.IsEffectivelyVisible);
+        var row = (EmulatorRowViewModel)rowButton.DataContext!;
+        var was = row.IsOpen;
+        Click(w, rowButton);
+        Assert.NotEqual(was, row.IsOpen);
+        Click(w, rowButton);
+        Assert.Equal(was, row.IsOpen);
+
+        vm.Navigator.Navigate(PageKey.Imports);
+        TestSupport.Pump(() => vm.CurrentPage is ImportsViewModel, 8000);
+        TestSupport.Settle(300);
+        var imports = (ImportsViewModel)vm.CurrentPage!;
+        // the scan starts by mouse and leaves its delivery note
+        Click(w, w.GetVisualDescendants().OfType<Button>().First(b => b.Name == "ScanButton" && b.IsEffectivelyVisible));
+        Assert.True(TestSupport.Pump(() => imports.HasReport, 15_000), "no delivery note after the scan click");
+        TestSupport.Settle(400);
+        var issues = w.GetVisualDescendants().OfType<Button>().First(b => b.Name == "IssuesButton" && b.IsEffectivelyVisible);
+        issues.BringIntoView();
+        TestSupport.Settle(200);
+        var open = imports.IssuesOpen;
+        Click(w, issues);
+        Assert.NotEqual(open, imports.IssuesOpen);
+        var link = w.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Classes.Contains("game-link") && b.IsEffectivelyVisible);
+        if (link != null)
+        {
+            link.BringIntoView();
+            TestSupport.Settle(200);
+            var game = (GameItemViewModel)link.DataContext!;
+            Click(w, link);
+            TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel, 3000);
+            Assert.Equal(game.Id, (vm.CurrentPage as GameDetailViewModel)?.Game?.Id);
+        }
+        w.Close();
+    });
+
+    [Fact]
+    public Task Detail_favourite_and_file_row_take_the_mouse() => UiTest.Run(() =>
+    {
+        var (w, vm) = Open();
+        var game = AnyGame(vm);
+        OpenDetailFromLibrary(vm, game);
+        var detail = (GameDetailViewModel)vm.CurrentPage!;
+        var fav = w.GetVisualDescendants().OfType<Button>().First(b => b.Name == "FavoriteButton" && b.IsEffectivelyVisible);
+        var before = game.IsFavorite;
+        Click(w, fav);
+        TestSupport.Pump(() => game.IsFavorite != before, 2000);
+        Assert.NotEqual(before, game.IsFavorite);
+        var file = w.GetVisualDescendants().OfType<Button>().First(b => b.Name == "FileRow" && b.IsEffectivelyVisible);
+        file.BringIntoView();
+        TestSupport.Settle(200);
+        var sheet = detail.Sheet;
+        Click(w, file);
+        Assert.NotEqual(sheet, detail.Sheet);
+        Assert.IsType<GameDetailViewModel>(vm.CurrentPage);
         w.Close();
     });
 

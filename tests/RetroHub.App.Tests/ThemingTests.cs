@@ -14,23 +14,26 @@ public class ThemingTests
     public Task Light_colour_swap_replaces_the_tokens() => UiTest.Run(() =>
     {
         var app = Application.Current!;
-        ThemeManager.ApplyAccent("#8CC4FF"); // Eisblau preset
+        ThemeManager.ApplyAccent("#3DDC84"); // Grün preset (v2)
         Assert.True(app.TryGetResource("RhAccentBrush", null, out var brush));
-        Assert.Equal(Color.Parse("#8CC4FF"), ((ISolidColorBrush)brush!).Color);
+        Assert.Equal(Color.Parse("#3DDC84"), ((ISolidColorBrush)brush!).Color);
         Assert.True(app.TryGetResource("SystemAccentColor", null, out var fluent));
-        Assert.Equal(Color.Parse("#8CC4FF"), (Color)fluent!);
+        Assert.Equal(Color.Parse("#3DDC84"), (Color)fluent!);
         // the v0 gradient and glass keys are gone (M6 clean-up), they are not even re-created at runtime
         Assert.False(app.TryGetResource("RhAccentGradientBrush", null, out _));
         Assert.False(app.TryGetResource("RhGlassBrush", null, out _));
 
-        ThemeManager.ApplyAccent(null); // back to Standby-Bernstein
+        ThemeManager.ApplyAccent(null); // back to Standby-Cyan (v2)
         app.TryGetResource("RhAccentBrush", null, out var b);
-        Assert.Equal(Color.Parse("#FFB547"), ((ISolidColorBrush)b!).Color);
-        Assert.Equal(Color.Parse("#FFB547"), ThemeManager.CurrentAccent);
+        Assert.Equal(Color.Parse("#2FD3F5"), ((ISolidColorBrush)b!).Color);
+        Assert.Equal(Color.Parse("#2FD3F5"), ThemeManager.CurrentAccent);
 
-        // an old "Nova" accent from a v0 settings file is not part of the warm palette: Bernstein
+        // an old "Nova" accent from a v0 settings file is not a preset: Cyan
         ThemeManager.ApplyAccent("#7B61FF");
-        Assert.Equal(Color.Parse("#FFB547"), ThemeManager.CurrentAccent);
+        Assert.Equal(Color.Parse("#2FD3F5"), ThemeManager.CurrentAccent);
+        // v1 "Fernsehlicht" Bernstein is gone too
+        ThemeManager.ApplyAccent("#FFB547");
+        Assert.Equal(Color.Parse("#2FD3F5"), ThemeManager.CurrentAccent);
         ThemeManager.ApplyAccent(null);
     });
 
@@ -39,7 +42,7 @@ public class ThemingTests
     {
         // DESIGN 2.2: on all light colours ink is ≥ 8 : 1
         foreach (var p in ThemeManager.Presets)
-            Assert.True(ColorUtil.Contrast(Color.Parse("#14120F"), Color.Parse(p.Hex)) >= 8.0, $"{p.Id} {p.Hex}");
+            Assert.True(ColorUtil.Contrast(Color.Parse("#0B0C0E"), Color.Parse(p.Hex)) >= 8.0, $"{p.Id} {p.Hex}");
     }
 
     [Fact]
@@ -48,7 +51,7 @@ public class ThemingTests
         var app = Application.Current!;
         ThemeManager.ApplyAccent(null);
         Assert.True(app.TryGetResource("RhBoardLightBrush", null, out var a));
-        ThemeManager.SetBoardLight(Color.Parse("#59FFB547"));
+        ThemeManager.SetBoardLight(Color.Parse("#592FD3F5"));
         ThemeManager.ApplyAccent(null);
         Assert.True(app.TryGetResource("RhBoardLightBrush", null, out var b));
         Assert.Same(a, b);

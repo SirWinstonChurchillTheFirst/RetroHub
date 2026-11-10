@@ -108,22 +108,24 @@ public sealed class SystemLook
 /// </summary>
 public static class SystemPalette
 {
-    public static readonly Color Room = Color.Parse("#14120F");
-    public static readonly Color Paper = Color.Parse("#F4ECDF");
-    public static readonly Color Ink = Color.Parse("#14120F");
+    public static readonly Color Room = Color.Parse("#0B0C0E");
+    public static readonly Color Paper = Color.Parse("#F5F7FA");
+    public static readonly Color Ink = Color.Parse("#0B0C0E");
 
     /// <summary>(Wand, Wand hell) per housing.</summary>
     public static (Color Wall, Color WallHi) HousingTones(Housing h) => h switch
     {
-        Housing.WarmGrey => (Color.Parse("#211F1B"), Color.Parse("#322E28")),
-        Housing.CoolGrey => (Color.Parse("#1D2027"), Color.Parse("#2D313B")),
-        Housing.Black => (Color.Parse("#0F0F11"), Color.Parse("#18181B")),
-        Housing.Anthracite => (Color.Parse("#1C1C20"), Color.Parse("#2A2A30")),
-        Housing.Violet => (Color.Parse("#1B1626"), Color.Parse("#2B213B")),
-        Housing.White => (Color.Parse("#2A2B2D"), Color.Parse("#3D3F43")),
-        Housing.Beige => (Color.Parse("#2A2418"), Color.Parse("#3E3524")),
-        Housing.Wood => (Color.Parse("#24170E"), Color.Parse("#382419")),
-        _ => (Color.Parse("#20132A"), Color.Parse("#311D3F")), // Berry (transparent housing)
+        // v2 "Schwarz + Weiß + Cyan": the warm housings (warm grey, beige, wood) are neutral now – no brown, olive or beige
+        // wall is left; the system's own colour (band, light) carries the identity. Every Wand hell keeps Text 3 ≥ 4.5 : 1.
+        Housing.WarmGrey => (Color.Parse("#1C1D20"), Color.Parse("#2A2C30")),
+        Housing.CoolGrey => (Color.Parse("#1A1E25"), Color.Parse("#283038")),
+        Housing.Black => (Color.Parse("#0E0F11"), Color.Parse("#17181B")),
+        Housing.Anthracite => (Color.Parse("#1B1C20"), Color.Parse("#292A30")),
+        Housing.Violet => (Color.Parse("#1A1626"), Color.Parse("#2A213B")),
+        Housing.White => (Color.Parse("#27292D"), Color.Parse("#34373C")),
+        Housing.Beige => (Color.Parse("#232528"), Color.Parse("#303236")),
+        Housing.Wood => (Color.Parse("#1A1B1D"), Color.Parse("#27282B")),
+        _ => (Color.Parse("#1F1329"), Color.Parse("#2F1D3E")), // Berry (transparent housing)
     };
 
     private sealed record Def(Housing Housing, Motif Motif, Texture Texture, double TextureOpacity, string Color, string Second,
@@ -225,7 +227,7 @@ public static class SystemPalette
                 return look;
             }
         }
-        return From(accent ?? Color.Parse("#948A7A"), id);
+        return From(accent ?? Color.Parse("#A0A7B2"), id);
     }
 
     /// <summary>Unknown / user-defined systems: anthracite housing, the accent (fitted for contrast) as colour, Cart8, bayer-8.</summary>

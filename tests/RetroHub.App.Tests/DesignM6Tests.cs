@@ -89,11 +89,11 @@ public class DesignM6Tests
             var row = (ServiceRow)Focused(window)!;
             Assert.Equal("Lichtfarbe", row.Setting!.Label);
             window.Execute(NavAction.Right); // the next light colour, at once and saved
-            Assert.Equal(Color.Parse("#8FE3A0"), ThemeManager.CurrentAccent);
-            Assert.Equal("#8FE3A0", vm.Ctx.Services.Settings.Current.Accent);
+            Assert.Equal(Color.Parse("#F2F5F8"), ThemeManager.CurrentAccent);
+            Assert.Equal("#F2F5F8", vm.Ctx.Services.Settings.Current.Accent);
             Assert.Same(row, Focused(window)); // left/right never move the focus on a value row
             window.Execute(NavAction.Left);
-            Assert.Equal(Color.Parse("#FFB547"), ThemeManager.CurrentAccent);
+            Assert.Equal(Color.Parse("#2FD3F5"), ThemeManager.CurrentAccent);
             Assert.Null(vm.Ctx.Services.Settings.Current.Accent);
 
             // down walks the one list; confirm moves a value on

@@ -62,24 +62,24 @@
       <Setter Property="FontSize" Value="15" />
       <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
     </Style>
-    <!-- R3 QA: the delivery note is LIGHT paper (#E9E1CF) printed in ink (#2A251E) – the dark slip read as one more panel -->
+    <!-- R3 QA: the delivery note is LIGHT paper (#F2F4F7) printed in ink (#15171A) – the dark slip read as one more panel -->
     <Style Selector="StackPanel#DeliveryNote TextBlock">
-      <Setter Property="Foreground" Value="#2A251E" />
+      <Setter Property="Foreground" Value="#15171A" />
     </Style>
     <Style Selector="StackPanel#DeliveryNote TextBlock.meta, StackPanel#DeliveryNote TextBlock.slip-head, StackPanel#DeliveryNote TextBlock.label">
-      <Setter Property="Foreground" Value="#5C5347" />
+      <Setter Property="Foreground" Value="#4F5560" />
     </Style>
     <Style Selector="StackPanel#DeliveryNote TextBlock.note-text, StackPanel#DeliveryNote TextBlock.note-count">
-      <Setter Property="Foreground" Value="#2A251E" />
+      <Setter Property="Foreground" Value="#15171A" />
     </Style>
     <Style Selector="StackPanel#DeliveryNote TextBlock.note-text.zero, StackPanel#DeliveryNote TextBlock.note-count.zero">
-      <Setter Property="Foreground" Value="#8C8272" />
+      <Setter Property="Foreground" Value="#646B76" />
     </Style>
     <Style Selector="StackPanel#DeliveryNote TextBlock.mono">
-      <Setter Property="Foreground" Value="#2A251E" />
+      <Setter Property="Foreground" Value="#15171A" />
     </Style>
     <Style Selector="StackPanel#DeliveryNote c|RhIcon.row-chevron">
-      <Setter Property="Foreground" Value="#5C5347" />
+      <Setter Property="Foreground" Value="#4F5560" />
     </Style>
     <Style Selector="StackPanel#DeliveryNote Border.row-chip">
       <Setter Property="Background" Value="Transparent" />
@@ -204,7 +204,7 @@
           <!-- the delivery note of the last scan: a paper slip torn off at the top, lines with dotted leaders to the numbers -->
           <StackPanel Name="DeliveryNote" Margin="0,28,0,0" IsVisible="{Binding HasReport}">
             <!-- the slip one step lighter than Regal (Wand hell 60 % over Raum, QA 2), so it reads as paper -->
-            <Panel Background="#E9E1CF">
+            <Panel Background="#F2F4F7">
               <c:PaperSlip Light="True" />
               <c:Sawtooth Name="NoteTear" Fill="{DynamicResource RhBaseBrush}" VerticalAlignment="Top" />
               <!-- torn off at the foot too: the slip came off a roll -->
@@ -257,7 +257,7 @@
                       <TextBlock Classes="note-text" Text="{Binding IssuesText}" />
                     </Border>
                     <c:DotLeader Grid.Column="1" VerticalAlignment="Center" Margin="12,8,12,0" />
-                    <TextBlock Grid.Column="2" Classes="note-count" Text="{Binding IssueCount}" VerticalAlignment="Center" Foreground="#A4561C" />
+                    <TextBlock Grid.Column="2" Classes="note-count" Text="{Binding IssueCount}" VerticalAlignment="Center" Foreground="#B3261E" />
                     <Panel Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center">
                       <c:RhIcon Classes="row-chevron" Data="{StaticResource Icon.Expand}" Width="16" Height="16" StrokeThickness="2.6"
                                 Foreground="{DynamicResource RhText3Brush}" IsVisible="{Binding !IssuesOpen}" />

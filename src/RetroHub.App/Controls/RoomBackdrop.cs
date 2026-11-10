@@ -36,8 +36,8 @@ public sealed class RoomBackdrop : Panel
 {
     public const double ImageOpacity = 0.38;
 
-    private static readonly Color Room = Color.Parse("#14120F");
-    private static readonly Color RoomDeep = Color.Parse("#0A0908");
+    private static readonly Color Room = Color.Parse("#0B0C0E");
+    private static readonly Color RoomDeep = Color.Parse("#060708");
 
     private readonly Border _ground;          // room or the system wall (flat tone, interpolates)
     private readonly MotifGhost _ghost;       // motif outline at 7 % when a game has no picture (on the flat wall tone)
@@ -210,7 +210,7 @@ public sealed class RoomBackdrop : Panel
                 }
                 else
                 {
-                    // no game at all (empty library): room with a faint Bernstein glow
+                    // no game at all (empty library): room with a faint Cyan glow
                     SetGround(Room, look: null);
                     FadeTo(null);
                     SetGlow(ThemeManager.CurrentAccent, 0.05);

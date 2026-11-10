@@ -434,7 +434,7 @@ public static class MotifCatalog
     /// <summary>A motif drawn at least this tall (DIP) gets the relief (edge light, lip, texture) when asked for.</summary>
     public const double ReliefMinSize = 160;
 
-    private static readonly IImmutableSolidColorBrush ReliefLight = new ImmutableSolidColorBrush(Color.FromArgb(0x2E, 0xF4, 0xEC, 0xDF));
+    private static readonly IImmutableSolidColorBrush ReliefLight = new ImmutableSolidColorBrush(Color.FromArgb(0x2E, 0xF5, 0xF7, 0xFA));
     private static readonly IImmutableSolidColorBrush ReliefLip = new ImmutableSolidColorBrush(Color.FromArgb(0x4D, 0, 0, 0));
     private static readonly Dictionary<(Motif, int), (Geometry Rim, Geometry Lip)> Reliefs = new();
     private static readonly Dictionary<(Texture, int), IBrush?> ReliefTextures = new();

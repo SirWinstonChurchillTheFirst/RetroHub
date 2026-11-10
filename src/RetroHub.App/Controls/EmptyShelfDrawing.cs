@@ -13,7 +13,7 @@ namespace RetroHub.App.Controls;
 /// </summary>
 public sealed class EmptyShelfDrawing : Control
 {
-    private static readonly IPen Line = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x99, 0xF4, 0xEC, 0xDF)), 1.5,
+    private static readonly IPen Line = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x99, 0xF5, 0xF7, 0xFA)), 1.5,
         lineCap: PenLineCap.Flat, lineJoin: PenLineJoin.Miter);
 
     /// <summary>
@@ -33,7 +33,7 @@ public sealed class EmptyShelfDrawing : Control
 
     public bool Gesture { get => GetValue(GestureProperty); set => SetValue(GestureProperty, value); }
 
-    private static readonly IPen GestureLine = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#948A7A")), 2,
+    private static readonly IPen GestureLine = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#A0A7B2")), 2,
         lineCap: PenLineCap.Flat, lineJoin: PenLineJoin.Miter);
 
     static EmptyShelfDrawing()
@@ -98,9 +98,9 @@ public sealed class EmptyShelfDrawing : Control
 /// </summary>
 public sealed class EmptySlot : Control
 {
-    private static readonly IPen Dash = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x1F, 0xF4, 0xEC, 0xDF)), 1,
+    private static readonly IPen Dash = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(0x1F, 0xF5, 0xF7, 0xFA)), 1,
         new ImmutableDashStyle([4, 4], 0), PenLineCap.Flat, PenLineJoin.Miter);
-    private static readonly IPen BaselineDash = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#3A342B")), 1,
+    private static readonly IPen BaselineDash = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#343840")), 1,
         new ImmutableDashStyle([4, 4], 0), PenLineCap.Flat, PenLineJoin.Miter);
 
     public static readonly StyledProperty<double> AspectProperty = AvaloniaProperty.Register<EmptySlot, double>(nameof(Aspect));
@@ -112,7 +112,7 @@ public sealed class EmptySlot : Control
 
     private static readonly IImmutableSolidColorBrush RecessFill = new ImmutableSolidColorBrush(Color.FromArgb(0x33, 0, 0, 0));
     private static readonly IImmutableSolidColorBrush RecessTop = new ImmutableSolidColorBrush(Color.FromArgb(0x66, 0, 0, 0));
-    private static readonly IImmutableSolidColorBrush RecessSide = new ImmutableSolidColorBrush(Color.Parse("#3A342B"));
+    private static readonly IImmutableSolidColorBrush RecessSide = new ImmutableSolidColorBrush(Color.Parse("#343840"));
 
     public bool Recessed { get => GetValue(RecessedProperty); set => SetValue(RecessedProperty, value); }
     public static readonly StyledProperty<bool> BaselineProperty = AvaloniaProperty.Register<EmptySlot, bool>(nameof(Baseline));

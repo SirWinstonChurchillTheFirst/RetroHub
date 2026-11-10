@@ -19,15 +19,15 @@ public sealed class ShelfEdge : Control
 {
     public static readonly StyledProperty<int> DirectionProperty = AvaloniaProperty.Register<ShelfEdge, int>(nameof(Direction), 1);
 
-    private static readonly IImmutableSolidColorBrush Plate = new ImmutableSolidColorBrush(ColorUtil.Mix(Color.Parse("#2A2620"), Craft.Light, 0.10));
-    private static readonly IImmutableSolidColorBrush PlateHot = new ImmutableSolidColorBrush(ColorUtil.Mix(Color.Parse("#2A2620"), Craft.Light, 0.16));
-    private static readonly IImmutableSolidColorBrush TopEdge = new ImmutableSolidColorBrush(Color.Parse("#40FFF3E0"));
+    private static readonly IImmutableSolidColorBrush Plate = new ImmutableSolidColorBrush(ColorUtil.Mix(Color.Parse("#24272D"), Craft.Light, 0.10));
+    private static readonly IImmutableSolidColorBrush PlateHot = new ImmutableSolidColorBrush(ColorUtil.Mix(Color.Parse("#24272D"), Craft.Light, 0.16));
+    private static readonly IImmutableSolidColorBrush TopEdge = new ImmutableSolidColorBrush(Color.Parse("#40FFFFFF"));
     private static readonly IImmutableSolidColorBrush BottomEdge = new ImmutableSolidColorBrush(Color.Parse("#99000000"));
-    private static readonly IImmutableSolidColorBrush Screw = new ImmutableSolidColorBrush(Color.Parse("#1F1C17"));
-    private static readonly IImmutableSolidColorBrush ScrewLit = new ImmutableSolidColorBrush(Color.Parse("#33FFF3E0"));
+    private static readonly IImmutableSolidColorBrush Screw = new ImmutableSolidColorBrush(Color.Parse("#1B1D21"));
+    private static readonly IImmutableSolidColorBrush ScrewLit = new ImmutableSolidColorBrush(Color.Parse("#33FFFFFF"));
     private static readonly IImmutableSolidColorBrush Chevron = new ImmutableSolidColorBrush(Craft.A(Craft.Light, 0.75));
     private static readonly IImmutableSolidColorBrush ChevronShadow = new ImmutableSolidColorBrush(Color.Parse("#B3000000"));
-    private static readonly IImmutableSolidColorBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#6A6154"));
+    private static readonly IImmutableSolidColorBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#646A75"));
     private static readonly IImmutableSolidColorBrush PaperBrush = new ImmutableSolidColorBrush(SystemPalette.Paper);
     private static readonly IImmutableSolidColorBrush Ring = new ImmutableSolidColorBrush(SystemPalette.Paper);
 

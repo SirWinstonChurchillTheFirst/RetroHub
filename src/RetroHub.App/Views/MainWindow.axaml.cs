@@ -274,7 +274,7 @@ public partial class MainWindow : Window
                 _gameShown = false;
                 _powerLight = light;
                 // the staged moment is the system's: the segment light in its Licht, the dark segments in its Wand hell
-                // (Bernstein stays the app's own progress, DESIGN 2.2)
+                // (Cyan stays the app's own progress, DESIGN 2.2)
                 if (game != null)
                 {
                     var look = SystemPalette.Get(game.SystemId, game.Accent);
@@ -305,7 +305,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private Color _powerLight = Color.Parse("#FFB547");
+    private Color _powerLight = Color.Parse("#2FD3F5");
 
     /// <summary>
     /// The box the game was started from: a visible cover of that game on the current page – the one inside the focused

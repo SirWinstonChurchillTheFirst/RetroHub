@@ -41,7 +41,7 @@ public sealed class EmulatorItemViewModel
         Spines = def.Systems.Select(id =>
         {
             var sys = services.Catalog.GetSystem(id);
-            var look = SystemPalette.Get(id, sys != null ? ColorUtil.Parse(sys.Accent, Color.Parse("#948A7A")) : null);
+            var look = SystemPalette.Get(id, sys != null ? ColorUtil.Parse(sys.Accent, Color.Parse("#A0A7B2")) : null);
             return new SystemSpine(sys is { } d ? (string.IsNullOrEmpty(d.ShortName) ? d.Name : d.ShortName) : id.ToUpperInvariant(), look.ColorBrush);
         }).ToList();
         ModesSentence = Loc.T("emulators.modesSentence", JoinOr(def.Modes.Select(Fmt.ModePhrase).ToList()));
@@ -99,7 +99,7 @@ public sealed partial class EmulatorRowViewModel : ObservableObject
         string coresText = "")
     {
         System = system;
-        var look = SystemPalette.Get(system.Id, ColorUtil.Parse(system.Accent, Color.Parse("#948A7A")));
+        var look = SystemPalette.Get(system.Id, ColorUtil.Parse(system.Accent, Color.Parse("#A0A7B2")));
         Look = look;
         Band = look.ColorBrush;
         CoresText = coresText;

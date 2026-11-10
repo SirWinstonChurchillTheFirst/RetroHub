@@ -28,7 +28,7 @@ public sealed class CoverArt : Control
     public static readonly StyledProperty<string?> BadgeProperty = AvaloniaProperty.Register<CoverArt, string?>(nameof(Badge));
     public static readonly StyledProperty<string?> SystemIdProperty = AvaloniaProperty.Register<CoverArt, string?>(nameof(SystemId));
     /// <summary>Catalog accent: only used for systems without a palette entry (<see cref="SystemPalette.From"/>).</summary>
-    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<CoverArt, Color>(nameof(Accent), Color.Parse("#948A7A"));
+    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<CoverArt, Color>(nameof(Accent), Color.Parse("#A0A7B2"));
     /// <summary>False = a placeholder without title (band, code and motif only). Since the M1 QA the stages keep the title.</summary>
     public static readonly StyledProperty<bool> ShowTitleProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(ShowTitle), true);
     /// <summary>Legacy (v0): badge pills are gone (DESIGN 10.2).</summary>
@@ -65,7 +65,7 @@ public sealed class CoverArt : Control
         SystemPalette.IsKnown(systemId) ? 1 / SystemPalette.BoxAspect(systemId) : PlaceholderAspect;
 
     private static readonly IImmutableSolidColorBrush PaperBrush = new ImmutableSolidColorBrush(SystemPalette.Paper);
-    private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
+    private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFFFFF"));
 
     private Bitmap? _bitmap;
     private CancellationTokenSource? _cts;
@@ -264,8 +264,8 @@ public sealed class CoverArt : Control
         DrawMarkers(ctx, art);
     }
 
-    private static readonly IImmutableSolidColorBrush MarkerGround = new ImmutableSolidColorBrush(Color.Parse("#0A0908"));
-    private static readonly IImmutableSolidColorBrush FavoriteBrush = new ImmutableSolidColorBrush(Color.Parse("#FFD36A"));
+    private static readonly IImmutableSolidColorBrush MarkerGround = new ImmutableSolidColorBrush(Color.Parse("#060708"));
+    private static readonly IImmutableSolidColorBrush FavoriteBrush = new ImmutableSolidColorBrush(Color.Parse("#FF4D6A"));
     private static readonly IImmutableSolidColorBrush MissingBrush = new ImmutableSolidColorBrush(Color.Parse("#FF6A5E"));
     private static readonly Geometry StarGeometry = Geometry.Parse("M12,3 L14.6,8.6 L20.6,9.2 L16,13.2 L17.4,19.2 L12,16 L6.6,19.2 L8,13.2 L3.4,9.2 L9.4,8.6 Z");
     private static readonly Geometry MissingGeometry = Geometry.Parse("M6,3 H14 L19,8 V20 L18,21 H6 L5,20 V4 Z M3,3 L21,21");
@@ -476,7 +476,7 @@ public sealed class CoverArt : Control
     /// <summary>Inner margin of the paper label around the title: 5–10 px with the box width.</summary>
     public static double LabelPad(double w) => Math.Clamp(Math.Round(w * 0.04), 5, 10);
 
-    private static readonly IImmutableSolidColorBrush TapeBrush = new ImmutableSolidColorBrush(Craft.A(Color.Parse("#F2EAD8"), 0.38));
+    private static readonly IImmutableSolidColorBrush TapeBrush = new ImmutableSolidColorBrush(Craft.A(Color.Parse("#EEF2F6"), 0.38));
 
     /// <summary>One or two strips of tape holding the label (seeded corners, tilted 6–10°).</summary>
     private static void DrawTape(DrawingContext ctx, Rect label, uint seed, double w)
@@ -642,10 +642,10 @@ public sealed class CoverArt : Control
     }
 
     private const double SubGap = 4;
-    private static readonly IImmutableSolidColorBrush SubBrush = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
+    private static readonly IImmutableSolidColorBrush SubBrush = new ImmutableSolidColorBrush(Color.Parse("#C3C8D1"));
     /// <summary>The title is printed in ink on the paper label, the subtitle in a lighter ink (M7).</summary>
     private static readonly IImmutableSolidColorBrush LabelInkBrush = new ImmutableSolidColorBrush(Craft.LabelInk);
-    private static readonly IImmutableSolidColorBrush LabelSubBrush = new ImmutableSolidColorBrush(Color.Parse("#4F473C"));
+    private static readonly IImmutableSolidColorBrush LabelSubBrush = new ImmutableSolidColorBrush(Color.Parse("#4A505A"));
 
     /// <summary>Main title and subtitle at the first " - ", " – " or ": " (both parts non-empty); else the whole title.</summary>
     public static (string Main, string? Sub) SplitTitle(string title)

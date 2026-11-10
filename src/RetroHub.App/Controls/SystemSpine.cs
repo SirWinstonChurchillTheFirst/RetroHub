@@ -45,8 +45,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     public static readonly StyledProperty<double> PullProperty = AvaloniaProperty.Register<SystemSpine, double>(nameof(Pull));
 
     private static readonly IImmutableSolidColorBrush Paper = new ImmutableSolidColorBrush(SystemPalette.Paper);
-    private static readonly IImmutableSolidColorBrush Text2 = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
-    private static readonly IImmutableSolidColorBrush SleeveRing = new ImmutableSolidColorBrush(Color.Parse("#D9FFF3E0"));
+    private static readonly IImmutableSolidColorBrush Text2 = new ImmutableSolidColorBrush(Color.Parse("#C3C8D1"));
+    private static readonly IImmutableSolidColorBrush SleeveRing = new ImmutableSolidColorBrush(Color.Parse("#D9FFFFFF"));
     private static readonly IImmutableSolidColorBrush SleeveKeyline = new ImmutableSolidColorBrush(Color.Parse("#B3000000"));
 
     /// <summary>Where the code hangs: 16 px under the 8 px band (one anchor on Start and Konsolen, M5 QA).</summary>
@@ -999,7 +999,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
             Avalonia.Threading.Dispatcher.UIThread.Post(() => SetWidth(animate: false), Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
-    private static readonly Color CardBrown = Color.Parse("#6B5E4C");
+    private static readonly Color CardGrey = Color.Parse("#5E646E");
     private readonly Dictionary<(int, int, bool, bool, int), StreamGeometry> _sleeveGeo = new();
 
     /// <summary>The front outline of a sleeve: a rectangle with one top corner dented (cut).</summary>
@@ -1026,10 +1026,22 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     }
 
     /// <summary>
-    /// The card of a sleeve in the system's colour (R3 QA: one grey-brown for all twenty lost the system): card brown with
-    /// 30 % of the system colour, in the shade of the low edge.
+    /// The card of a sleeve (theme v2 "Schwarz + Weiß + Cyan"): neutral grey card with a breath of the system's hue, in
+    /// the shade of the low edge. The R3 mix (30 % system colour into the card) turned every red, orange, yellow and wood
+    /// system into mud – brown, olive, beige, exactly what the owner rejected. Now cool systems keep a tint (saturation
+    /// ≤ 0.16), warm ones (system hue 345°–75°) are plain grey card, and the system colour itself sits crisp in the band on top of the front and
+    /// in the label stripe (<see cref="DrawSleeve"/>).
     /// </summary>
-    private static Color SleeveBody(SystemLook look) => ColorUtil.Mix(ColorUtil.Mix(CardBrown, look.Color, 0.30), look.Wall, 0.25);
+    private static Color SleeveBody(SystemLook look)
+    {
+        // judged by the system's own hue (the mix with the blue-grey card pulls a red toward mauve): red, orange,
+        // yellow and olive tint into brown on a dark card, so those sleeves stay plain grey card
+        var hue = ColorUtil.ToHsl(look.Color).H;
+        if (hue is >= 345 or <= 75) return ColorUtil.Mix(CardGrey, look.Wall, 0.25);
+        var tinted = ColorUtil.Mix(ColorUtil.Mix(CardGrey, look.Color, 0.22), look.Wall, 0.25);
+        var (h, s, l) = ColorUtil.ToHsl(tinted);
+        return s <= 0.16 ? tinted : ColorUtil.FromHsl(h, 0.16, l);
+    }
 
     /// <summary>
     /// An empty cardboard sleeve standing on the "Noch leer" edge (M7 "gezeichnet", R3 rhythm): card in the system's
@@ -1105,6 +1117,9 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                     ctx.FillRectangle(Craft.Dark(0.22), new Rect(0, cy, w, 1));
                     ctx.FillRectangle(Craft.Hi(0.06), new Rect(0, cy + 1, w, 1));
                 }
+                // the system colour printed round the card's top edge (v2: the card itself stays grey)
+                ctx.FillRectangle(look.ColorBrush, new Rect(0, 0, w, 4));
+                ctx.FillRectangle(Craft.Dark(0.30), new Rect(0, 4, w, 1));
                 Craft.Edges(ctx, fr, lit: 0.12, dark: 0.35, grime: 0.24, grimeHeight: 8);
                 Craft.Scuffs(ctx, fr, s.Seed, Craft.Pick(s.Seed, 7, 1, 2));
             }
@@ -1160,6 +1175,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 TextureFill.Draw(ctx, this, fr, Texture.Card, 0.6);
                 SystemWall.DrawTextures(ctx, this, fr, look, look.TextureOpacity * 0.5);
                 ctx.FillRectangle(Craft.Fade(Craft.Light, 0.08, 0, Craft.Toward.Down), new Rect(0, 0, w, Math.Round(h * 0.4)));
+                ctx.FillRectangle(look.ColorBrush, new Rect(0, 0, w, 3));
                 Craft.Edges(ctx, fr, lit: 0.12, dark: 0.35, grime: 0.24, grimeHeight: 5);
                 Craft.Scuffs(ctx, fr, s.Seed, 2);
             }

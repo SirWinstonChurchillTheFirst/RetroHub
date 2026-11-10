@@ -1,53 +1,54 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <!--
-    RetroHub design tokens – "Fernsehlicht" (docs/design/DESIGN.md v1.1).
-    Warm, opaque neutrals; the only brand colour is Standby-Bernstein #FFB547 (closed list of uses, DESIGN 2.2:
-    grep "#FFB547|RhAccent" and compare). Radii 0/2/4/6 only. No glass, no alpha-white surfaces, no glow.
+    RetroHub design tokens – "Fernsehlicht" v2 "Schwarz + Weiß + Cyan" (docs/design/DESIGN.md 2.0).
+    Neutral near-black and opaque neutrals with a cool cast (no brown, olive, beige or gold); text pure white; the only
+    brand colour is the light colour, Standby-Cyan #2FD3F5 by default (closed list of uses, DESIGN 2.2: grep
+    "#2FD3F5|RhAccent" and compare). The systems' own colours stay (SystemPalette). Radii 0/2/4/6 only. No glass, no alpha-white surfaces, no glow.
     Every consumer uses DynamicResource; light-colour-dependent tokens are replaced at runtime by ThemeManager.ApplyAccent.
     M6: the v0 "Nova" keys (glass, sidebar, hover/pressed/selected, gradients, glows, ambient brushes, size doubles) are gone.
     Rule (from MonHub DESIGN.md): a token key never equals a ControlTheme/style key.
   -->
 
   <!-- ===== Neutrals (DESIGN 2.1) ===== -->
-  <Color x:Key="RhRoomDeepColor">#0A0908</Color>
-  <Color x:Key="RhBaseColor">#14120F</Color>
-  <Color x:Key="RhSurfaceColor">#1E1B17</Color>
-  <Color x:Key="RhSurfaceHiColor">#2A2620</Color>
-  <Color x:Key="RhLineColor">#3A342B</Color>
-  <Color x:Key="RhText1Color">#F4ECDF</Color>
-  <Color x:Key="RhText2Color">#C9BFAF</Color>
-  <Color x:Key="RhText3Color">#948A7A</Color>
-  <Color x:Key="RhInkColor">#14120F</Color>
+  <Color x:Key="RhRoomDeepColor">#060708</Color>
+  <Color x:Key="RhBaseColor">#0B0C0E</Color>
+  <Color x:Key="RhSurfaceColor">#1A1C20</Color>
+  <Color x:Key="RhSurfaceHiColor">#24272D</Color>
+  <Color x:Key="RhLineColor">#343840</Color>
+  <Color x:Key="RhText1Color">#FFFFFF</Color>
+  <Color x:Key="RhText2Color">#C3C8D1</Color>
+  <Color x:Key="RhText3Color">#A0A7B2</Color>
+  <Color x:Key="RhInkColor">#0B0C0E</Color>
 
   <!-- ===== Surfaces (all opaque) ===== -->
-  <SolidColorBrush x:Key="RhRoomDeepBrush" Color="#0A0908" />
-  <SolidColorBrush x:Key="RhBaseBrush" Color="#14120F" />
-  <SolidColorBrush x:Key="RhSurfaceBrush" Color="#1E1B17" />
-  <SolidColorBrush x:Key="RhSurfaceHiBrush" Color="#2A2620" />
-  <SolidColorBrush x:Key="RhPaperBrush" Color="#F4ECDF" />
-  <SolidColorBrush x:Key="RhInkBrush" Color="#14120F" />
+  <SolidColorBrush x:Key="RhRoomDeepBrush" Color="#060708" />
+  <SolidColorBrush x:Key="RhBaseBrush" Color="#0B0C0E" />
+  <SolidColorBrush x:Key="RhSurfaceBrush" Color="#1A1C20" />
+  <SolidColorBrush x:Key="RhSurfaceHiBrush" Color="#24272D" />
+  <SolidColorBrush x:Key="RhPaperBrush" Color="#F5F7FA" />
+  <SolidColorBrush x:Key="RhInkBrush" Color="#0B0C0E" />
   <!-- the few allowed translucencies (DESIGN 4.6) -->
-  <SolidColorBrush x:Key="RhOverlayScrimBrush" Color="#B80A0908" />
-  <SolidColorBrush x:Key="RhLaunchScrimBrush" Color="#F00A0908" />
+  <SolidColorBrush x:Key="RhOverlayScrimBrush" Color="#B8060708" />
+  <SolidColorBrush x:Key="RhLaunchScrimBrush" Color="#F0060708" />
 
   <!-- ===== Lines ===== -->
-  <SolidColorBrush x:Key="RhLineBrush" Color="#3A342B" />
+  <SolidColorBrush x:Key="RhLineBrush" Color="#343840" />
   <!-- 1 px light edge: wall split, top of overlays -->
-  <SolidColorBrush x:Key="RhLightEdgeBrush" Color="#17FFF3E0" />
+  <SolidColorBrush x:Key="RhLightEdgeBrush" Color="#17FFFFFF" />
   <!-- RhBoardLightBrush: ONE shared SolidColorBrush with a ColorTransition, added by ThemeManager (DESIGN 2.5.6) -->
 
   <!-- ===== Text ===== -->
-  <SolidColorBrush x:Key="RhText1Brush" Color="#F4ECDF" />
-  <SolidColorBrush x:Key="RhText2Brush" Color="#C9BFAF" />
-  <SolidColorBrush x:Key="RhText3Brush" Color="#948A7A" />
-  <SolidColorBrush x:Key="RhTextOnAccentBrush" Color="#14120F" />
+  <SolidColorBrush x:Key="RhText1Brush" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="RhText2Brush" Color="#C3C8D1" />
+  <SolidColorBrush x:Key="RhText3Brush" Color="#A0A7B2" />
+  <SolidColorBrush x:Key="RhTextOnAccentBrush" Color="#0B0C0E" />
 
   <!-- ===== Light colour / accent (replaced at runtime; solid colours only) ===== -->
-  <SolidColorBrush x:Key="RhAccentBrush" Color="#FFB547" />
-  <SolidColorBrush x:Key="RhAccentPressedBrush" Color="#E59A2E" />
-  <SolidColorBrush x:Key="RhAccentSoftBrush" Color="#33FFB547" />
-  <SolidColorBrush x:Key="RhAccentTextBrush" Color="#FFC877" />
+  <SolidColorBrush x:Key="RhAccentBrush" Color="#2FD3F5" />
+  <SolidColorBrush x:Key="RhAccentPressedBrush" Color="#27B4D0" />
+  <SolidColorBrush x:Key="RhAccentSoftBrush" Color="#332FD3F5" />
+  <SolidColorBrush x:Key="RhAccentTextBrush" Color="#7FE5FA" />
   <!-- the only shadow: dialogs and overlays (DESIGN 4.4) -->
   <BoxShadows x:Key="RhPanelShadow">0 24 64 -16 #F0000000</BoxShadows>
 
@@ -55,11 +56,11 @@
   <SolidColorBrush x:Key="RhSuccessBrush" Color="#8FD694" />
   <SolidColorBrush x:Key="RhSuccessSoftBrush" Color="#2A3A2A" />
   <SolidColorBrush x:Key="RhWarningBrush" Color="#FF9A4A" />
-  <SolidColorBrush x:Key="RhWarningSoftBrush" Color="#3E2E1F" />
+  <SolidColorBrush x:Key="RhWarningSoftBrush" Color="#2B2D33" />
   <SolidColorBrush x:Key="RhDangerBrush" Color="#FF6A5E" />
-  <SolidColorBrush x:Key="RhDangerSoftBrush" Color="#3F2621" />
+  <SolidColorBrush x:Key="RhDangerSoftBrush" Color="#3A2228" />
   <SolidColorBrush x:Key="RhCloseHoverBrush" Color="#C42B1C" />
-  <SolidColorBrush x:Key="RhFavoriteBrush" Color="#FFD36A" />
+  <SolidColorBrush x:Key="RhFavoriteBrush" Color="#FF4D6A" />
 
   <!-- ===== Shape (DESIGN 4.1) ===== -->
   <CornerRadius x:Key="RhRadiusNone">0</CornerRadius>

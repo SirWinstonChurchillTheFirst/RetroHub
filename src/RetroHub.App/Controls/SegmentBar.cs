@@ -7,7 +7,7 @@ namespace RetroHub.App.Controls;
 
 /// <summary>
 /// The segment bar (DESIGN 7.6 Importe, 9.3 start overlay): 14 segments 24 × 10 with 4 px gaps, lit ones in the light
-/// colour (Bernstein), the others Regal hell – like the level meter of a tape deck, never a rounded progress pill.
+/// colour (Cyan), the others Regal hell – like the level meter of a tape deck, never a rounded progress pill.
 /// <see cref="IsIndeterminate"/>: three lit segments wander one step every 80 ms (one timer, only while visible).
 /// Under motion "Aus" the wandering stops and the middle three stay lit.
 /// </summary>

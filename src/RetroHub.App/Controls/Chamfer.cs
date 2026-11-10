@@ -37,7 +37,7 @@ public static class Chamfer
         }
     }
 
-    private static readonly IImmutableSolidColorBrush RoomDeep = new ImmutableSolidColorBrush(Color.Parse("#0A0908"));
+    private static readonly IImmutableSolidColorBrush RoomDeep = new ImmutableSolidColorBrush(Color.Parse("#060708"));
 
     /// <summary>
     /// The chamfered focus ring around <paramref name="target"/> (DESIGN 8.1): inside a 3 px gap in room-deep (keeps

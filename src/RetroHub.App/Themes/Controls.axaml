@@ -56,7 +56,7 @@
       </Setter>
     </Style>
     <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#363128" />
+      <Setter Property="Background" Value="#32353C" />
     </Style>
     <Style Selector="^:pressed">
       <Setter Property="RenderTransform" Value="scale(0.97)" />
@@ -74,7 +74,7 @@
 
   <ControlTheme x:Key="{x:Type Button}" TargetType="Button" BasedOn="{StaticResource RhButton}" />
 
-  <!-- primary ("Spielen"): chamfered plate in Bernstein, ink text; focus = paper ring with a room-deep gap + 1.03 -->
+  <!-- primary ("Spielen"): chamfered plate in Cyan, ink text; focus = paper ring with a room-deep gap + 1.03 -->
   <ControlTheme x:Key="RhPrimaryButton" TargetType="Button" BasedOn="{StaticResource RhButton}">
     <Setter Property="Background" Value="{DynamicResource RhAccentBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource RhTextOnAccentBrush}" />
@@ -161,7 +161,7 @@
     <Setter Property="Background" Value="{DynamicResource RhDangerSoftBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource RhDangerBrush}" />
     <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#4E2E27" />
+      <Setter Property="Background" Value="#4A2A30" />
     </Style>
     <Style Selector="^:focus-visible">
       <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
@@ -493,7 +493,7 @@
       <Setter Property="Outline" Value="{DynamicResource RhWarningBrush}" />
     </Style>
     <Style Selector="^:pointerover /template/ c|ChamferPlate#PART_Plate">
-      <Setter Property="Background" Value="#363128" />
+      <Setter Property="Background" Value="#32353C" />
     </Style>
     <Style Selector="^:pressed /template/ c|ChamferPlate#PART_Plate">
       <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
@@ -648,7 +648,7 @@
   <!-- A row of the service menu: label in ui-l Papier (one meta line under it), the value right between two filled
        arrows in a fixed 320 px column (the values of a section stand on one axis, like a TV's service menu), or an
        action ("Öffnen ›"). No toggle switch, no slider, no segment control. Focus = the row language of 8.2: Regal hell,
-       8 px Bernstein bar, 1 px light edge, the label in a paper chip; the arrows turn Papier. An arrow at the end of an
+       8 px Cyan bar, 1 px light edge, the label in a paper chip; the arrows turn Papier. An arrow at the end of an
        ordered row stays dim. -->
   <ControlTheme x:Key="{x:Type c:ServiceRow}" TargetType="c:ServiceRow">
     <Setter Property="MinHeight" Value="72" />
@@ -941,7 +941,7 @@
     </Style>
   </ControlTheme>
 
-  <!-- the "Alle anzeigen" spine (DESIGN 7.1): 72 wide, Regal hell, 8 px Bernstein band, text −90° in Rücken 18;
+  <!-- the "Alle anzeigen" spine (DESIGN 7.1): 72 wide, Regal hell, 8 px Cyan band, text −90° in Rücken 18;
        focus = the chamfered ring in paper (like the primary plate) -->
   <ControlTheme x:Key="RhSpineButton" TargetType="Button">
     <Setter Property="ClipToBounds" Value="False" />
@@ -979,7 +979,7 @@
       </Setter>
     </Style>
     <Style Selector="^:pointerover /template/ c|BoxFace#PART_Face">
-      <Setter Property="Fill" Value="#363128" />
+      <Setter Property="Fill" Value="#32353C" />
     </Style>
     <Style Selector="^:focus-visible">
       <Setter Property="RenderTransform" Value="scale(1.03)" />

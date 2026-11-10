@@ -223,12 +223,12 @@ public sealed class ButtonGlyph : Control
     public static readonly StyledProperty<bool> KeyboardProperty = AvaloniaProperty.Register<ButtonGlyph, bool>(nameof(Keyboard));
     public static readonly StyledProperty<bool> SwapAcceptBackProperty = AvaloniaProperty.Register<ButtonGlyph, bool>(nameof(SwapAcceptBack));
 
-    private static readonly IImmutableSolidColorBrush Paper = new ImmutableSolidColorBrush(Color.Parse("#F4ECDF"));
-    private static readonly IImmutableSolidColorBrush Ink = new ImmutableSolidColorBrush(Color.Parse("#14120F"));
-    private static readonly IImmutableSolidColorBrush Shelf = new ImmutableSolidColorBrush(Color.Parse("#2A2620"));
-    private static readonly IImmutableSolidColorBrush Text3 = new ImmutableSolidColorBrush(Color.Parse("#948A7A"));
-    private static readonly IImmutableSolidColorBrush Text2 = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
-    private static readonly IPen EdgePen = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#3A342B")), 1);
+    private static readonly IImmutableSolidColorBrush Paper = new ImmutableSolidColorBrush(Color.Parse("#F5F7FA"));
+    private static readonly IImmutableSolidColorBrush Ink = new ImmutableSolidColorBrush(Color.Parse("#0B0C0E"));
+    private static readonly IImmutableSolidColorBrush Shelf = new ImmutableSolidColorBrush(Color.Parse("#24272D"));
+    private static readonly IImmutableSolidColorBrush Text3 = new ImmutableSolidColorBrush(Color.Parse("#A0A7B2"));
+    private static readonly IImmutableSolidColorBrush Text2 = new ImmutableSolidColorBrush(Color.Parse("#C3C8D1"));
+    private static readonly IPen EdgePen = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#343840")), 1);
 
     /// <summary>
     /// Quiet plate (the ticker's shoulders, M3 QA): Regal hell with a 1 px edge and the wedge / key name in Text 2 –

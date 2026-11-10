@@ -1,6 +1,6 @@
 # RetroHub Designsprache „Fernsehlicht“
 
-Version 1.1 · Art Direction · Stand 2026-11-10 (umgesetzt bis M6)
+Version 2.0 · Art Direction · Stand 2026-11-10 (umgesetzt bis R3; Farbsystem v2 „Schwarz + Weiß + Cyan“, Abschnitt 2)
 Ersetzt v1.0 (`docs/design/DESIGN-SPEC-v1.0.md`, bleibt als Historie). Grundlage für v1.1 ist die Kritik an v1.0 (Wertung 7/10). Jeder Kritikpunkt ist in Abschnitt 13 entschieden.
 Gilt für RetroHub.App (Avalonia 12.1.5, .NET 10). Nur Dark Mode. Alle Maße beziehen sich auf eine Referenzfläche von 1920×1080 logischen Pixeln und werden über `UiScale` skaliert (siehe 7.0).
 
@@ -13,8 +13,8 @@ Gilt für RetroHub.App (Avalonia 12.1.5, .NET 10). Nur Dark Mode. Alle Maße bez
 1. **Metapher**: das Spielzimmer um elf Uhr nachts. Die einzige Lichtquelle ist ein *sichtbarer* Fernseher. Sein Licht fällt auf die Regalbretter, auf denen die Sammlung steht.
 2. **Nichts schwebt.** Alles steht auf einem Brett oder hängt an einem Brett. Es gibt keine Karten und keine Panels, außer bei echten Overlays (Dialog, Auswahl).
 3. **Sieben Objekte** bilden die ganze App: *Brett*, *Schachtel*, *Rücken*, *Etikett*, *Wand*, *Bildschirm* und *Lichtkegel* (1.2). Ein neues UI-Element ist eines davon oder entfällt.
-4. **Raum**: warmes Braunschwarz #14120F, opak, ohne Violett. Farbe kommt nur aus Spielbildern und aus den Gehäusen der Systeme.
-5. **Standby-Bernstein #FFB547** ist die einzige Markenfarbe. Ihre Einsatzliste ist abschließend und per grep prüfbar.
+4. **Raum**: neutrales Fast-Schwarz #0B0C0E, opak, ohne Braun und ohne Violett (v2). Farbe kommt nur aus Spielbildern, aus den Systemfarben und aus der einen Lichtfarbe.
+5. **Standby-Cyan #2FD3F5** ist die einzige Markenfarbe (v2, Entscheidung des Owners; das Bernstein entfällt). Ihre Einsatzliste ist abschließend und per grep prüfbar.
 6. **Systeme sind Gehäuse.** Jedes System hat eine hart zweigeteilte, gestrichene Wand im Material seines Gehäuses, ein Farbband, ein Kategorie-Motiv und eine Ära-Textur. Logos gibt es nicht.
 7. **Typografie**: Archivo in vier Breiten ist die Stimme von Verpackung und Bedienung (Expanded für Plakate, Condensed für Rücken, SemiCondensed für UI). Atkinson Hyperlegible Next ist die Leseschrift. **Zahlen sind immer Archivo.**
 8. **Fokus heißt, das Objekt wird ins Licht gehoben.** Es wächst vom Brett nach oben, ein Lichtkegel fällt von oben, das Brettstück darunter wird hell, und ein gefaster Ring umgibt es. Kleine Elemente invertieren stattdessen.
@@ -31,7 +31,7 @@ Gilt für RetroHub.App (Avalonia 12.1.5, .NET 10). Nur Dark Mode. Alle Maße bez
 
 | Im Zimmer | In der UI | Konsequenz |
 |---|---|---|
-| Dunkler Raum | Grundfläche `Raum` #14120F (warm, opak) | Nichts leuchtet ohne Lichtquelle |
+| Dunkler Raum | Grundfläche `Raum` #0B0C0E (neutral, opak) | Nichts leuchtet ohne Lichtquelle |
 | Röhrenfernseher | Objekt **Bildschirm** (4:3, auf dem Bühnenbrett, Start) und die Bildschirmfotos auf der Rückseite (Detail) | Das Raumlicht hat eine sichtbare Quelle. Der Schein sitzt *am* Bildschirm bzw. an der Schachtel, nicht an einem unsichtbaren Punkt |
 | Fernsehlicht auf den Brettern | Lichtkante aller Bretter in der Bildfarbe des fokussierten Spiels (eine geteilte Brush) | Wechselt das Spiel, wechselt das Licht auf jedem Brett |
 | Regalbretter | Objekt **Brett** (Front 24 bzw. 10 px, Lichtkante, Schatten nach unten) | Cover stehen. Der Fokus wächst nach oben. Etiketten hängen am Brett |
@@ -40,7 +40,7 @@ Gilt für RetroHub.App (Avalonia 12.1.5, .NET 10). Nur Dark Mode. Alle Maße bez
 | Preisschild am Regal | Objekt **Etikett** (Papier, Tinte, eckig) | Ersetzt Abschnittsüberschriften und „Alle anzeigen“-Links |
 | Gestrichene Fachrückwand | Objekt **Wand** (zweifarbig hart geteilt, Farbband, Textur, Motiv) | Plattform-Identität über Material, Farbe und Form, nie über Marken |
 | Leselampe | Objekt **Lichtkegel** (Fokus von oben) | Das einzige farbige Licht im UI. Kein Glow und kein Halo |
-| Standby-LED | Bernstein-Quadrat in der Wortmarke | Eine Markenfarbe, sparsam |
+| Standby-LED | Cyan-Quadrat in der Wortmarke | Eine Markenfarbe, sparsam |
 | Kanalanzeige (OSD) | Kanalziffer und Systemcode, hart ein und aus | Tab-Wechsel und Spielstart sprechen die Sprache des Fernsehers |
 | Einschalten der Röhre | Starttransition | Der einzige inszenierte Moment |
 
@@ -48,12 +48,12 @@ Gilt für RetroHub.App (Avalonia 12.1.5, .NET 10). Nur Dark Mode. Alle Maße bez
 
 | Objekt | Form | Wo | Umsetzung |
 |---|---|---|---|
-| **Brett** | Front 24 px (Bühnenbrett, trägt Etiketten) oder 10 px (Regalkante im Grid). Fläche Regal hell #2A2620, oben 1 px `RhBoardLightBrush`, unten 1 px Kante #3A342B, darunter 16 px Schatten #000 45 % → 0 | Start, Detail, Bibliothek, Konsolen, Systemseite, Liste (Vorschau) | `ShelfBoard` (Render-Override, statische Brushes); im Grid zeichnet `CoverRowPresenter` das Brett selbst |
+| **Brett** | Front 24 px (Bühnenbrett, trägt Etiketten) oder 10 px (Regalkante im Grid). Fläche Regal hell #24272D, oben 1 px `RhBoardLightBrush`, unten 1 px Kante #343840, darunter 16 px Schatten #000 45 % → 0 | Start, Detail, Bibliothek, Konsolen, Systemseite, Liste (Vorschau) | `ShelfBoard` (Render-Override, statische Brushes); im Grid zeichnet `CoverRowPresenter` das Brett selbst |
 | **Schachtel** | Cover contain, unten bündig, horizontal zentriert, R 2, Kontaktschatten 10 px #000 55 % → 0 auf dem Brett | überall, wo Spiele stehen | `CoverArt` (Bild bzw. Platzhalter); der Kontaktschatten gehört zum Brett |
 | **Rücken** | Hochkantes Feld, oben 8 px Farbband, Text −90° gedreht in Archivo Condensed | Platzhalter-Cover (10.2), „Alle anzeigen“, Systemrücken (Start, Konsolen), Schachtelrücken (Detail) | `CoverArt.DrawPlaceholder`, `SystemSpine`, `BoxSpine` |
-| **Etikett** | Papier #F4ECDF, Tinte #14120F, Archivo SemiCondensed SemiBold 15, Innenabstand 8×3, R 0. Variante „Neu“ in Bernstein | Regaletiketten am Bühnenbrett, Abschnittsköpfe in Einstellungen, Aufkleber | `ShelfLabel` (Border + TextBlock) |
-| **Wand** | Wand hell oben 38 %, Wand unten 62 %, dazwischen 1 px Lichtkante #17FFF3E0, oben 8 px Farbband, Textur, Motiv stehend rechts | Systemfront, Banner, Systemseite, „Kein Signal“ im Bildschirm | `SystemWall` (nur Volltonflächen, damit `BrushTransition` interpoliert) |
-| **Bildschirm** | 4:3, 2 px Rahmen Raum-Tief #0A0908, R 0, Scanlines `scan-4x3` bei 18 %. *Die einzige Fläche mit Scanlines* | Start (Bühne), Detail (Rückseite) | `PixelScreen` (Gerätepixel-Skalierung, 7.0) |
+| **Etikett** | Papier #F5F7FA, Tinte #0B0C0E, Archivo SemiCondensed SemiBold 15, Innenabstand 8×3, R 0. Variante „Neu“ in der Lichtfarbe (Cyan) | Regaletiketten am Bühnenbrett, Abschnittsköpfe in Einstellungen, Aufkleber | `ShelfLabel` (Border + TextBlock) |
+| **Wand** | Wand hell oben 38 %, Wand unten 62 %, dazwischen 1 px Lichtkante #17FFFFFF, oben 8 px Farbband, Textur, Motiv stehend rechts | Systemfront, Banner, Systemseite, „Kein Signal“ im Bildschirm | `SystemWall` (nur Volltonflächen, damit `BrushTransition` interpoliert) |
+| **Bildschirm** | 4:3, 2 px Rahmen Raum-Tief #060708, R 0, Scanlines `scan-4x3` bei 18 %. *Die einzige Fläche mit Scanlines* | Start (Bühne), Detail (Rückseite) | `PixelScreen` (Gerätepixel-Skalierung, 7.0) |
 | **Lichtkegel** | Trapez von oben, Lichtfarbe 14 % → 0, plus beleuchtetes Brettstück und gefaster Ring | fokussierte Schachtel, Wand oder Primärbutton | `FocusLayer` pro Grid/Regal (8.1) |
 
 Was keines dieser Objekte ist, kommt nur als Overlay vor (Dialog, Auswahlliste, Mehr-Menü) oder als flache Zeile in den Werkbank-Seiten.
@@ -68,7 +68,7 @@ Was keines dieser Objekte ist, kommt nur als Overlay vor (Dialog, Auswahlliste, 
 - **Keine Dribbble-Schrift.** Archivo mit Breitenkontrast spricht wie Spielverpackungen der 90er, Atkinson liest sich auf drei Meter.
 - **Kein Retro-Filter.** Korn gibt es nur im Hintergrund (gegen Banding), Scanlines nur im Bildschirm-Objekt.
 - **Keine Marken-Glyphen.** Controller-Tasten sind positionsbasiert und einfarbig (5.3).
-- **Leerer warmer Raum ist Teil der Identität.** Freie Flächen werden nicht mit Wasserzeichen gefüllt.
+- **Leerer dunkler Raum ist Teil der Identität.** Freie Flächen werden nicht mit Wasserzeichen gefüllt.
 
 ### 1.4 Was wir von welcher Referenz nehmen (nur Prinzipien)
 
@@ -93,104 +93,119 @@ Bewusst **nicht** übernommen: Logos und Wortmarken, Hardware-Fotos, Trade Dress
 
 ## 2. Farbsystem
 
-### 2.1 Grundneutrale (warm, opak)
+### 2.0 Farbsystem v2 „Schwarz + Weiß + Cyan“ (R3-Owner-Entscheidung)
+
+Nach dem R3-Test auf echter Hardware: *„diese goldene braun ist kacke“*. Entscheidung des Owners: **Schwarz + Weiß + Cyan** – Grund #0B0C0E (neutrales Fast-Schwarz), Fläche #1A1C20, Text #FFFFFF, Akzent #2FD3F5. Damit entfallen das Bernstein und **jede** warme Braun-, Oliv-, Beige- oder Goldfläche (Wände, Bretter, Holz-Textur, Papier, Etiketten, Kanten, Schuber). Die Systemfarben (2.4: Farbe, Zweitfarbe, Licht) bleiben; sie sind die Farbe des Geräts, nicht des Themes. Die Gehäuse-Wände sind neutral bzw. kühl; „warmgrau“, „beige“ und „holz“ heißen nur noch so, weil das Material so heißt.
+
+Prüfung: `ThemeV2Tests` (kein Neutral-Token und keine Gehäusewand im Farbton 15°–75° mit Sättigung ≥ 0,10; Text 1–3 ≥ 4,5 : 1 auf Raum, Regal, Regal hell und jeder Wand/Wand hell; jede Lichtfarbe als Fokusring ≥ 3 : 1 auf jedem dieser Gründe; Systemlicht ≥ 3 : 1 auf der eigenen Wand; Migration gespeicherter v1-Lichtfarben). Quelltext-Scan `scratchpad/theme/warmscan.py`: übrig sind nur die Statusfarbe Warnung #FF9A4A (immer mit Dreieck-Icon) und die Migrationstabelle.
+
+**Schuber „Noch leer“ (v2)**: Die Pappe ist grau (#5E646E, ¼ Wand). Kühle Systeme geben ihr 22 % ihrer Farbe mit (Sättigung ≤ 0,16); Systeme mit rotem bis gelbem Farbton (345°–75°) bleiben reine graue Pappe, weil jede Mischung dort zu Braun, Oliv oder Mauve wird. Die Systemfarbe steht klar als 4-px-Druckkante oben auf der Front und als Streifen auf dem Etikett. Die R3-Mischung (30 % Systemfarbe in brauner Pappe) machte aus jedem roten, orangen, gelben und Holz-System Matsch.
+
+### 2.1 Grundneutrale (neutral, opak)
 
 | Token | Bestehender Key | Hex | Verwendung |
 |---|---|---|---|
-| Raum-Tief | `RhRoomDeepColor` (neu) | #0A0908 | Bildschirmrahmen, Letterbox, Spalt im Fokusring, Start-Overlay |
-| Raum | `RhBaseColor` | #14120F | App-Grund |
-| Regal | `RhSurfaceColor` | #1E1B17 | Overlays, Eingabefelder |
-| Regal hell | `RhSurfaceHiColor` | #2A2620 | Brettfront, Hover, Fokuszeile, Sekundärbuttons |
-| Kante | `RhLineColor` | #3A342B | Brett-Unterkante, Trennlinien (opak) |
-| Lichtkante | `RhLightEdgeBrush` (neu) | #17FFF3E0 | Teilungslinie der Wände, Overlays oben |
-| Brettlicht | `RhBoardLightBrush` (neu, **eine** geteilte `SolidColorBrush`, dynamisch) | siehe 2.5 | Oberkante aller Bretter |
-| Papier | `RhText1Color` | #F4ECDF | Primärtext, Etiketten, Inversion (15,9 : 1 auf Raum) |
-| Text 2 | `RhText2Color` | #C9BFAF | Sekundärtext (10,3 : 1) |
-| Text 3 | `RhText3Color` | #948A7A | Tertiärtext, nur ≥ 15 px (5,5 : 1 auf Raum, 5,0 : 1 auf Regal) |
-| Tinte | `RhTextOnAccentBrush` | #14120F | Text auf Papier, Bernstein und hellen Systemfarben |
+| Raum-Tief | `RhRoomDeepColor` | #060708 | Bildschirmrahmen, Letterbox, Spalt im Fokusring, Start-Overlay |
+| Raum | `RhBaseColor` | #0B0C0E | App-Grund |
+| Regal | `RhSurfaceColor` | #1A1C20 | Overlays, Eingabefelder |
+| Regal hell | `RhSurfaceHiColor` | #24272D | Brettfront, Hover, Fokuszeile, Sekundärbuttons |
+| Kante | `RhLineColor` | #343840 | Brett-Unterkante, Trennlinien (opak) |
+| Lichtkante | `RhLightEdgeBrush` | #17FFFFFF | Teilungslinie der Wände, Overlays oben |
+| Brettlicht | `RhBoardLightBrush` (**eine** geteilte `SolidColorBrush`, dynamisch) | siehe 2.5 | Oberkante aller Bretter |
+| Text 1 | `RhText1Color` | #FFFFFF | Primärtext (19,6 : 1 auf Raum, 17,1 auf Regal) |
+| Papier | `RhPaperBrush` | #F5F7FA | Etiketten, Lieferschein, Karteikarten, Inversion (18,2 : 1 auf Raum) |
+| Etikettpapier | `Craft.LabelPaper` | #EEF1F5 | gezeichnete Papierzettel (Tinte darauf 17,3 : 1) |
+| Text 2 | `RhText2Color` | #C3C8D1 | Sekundärtext (11,7 : 1 auf Raum) |
+| Text 3 | `RhText3Color` | #A0A7B2 | Tertiärtext (8,1 : 1 auf Raum, 7,0 auf Regal, ≥ 4,9 auf jeder Wand hell) |
+| Tinte | `RhInkColor` / `RhTextOnAccentBrush` | #0B0C0E | Text auf Papier, auf Cyan und auf hellen Systemfarben |
 
 Regeln:
-- **Kein reines Schwarz und kein reines Weiß** in Flächen. Schatten verwenden #000 mit Alpha.
-- **Keine Alpha-Weiß-Flächen.** Hover und Auswahl sind opak.
+- **Papier ist weiß, Tinte ist schwarz.** Lieferschein, Karteikarten, Etiketten und Aufkleber sind weißes Papier mit schwarzer Tinte; der Akzent darauf ist Cyan (bzw. die Systemfarbe als Streifen). Kein Cremeweiß, kein Gelbstich.
+- **Kein Braun, kein Oliv, kein Beige, kein Gold** in Flächen, Linien, Texturen und Papier. Ausnahme ist nur die Systemfarbe eines Geräts (2.4), etwa das Orange eines Systems im Farbband.
+- **Keine Alpha-Weiß-Flächen.** Hover und Auswahl sind opak. Schatten verwenden #000 mit Alpha.
+- Texturen sind farblos (Weiß bzw. Schwarz mit Alpha); `holz-256x32.png` ist seit v2 eine graue Maserung.
 
-### 2.2 Signaturfarbe „Standby-Bernstein“
+### 2.2 Signaturfarbe „Standby-Cyan“
 
-| Rolle | Hex | Kontrast |
-|---|---|---|
-| Bernstein (Akzent A) | #FFB547 | 10,6 : 1 auf Raum; Tinte darauf 10,6 : 1 |
-| Bernstein tief (gedrückt) | #E59A2E | Tinte darauf 8,0 : 1 |
-| Bernstein Text | #FFC877 | Links auf Raum |
+| Rolle | Key | Hex | Kontrast |
+|---|---|---|---|
+| Cyan (Akzent A) | `RhAccentBrush` | #2FD3F5 | 11,0 : 1 auf Raum, ≥ 6,7 auf jeder Wand hell; Tinte darauf 11,0 : 1 |
+| Cyan tief (gedrückt) | `RhAccentPressedBrush` | #27B4D0 | Tinte darauf 7,9 : 1 |
+| Cyan weich | `RhAccentSoftBrush` | #332FD3F5 | Hinweisflächen |
+| Cyan Text | `RhAccentTextBrush` | #7FE5FA | Links auf Raum (13,5 : 1) |
 
-**Einsatz, abschließend:** (1) „Spielen“ und andere Primäraktionen (`Ordner hinzufügen`, `Jetzt scannen`, `Speichern` in Dialogen), (2) Fokusring und Lichtkegel in gemischten Ansichten (Start, Bibliothek „Alle“, Suche), (3) Standby-Quadrat der Wortmarke, (4) Kanalmarke unter dem aktiven Tab und Ticker-Unterstrich bei „Alle“, (5) Aufkleber „Neu“, (6) Fortschritt und Fokusmarke im Regalspiegel. **Nirgendwo sonst.** QA: grep auf `#FFB547|RhAccent` und Abgleich mit dieser Liste.
+**Einsatz, abschließend:** (1) „Spielen“ und andere Primäraktionen (`Ordner hinzufügen`, `Jetzt scannen`, `Speichern` in Dialogen), (2) Fokusring und Lichtkegel in gemischten Ansichten (Start, Bibliothek „Alle“, Suche), (3) Standby-Quadrat der Wortmarke, (4) Kanalmarke unter dem aktiven Tab und Ticker-Unterstrich bei „Alle“, (5) Aufkleber „Neu“, (6) Fortschritt und Fokusmarke im Regalspiegel, (7) Akzent auf weißem Papier (Stempel und Haken des Lieferscheins). **Nirgendwo sonst.** QA: grep auf `#2FD3F5|RhAccent` und Abgleich mit dieser Liste.
 
-**Lichtfarben** (Benutzer-Presets, Pipeline `ThemeManager.ApplyAccent` bleibt): Bernstein #FFB547 (Standard), Phosphor #8FE3A0, Röhrenweiß #EDE3D0, Eisblau #8CC4FF, Kirsche #FF8A80, Neonrosa #FF8CC6. Auf allen ist Tinte ≥ 8 : 1.
+**Lichtfarben** (Einstellung „Lichtfarbe“, Pipeline `ThemeManager.ApplyAccent`): **Cyan #2FD3F5 (Standard)**, Weiß #F2F5F8, Signalrot #FF808B, Grün #3DDC84 – nur kühle bzw. neutrale Farben, kein Bernstein mehr. Auf allen ist Tinte ≥ 8 : 1; als Fokusring erreicht jede ≥ 4,9 : 1 auf jeder Wand hell (Signalrot auf „weiß“ hell ist der knappste Fall).
+
+**Migration** (`ThemeManager.MigrateStored`, beim Start einmal gespeichert): Bernstein #FFB547 → Cyan (Standard), Eisblau → Cyan, Phosphor → Grün, Röhrenweiß → Weiß, Kirsche und Neonrosa → Signalrot; jeder andere Wert → Cyan.
 
 ### 2.3 Statusfarben
 
 | Status | Hex | Immer zusammen mit |
 |---|---|---|
 | Bereit/OK | #8FD694 | Häkchen-Icon |
-| Warnung | #FF9A4A | Dreieck-Icon (unterscheidet sich vom Bernstein durch Form *und* Text) |
+| Warnung | #FF9A4A | Dreieck-Icon (die einzige warme Farbe außerhalb der Systemfarben; Status, nie Fläche) |
 | Fehler | #FF6A5E | gefastes Achteck mit Kreuz |
-| Favorit | #FFD36A | gefüllter Stern |
+| Favorit | #FF4D6A | gefüllter Stern (v2: Rot statt Gelb; 6,1 : 1 auf Raum) |
 | Fenster schließen (Hover) | #C42B1C | OS-Konvention |
 
-Es gibt keine Status-Pillen, nur Icon und Text. Flächen für Hinweise haben die Statusfarbe bei 14 % auf Regal.
+Es gibt keine Status-Pillen, nur Icon und Text. Flächen für Hinweise sind opak und neutral: Warnung #2B2D33, Fehler #3A2228.
 
 ### 2.4 Systeme: Gehäuse, Farbband, Licht
 
 Neu in v1.1: Die Wand wird **aus dem Gehäusematerial** abgeleitet und nicht mehr aus dem Akzent. Viele Systeme teilen sich ein Material, so wie in einem echten Regal viele graue Geräte stehen. Unterscheidbar werden sie über Farbband, Motiv und Textur. Die Wand ist **zweifarbig hart geteilt**: oben 38 % *Wand hell*, unten 62 % *Wand*, dazwischen 1 px Lichtkante, am oberen Rand ein 8-px-Band in *Farbe*. Verläufe gibt es auf Wänden nicht.
 
-**Gehäuse** (Werte berechnet und geprüft mit `scratchpad/design/tools/palette2.py`):
+**Gehäuse** (v2 neutral bzw. kühl; Werte berechnet mit `scratchpad/theme/systable.py`, geprüft von `ThemeV2Tests` und `SystemPaletteTests`):
 
 | Gehäuse | Wand | Wand hell | Papier auf Wand / Wand hell |
 |---|---|---|---|
-| warmgrau | #211F1B | #322E28 | 14,0 / 11,5 |
-| kühlgrau | #1D2027 | #2D313B | 13,9 / 11,1 |
-| schwarz | #0F0F11 | #18181B | 16,3 / 15,1 |
-| anthrazit | #1C1C20 | #2A2A30 | 14,5 / 12,2 |
-| violett | #1B1626 | #2B213B | 15,1 / 12,9 |
-| weiß (dunkel gestrichen) | #2A2B2D | #3D3F43 | 12,1 / 9,0 |
-| beige | #2A2418 | #3E3524 | 13,1 / 10,3 |
-| holz | #24170E | #382419 | 14,9 / 12,5 |
-| beere (transparent) | #20132A | #311D3F | 15,1 / 13,0 |
+| warmgrau | #1C1D20 | #2A2C30 | 15,7 / 13,0 |
+| kühlgrau | #1A1E25 | #283038 | 15,6 / 12,5 |
+| schwarz | #0E0F11 | #17181B | 17,9 / 16,5 |
+| anthrazit | #1B1C20 | #292A30 | 15,9 / 13,3 |
+| violett | #1A1626 | #2A213B | 16,5 / 14,2 |
+| weiß (dunkel gestrichen) | #27292D | #34373C | 13,6 / 11,1 |
+| beige | #232528 | #303236 | 14,3 / 12,0 |
+| holz | #1A1B1D | #27282B | 16,1 / 13,7 |
+| beere (transparent) | #1F1329 | #2F1D3E | 16,5 / 14,3 |
 
-**Systeme** (Farbe und Zweitfarbe sind von Hand gesetzt wie in v1.0. Licht = HSL(h_Farbe, clamp(s, 0,25, 0,85), L ab 0,72), L steigt in 0,02-Schritten, bis Licht/Wand hell ≥ 4,5 *und* Licht/Raum ≥ 7,0):
+**Systeme** (Farbe und Zweitfarbe sind von Hand gesetzt wie in v1.0. Licht = HSL(h_Farbe, clamp(s, 0,25, 0,85), L ab 0,72), L steigt in 0,02-Schritten, bis Licht/Wand hell ≥ 4,5 *und* Licht/Raum ≥ 7,0; Licht und Text auf Farbe v2 neu berechnet für Raum #0B0C0E und Papier #F5F7FA):
 
 | System | Gehäuse | Motiv | Farbe | Zweitfarbe | Licht | Licht/Wand hell | Text auf Farbe |
 |---|---|---|---|---|---|---|---|
-| nes | warmgrau | Cart8 | #C51F1B | #A8A39A | #EE8481 | 5,3 | Papier 5,0 |
-| snes | warmgrau | Cart16 | #6652BE | #BDB7AD | #A397D8 | 5,1 | Papier 5,1 |
-| n64 | anthrazit | Cart64 | #12A05E | #4A4A50 | #7FF1BC | 10,3 | Tinte 5,5 |
-| gb | warmgrau | Handheld hoch | #8BAC0F | #306230 | #DAF47C | 11,0 | Tinte 7,1 |
-| gbc | beere | Handheld hoch (doppelt) | #8E3BD0 | #2FB8A6 | #BD8CE3 | 5,8 | Papier 4,9 |
-| gba | violett | Handheld quer | #5A46D9 | #A9A2E8 | #A499EA | 6,0 | Papier 5,4 |
-| gamecube | violett | MiniDisc | #6450CC | #F29A3B | #A498E1 | 5,9 | Papier 5,0 |
-| wii | weiß | Remote (schmaler Block, der funkt; R3) | #3FC0EE | #E6EEF2 | #7CD4F3 | 6,3 | Tinte 8,9 |
-| wiiu | weiß | Tablet (zweiter Bildschirm) | #12A0CC | #F0F0F0 | #7CD7F3 | 6,5 | Tinte 6,2 |
-| nds | kühlgrau | Klappe | #8FA3B8 | #3C4654 | #A6B7C9 | 6,4 | Tinte 7,2 |
-| 3ds | anthrazit | ClamshellWide (Klappe mit Tiefen-Treppe) | #C21D26 | #2B2B30 | #EC8389 | 5,6 | Papier 5,1 |
-| switch | anthrazit | Dock (Bildschirm zwischen zwei Seitenblöcken; R3) | #C41F2A | #2E2E33 | #EB848B | 5,6 | Papier 5,0 |
-| virtualboy | schwarz | TwinLens (Stereobrille) | #C8121C | #1A0505 | #F37C83 | 6,8 | Papier 5,0 |
-| arcade | schwarz | Bedienfeld | #FF2E88 | #22E4FF | #F47BAF | 7,0 | Tinte 5,3 |
-| pc | beige | Diskette | #C7B48A | #3FBF6A | #D1C19E | 6,8 | Tinte 9,2 |
-| atari2600 | holz | Stick | #C0702A | #2A1A10 | #E5B58A | 7,9 | Tinte 5,0 |
-| atari7800 | schwarz | StickGrip | #C8243A | #C0C0C0 | #E98693 | 7,0 | Papier 4,8 |
-| lynx | schwarz | HandheldLong (sehr breit, Griffe) | #F2A21A | #2B2B2B | #F4C77B | 11,3 | Tinte 8,9 |
-| pcengine | weiß | Card | #F05A28 | #E8E4DA | #F4997B | 4,9 | Tinte 5,5 |
-| ngp | anthrazit | HandheldCompact | #2E5DB8 | #D9D4C8 | #8DAAE2 | 6,1 | Papier 5,3 |
-| wonderswan | weiß | HandheldNarrow | #10A8B5 | #F0E6C8 | #7CEAF3 | 7,5 | Tinte 6,5 |
-| msx | beige | Tastenblock | #3368A3 | #D8D2C4 | #92B6DD | 5,7 | Papier 4,9 |
-| mastersystem | schwarz | CartWide (liegend) | #C42019 | #1A1A1A | #EF8580 | 7,0 | Papier 5,0 |
-| megadrive | schwarz | CartGrip | #1B66B2 | #121212 | #83B7EC | 8,4 | Papier 5,0 |
-| gamegear | schwarz | HandheldBig | #2D9CDB | #1A1A1A | #85C6EA | 9,5 | Tinte 6,1 |
-| segacd | schwarz | Lade | #4A86D0 | #1A1A1A | #8EB3E2 | 8,2 | Tinte 5,0 |
-| sega32x | schwarz | Modulstapel | #F2AE00 | #1A1A1A | #F4D27B | 12,1 | Tinte 9,6 |
-| saturn | anthrazit | Disc mit Bändern | #5A5FB8 | #2A2A2E | #9B9ED4 | 5,6 | Papier 4,8 |
-| dreamcast | weiß | Disc mit Halbton | #F26F21 | #EDEBE6 | #F4A87B | 5,4 | Tinte 6,3 |
-| ps1 | kühlgrau | Disc mit Spur | #9AA0B4 | #3A3F4E | #A6AEC9 | 5,9 | Tinte 7,2 |
-| ps2 | schwarz | Turm (Farbe auf L 0,55) | #2C4FD0 | #08090F | #899DE6 | 6,8 | Papier 5,7 |
-| psp | schwarz | Handheld breit | #A9B4C8 | #0C0D10 | #A6B2C9 | 8,3 | Tinte 8,9 |
+| nes | warmgrau | Cart8 | #C51F1B | #A8A39A | #EE8481 | 5,5 | Papier 5,5 |
+| snes | warmgrau | Cart16 | #6652BE | #BDB7AD | #A397D8 | 5,3 | Papier 5,6 |
+| n64 | anthrazit | Cart64 | #12A05E | #4A4A50 | #7FF1BC | 10,4 | Tinte 5,8 |
+| gb | warmgrau | Handheld hoch | #8BAC0F | #306230 | #DAF47C | 11,5 | Tinte 7,5 |
+| gbc | beere | Handheld hoch (doppelt) | #8E3BD0 | #2FB8A6 | #BD8CE3 | 5,9 | Papier 5,3 |
+| gba | violett | Handheld quer | #5A46D9 | #A9A2E8 | #9D91E8 | 5,5 | Papier 5,9 |
+| gamecube | violett | MiniDisc | #6450CC | #F29A3B | #A498E1 | 5,9 | Papier 5,5 |
+| wii | weiß | Remote (schmaler Block, der funkt; R3) | #3FC0EE | #E6EEF2 | #7CD4F3 | 7,2 | Tinte 9,3 |
+| wiiu | weiß | Tablet (zweiter Bildschirm) | #12A0CC | #F0F0F0 | #7CD7F3 | 7,3 | Tinte 6,5 |
+| nds | kühlgrau | Klappe | #8FA3B8 | #3C4654 | #A6B7C9 | 6,5 | Tinte 7,5 |
+| 3ds | anthrazit | ClamshellWide (Klappe mit Tiefen-Treppe) | #C21D26 | #2B2B30 | #EC8389 | 5,6 | Papier 5,6 |
+| switch | anthrazit | Dock (Bildschirm zwischen zwei Seitenblöcken; R3) | #C41F2A | #2E2E33 | #EB848B | 5,6 | Papier 5,5 |
+| virtualboy | schwarz | TwinLens (Stereobrille) | #C8121C | #1A0505 | #F37C83 | 6,8 | Papier 5,5 |
+| arcade | schwarz | Bedienfeld | #FF2E88 | #22E4FF | #F47BAF | 7,0 | Tinte 5,6 |
+| pc | beige | Diskette | #C7B48A | #3FBF6A | #D1C19E | 7,2 | Tinte 9,6 |
+| atari2600 | holz | Stick | #C0702A | #2A1A10 | #E5B58A | 7,9 | Tinte 5,2 |
+| atari7800 | schwarz | StickGrip | #C8243A | #C0C0C0 | #E98693 | 7,0 | Papier 5,2 |
+| lynx | schwarz | HandheldLong (sehr breit, Griffe) | #F2A21A | #2B2B2B | #F4C77B | 11,2 | Tinte 9,3 |
+| pcengine | weiß | Card | #F05A28 | #E8E4DA | #F4997B | 5,5 | Tinte 5,8 |
+| ngp | anthrazit | HandheldCompact | #2E5DB8 | #D9D4C8 | #8DAAE2 | 6,1 | Papier 5,8 |
+| wonderswan | weiß | HandheldNarrow | #10A8B5 | #F0E6C8 | #7CEAF3 | 8,5 | Tinte 6,8 |
+| msx | beige | Tastenblock | #3368A3 | #D8D2C4 | #92B6DD | 6,1 | Papier 5,4 |
+| mastersystem | schwarz | CartWide (liegend) | #C42019 | #1A1A1A | #EF8580 | 7,0 | Papier 5,5 |
+| megadrive | schwarz | CartGrip | #1B66B2 | #121212 | #83B7EC | 8,4 | Papier 5,5 |
+| gamegear | schwarz | HandheldBig | #2D9CDB | #1A1A1A | #85C6EA | 9,5 | Tinte 6,4 |
+| segacd | schwarz | Lade | #4A86D0 | #1A1A1A | #8EB3E2 | 8,2 | Tinte 5,2 |
+| sega32x | schwarz | Modulstapel | #F2AE00 | #1A1A1A | #F4D27B | 12,1 | Tinte 10,1 |
+| saturn | anthrazit | Disc mit Bändern | #5A5FB8 | #2A2A2E | #9B9ED4 | 5,6 | Papier 5,2 |
+| dreamcast | weiß | Disc mit Halbton | #F26F21 | #EDEBE6 | #F4A87B | 6,1 | Tinte 6,6 |
+| ps1 | kühlgrau | Disc mit Spur | #9AA0B4 | #3A3F4E | #A6AEC9 | 6,1 | Tinte 7,5 |
+| ps2 | schwarz | Turm (Farbe auf L 0,55) | #2C4FD0 | #08090F | #899DE6 | 6,8 | Papier 6,2 |
+| psp | schwarz | Handheld breit | #A9B4C8 | #0C0D10 | #A6B2C9 | 8,3 | Tinte 9,4 |
 
 **Regeln und Test** (`SystemPaletteTests`, Core-unabhängig im App-Testprojekt):
 1. Licht/Wand hell ≥ 4,5 und Licht/Raum ≥ 7,0.
@@ -214,10 +229,10 @@ Neu in v1.1: Die Wand wird **aus dem Gehäusematerial** abgeleitet und nicht meh
 3. **Bildlicht**: Im selben Job wird aus den 64×36 Pixeln die nach Sättigung gewichtete Mittelfarbe gebildet und auf L 0,55–0,70 und S ≤ 0,70 geklemmt. Sie wird pro Spiel gecacht (`Dictionary<long, Color>`).
 4. **Scrims und Schein, zusammen in float gerechnet (R2)**: (a) horizontal Raum 94 % → 52 %, (b) vertikal transparent bis 60 % der Bühnenhöhe → Raum 100 % an der Brettoberkante, (c) Vignette Raum-Tief, (d) Kopfblende, (e) der Schein (Punkt 5) werden pro Pixel vormultipliziert übereinander gelegt und die Farbe mit Interleaved-Gradient-Noise (±½ LSB) quantisiert – **ein** Bitmap in Geräteauflösung (höchstens 2560 breit), auf einem Hintergrund-Thread (`RoomBackdrop.LightPixels`). Als Skia-Verläufe gezeichnet stuften sie sich in Konturringe und senkrechte Bänder, und das Korn unter den Scrims erreichte sie nicht. Neu gerechnet wird pro Fenstergrößen-Bucket (64-px-Raster) und Bühnenhöhe (150 ms nach dem letzten Resize) sowie sofort bei neuer Lichtfarbe/-stärke/-position.
 5. **Schein an der Quelle**: Bildlicht 16 % → 0, Radius 55 % der Fensterbreite, nur über dem Brett. Er sitzt auf Start in der Mitte des Bildschirm-Objekts und im Detail in der Mitte der Schachtel; er ist Teil des Licht-Bitmaps aus Punkt 4.
-6. **Brettlicht**: `RhBoardLightBrush` ist eine einzige, app-weit geteilte `SolidColorBrush` mit `ColorTransition` 420 ms. Auf Start und Detail ist sie Bildlicht bei 35 %, in Bibliothek und Systemkontext die Kontext-Lichtfarbe bei 22 % (Bernstein bzw. Licht), sonst #17FFF3E0. Jedes Brett nutzt diese Instanz, also kostet ein Wechsel eine Farbe.
+6. **Brettlicht**: `RhBoardLightBrush` ist eine einzige, app-weit geteilte `SolidColorBrush` mit `ColorTransition` 420 ms. Auf Start und Detail ist sie Bildlicht bei 35 %, in Bibliothek und Systemkontext die Kontext-Lichtfarbe bei 22 % (Cyan bzw. Licht), sonst #17FFFFFF. Jedes Brett nutzt diese Instanz, also kostet ein Wechsel eine Farbe.
 7. **Korn**: `korn-128.png` bei **6 %** *nur innerhalb von `RoomBackdrop`* (unter dem Inhalt), als Dither gegen Banding (QA 2: bei 2,5 % blieb es unter einem LSB, der weichgezeichnete Hintergrund stufte sich bei 2560 sichtbar in Konturringe; 6 % ≈ ±2 LSB auf Raum, ein statisches Bitmap, keine Kosten pro Frame).
 8. **Überblendung**: zwei Bildebenen A/B, `DoubleTransition` auf Opacity, 420 ms SineEaseInOut. Der Wechsel startet erst, wenn der Fokus `Dwell` (220 ms) ruht, und nie während `.nav-repeat`. Endet ein Repeat, wird nur der Dwell-Timer neu gestartet, und auch nur dann, wenn das Zielspiel vom angezeigten abweicht (8.4).
-9. **Kein Bild**: Wand des Systems (zweifarbig) plus Motiv-Umriss bei 7 % rechts unten. Ohne Spiel (leere Bibliothek): Raum mit Schein in Bernstein bei 5 %.
+9. **Kein Bild**: Wand des Systems (zweifarbig) plus Motiv-Umriss bei 7 % rechts unten. Ohne Spiel (leere Bibliothek): Raum mit Schein in Cyan bei 5 %.
 
 ---
 
@@ -307,14 +322,14 @@ ead SemiBold Papier (in Sätzen über Sentence.Name), ihre **Versionen** in Zahl
 
 - Das Brett läuft über die **volle Inhaltsbreite** (Bühnenbrett auf Start und Detail randlos über die Fensterbreite).
 - **Etiketten** hängen links an der Front des Bühnenbretts, bei x = Seitenrand. Sie sind 24 px hoch und bündig mit der Front.
-- **Beleuchtetes Brettstück** (nur beim Fokus, gezeichnet vom `FocusLayer` *über* den Zeilen; M3-QA): Die Oberkante wird über die Breite des Rings (Schachtel + 2 × 6 px) 2 px in Lichtfarbe zu 100 %, die Front darunter Regal hell gemischt mit **16 %** Lichtfarbe (Bernstein ≈ #4C3D26). Der Fokus-Kontaktschatten fällt erst *unter* die Front (auf der Front hob er die Tönung wieder auf). Der Ring steht auf diesem Lichtstreifen (8.1).
+- **Beleuchtetes Brettstück** (nur beim Fokus, gezeichnet vom `FocusLayer` *über* den Zeilen; M3-QA): Die Oberkante wird über die Breite des Rings (Schachtel + 2 × 6 px) 2 px in Lichtfarbe zu 100 %, die Front darunter Regal hell gemischt mit **16 %** Lichtfarbe (Cyan ≈ #26434D). Der Fokus-Kontaktschatten fällt erst *unter* die Front (auf der Front hob er die Tönung wieder auf). Der Ring steht auf diesem Lichtstreifen (8.1).
 - Die Regalkante war mit 10 px Regal hell auf Raum (≈ 1,3 : 1) nur eine Haarlinie (M3-QA). 12 px mit Lippe lesen sich als Brett, auf dem die Schachteln stehen.
-- **Brett vor einer Wand** (M5): Steht ein Bühnenbrett vor einer Systemwand (Systemseite, Bibliotheks-Banner, Konsolen), ist seine Front *Wand hell + 10 % Papier* mit einer 2-px-Lippe (+ 18 %) unter dem Brettlicht und einer Unterkante aus der Wand × 0,65 (`ShelfBoard.WallLook`, Brushes pro System geteilt). Regal hell #2A2620 hatte vor den warmgrauen Wänden ≈ 1,1 : 1 und verschwand; jetzt ≥ 1,4 : 1 gegen *Wand*.
+- **Brett vor einer Wand** (M5): Steht ein Bühnenbrett vor einer Systemwand (Systemseite, Bibliotheks-Banner, Konsolen), ist seine Front *Wand hell + 10 % Papier* mit einer 2-px-Lippe (+ 18 %) unter dem Brettlicht und einer Unterkante aus der Wand × 0,65 (`ShelfBoard.WallLook`, Brushes pro System geteilt). Regal hell #24272D hatte vor den warmgrauen Wänden ≈ 1,1 : 1 und verschwand; jetzt ≥ 1,4 : 1 gegen *Wand*.
 - Statisch: eine Brush-Instanz pro Schicht, app-weit.
 
 ### 4.3 Kanten und Linien
 
-- **Trennlinie** in Listen: seit M7 eine **eingravierte Rille** (`Groove`, 2 px: 1 px #000 50 %, darunter 1 px #FFF3E0 5 %), keine Haarlinie. Listen haben keine Rahmen.
+- **Trennlinie** in Listen: seit M7 eine **eingravierte Rille** (`Groove`, 2 px: 1 px #000 50 %, darunter 1 px #FFFFFF 5 %), keine Haarlinie. Listen haben keine Rahmen.
 - **Overlay-Rahmen**: 1 px Kante, oben zusätzlich 1 px Lichtkante.
 - **Keine Rahmen um Inhaltsgruppen.** Gruppen entstehen durch Abstand (48/16 px) und Etiketten.
 
@@ -345,7 +360,7 @@ Texturen werden programmatisch erzeugt: `tools/TextureGen` (C#, SkiaSharp, feste
 | `halbton-12.png` | 12×12 | Punkt Ø 5 px | GameCube, Dreamcast, Mega-CD, Wii | 7 % |
 | `maske-6.png` | 6×6 | Lochmaske R/G/B | Arcade | 10 % |
 | `lochblech-10.png` | 10×10 | Kreis Ø 4, versetzt | PC, Switch, PSP | 6 % |
-| `holz-256x32.png` | 256×32 | Sinus-Maserung, 5 Brauntöne | Atari 2600 | 10 % |
+| `holz-256x32.png` | 256×32 | Sinus-Maserung, 5 Grautöne (v2, vorher Braun) | Atari 2600 | 10 % |
 | `raster-16.png` | 16×16 | 1-px-Gitter oben/links #FFF Alpha 36 | Master System, MSX, Game Gear | 7 % |
 
 **Zweite Lage** (M5): SNES und Mega Drive tragen über dither16-8 die Rillen ihrer Gehäuse (rillen-1x6 bei 5 %, `SystemLook.Overlay`, gezeichnet von `SystemWall.DrawTextures` auf Wänden, Bannern und Rücken). Damit ist die Zuordnung aus 6.3 vollständig; alle zwölf Texturen sind generiert und im Einsatz (scan-4x3 nur im Bildschirm, korn-128 nur im Hintergrund).
@@ -597,11 +612,11 @@ MainWindow
 │ ■RetroHub    1 Start   2 Bibliothek   3 Konsolen              ⌕  ⇩  ▣  ⚙      Wireless Gamepad   21:14 │
 │ x48          x260        ▔ (Kanalmarke 3×12)                   48×48, Abstand 8                  170 px frei │
 ```
-- **Wortmarke**: Bernstein-Quadrat 8×8 (R 0), 10 px Abstand, „RetroHub“ in Plakat 20.
-- **Kanäle**: Ziffer in Zahl 15 Text 3, 6 px Abstand, Name in UI 20 Text 2, Abstand zwischen Kanälen 40. Der aktive Kanal hat den Namen in Papier und darunter eine **Kanalmarke** 3×12 px in Bernstein, 8 px unter der Grundlinie, linksbündig unter der Ziffer. Auf der Tastatur schalten die Tasten 1/2/3 direkt um.
-- **Icon-Buttons** 48×48, Icon 28, in der Reihenfolge Suche, Importe, Emulatoren, Einstellungen. Statusmarke ist ein 8-px-Punkt oben rechts (Importe: Bernstein bei neuen Funden; Emulatoren: Warnung, wenn ein benutztes System keinen Emulator hat). Fokus: Inversion.
+- **Wortmarke**: Cyan-Quadrat 8×8 (R 0), 10 px Abstand, „RetroHub“ in Plakat 20.
+- **Kanäle**: Ziffer in Zahl 15 Text 3, 6 px Abstand, Name in UI 20 Text 2, Abstand zwischen Kanälen 40. Der aktive Kanal hat den Namen in Papier und darunter eine **Kanalmarke** 3×12 px in Cyan, 8 px unter der Grundlinie, linksbündig unter der Ziffer. Auf der Tastatur schalten die Tasten 1/2/3 direkt um.
+- **Icon-Buttons** 48×48, Icon 28, in der Reihenfolge Suche, Importe, Emulatoren, Einstellungen. Statusmarke ist ein 8-px-Punkt oben rechts (Importe: Cyan bei neuen Funden; Emulatoren: Warnung, wenn ein benutztes System keinen Emulator hat). Fokus: Inversion.
 - **Gerätename** als Text (5.3), danach die Uhr in UI 18.
-- **Hintergrund**: auf Start und Detail transparent (der Kopf-Scrim ist Teil der geflachten Scrims: Raum-Tief 70 % → 0 über 160 px), sonst Raum. Keine Linie darunter. Die Fläche bleibt Drag-Area, rechts bleiben 170 px für die Caption-Buttons frei.
+- **Hintergrund**: auf Start und Detail transparent (der Kopf-Scrim ist Teil der geflachten Scrims: Raum-Tief 70 % → 0 über 160 px), sonst Raum. Keine Linie darunter. Rechts bleiben 170 px für die Caption-Buttons frei. **Drag-Area ist nur die freie Fläche** (R3-Owner-Test „nur mit Pfeiltasten“): die Rolle `TitleBar` liegt auf einem leeren `DragBar` hinter der Kopfzeile und auf der Wortmarke, jeder Knopf der Kopfzeile trägt ausdrücklich `User` (Client). Avalonias Win32-Fenster beantwortet `WM_NCHITTEST` mit der nächsten Rolle über dem getroffenen Visual; eine Rolle auf dem ganzen Kopf-Grid machte jeden Kanal- und Werkzeugknopf zur Titelleiste (Fenster ziehen statt klicken). Doppelklick auf freie Fläche maximiert.
 
 **Kanalanzeige (OSD)**: Bei jedem Kanalwechsel erscheint oben rechts im Seitenbereich (rechtsbündig am Seitenrand, y 104) die Kanalziffer in Zahl 40 und der Name in Rücken 28, beide in der aktuellen Lichtfarbe. Sie erscheint **hart**, steht 1200 ms und verschwindet hart (ein TextBlock-Paar, Opacity-Keyframes ohne Überblendung). Beim Spielstart zeigt sie 300 ms den Systemcode (9.3). In den Einstellungen abschaltbar („Kanalanzeige: An/Aus“).
 
@@ -651,13 +666,13 @@ MainWindow
 
 **Bühne (y 72–584, fix)**
 - **Bühnenbrett** bei y 560, randlos über die Fensterbreite. Darauf stehen Schachtel und Bildschirm, beide mit der Unterkante auf y 560.
-- **Bildschirm** (Stand M2-QA, ersetzt „Rahmen 560×420, 2 px Raum-Tief, R 0“): ein Gerät 560 breit und **468 hoch** bei x 1264–1824. Gehäuse Regal hell #2A2620 mit 1 px Lichtkante oben und 1 px Kante unten; 12 px Gehäuserand, darin eine **12 px tiefe Mulde** in Raum-Tief (R 0) um das Glas **512×384** (4:3, R 6, siehe 4.1); darunter das **Kinn 40** mit einer 6×6-Betriebsleuchte im *Licht* des Systems (aus: Raum) links und einem Lautsprechergitter aus 7 Linien (1 px Raum-Tief, Raster 3 px, 120 breit) rechts; zwei **Füße 64×8** in Raum-Tief bei 12 % von jedem Rand, ihre Unterkante ist die Brettoberkante (y 560). Bei 400 Breite: 9 + 9 + 273 + 9 + 29 + 6 = 335 hoch. Inhalt nach der Kette Snap → Titelbild → **„Kein Signal“** (Wand des Systems mit Farbband, Textur und Motiv auf 50 % Höhe, links oben der Systemcode in Rücken 28 Licht wie ein OSD; das Glas ist dabei um 4 % Papier aufgehellt). Scanlines 18 % über allem im Rahmen. Wechsel: Überblendung 180 ms. Der Schein (2.5) sitzt in der Mitte des Bildschirms.
+- **Bildschirm** (Stand M2-QA, ersetzt „Rahmen 560×420, 2 px Raum-Tief, R 0“): ein Gerät 560 breit und **468 hoch** bei x 1264–1824. Gehäuse Regal hell #24272D mit 1 px Lichtkante oben und 1 px Kante unten; 12 px Gehäuserand, darin eine **12 px tiefe Mulde** in Raum-Tief (R 0) um das Glas **512×384** (4:3, R 6, siehe 4.1); darunter das **Kinn 40** mit einer 6×6-Betriebsleuchte im *Licht* des Systems (aus: Raum) links und einem Lautsprechergitter aus 7 Linien (1 px Raum-Tief, Raster 3 px, 120 breit) rechts; zwei **Füße 64×8** in Raum-Tief bei 12 % von jedem Rand, ihre Unterkante ist die Brettoberkante (y 560). Bei 400 Breite: 9 + 9 + 273 + 9 + 29 + 6 = 335 hoch. Inhalt nach der Kette Snap → Titelbild → **„Kein Signal“** (Wand des Systems mit Farbband, Textur und Motiv auf 50 % Höhe, links oben der Systemcode in Rücken 28 Licht wie ein OSD; das Glas ist dabei um 4 % Papier aufgehellt). Scanlines 18 % über allem im Rahmen. Wechsel: Überblendung 180 ms. Der Schein (2.5) sitzt in der Mitte des Bildschirms.
 - **Schachtel**: Rahmen 300×420 bei x 912–1212, contain, unten bündig, Kontaktschatten auf dem Brett. Querformat-Cover stehen niedriger. Fokussierbar: Bestätigen öffnet das Detail. Fokus nach 8. Keine Favoriten-Marke auf der Schachtel (der Stern-Button zeigt den Zustand).
 - **Textblock** x 96–860, **unten verankert** (die Aktionsreihe endet bei y 528, 32 px über dem Brett; alles darüber stapelt nach oben):
   - Etikett-Zeile in Etikett 18, Licht: „Zuletzt gespielt: heute“. Bei Fokus auf einem Brett steht dort dessen Name („Favoriten“, „Neu in der Sammlung“).
   - Titel in Plakat, **gemessen** (3.2) auf 764 px Breite, maximal 2 Zeilen.
   - Meta-Satz `read-l` mit Zahlen als Archivo-Runs: „Game Boy Advance. **46** Stunden in **41** Sitzungen, zuletzt heute.“ Nie gespielt: „Game Boy Advance. Seit **25.** September in der Sammlung.“
-  - Aktionsreihe: **Spielen** 280×64 (gefaste Platte, Bernstein, Tinte, Icon Play 24), **Details** 64 hoch (Regal hell, R 4), **Favorit** 64×64 (nur Icon).
+  - Aktionsreihe: **Spielen** 280×64 (gefaste Platte, Cyan, Tinte, Icon Play 24), **Details** 64 hoch (Regal hell, R 4), **Favorit** 64×64 (nur Icon).
 - **Die Bühne folgt dem Fokus**: Ruht der Fokus `Dwell` (220 ms) auf einer Schachtel im Brett, zeigt die Bühne dieses Spiel. Der Text blendet 120 ms aus und 180 ms mit 8 px x-Versatz ein, Schachtel und Bildschirm überblenden in 180 ms, das Fernsehlicht in 420 ms. Bei Fokus auf einem **Systemrücken** zeigt die Bühne das System: Der Bildschirm zeigt „Kein Signal“ dieses Systems, die Schachtel ist die des zuletzt gespielten Spiels darin, der Titel ist der Systemname, der Satz lautet „Handheld von Nintendo, 2001. **7** Spiele, zuletzt Pokémon Smaragd-Edition.“ und die Primäraktion „Öffnen“. Ohne Brett-Fokus zeigt die Bühne das Weiterspielen-Spiel: **Kommt der Fokus auf die Bühne zurück (Aktionsreihe oder Schachtel) und ruht dort `Dwell` (220 ms), kehrt die Bühne zum Weiterspielen-Spiel zurück** (Etikett „Weiterspielen: gestern“, Primäraktion „Spielen“). Die Hauptaktion von Start ist also immer „Spielen“ für das letzte Spiel; ein gestöbertes Spiel startet man über seine Schachtel (M2-QA).
 - **Fußleiste folgt dem Fokus sofort** (nicht erst nach dem Dwell): Aktionsreihe → „Start › Weiterspielen“, Bühnen-Schachtel → „Start › Bühne, ‹Titel›“, Brett → „Start › ‹Brett›, n von m“, „Alle“-Rücken → „Start › ‹Brett›, Alle anzeigen“. Hinweise: Bestätigen benennt die Aktion des Elements („Spielen“, „Öffnen“, „Details“, „Ordner hinzufügen“); „Favorit“ nur, wo F wirkt (ein Spiel auf Bühne oder Brett); leere Bibliothek nur „Ordner hinzufügen“ und „Menü“.
 - **Erster Fokus**: „Spielen“.
@@ -666,12 +681,12 @@ MainWindow
 - **Reihenfolge**: Zuletzt gespielt (≤ 11), Favoriten (≤ 16), Neu in der Sammlung (≤ 12), Fächer. Leere Bretter entfallen. **Varianten falten**: Auf den Start-Brettern steht ein Spiel je (System, normalisierter Titel) nur einmal; Regions- und Versionsmarken wie „(Germany)“, „(Rev 1)“, „[!]“ fallen beim Vergleich weg, es bleibt der erste Eintrag in der Ordnung des Bretts. Bibliothek und Systemseite bleiben vollständig.
 - **Schachteln**: Höhe 200, Breite nach Bild (contain), Abstand 24, unten bündig. **Keine Bildunterschriften**, denn die Bühne ist die Bildunterschrift. Platzhalter tragen ihren Titel selbst. Keine Abzeichen auf den Schachteln (auch kein Favoriten-Stern).
 - **Etikett** statt Überschrift: Es hängt links an der Brettfront bei x 96 (Papier, Tinte, Etikett 15, 8×3, R 0). Es gibt keine H2 und keinen „Alle anzeigen ›“-Link.
-- **Ende jedes Bretts**: ein Rücken „Alle“ (72×200, Regal hell, Band in Bernstein, Text „Alle anzeigen“ in Rücken 18 gedreht). Er führt in die Bibliothek mit passendem Filter bzw. passender Sortierung.
+- **Ende jedes Bretts**: ein Rücken „Alle“ (72×200, Regal hell, Band in Cyan, Text „Alle anzeigen“ in Rücken 18 gedreht). Er führt in die Bibliothek mit passendem Filter bzw. passender Sortierung.
 - **Fächer-Brett**: `SystemShelf` (dasselbe Control wie Konsolen, 7.4). Systemrücken 72×200 (Wand hell, 8-px-Band in Farbe, Code −90° in Rücken 22 Papier **hängend 16 px unter dem Band** wie auf Konsolen, Motiv 40 px über der Anzahl, Anzahl unten in Zahl 15; M5-QA: vorher stand der Code am Fuß und dieselben Rücken lasen sich auf beiden Seiten verschieden). Der fokussierte Rücken wird zur **Front** 200×200 (Wand mit 8-px-Band und Motiv) mit **16 px Luft auf jeder Seite** (Platz 232; der Abstand der Rücken bleibt 8); Ring und Hebung 1,03 nach 8.2, die Front liegt dabei über ihren Nachbarn (ZIndex 1). Eine einzige Objektsprache.
 - **Horizontaler Anker**: Die fokussierte Schachtel steht mit der linken Kante bei x 240 (am Brettanfang bei x 96). Die Reihe gleitet per `TranslateTransform` (Glide 220 ms; unter `.nav-repeat` 90 ms linear).
 - **Vertikaler Anker**: Das fokussierte Brett steht mit der Schachtel-Oberkante bei y 632. Das nächste Brett ragt ab y 908 angeschnitten herein („mehr unten“). Bretter darüber gleiten unter die Bühne. **Nur der Bretterbereich als Ganzes ist beschnitten**, ab der Unterkante des Bühnenbretts (y 584); Reihen und Schachteln beschneiden nie (die gehobene Schachtel und ihr Ring ragen über die Reihe). Über der aktiven Reihe bleiben 48 px für Hebung (12), Ring (6) und den kurzen Kegel.
 
-**Leere Bibliothek**: Der Bildschirm ist aus (Raum-Tief mit einer 1-px-Linie in Papier 20 % in der Mitte). Statt der Schachtel steht eine Linienzeichnung „leeres Regal“ (Papier 60 %) **direkt auf dem Bühnenbrett** (zwei Buchstützen und eine angelehnte Schachtel, ohne eigenes Brett). Das Brett „Noch leer“ darunter trägt **5 leere Fächer** 150×200 (M5-QA: eingetieft statt gestrichelt – Grund #000 20 %, 2-px-Schatten innen oben #000 40 %, 1 px Kante an den Seiten; Abstand 24, ab x 96), es wartet sichtbar auf Spiele. Text: „Das Regal ist noch leer“ und „Lege Spieldateien in einen Bibliotheksordner und starte einen Scan.“ Buttons: **Ordner hinzufügen** (Bernstein) und **Importe öffnen**.
+**Leere Bibliothek**: Der Bildschirm ist aus (Raum-Tief mit einer 1-px-Linie in Papier 20 % in der Mitte). Statt der Schachtel steht eine Linienzeichnung „leeres Regal“ (Papier 60 %) **direkt auf dem Bühnenbrett** (zwei Buchstützen und eine angelehnte Schachtel, ohne eigenes Brett). Das Brett „Noch leer“ darunter trägt **5 leere Fächer** 150×200 (M5-QA: eingetieft statt gestrichelt – Grund #000 20 %, 2-px-Schatten innen oben #000 40 %, 1 px Kante an den Seiten; Abstand 24, ab x 96), es wartet sichtbar auf Spiele. Text: „Das Regal ist noch leer“ und „Lege Spieldateien in einen Bibliotheksordner und starte einen Scan.“ Buttons: **Ordner hinzufügen** (Cyan) und **Importe öffnen**.
 
 **≈ 1100 px (logisch 1375×875)**: Bühnenbrett bei y 456 (M2-QA; vorher 464: Ring und Hebung stießen ans Brett). Bildschirm 400×300 bei x 879–1279, Schachtel-Rahmen 214×300 bei x 625–839, Textblock x 96–585 (Titel meist 40 oder 56). Bretter: Schachteln 160 hoch, Anker bei y 520 (40 px Luft unter dem Bühnenbrett), das nächste Brett ab y 752, Front 160 mit 16 px Luft je Seite.
 
@@ -708,14 +723,14 @@ MainWindow
 
 **Ticker (Fach-Filter), 64 px, fix**
 - Schulter-Glyphen (5.3) ganz links und ganz rechts.
-- **Einträge**: Code in `code` (17) plus Anzahl in Zahl 15 Text 3, Abstand 32. Aktiver Eintrag: Code in Papier, 3-px-Unterstrich in der *Farbe* des Systems (bei „Alle“ Bernstein), 6 px unter der Grundlinie. Inaktiv: Text 2.
+- **Einträge**: Code in `code` (17) plus Anzahl in Zahl 15 Text 3, Abstand 32. Aktiver Eintrag: Code in Papier, 3-px-Unterstrich in der *Farbe* des Systems (bei „Alle“ Cyan), 6 px unter der Grundlinie. Inaktiv: Text 2.
 - **Überlauf**: horizontal verschiebbar, der aktive Eintrag bleibt sichtbar. An den Rändern liegen 48 px Raum-Verläufe als Overlay (keine OpacityMask).
 - **Werkzeuge rechts** (44 hoch, rahmenlos): Suche (schiebt ein 360-px-Feld über den Ticker, 180 ms), Sortierung „↕ Titel“ (Auswahl-Overlay), Favoriten-Stern, Ansicht. Fokus: Inversion.
 
 **Regalspiegel (neu, ersetzt die Rückenleiste und die Zähl-Überschrift), fix unter dem Ticker**
 - Ein 12 px hohes Band über die Inhaltsbreite. **Ein Rücken pro Spiel** in Sortierreihenfolge, gefärbt in der *Farbe* seines Systems bei 60 % (M3-QA, vorher 70 %), mindestens 1 px breit, stehend auf einem kleinen Brett (1 px Brettlicht, 2 px Regal hell). Bei mehr Spielen als Pixeln bekommt jede Pixelspalte die häufigste Farbe ihrer Spiele. Bei Sortierung nach System entstehen geschlossene Läufe.
 - **Klammer**: 1-px-Linie in Papier 70 % 4 px über dem Band mit 4-px-Ticks nach unten an beiden Enden (M3-QA), über die Breite des sichtbaren Bereichs (folgt dem Scrollen).
-- **Fokusmarke**: 2 px breit, 20 px hoch, über das Band, in Bernstein (im Systemfilter: Licht).
+- **Fokusmarke**: 2 px breit, 20 px hoch, über das Band, in Cyan (im Systemfilter: Licht).
 - **Render**: Ein Control (`ShelfMirror`) rendert die Rücken bei jeder Änderung von Filter, Sortierung oder Anzahl einmal in ein `RenderTargetBitmap` (höchstens Breite × 12 px). Pro Frame werden nur dieses Bitmap, die Klammer und die Marke gezeichnet. Bei 1000+ Spielen sind das konstant 3 Draw-Calls.
 - **Bedienung**: Mausklick oder Ziehen springt bzw. scrollt zur Position. Nicht fokussierbar, der Ticker ist das Bedienelement.
 
@@ -730,7 +745,7 @@ MainWindow
 - **Regalkante** (12 px mit Lippe, 4.2) unter jeder Zeile über die volle Inhaltsbreite, gezeichnet von `CoverRowPresenter` (Render-Override, statische Brushes). Er zeichnet auch die Kontaktschatten aller Schachteln der Zeile (aus deren `ArtRect`).
 - **Bildunterschrift** (M3-QA): 12 px unter der Kante, **unter jeder Schachtel, auch unter Platzhaltern** (deren Fronttitel ist oft gekürzt, und nur so liegen alle Titel einer Reihe auf einer Linie). Titel in `caption` 17/21 in einem festen 42-px-Block (2 Zeilen), Text 2 (fokussiert Papier); die Etikett-Zeile steht deshalb in jeder Reihe auf derselben Höhe. Passt ein Titel aus drei oder mehr Teilen nicht in zwei Zeilen, wird er als Kopf + „…“ + Schluss gesetzt („BS The Legend of Zelda – … Kapitel 1“), denn Namensvettern unterscheiden sich am Ende. Ein Halbgeviertstrich hängt mit geschütztem Leerzeichen am Wort davor, eine Schlusszahl am Wort davor (keine Zeile beginnt mit „– …“, keine „1“ allein). Darunter die Etikett-Zeile: Farbbalken 3×14, Code in `label` Text 3, Variante (Namensvettern), Jahr in Zahl 15 Text 3. **In gefilterter Ansicht entfällt der Code** (Balken, Variante, Jahr bleiben; ist nichts davon da, bleibt die Zeile leer, ihre 20 px bleiben reserviert).
 - **Status**: Fehlt die Datei oder ist das Spiel nicht startbar, sinkt die Cover-Deckkraft auf 0,45 und ein Icon `Missing`/`NotReady` 20 px erscheint in einer Raum-Tief-Fläche 28×28 (R 2) oben rechts im Cover. Favorit: Stern 18 px Favoritengelb in Raum-Tief 26×26 oben links. Es gibt keine System-Badges.
-- **Aufkleber „Neu“** (hinzugefügt vor < 7 Tagen und nie gestartet): Etikett in Bernstein mit Tinte-Text „Neu“ (Etikett 13 ist hier als Ausnahme erlaubt, weil es Aufkleber-Text und keine Lesezeile ist), überlappt die obere linke Ecke um −4/−4. Beim ersten Fokus „auspacken“: 250 ms 12 px nach oben links und Ausblenden. Gilt danach pro Sitzung als gesehen.
+- **Aufkleber „Neu“** (hinzugefügt vor < 7 Tagen und nie gestartet): Etikett in Cyan mit Tinte-Text „Neu“ (Etikett 13 ist hier als Ausnahme erlaubt, weil es Aufkleber-Text und keine Lesezeile ist), überlappt die obere linke Ecke um −4/−4. Beim ersten Fokus „auspacken“: 250 ms 12 px nach oben links und Ausblenden. Gilt danach pro Sitzung als gesehen.
 - **Zeilenabstand** (M3-QA, Fach 1,0): 196 + 12 + 12 + 42 + 4 + 20 + 24 = **310** (vorher 361). Der Abstand 24 unter der Etikett-Zeile bleibt, denn er ist zugleich die Kopffreiheit der eingerasteten obersten Zeile (8.4). Bei 1080 sind zwei volle Reihen und die dritte angeschnitten sichtbar (≈ 24 Spiele).
 - **Grid-Hintergrund**: Raum bzw. Systemwand. Kein Fernsehlicht, kein Korn.
 
@@ -759,14 +774,14 @@ MainWindow
 #### 7.2.3 Stand M3 (umgesetzt, Entscheidungen aus der QA)
 
 - **Schultertasten** blättern in der Bibliothek durch den Ticker (mit Umlauf: von „Alle“ nach links zum letzten System) und wechseln nie den Kanal; Kanäle wechseln über *Menü* oder die Tasten 1/2/3. Die Schulter-Glyphen an beiden Ticker-Enden sind per Maus klickbar. *Hoch* aus der ersten Regalzeile fokussiert den aktiven Ticker-Eintrag, *Runter* kehrt zur gemerkten Schachtel zurück.
-- **Werkzeuge**: Suche, Sortierung, Favoriten (an: Stern gefüllt in Favoritengelb) und **ein** Ansicht-Werkzeug („Regal“/„Liste“ mit Icon). Es gibt keinen zweiten Unterstrich für die gewählte Ansicht, denn Bernstein gehört nach 2.2 nur dem Ticker-Eintrag „Alle“.
+- **Werkzeuge**: Suche, Sortierung, Favoriten (an: Stern gefüllt in Favoritenrot) und **ein** Ansicht-Werkzeug („Regal“/„Liste“ mit Icon). Es gibt keinen zweiten Unterstrich für die gewählte Ansicht, denn Cyan gehört nach 2.2 nur dem Ticker-Eintrag „Alle“.
 - **Regalspiegel**: Ein Rücken ist so hoch wie das Schachtelformat seines Systems (Format 1,0 steht 8 von 12 px, Hüllen ≥ 1,6 die vollen 12), ab 4 px Breite pro Spiel mit 1 px Fuge. So lesen sich Läufe eines Systems als Rückenreihe. Die Klammer folgt dem sichtbaren Bereich des Regals bzw. der Liste.
 - **Fach eines Systems**: Das Wand-Banner ist der Kopf des Regals und läuft randlos über die Seitenränder. Es zeigt die Wand (38/62, Band, Textur), links Name in Plakat 56 (≈ 1100: 44) und den Satz, rechts das Motiv 144 px (≈ 1100: 112) auf einem Bühnenbrett. Beim Systemwechsel gleiten Text und Motiv 24 px herein (Glide). Steht der Fokus in der ersten Zeile, bleibt das Banner im Bild. Seitengrund = Wand, Brettlicht = Licht bei 22 %, Ring, Kegel und Spiegelmarke in Licht. Bei „Alle“ tragen die Bretter die Lichtfarbe bei 22 %.
 - **Fachformat**: Median der gespeicherten Cover-Maße (≥ 8, sonst Startwert 11.4), *vor* dem Bau des Regals gesetzt. Rücken-Platzhalter übernehmen im Fach dieses Format und stehen damit wie ihre Nachbarn (PAL-SNES: quer).
 - **Namensvettern**: Haben zwei Spiele eines Systems denselben Titel (ohne Regions- und Versionsmarken), steht in der Etikett-Zeile die Region bzw. Sprache („Englisch“, „Japan“, „Europa“). Fehlt sie, steht „Original“. Bildunterschriften setzen „ - “ als Halbgeviertstrich.
 - **Aufkleber „Neu“**: nur, wenn höchstens ein Viertel der Bibliothek (und mehr als 3 Spiele) die Regel erfüllt. Ein frisch importiertes Regal ist keine Neuigkeit, und eine Wand voller Aufkleber markiert nichts.
 - **Listen-Ansicht**: Die Vorschau folgt der Fokuszeile (Schachtel bis 360×480 auf einer Regalkante, die bis zum rechten Fensterrand läuft). *Links* aus „Spielen“ kehrt zur Zeile zurück. Der Titel der Fokuszeile steht als Tinte auf dem Papier-Chip (vorher Papier auf Papier, weil eine App-Klassenregel die Fokusregel überstimmte).
-- **Leere Bibliothek**: Linienzeichnung „leeres Regal“ auf einer Regalkante, „Das Regal ist noch leer“ (poster-s), ein Satz, **Ordner hinzufügen** (Bernstein, erster Fokus) und **Importe öffnen**. Spiegel, Schultern und Werkzeuge entfallen. Fußleiste: „Noch keine Spiele“, Hinweise nur „Ordner hinzufügen“ und „Menü“. Ohne Treffer: Satz und Hinweis, Hinweise Suche, Fach, Menü.
+- **Leere Bibliothek**: Linienzeichnung „leeres Regal“ auf einer Regalkante, „Das Regal ist noch leer“ (poster-s), ein Satz, **Ordner hinzufügen** (Cyan, erster Fokus) und **Importe öffnen**. Spiegel, Schultern und Werkzeuge entfallen. Fußleiste: „Noch keine Spiele“, Hinweise nur „Ordner hinzufügen“ und „Menü“. Ohne Treffer: Satz und Hinweis, Hinweise Suche, Fach, Menü.
 - **Laufschrift** in Listenzeilen ist noch nicht umgesetzt (Kopf-…-Schluss-Kürzung, 7.2.2).
 
 **M3-QA (zweite Runde)**
@@ -820,8 +835,8 @@ MainWindow
   - System-Etikett: Balken 4×18 in Farbe plus Systemname in Etikett 18, Licht.
   - Titel in Plakat, gemessen auf 1100 px, maximal 2 Zeilen.
   - Meta-Satz `read-l`: „Rollenspiel von Game Freak, **2004**. Ein Spieler. Europa.“ In der zweiten Zeile die Spielzeit als Satz: „**46** Stunden in **41** Sitzungen, zuletzt heute.“ Nie gespielt: „Noch nie gespielt. Seit **25.** September in der Sammlung.“ Es gibt keine Zahlenspalten.
-  - Aktionsreihe: **Spielen** 300×64 (gefaste Platte, Bernstein), **Favorit** 64 hoch (Regal hell, Icon plus Text, gefüllter Stern wenn aktiv), **Mehr** 64×64 (Overlay mit „Cover ändern“, „Cover entfernen“, „Ordner öffnen“, „Dateiinfo“, „Startoptionen zurücksetzen“).
-- **Rechts neben der Textspalte bleibt Raum.** Der leere warme Raum ist gewollt, es gibt kein Wasserzeichen.
+  - Aktionsreihe: **Spielen** 300×64 (gefaste Platte, Cyan), **Favorit** 64 hoch (Regal hell, Icon plus Text, gefüllter Stern wenn aktiv), **Mehr** 64×64 (Overlay mit „Cover ändern“, „Cover entfernen“, „Ordner öffnen“, „Dateiinfo“, „Startoptionen zurücksetzen“).
+- **Rechts neben der Textspalte bleibt Raum.** Der leere dunkle Raum ist gewollt, es gibt kein Wasserzeichen.
 - **Spielen nicht möglich**: Der Button wird zum **Lösungs-Button**: gefaste Platte in Regal hell, 2-px-Kontur in Warnung, Icon Warning, Text „Emulator einrichten“. Er führt zu Emulatoren, gefiltert auf dieses System.
 
 **Rückseite (y 724+, die Seite scrollt)**
@@ -930,7 +945,7 @@ Gemeinsame Sprache: **flache Zeilen auf Raum**, Haarlinien, Etiketten als Gruppe
 **Einstellungen: „Service-Menü“** (statt Windows-Settings-Layout)
 ```
 [Darstellung]
-Lichtfarbe                                         ◀  ■ Bernstein  ▶
+Lichtfarbe                                         ◀  ■ Cyan  ▶
 Hintergrund folgt Auswahl                          ◀  An  ▶
 Größe der Oberfläche                               ◀  Automatisch  ▶
 [Bewegung]
@@ -950,8 +965,8 @@ Kanalanzeige                                       ◀  An  ▶
 - Der Satz „RetroHub lädt nie etwas ohne deine Zustimmung herunter.“ bleibt als `read` unter dem Titel.
 
 **Importe**
-- Ordnerzeilen 72 px: Pfad in `ui` Papier, Zustand als Wert „◀ Aktiv ▶“ / „◀ Pausiert ▶“ (Service-Menü-Logik), Mehr-Menü. [+ Ordner hinzufügen] in Bernstein.
-- Scan-Spalte rechts mit Etikett „Letzter Scan“ und **Segmentbalken** (14 Segmente 24×10, Abstand 4, Bernstein bzw. Regal hell, Prozent in Zahl 28 mit `tnum`; unbestimmt: 3 wandernde Segmente, 80 ms pro Schritt).
+- Ordnerzeilen 72 px: Pfad in `ui` Papier, Zustand als Wert „◀ Aktiv ▶“ / „◀ Pausiert ▶“ (Service-Menü-Logik), Mehr-Menü. [+ Ordner hinzufügen] in Cyan.
+- Scan-Spalte rechts mit Etikett „Letzter Scan“ und **Segmentbalken** (14 Segmente 24×10, Abstand 4, Cyan bzw. Regal hell, Prozent in Zahl 28 mit `tnum`; unbestimmt: 3 wandernde Segmente, 80 ms pro Schritt).
 - **Lieferschein** nach einem Scan (statt Toasts): ein Kasten mit 1 px Kante, R 0, darin Zeilen in Etikett 18 mit Zahlen in Zahl: „**412** Dateien geprüft“, „**12** neu“, „**3** Hinweise ›“. Er bleibt stehen, bis der nächste Scan beginnt. Toasts bleiben nur für einzelne Ereignisse außerhalb des Scans (z. B. „Cover gespeichert“).
 - „Spieldateien werden nie verändert.“ steht als `meta` unter der Ordnerliste.
 
@@ -959,8 +974,8 @@ Kanalanzeige                                       ◀  An  ▶
 
 - **Service-Menü** (`ServiceRow` + `ServiceSetting`, Theme in `Controls.axaml`): eine Liste, Abschnitte als Etikett mit 1-px-Linie darunter. Zeile 72 px: Label `ui-l` Papier, eine Zeile `meta` Text 3; der Wert steht in einer **festen 320-px-Spalte** zentriert zwischen den gefüllten Pfeilen (`Icon.ArrowLeft/Right`, 20 px), damit alle Werte eines Abschnitts auf einer Achse stehen wie im Service-Menü eines Fernsehers. Lichtfarben mit 16×16-Muster. Fokus wie 8.2, die Pfeile werden Papier; am Ende einer geordneten Reihe bleibt der Pfeil bei 30 % und die Zeile stößt kurz an (Grenz-Feedback 8.4). **Wahlwerte laufen um, geordnete Werte („Zurück zu RetroHub“: Aus, 0,5 … 3,0 s) halten an ihren Enden; Bestätigen schaltet immer weiter** (auch rundum). Aktionen sind Zeilen mit „Öffnen ›“. Inhaltsbreite: eine Spalte `1000*` mit `MaxWidth 1100` neben einer `*`-Spalte, also höchstens 1100 und linksbündig, schmaler bei 1100 px Fensterbreite.
 - **Abschnitte**: Darstellung (Lichtfarbe, Bewegung, Kanalanzeige, Controller-Hinweise, Im Vollbild starten), Steuerung (Mit Controller bedienen, Zurück zu RetroHub; Gerätezustand als `meta` neben dem Etikett), Bibliothek (4 Schalter), Sprache, Ordner (10 Aktionszeilen, Pfad als Beschreibung). Ein eigener Abschnitt „Bewegung“ entfiel, weil Abschnitt und Zeile denselben Namen trugen. **Kanalanzeige An/Aus** ist neu (`UiPreferences.ShowOsd`, schaltet `OsdLayer` für Kanalwechsel und Start-Code). „Hintergrund folgt Auswahl“ und „Größe der Oberfläche“ aus der Skizze oben gibt es nicht: dafür existiert keine Funktion, eine Attrappe wäre unehrlich. Ein Abschnitt „Über RetroHub“ entfällt aus demselben Grund (noch keine Versions-/Lizenzseite).
-- **Emulatoren nach Systemen**: eine Zeile je System **mit Spielen und mit Kandidaten** (PC/Native fallen weg). Farbband 8 px (im Fokus volle Zeilenhöhe, ersetzt den Bernstein-Balken: `RhFoldRow.own-bar`), Code in Rücken 22 (Spalte 124, „GameCube“ passt), Name `ui-l` mit „12 Spiele“ in `meta`, darunter der Satz „spielt mit **mGBA** 0.10.5“ (Programm und Version in der Zahl-Rolle – Atkinsons Null mit Schrägstrich las sich als „Ø“). Was spielt, folgt der Reihenfolge des Planers: `settings.SystemEmulator`, sonst der erste installierte Kandidat (RetroArch nur mit Core). Lücken als **ein Satz**: „Kein Emulator gefunden.“ bzw. „RetroArch ist da, der Core fehlt.“ plus „Einrichten ›“. Aufgeklappt (`FoldPanel`, 180 ms, bei reduzierter Bewegung sofort): Pfad, Startmodi, Cores, **„Reihenfolge, in der RetroHub sucht“** mit Zustand je Kandidat (immer, wenn das System nicht starten kann), [Ordner öffnen] [Website]. Gefiltert von „Emulator einrichten“: nur dieses System, aufgeklappt, „Alle Systeme“ daneben. Die Falte heißt **„Weitere Programme“** (nicht „erkannte“), weil sie auch nicht installierte unterstützte Programme mit ihrer Website enthält.
-- **Importe**: links die Ordner als Service-Zeilen („◀ Aktiv ▶“ / „◀ Pausiert ▶“, games/ fest „Immer aktiv“ ohne Pfeile); die Beschreibung beginnt mit der Zeit („Durchsucht heute, mit Unterordnern, …“), damit eine schmale Zeile das Unwichtige abschneidet. **Bestätigen öffnet die Mehr-Liste** des Ordners (Im Explorer öffnen, Pausieren/Wieder aktivieren, Ordner entfernen), links/rechts schaltet den Zustand ohne Neuaufbau der Liste (der Fokus bleibt). Rechts die Scan-Spalte (420): Satz „Zuletzt gescannt heute.“, „Jetzt scannen“ (während des Scans ersetzt durch „Abbrechen“), Prozent in Zahl 28 über dem Segmentbalken (`SegmentBar`, 14 × 24×10, Lauflicht 80 ms), Phase und Datei. **Lieferschein**: Kasten 1 px Kante, R 0, Kopf „Lieferschein“ + Zeitpunkt, Zeilen mit rechtsbündiger Zahlenachse (Zahl 18) und Text in Etikett 18 (Nullen in Text 3), „3 Hinweise“ als aufklappbare Zeile, Fuß „Dauer 2,8 s.“. Der Abschluss-Toast entfällt, wenn Importe offen ist; außerhalb (Start-Scan) bleibt er, sonst erführe man nichts. Abweichung von 2.2: **„Ordner hinzufügen“ ist ein Sekundärbutton**, „Jetzt scannen“ die eine Bernstein-Platte der Seite – zwei Bernstein-Platten nebeneinander konkurrierten.
+- **Emulatoren nach Systemen**: eine Zeile je System **mit Spielen und mit Kandidaten** (PC/Native fallen weg). Farbband 8 px (im Fokus volle Zeilenhöhe, ersetzt den Cyan-Balken: `RhFoldRow.own-bar`), Code in Rücken 22 (Spalte 124, „GameCube“ passt), Name `ui-l` mit „12 Spiele“ in `meta`, darunter der Satz „spielt mit **mGBA** 0.10.5“ (Programm und Version in der Zahl-Rolle – Atkinsons Null mit Schrägstrich las sich als „Ø“). Was spielt, folgt der Reihenfolge des Planers: `settings.SystemEmulator`, sonst der erste installierte Kandidat (RetroArch nur mit Core). Lücken als **ein Satz**: „Kein Emulator gefunden.“ bzw. „RetroArch ist da, der Core fehlt.“ plus „Einrichten ›“. Aufgeklappt (`FoldPanel`, 180 ms, bei reduzierter Bewegung sofort): Pfad, Startmodi, Cores, **„Reihenfolge, in der RetroHub sucht“** mit Zustand je Kandidat (immer, wenn das System nicht starten kann), [Ordner öffnen] [Website]. Gefiltert von „Emulator einrichten“: nur dieses System, aufgeklappt, „Alle Systeme“ daneben. Die Falte heißt **„Weitere Programme“** (nicht „erkannte“), weil sie auch nicht installierte unterstützte Programme mit ihrer Website enthält.
+- **Importe**: links die Ordner als Service-Zeilen („◀ Aktiv ▶“ / „◀ Pausiert ▶“, games/ fest „Immer aktiv“ ohne Pfeile); die Beschreibung beginnt mit der Zeit („Durchsucht heute, mit Unterordnern, …“), damit eine schmale Zeile das Unwichtige abschneidet. **Bestätigen öffnet die Mehr-Liste** des Ordners (Im Explorer öffnen, Pausieren/Wieder aktivieren, Ordner entfernen), links/rechts schaltet den Zustand ohne Neuaufbau der Liste (der Fokus bleibt). Rechts die Scan-Spalte (420): Satz „Zuletzt gescannt heute.“, „Jetzt scannen“ (während des Scans ersetzt durch „Abbrechen“), Prozent in Zahl 28 über dem Segmentbalken (`SegmentBar`, 14 × 24×10, Lauflicht 80 ms), Phase und Datei. **Lieferschein**: Kasten 1 px Kante, R 0, Kopf „Lieferschein“ + Zeitpunkt, Zeilen mit rechtsbündiger Zahlenachse (Zahl 18) und Text in Etikett 18 (Nullen in Text 3), „3 Hinweise“ als aufklappbare Zeile, Fuß „Dauer 2,8 s.“. Der Abschluss-Toast entfällt, wenn Importe offen ist; außerhalb (Start-Scan) bleibt er, sonst erführe man nichts. Abweichung von 2.2: **„Ordner hinzufügen“ ist ein Sekundärbutton**, „Jetzt scannen“ die eine Cyan-Platte der Seite – zwei Cyan-Platten nebeneinander konkurrierten.
 - Fokus bleibt frei von der Fußleiste: Emulatoren und Importe holen das fokussierte Element mit 48 px Luft oben und 96 px unten in Sicht.
 
 #### 7.6.2 Stand M6-QA (Entscheidungen nach der Bildprüfung)
@@ -1054,7 +1069,7 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
   - *Lichtkegel* (M2-QA, M3-QA): kurzes, **hartkantiges** Trapez, das an der Oberkante der gehobenen Schachtel endet und nie hinter der Schachtel liegt. Oben 0,6 × Coverbreite bei Coveroberkante − 32, unten 1,1 × Coverbreite auf der Coveroberkante; Lichtfarbe linear von 0 (oben) auf 12 % (unten), ohne seitliches Ausblenden (der weiche 18-%-Kegel las sich als „Glow“). Ein vorab gerendertes Bitmap pro Lichtfarbe, geteilt; auf die Kopffreiheit beschnitten (Grid 24 px).
   - *Brettstück*: siehe 4.2 (2 px Licht über die Ringbreite, Front + 16 % Licht).
   - *Fokus-Kontaktschatten*: 16 px #000 70 % → 0 auf Coverbreite, **unter** der Brettfront.
-- **Lichtfarbe**: in gemischtem Kontext Bernstein (bzw. die gewählte Benutzer-Lichtfarbe), im Systemkontext das *Licht* des Systems für Kegel und Brettstück. **Der Ring** (und die 2-px-Lichtkante, die ihn schließt) ist im Systemkontext das Licht **zur Hälfte mit Papier gemischt** (`FocusLayer.RingPaperShare` 0,5; SNES-Lavendel #A397D8 → #CCC2DC). QA 2: Der reine Systemton las sich schwächer als der Bernstein-Ring und konkurrierte mit den Farbbändern der Rücken daneben – die fokussierte Schachtel war im meistgenutzten Raster am schwersten zu finden. Ein Bernstein-Ring auch im System hätte die Lichtfarbe des Fachs verlassen; die Mischung hält die Farbfamilie und hebt den Ring über jedes Band.
+- **Lichtfarbe**: in gemischtem Kontext Cyan (bzw. die gewählte Benutzer-Lichtfarbe), im Systemkontext das *Licht* des Systems für Kegel und Brettstück. **Der Ring** (und die 2-px-Lichtkante, die ihn schließt) ist im Systemkontext das Licht **zur Hälfte mit Papier gemischt** (`FocusLayer.RingPaperShare` 0,5; SNES-Lavendel #A397D8 → #CCC2DC). QA 2: Der reine Systemton las sich schwächer als der Cyan-Ring und konkurrierte mit den Farbbändern der Rücken daneben – die fokussierte Schachtel war im meistgenutzten Raster am schwersten zu finden. Ein Cyan-Ring auch im System hätte die Lichtfarbe des Fachs verlassen; die Mischung hält die Farbfamilie und hebt den Ring über jedes Band.
 - **Kosten**: zwei Elemente pro Grid, unabhängig von der Kachelzahl. Keine Kachel trägt Fokus-Visuals.
 
 ### 8.2 Pro Elementtyp
@@ -1063,16 +1078,17 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 |---|---|---|
 | **Schachtel** (Grid, Bretter, Bühne, Detail) | Hebung 1,06 (Ursprung unten Mitte), Kegel, Brettstück, Fokus-Kontaktschatten, gefaster Ring. Bildunterschrift Text 2 → Papier | Ring 90 ms linear; Hebung 140 ms CubicEaseOut |
 | **Systemrücken / Front / Wand-Banner** | Gefaster Ring in Licht (3 px Raum-Tief-Spalt + 3 px Licht, Fase 6), Hebung 1,03 von unten Mitte, über den Nachbarn (ZIndex 1). Kein Kegel, die Wand ist selbst die Lichtfläche | wie oben |
-| **Primärbutton** (gefaste Platte) | Bernstein bleibt, gefaster Ring 3 px **Papier** mit Raum-Tief-Spalt, Skalierung 1,03 | 90 / 140 ms |
+| **Primärbutton** (gefaste Platte) | Cyan bleibt, gefaster Ring 3 px **Papier** mit Raum-Tief-Spalt, Skalierung 1,03 | 90 / 140 ms |
 | **Sekundärbutton, Kopfleisten-Icon, Kanal, Ticker-Eintrag, Tastenkappe, Werkzeug** | **Inversion**: Fläche Papier, Text und Icon Tinte (Ticker: Code-Fläche 6×4, R 2; Unterstrich bleibt) | 90 ms |
-| **Listen-, Auswahl-, Einstellungs-, Emulator-, Ordnerzeile** | Zeile Regal hell, 8-px-Balken links (Farbe des Systems bzw. Bernstein), 1 px Lichtkante oben, Label bzw. Titel in Papier-Chip (Tinte, 8×4, R 2). Im Service-Menü werden die Wert-Pfeile Papier | 90 ms |
-| **Textfeld (Suche)** | Rahmen 2 px Bernstein, Fläche Regal, Cursor Bernstein | 90 ms |
+| **Listen-, Auswahl-, Einstellungs-, Emulator-, Ordnerzeile** | Zeile Regal hell, 8-px-Balken links (Farbe des Systems bzw. Cyan), 1 px Lichtkante oben, Label bzw. Titel in Papier-Chip (Tinte, 8×4, R 2). Im Service-Menü werden die Wert-Pfeile Papier | 90 ms |
+| **Textfeld (Suche)** | Rahmen 2 px Cyan, Fläche Regal, Cursor Cyan | 90 ms |
 | **Regalspiegel** | nicht fokussierbar | — |
 
 ### 8.3 Maus
 
 - **Schachtel**: Hover hebt sie 3 px und um 3 % (Step 140 ms, unter Reduziert/Aus keine Bewegung) und zeigt den Ring bei 40 % Deckkraft (`FocusLayer.Hover`, eine Ebene pro Raster) mit einem breiteren Kontaktschatten unter der Brettfront, kein Kegel, kein Brettstück. Ein Druck gibt nach (9.2.1). Klick setzt den Fokus und löst die Aktion aus.
 - **Alles per Maus erreichbar (R2)**, mit echten Zeiger-Tests (`MouseReachabilityTests`, Bewegung Aus):
+  - **Kopfzeile ist Client-Bereich (R3)**: jeder Kanal, Suche, Importe, Emulatoren, Einstellungen klickt; geprüft über Avalonias eigenes `HitTestChromeElement` an Mitte und Ecken jedes Knopfs (keine `TitleBar`-Rolle darüber) und per Klick-Navigation. Zusätzlich prüft `Every_visible_button_on_every_page_takes_the_mouse` auf jeder Seite (1920 und 1100), dass der Zeiger an der Mitte jedes sichtbaren Knopfs genau diesen Knopf trifft und das Fenster dort „Client“ meldet.
   - **Zurück**: die Zurück-Taste der Maus (XButton1) wirkt überall wie Zurück (Dialog, Liste, Falte, Verlauf; nicht während ein Spiel in RetroHub läuft). Die Fußleisten-Hinweise sind Mausziele (`RhHintButton`: Glyph leuchtet, 1-px-Linie in Text 3, Druck 0,97; nie fokussierbar), nur „Öffnen/Starten“ nicht. „Zurück“ fällt bei schmalen Fenstern nie heraus. Das Abschnittswort der Ortszeile („Konsolen ›“) führt auf Drill-in-Seiten zurück zum Abschnitt.
   - **Ein Druck verschiebt nichts**: Fokus durch die Maus gleitet keine Reihe an den Anker, scrollt keine Liste und aktiviert kein anderes Brett vor dem Loslassen (sonst trifft das Loslassen nichts mehr). Auf einen geschlossenen Systemrücken dreht der erste Klick die Front nach vorn, der Klick auf die offene Front öffnet das System (Start-Brett „Konsolen“ und Fächerwand gleich).
   - **Reihen**: Shift+Rad bzw. das horizontale Rad schiebt ein Brett seitlich, auf „Noch leer“ auch das normale Rad. Am rechten Brettende stehen zwei **Winkel** (`ShelfEdge`, gefaste Metallplättchen 44 × 30 mit zwei Schrauben, eingeschnittenem Winkel, Lichtkante oben; R3), nur solange der Zeiger über einem überlaufenden Brett steht; ein Klick schiebt eine Ansicht weiter, ein Plättchen ohne Ziel bleibt matt. Auf der Fächerwand und der Schiene schaltet das Rad das nächste System nach vorn; die Schiene zeigt beim Hover den Strich groß mit Code in Text 2 und den Namen als Tooltip und lässt sich ziehen. Das Rad über Ticker und Regalspiegel scrollt.
@@ -1161,9 +1177,9 @@ Bewusst nicht umgesetzt: Leerlauf-Ambiente (Bildlaufband, Staub im Kegel) – 8.
 7. **Rückkehr („Ausschalten“)**: Das Overlay kollabiert vertikal auf eine Linie in Licht (160 ms), die Linie auf einen Punkt (80 ms). Dann blendet die Seite ein (Scene), und die Original-Kachel bekommt Opacity 1.
 8. Die Transition liegt **nie** über dem eingebetteten Emulatorfenster. Sie endet, bevor das HWND sichtbar wird.
 
-**Stand M6 (umgesetzt, `Controls/FlightLayer.cs`)**: Die Zeitleiste ist eine Funktion der Zeit (`Apply(ms)`), angetrieben von einem 15-ms-Takt nur während der 520 ms; Vorschau und Tests frieren einzelne Bilder ein (`Freeze`). Die Kopie ist ein `RenderTargetBitmap` der Schachtel (genau so, wie sie gerade aussieht), die **ganze Kachel** samt Rücken geht auf Opacity 0 und kommt beim Abbruch bzw. nach dem Ausschalten zurück. Die Startfläche ist das Start-Panel des Launch-Overlays (UiScale-skaliert): Schachtel 240×336 auf einer Regalkante, Titel `poster-s`, „mGBA startet …“ in `read-l`, `SegmentBar` als Lauflicht (die Fortschrittspille entfällt). Die beiden Kanten der sich öffnenden Fläche tragen das Licht und verblassen bis 520 ms. Das eingebettete Spielbild (maskiert, noch ladend) ist während „Starting“ unsichtbar (Opacity 0), damit es nicht durch Flug und Linie scheint. Die Kanalanzeige zeigt den Systemcode bei 220 ms für 300 ms in Rücken 40. Ausschalten nur nach einer gezeigten Sitzung (nicht nach einem fehlgeschlagenen Start); nach einem Vollbild-Handoff ohne Animation. Die Statushinweise im Lauf-Overlay sind Icon + Satz statt Pillen, „Läuft gerade“ steht in Text 3 (Bernstein-Liste 2.2).
+**Stand M6 (umgesetzt, `Controls/FlightLayer.cs`)**: Die Zeitleiste ist eine Funktion der Zeit (`Apply(ms)`), angetrieben von einem 15-ms-Takt nur während der 520 ms; Vorschau und Tests frieren einzelne Bilder ein (`Freeze`). Die Kopie ist ein `RenderTargetBitmap` der Schachtel (genau so, wie sie gerade aussieht), die **ganze Kachel** samt Rücken geht auf Opacity 0 und kommt beim Abbruch bzw. nach dem Ausschalten zurück. Die Startfläche ist das Start-Panel des Launch-Overlays (UiScale-skaliert): Schachtel 240×336 auf einer Regalkante, Titel `poster-s`, „mGBA startet …“ in `read-l`, `SegmentBar` als Lauflicht (die Fortschrittspille entfällt). Die beiden Kanten der sich öffnenden Fläche tragen das Licht und verblassen bis 520 ms. Das eingebettete Spielbild (maskiert, noch ladend) ist während „Starting“ unsichtbar (Opacity 0), damit es nicht durch Flug und Linie scheint. Die Kanalanzeige zeigt den Systemcode bei 220 ms für 300 ms in Rücken 40. Ausschalten nur nach einer gezeigten Sitzung (nicht nach einem fehlgeschlagenen Start); nach einem Vollbild-Handoff ohne Animation. Die Statushinweise im Lauf-Overlay sind Icon + Satz statt Pillen, „Läuft gerade“ steht in Text 3 (Cyan-Liste 2.2).
 
-**Stand M6-QA**: (1) **Die Kopie wird zur Schachtel**: Das Flugziel ist das Schachtelfach der Startfläche (240 × 336 auf der Regalkante, mittig, UiScale-skaliert), die Kopie wird dorthin *contain* skaliert (statt fest 1,4× in die Fenstermitte), und die Startfläche zeigt **dasselbe Bitmap** statt eines eigenen Platzhalters (`FlightLayer.LandingSlot/LandingImage/LandingArt`). Vorher verschwand eine Schachtel und eine andere erschien. Ohne Kopie (reduzierte Bewegung, keine Quelle) zeigt die Startfläche ihren Platzhalter mit `KeepTitleClear`: wo Titel und Motiv sich träfen, tritt das Motiv auf 7 % hinter den Titel zurück. (2) Der Segmentbalken der Startfläche leuchtet im **Licht des Systems**, die dunklen Segmente in dessen Wand hell; Bernstein bleibt der Fortschritt der App. (3) **Ausschalten**: Ein Raum-Tief-Hintergrund deckt das ganze Fenster, bis der Punkt verschwunden ist (160 + 80 ms); erst dann blendet die Seite in 280 ms ein (`OffDuration` 520 ms). Vorher lag die Linie über der schon fertigen Seite und las sich als Unterstreichung. Der `FlightLayer` liegt über den Toasts. (4) **QA 2: ersetzt durch die Sitzungsanzeige im OSD (7.7).** „Willkommen zurück“ erschien erst nach dem Einblenden (`LaunchCoordinator.ReturnToastDelay`, nach einem Vollbild-Handoff sofort); unter einer Minute heißt es „Diese Sitzung: unter 1 Min.“, nie „–“.
+**Stand M6-QA**: (1) **Die Kopie wird zur Schachtel**: Das Flugziel ist das Schachtelfach der Startfläche (240 × 336 auf der Regalkante, mittig, UiScale-skaliert), die Kopie wird dorthin *contain* skaliert (statt fest 1,4× in die Fenstermitte), und die Startfläche zeigt **dasselbe Bitmap** statt eines eigenen Platzhalters (`FlightLayer.LandingSlot/LandingImage/LandingArt`). Vorher verschwand eine Schachtel und eine andere erschien. Ohne Kopie (reduzierte Bewegung, keine Quelle) zeigt die Startfläche ihren Platzhalter mit `KeepTitleClear`: wo Titel und Motiv sich träfen, tritt das Motiv auf 7 % hinter den Titel zurück. (2) Der Segmentbalken der Startfläche leuchtet im **Licht des Systems**, die dunklen Segmente in dessen Wand hell; Cyan bleibt der Fortschritt der App. (3) **Ausschalten**: Ein Raum-Tief-Hintergrund deckt das ganze Fenster, bis der Punkt verschwunden ist (160 + 80 ms); erst dann blendet die Seite in 280 ms ein (`OffDuration` 520 ms). Vorher lag die Linie über der schon fertigen Seite und las sich als Unterstreichung. Der `FlightLayer` liegt über den Toasts. (4) **QA 2: ersetzt durch die Sitzungsanzeige im OSD (7.7).** „Willkommen zurück“ erschien erst nach dem Einblenden (`LaunchCoordinator.ReturnToastDelay`, nach einem Vollbild-Handoff sofort); unter einer Minute heißt es „Diese Sitzung: unter 1 Min.“, nie „–“.
 
 ### 9.4 Reduzierte Bewegung / Aus
 
@@ -1320,7 +1336,7 @@ Screenshots unter `artifacts/screens/` (Avalonia headless, `CaptureRenderedFrame
 - [ ] Außenseiter-Test der Motive bestanden (6.1)
 - [ ] Radien nur 0/2/4/6, Fasen nur Ring und Platte; Kreise nur Statuspunkte, Tastenraute, Discs
 - [ ] Keine Versalien-Overlines, keine H2 über Brettern, keine Zahlenspalten, kein Wasserzeichen
-- [ ] Bernstein nur gemäß Liste 2.2
+- [ ] Cyan (Lichtfarbe) nur gemäß Liste 2.2; kein Braun, Oliv, Beige oder Gold außer Systemfarben (2.0)
 - [ ] Scanlines nur im Bildschirm, Korn nur im Hintergrund
 
 **Lesbarkeit (3 m)**
@@ -1413,4 +1429,4 @@ Legende: **A** = angenommen, **AP** = angepasst übernommen, **V** = verworfen.
 
 ### 13.3 Stärkste Ideen (alle beibehalten)
 
-Diese Ideen bleiben erhalten und wurden geschärft: Cover stehen auf Brettern, gemischte Formate sind gewollt (jetzt als Objekt *Brett* mit Etiketten). Rücken-Platzhalter statt Initialen (jetzt mit zweifarbigem Grund und Text-Cache). Meta als Satz (jetzt mit Zahl-Runs). Warme, opake Neutrale mit Bernstein und abschließender Liste. Systemlicht im System. Breitenkontrast in Archivo (jetzt als ganzes System). Gefaste Icons (jetzt auch Ring und Platte). Generierte Ära-Texturen (jetzt pixeltreu über `TextureFill`). Konsolen als Rücken und Front (jetzt auch auf Start). Aufkleber „Neu“. Performance-Disziplin (erweitert um `FocusLayer`, Off-Thread-Blur und Bibliothek ohne Fernsehlicht). Fallback-Ketten pro Fläche (plus „Kein Signal“). Ortssatz und Hinweise aus dem Fokus. „Alle“ als Rücken (der Kopf-Link ist jetzt ganz weg). Lösungs-Button. Ein inszenierter Moment. Konkrete QA-Liste (plus Außenseiter-Test, Schrift- und Palettentests, Moiré-Prüfung).
+Diese Ideen bleiben erhalten und wurden geschärft: Cover stehen auf Brettern, gemischte Formate sind gewollt (jetzt als Objekt *Brett* mit Etiketten). Rücken-Platzhalter statt Initialen (jetzt mit zweifarbigem Grund und Text-Cache). Meta als Satz (jetzt mit Zahl-Runs). Neutrale, opake Flächen mit Cyan (v2; vorher warm mit Bernstein) und abschließender Liste. Systemlicht im System. Breitenkontrast in Archivo (jetzt als ganzes System). Gefaste Icons (jetzt auch Ring und Platte). Generierte Ära-Texturen (jetzt pixeltreu über `TextureFill`). Konsolen als Rücken und Front (jetzt auch auf Start). Aufkleber „Neu“. Performance-Disziplin (erweitert um `FocusLayer`, Off-Thread-Blur und Bibliothek ohne Fernsehlicht). Fallback-Ketten pro Fläche (plus „Kein Signal“). Ortssatz und Hinweise aus dem Fokus. „Alle“ als Rücken (der Kopf-Link ist jetzt ganz weg). Lösungs-Button. Ein inszenierter Moment. Konkrete QA-Liste (plus Außenseiter-Test, Schrift- und Palettentests, Moiré-Prüfung).

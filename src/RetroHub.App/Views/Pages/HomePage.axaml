@@ -146,12 +146,12 @@
       <Border Height="24">
         <Border.Background>
           <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-            <GradientStop Color="#0014120F" Offset="0" />
-            <GradientStop Color="#FF14120F" Offset="1" />
+            <GradientStop Color="#000B0C0E" Offset="0" />
+            <GradientStop Color="#FF0B0C0E" Offset="1" />
           </LinearGradientBrush>
         </Border.Background>
       </Border>
-      <Border Height="600" Background="#14120F" />
+      <Border Height="600" Background="#0B0C0E" />
     </StackPanel>
   </Panel>
 </p:PageBase>

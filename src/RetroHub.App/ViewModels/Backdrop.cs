@@ -5,7 +5,7 @@ namespace RetroHub.App.ViewModels;
 /// <summary>What the room behind a page shows (DESIGN 2.5).</summary>
 public enum BackdropKind
 {
-    /// <summary>Plain room (#14120F): library, workbench pages.</summary>
+    /// <summary>Plain room (#0B0C0E): library, workbench pages.</summary>
     Room,
     /// <summary>TV light of a game above the stage board (Start, Detail).</summary>
     TvLight,

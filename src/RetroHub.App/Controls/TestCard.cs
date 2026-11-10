@@ -23,18 +23,18 @@ public sealed class TestCard : Control
 {
     public static readonly StyledProperty<IBrush?> LightProperty = AvaloniaProperty.Register<TestCard, IBrush?>(nameof(Light));
 
-    private static readonly IImmutableSolidColorBrush Tube = new ImmutableSolidColorBrush(Color.Parse("#16140F"));
+    private static readonly IImmutableSolidColorBrush Tube = new ImmutableSolidColorBrush(Color.Parse("#121316"));
     // QA 2: Kante at 37 % on the tube was ≈ 1.05 : 1 – the raster is Text 3 at 20 % now, a visible hairline grid
     // R2: 30 % – at 20 % the raster still vanished under the scanlines at ≈ 1100
-    private static readonly IImmutableSolidColorBrush Raster = new ImmutableSolidColorBrush(Color.FromArgb(0x4D, 0x94, 0x8A, 0x7A));
-    private static readonly IImmutableSolidColorBrush Gap = new ImmutableSolidColorBrush(Color.Parse("#0A0908"));
-    private static readonly IImmutableSolidColorBrush Front = new ImmutableSolidColorBrush(Color.Parse("#2A2620"));
-    private static readonly IImmutableSolidColorBrush Lip = new ImmutableSolidColorBrush(Color.Parse("#3A352D"));
-    private static readonly IImmutableSolidColorBrush BoardLight = new ImmutableSolidColorBrush(Color.Parse("#30FFF3E0"));
+    private static readonly IImmutableSolidColorBrush Raster = new ImmutableSolidColorBrush(Color.FromArgb(0x4D, 0xA0, 0xA7, 0xB2));
+    private static readonly IImmutableSolidColorBrush Gap = new ImmutableSolidColorBrush(Color.Parse("#060708"));
+    private static readonly IImmutableSolidColorBrush Front = new ImmutableSolidColorBrush(Color.Parse("#24272D"));
+    private static readonly IImmutableSolidColorBrush Lip = new ImmutableSolidColorBrush(Color.Parse("#383C44"));
+    private static readonly IImmutableSolidColorBrush BoardLight = new ImmutableSolidColorBrush(Color.Parse("#30FFFFFF"));
 
     /// <summary>The grey ramp: Raum-Tief, Raum, Regal, Regal hell, Kante, Text 3, Text 2, Papier.</summary>
     private static readonly IImmutableSolidColorBrush[] Ramp =
-        new[] { "#0A0908", "#14120F", "#1E1B17", "#2A2620", "#3A342B", "#948A7A", "#C9BFAF", "#F4ECDF" }
+        new[] { "#060708", "#0B0C0E", "#1A1C20", "#24272D", "#343840", "#A0A7B2", "#C3C8D1", "#F5F7FA" }
             .Select(h => (IImmutableSolidColorBrush)new ImmutableSolidColorBrush(Color.Parse(h))).ToArray();
 
     private static readonly Dictionary<Color, IImmutableSolidColorBrush> Faces = [];

@@ -546,7 +546,7 @@ public partial class GameDetailPage : PageBase
         if (_vm != null) _vm.HeaderGround = scrolled ? RoomColor : default;
     }
 
-    private static readonly Color RoomColor = Color.Parse("#14120F");
+    private static readonly Color RoomColor = Color.Parse("#0B0C0E");
 
     /// <summary>What has to be visible for a focused element: a lifted box with its board, a screen with its caption.</summary>
     private Control? FocusTarget(Visual v)

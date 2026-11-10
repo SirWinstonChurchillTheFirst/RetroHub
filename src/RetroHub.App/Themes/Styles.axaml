@@ -33,7 +33,7 @@
     <Setter Property="Background" Value="{DynamicResource RhLineBrush}" />
   </Style>
 
-  <!-- ===== Text fields: Regal, 2 px Bernstein frame when focused (DESIGN 8.2) ===== -->
+  <!-- ===== Text fields: Regal, 2 px Cyan frame when focused (DESIGN 8.2) ===== -->
   <Style Selector="TextBox">
     <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="SelectionBrush" Value="{DynamicResource RhAccentSoftBrush}" />

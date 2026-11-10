@@ -95,9 +95,9 @@
       <Grid Name="TickerRow" ColumnDefinitions="*,220" Margin="{DynamicResource RhPageInsetX}" Height="44" IsVisible="{Binding HasSystems}">
         <c:PositionRail Name="Rail" Systems="{Binding Systems}" Current="{Binding Current}" Margin="0,0,48,0" />
         <!-- the position in a small window set into the bench, like the dial's counter (M7 "gezeichnet") -->
-        <Border Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,1" Background="#38332B" Padding="3,3,3,3"
+        <Border Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,1" Background="#30333A" Padding="3,3,3,3"
                 IsVisible="{Binding PositionText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                BorderBrush="#4A443A" BorderThickness="0,1,0,0">
+                BorderBrush="#454A53" BorderThickness="0,1,0,0">
           <Panel>
             <Border Background="{DynamicResource RhRoomDeepBrush}" />
             <c:WindowGlass />

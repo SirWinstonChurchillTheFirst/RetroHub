@@ -30,6 +30,8 @@ public partial class App : Application
     public static void InitializeUi(AppSettings settings, string? resourcesDir)
     {
         Loc.Load(settings.Language, resourcesDir);
+        // v2 theme: a stored v1 light colour (Bernstein …) becomes its cool successor (OnFrameworkInitializationCompleted saves it)
+        settings.Accent = ThemeManager.MigrateStored(settings.Accent);
         ThemeManager.ApplyAccent(settings.Accent);
         Motion.Apply(settings.Motion);
     }
@@ -45,6 +47,12 @@ public partial class App : Application
         {
             var settings = new SettingsStore(paths.SettingsFile);
             settings.Load();
+            var stored = settings.Current.Accent;
+            if (!string.Equals(stored, ThemeManager.MigrateStored(stored), StringComparison.OrdinalIgnoreCase))
+            {
+                Log.Info($"Light colour {stored} (theme v1) migrated to {ThemeManager.MigrateStored(stored) ?? ThemeManager.DefaultAccent}");
+                settings.Update(s => s.Accent = ThemeManager.MigrateStored(s.Accent));
+            }
             var ui = new UiPreferencesStore(Path.Combine(paths.Config, "ui.json"));
             ui.Load();
             try { SafeFile.SweepTemps(paths.Config); } catch (Exception ex) { Log.Warn("Temp sweep failed", ex); }

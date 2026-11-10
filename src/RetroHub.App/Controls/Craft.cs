@@ -54,13 +54,13 @@ public static class Craft
     // ===================== colours =====================
 
     /// <summary>Label paper (a step warmer and darker than the UI paper: a printed sticker, not a page).</summary>
-    public static readonly Color LabelPaper = Color.Parse("#E9DFCC");
+    public static readonly Color LabelPaper = Color.Parse("#EEF1F5");
     /// <summary>Printing ink on paper.</summary>
-    public static readonly Color LabelInk = Color.Parse("#1A1714");
-    /// <summary>The light of an edge (#FFF3E0, the warm paper white – never pure white).</summary>
-    public static readonly Color Light = Color.Parse("#FFF3E0");
+    public static readonly Color LabelInk = Color.Parse("#0B0C0E");
+    /// <summary>The light of an edge (#FFFFFF, pure white (v2)).</summary>
+    public static readonly Color Light = Color.Parse("#FFFFFF");
     /// <summary>Room-deep: the darkest tone of the room (slots, gaps, grooves).</summary>
-    public static readonly Color Deep = Color.Parse("#0A0908");
+    public static readonly Color Deep = Color.Parse("#060708");
 
     private static readonly Dictionary<uint, IImmutableSolidColorBrush> Solids = new();
 
@@ -425,7 +425,7 @@ public sealed class BoxFace : Avalonia.Controls.Control
     {
         var r = new Rect(Bounds.Size);
         if (r.Width <= 0 || r.Height <= 0) return;
-        var tone = (Fill as ISolidColorBrush)?.Color ?? Color.Parse("#2E2A23");
+        var tone = (Fill as ISolidColorBrush)?.Color ?? Color.Parse("#2B2E34");
         const double side = 4, top = 3;
         var sideG = new StreamGeometry();
         using (var c = sideG.Open())

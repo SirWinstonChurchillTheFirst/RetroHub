@@ -25,7 +25,7 @@ public sealed class MiniSpine : Control
     public static readonly StyledProperty<bool> ShowMotifProperty = AvaloniaProperty.Register<MiniSpine, bool>(nameof(ShowMotif), true);
 
     public const double Band = 8, MotifSize = 20, Inset = 4, Gap = 3;
-    private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
+    private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFFFFF"));
 
     private FormattedText? _code;
     private (string?, string?, double) _key;

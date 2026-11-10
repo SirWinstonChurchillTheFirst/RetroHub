@@ -39,7 +39,7 @@ def blank(w, h):
     return [[(0, 0, 0, 0) for _ in range(w)] for _ in range(h)]
 
 
-WHITE = (255, 243, 224)  # warm paper white (#FFF3E0), never pure white
+WHITE = (255, 255, 255)  # v2 'Schwarz + Weiss + Cyan': neutral white (the warm #FFF3E0 is gone)
 BLACK = (0, 0, 0)
 
 
@@ -185,7 +185,8 @@ def lochblech(out):
 def holz(out):
     rnd = random.Random(2600)
     w, h = 256, 32
-    tones = [(58, 36, 20), (74, 46, 26), (92, 58, 32), (110, 70, 40), (128, 84, 48)]
+    # v2: the grain stays, the brown goes (neutral greys of the same lightness)
+    tones = [(38, 39, 42), (49, 50, 54), (61, 63, 67), (74, 76, 81), (88, 90, 96)]
     phases = [rnd.uniform(0, math.tau) for _ in range(3)]
     px = blank(w, h)
     for y in range(h):

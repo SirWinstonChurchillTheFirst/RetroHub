@@ -13,8 +13,8 @@ namespace RetroHub.App.Controls;
 /// </summary>
 public sealed class ShelfBoard : Control
 {
-    public static readonly IImmutableSolidColorBrush FrontBrush = new ImmutableSolidColorBrush(Color.Parse("#2A2620"));
-    public static readonly IImmutableSolidColorBrush EdgeBrush = new ImmutableSolidColorBrush(Color.Parse("#3A342B"));
+    public static readonly IImmutableSolidColorBrush FrontBrush = new ImmutableSolidColorBrush(Color.Parse("#24272D"));
+    public static readonly IImmutableSolidColorBrush EdgeBrush = new ImmutableSolidColorBrush(Color.Parse("#343840"));
     public static readonly IBrush ShadowBrush = new ImmutableLinearGradientBrush(
         [new ImmutableGradientStop(0, Color.FromArgb(0x73, 0, 0, 0)), new ImmutableGradientStop(1, Color.FromArgb(0, 0, 0, 0))],
         startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
@@ -24,7 +24,7 @@ public sealed class ShelfBoard : Control
         startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
 
     /// <summary>The 2 px lip under the board light of a shelf edge: Regal hell + 6 % paper (M3 QA: the edge read as a hairline).</summary>
-    public static readonly IImmutableSolidColorBrush LipBrush = new ImmutableSolidColorBrush(Color.Parse("#3A352D"));
+    public static readonly IImmutableSolidColorBrush LipBrush = new ImmutableSolidColorBrush(Color.Parse("#383C44"));
 
     public const double StageHeight = 24;
     /// <summary>The library's shelf edge ("Regalkante", DESIGN 4.2): 12 px since the M3 QA (was 10, read as a rule).</summary>
@@ -83,7 +83,7 @@ public sealed class ShelfBoard : Control
         }
     }
 
-    private static readonly IImmutableSolidColorBrush StageTop = new ImmutableSolidColorBrush(ColorUtil.Mix(Color.Parse("#2A2620"), SystemPalette.Paper, 0.10));
+    private static readonly IImmutableSolidColorBrush StageTop = new ImmutableSolidColorBrush(ColorUtil.Mix(Color.Parse("#24272D"), SystemPalette.Paper, 0.10));
 
     /// <summary>
     /// The body of every board (M7 "gezeichnet": the flat bars read as horizontal rules): a visible TOP FACE (we look
@@ -145,7 +145,7 @@ public sealed class ShelfBoard : Control
     }
 
     /// <summary>
-    /// Draws a shelf edge ("Regalkante") into <paramref name="r"/>: 1 px board light, the top face (#3A352D) below it,
+    /// Draws a shelf edge ("Regalkante") into <paramref name="r"/>: 1 px board light, the top face (#383C44) below it,
     /// the front in Regal hell with its rounded lower edge, the 16 px shadow (M3 QA: the plain 10 px front read as a
     /// hairline; M7: the top face and the grain make it a board the boxes stand on).
     /// </summary>
@@ -159,8 +159,8 @@ public sealed class ShelfBoard : Control
 }
 
 /// <summary>
-/// Object "Etikett" (DESIGN 1.2): a paper price label hanging on a board – paper #F4ECDF, ink, Archivo SemiCondensed
-/// SemiBold 15, padding 8×3, square. <see cref="IsNew"/> = the "Neu" sticker variant in Bernstein.
+/// Object "Etikett" (DESIGN 1.2): a paper price label hanging on a board – paper #F5F7FA, ink, Archivo SemiCondensed
+/// SemiBold 15, padding 8×3, square. <see cref="IsNew"/> = the "Neu" sticker variant in Cyan.
 /// </summary>
 public sealed class ShelfLabel : Decorator
 {

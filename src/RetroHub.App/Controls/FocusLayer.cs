@@ -188,7 +188,7 @@ public sealed class FocusLayer
     /// <summary>Height of the board front under the boxes (10 = shelf edge in the grid, 24 = stage board).</summary>
     public double BoardFront { get; set; } = ShelfBoard.EdgeHeight;
 
-    /// <summary>Light colour of ring, cone and board piece; null = the user's light colour (Bernstein).</summary>
+    /// <summary>Light colour of ring, cone and board piece; null = the user's light colour (Cyan).</summary>
     public Color? Light { get; set; }
 
     /// <summary>
@@ -484,7 +484,7 @@ public sealed class FocusLayer
         var t = _target;
         var light = LightColor;
         // QA 2: in a system's context the ring is the system light mixed halfway toward Papier – the plain light (a
-        // lavender, a dark blue) read weaker than the amber ring and competed with the spines' colour bands beside it;
+        // lavender, a dark blue) read weaker than the light-colour ring and competed with the spines' colour bands beside it;
         // cone and board piece keep the system's own light
         var brush = new ImmutableSolidColorBrush(Light is { } sys ? Mix(sys, RingPaper, RingPaperShare) : light);
         // the lit board piece (M3 QA): the front under the box (as wide as the ring) tinted with 16 % light, 2 px light
@@ -493,7 +493,7 @@ public sealed class FocusLayer
         var outer = RingGap + RingWidth;
         var piece = new Rect(t.X - outer, t.Bottom, t.Width + 2 * outer, BoardFront);
         if (OpaquePiece)
-            // the front under the box replaced by Regal hell + 16 % light (Bernstein ≈ #4C3D26); its 1 px bottom edge stays
+            // the front under the box replaced by Regal hell + 16 % light (Cyan: a cool lift); its 1 px bottom edge stays
             ctx.FillRectangle(new ImmutableSolidColorBrush(Mix(ShelfBoard.FrontBrush.Color, light, 0.16)), piece.WithHeight(BoardFront - 1));
         else
             ctx.FillRectangle(new ImmutableSolidColorBrush(ColorUtil.WithAlpha(light, 0x29)), piece);
@@ -509,7 +509,7 @@ public sealed class FocusLayer
 
     /// <summary>Share of Papier in a system-context ring (QA 2).</summary>
     public const double RingPaperShare = 0.5;
-    private static readonly Color RingPaper = Color.Parse("#F4ECDF");
+    private static readonly Color RingPaper = Color.Parse("#F5F7FA");
 
     /// <summary>The ring colour for a context light (null = the user's light colour, unmixed).</summary>
     public static Color RingColor(Color? systemLight) => systemLight is { } s ? Mix(s, RingPaper, RingPaperShare) : ThemeManager.CurrentAccent;

@@ -12,7 +12,7 @@ using RetroHub.App.ViewModels;
 namespace RetroHub.App.Controls;
 
 /// <summary>
-/// The sticker "Neu" (DESIGN 7.2.1): a Bernstein label with ink text, stuck over the top left corner of the box
+/// The sticker "Neu" (DESIGN 7.2.1): a Cyan label with ink text, stuck over the top left corner of the box
 /// (−4/−4 from the cover's <see cref="CoverArt.ArtRect"/>, so it sits on the real image, not on the slot). Label 13
 /// is the one allowed exception below 15 px (sticker print, not a reading line). On the first keyboard/controller focus
 /// it is "unpacked": 250 ms 12 px up-left while fading out; the game then counts as seen for this session.

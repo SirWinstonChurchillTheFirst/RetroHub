@@ -130,6 +130,6 @@ public sealed class WorkbenchFrame : Panel
 
     /// <summary>The 12 px Raum overlay at the list viewport's top edge (100 % → 0), shared by the three pages.</summary>
     public static readonly IBrush FadeBrush = new ImmutableLinearGradientBrush(
-        [new ImmutableGradientStop(0, Color.Parse("#FF14120F")), new ImmutableGradientStop(1, Color.Parse("#0014120F"))],
+        [new ImmutableGradientStop(0, Color.Parse("#FF0B0C0E")), new ImmutableGradientStop(1, Color.Parse("#000B0C0E"))],
         startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
 }

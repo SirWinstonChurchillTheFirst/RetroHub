@@ -12,7 +12,7 @@ namespace RetroHub.App.Theming;
 public sealed record AccentPreset(string Id, string NameKey, string Hex);
 
 /// <summary>
-/// Runtime theme tokens ("Fernsehlicht"). The light colour (Bernstein by default) replaces every light-dependent
+/// Runtime theme tokens ("Fernsehlicht" v2, "Schwarz + Weiß + Cyan"). The light colour (Cyan by default) replaces every light-dependent
 /// resource in one go in Application.Resources (never per frame – see MonHub PERFORMANCE.md); all consumers use
 /// DynamicResource. Everything is a solid colour: no gradients, no glow.
 /// <para>
@@ -23,25 +23,43 @@ public sealed record AccentPreset(string Id, string NameKey, string Hex);
 /// </summary>
 public static class ThemeManager
 {
-    /// <summary>Standby-Bernstein, the only brand colour (DESIGN 2.2).</summary>
-    public const string DefaultAccent = "#FFB547";
+    /// <summary>Standby-Cyan, the only brand colour (DESIGN 2.2, v2 – the owner's "Schwarz + Weiß + Cyan").</summary>
+    public const string DefaultAccent = "#2FD3F5";
 
+    /// <summary>The cool light colours (v2): no warm preset is left – Bernstein and the warm whites are gone.</summary>
     public static IReadOnlyList<AccentPreset> Presets { get; } =
     [
-        new("amber", "accent.amber", "#FFB547"),
-        new("phosphor", "accent.phosphor", "#8FE3A0"),
-        new("tube", "accent.tube", "#EDE3D0"),
-        new("ice", "accent.ice", "#8CC4FF"),
-        new("cherry", "accent.cherry", "#FF8A80"),
-        new("neon", "accent.neon", "#FF8CC6"),
+        new("cyan", "accent.cyan", "#2FD3F5"),
+        new("white", "accent.white", "#F2F5F8"),
+        new("signal", "accent.signal", "#FF808B"),
+        new("green", "accent.green", "#3DDC84"),
     ];
+
+    /// <summary>
+    /// v1 light colours (stored as #RRGGBB in settings.json) → their v2 successor; null = the default (Cyan). Bernstein
+    /// and every other value outside the v2 presets lands on Cyan, the near ones on their cool neighbour.
+    /// </summary>
+    public static string? MigrateStored(string? hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex)) return null;
+        var h = hex.Trim().ToUpperInvariant();
+        if (Presets.Any(p => string.Equals(p.Hex, h, StringComparison.OrdinalIgnoreCase)))
+            return string.Equals(h, DefaultAccent, StringComparison.OrdinalIgnoreCase) ? null : h;
+        return h switch
+        {
+            "#8FE3A0" => "#3DDC84",           // Phosphor → Grün
+            "#EDE3D0" => "#F2F5F8",           // Röhrenweiß → Weiß
+            "#FF8A80" or "#FF8CC6" => "#FF808B", // Kirsche, Neonrosa → Signalrot
+            _ => null,                        // Bernstein (FFB547), Eisblau, Nova leftovers → Cyan
+        };
+    }
 
     public static Color CurrentAccent { get; private set; } = Color.Parse(DefaultAccent);
 
     public static event Action? AccentChanged;
 
-    /// <summary>Neutral board light outside the TV-light and system contexts (= light edge #17FFF3E0).</summary>
-    public static readonly Color NeutralBoardLight = Color.Parse("#17FFF3E0");
+    /// <summary>Neutral board light outside the TV-light and system contexts (= light edge #17FFFFFF).</summary>
+    public static readonly Color NeutralBoardLight = Color.Parse("#17FFFFFF");
 
     private static SolidColorBrush? _boardLight;
 
@@ -78,8 +96,8 @@ public static class ThemeManager
     }
 
     /// <summary>
-    /// Applies a light colour (#RRGGBB; null / unknown = Bernstein). Only the presets are accepted: values of the old
-    /// "Nova" accent palette (violet, blue …) are not part of the warm palette and fall back to Bernstein.
+    /// Applies a light colour (#RRGGBB; null / unknown = Cyan). Only the presets are accepted: everything else falls
+    /// back to Cyan (stored v1 values are migrated first, <see cref="MigrateStored"/>).
     /// </summary>
     public static void ApplyAccent(string? hex)
     {
@@ -113,7 +131,7 @@ public static class ThemeManager
         try { AccentChanged?.Invoke(); } catch (Exception ex) { Log.Warn("AccentChanged handler failed", ex); }
     }
 
-    /// <summary>The light colour for a stored setting value (presets only; everything else = Bernstein).</summary>
+    /// <summary>The light colour for a stored setting value (presets only; everything else = Cyan).</summary>
     public static Color Resolve(string? hex)
     {
         var preset = Presets.FirstOrDefault(p => string.Equals(p.Hex, hex?.Trim(), StringComparison.OrdinalIgnoreCase));

@@ -18,8 +18,8 @@ public sealed class Bookend : Control
     /// <summary>The width the heavy bookend at the end of a row takes (R3 QA: the 9 px stick read as a faint line).</summary>
     public const double RowSlotWidth = 44;
 
-    private static readonly Color Metal = Color.Parse("#4A453D");
-    private static readonly Color MetalHeavy = Color.Parse("#5C564C");
+    private static readonly Color Metal = Color.Parse("#464A51");
+    private static readonly Color MetalHeavy = Color.Parse("#585D66");
 
     static Bookend()
     {

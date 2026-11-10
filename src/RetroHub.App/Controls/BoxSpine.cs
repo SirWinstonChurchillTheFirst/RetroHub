@@ -24,7 +24,7 @@ public sealed class BoxSpine : Control
     public static readonly StyledProperty<string?> CodeProperty = AvaloniaProperty.Register<BoxSpine, string?>(nameof(Code));
     public static readonly StyledProperty<string?> YearProperty = AvaloniaProperty.Register<BoxSpine, string?>(nameof(Year));
     public static readonly StyledProperty<string?> SystemIdProperty = AvaloniaProperty.Register<BoxSpine, string?>(nameof(SystemId));
-    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<BoxSpine, Color>(nameof(Accent), Color.Parse("#948A7A"));
+    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<BoxSpine, Color>(nameof(Accent), Color.Parse("#A0A7B2"));
     public static readonly StyledProperty<double> SpineWidthProperty = AvaloniaProperty.Register<BoxSpine, double>(nameof(SpineWidth), 28);
     public static readonly StyledProperty<double> SlantProperty = AvaloniaProperty.Register<BoxSpine, double>(nameof(Slant), 8);
 
@@ -91,7 +91,7 @@ public sealed class BoxSpine : Control
         }
     }
 
-    private static readonly IImmutableSolidColorBrush TopEdge = new ImmutableSolidColorBrush(Color.FromArgb(0x33, 0xF4, 0xEC, 0xDF));
+    private static readonly IImmutableSolidColorBrush TopEdge = new ImmutableSolidColorBrush(Color.FromArgb(0x33, 0xF5, 0xF7, 0xFA));
     private static readonly IImmutableSolidColorBrush Fold = new ImmutableSolidColorBrush(Color.FromArgb(0x59, 0, 0, 0));
 
     public override void Render(DrawingContext ctx)

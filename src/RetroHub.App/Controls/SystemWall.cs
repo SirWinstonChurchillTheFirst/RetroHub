@@ -15,7 +15,7 @@ public sealed class SystemWall : Control
     public static readonly StyledProperty<string?> SystemIdProperty =
         AvaloniaProperty.Register<SystemWall, string?>(nameof(SystemId));
     public static readonly StyledProperty<Color> AccentProperty =
-        AvaloniaProperty.Register<SystemWall, Color>(nameof(Accent), Color.Parse("#948A7A"));
+        AvaloniaProperty.Register<SystemWall, Color>(nameof(Accent), Color.Parse("#A0A7B2"));
     /// <summary>Motif height as a share of the wall height (0 = no motif; DESIGN 6.4: 72 % on walls).</summary>
     public static readonly StyledProperty<double> MotifShareProperty =
         AvaloniaProperty.Register<SystemWall, double>(nameof(MotifShare), 0.72);
@@ -44,8 +44,8 @@ public sealed class SystemWall : Control
     public static readonly StyledProperty<bool> RailProperty =
         AvaloniaProperty.Register<SystemWall, bool>(nameof(Rail));
 
-    private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
-    private static readonly Color RailWood = Color.Parse("#3A332A");
+    private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFFFFF"));
+    private static readonly Color RailWood = Color.Parse("#363A41");
 
     static SystemWall()
     {
@@ -176,7 +176,7 @@ public sealed class SystemWall : Control
 public sealed class MotifView : Control
 {
     public static readonly StyledProperty<string?> SystemIdProperty = AvaloniaProperty.Register<MotifView, string?>(nameof(SystemId));
-    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<MotifView, Color>(nameof(Accent), Color.Parse("#948A7A"));
+    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<MotifView, Color>(nameof(Accent), Color.Parse("#A0A7B2"));
     /// <summary>Set: the motif as ONE flat silhouette in this brush (no colours: the outsider-test sheet, DESIGN 6.5).</summary>
     public static readonly StyledProperty<IBrush?> SilhouetteBrushProperty = AvaloniaProperty.Register<MotifView, IBrush?>(nameof(SilhouetteBrush));
 

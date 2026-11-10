@@ -13,7 +13,7 @@ public sealed partial class SystemItemViewModel : ObservableObject
     public SystemItemViewModel(SystemDef def, int gameCount, long playSeconds)
     {
         Def = def;
-        Accent = ColorUtil.Parse(def.Accent, Color.Parse("#948A7A"));
+        Accent = ColorUtil.Parse(def.Accent, Color.Parse("#A0A7B2"));
         Look = SystemPalette.Get(def.Id, Accent);
         Update(gameCount, playSeconds);
     }

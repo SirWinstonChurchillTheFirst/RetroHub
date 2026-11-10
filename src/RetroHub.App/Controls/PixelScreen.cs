@@ -30,7 +30,7 @@ public sealed class PixelScreen : Panel
 {
     public static readonly StyledProperty<string?> PicturePathProperty = AvaloniaProperty.Register<PixelScreen, string?>(nameof(PicturePath));
     public static readonly StyledProperty<string?> SystemIdProperty = AvaloniaProperty.Register<PixelScreen, string?>(nameof(SystemId));
-    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<PixelScreen, Color>(nameof(Accent), Color.Parse("#948A7A"));
+    public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<PixelScreen, Color>(nameof(Accent), Color.Parse("#A0A7B2"));
     public static readonly StyledProperty<string?> CodeProperty = AvaloniaProperty.Register<PixelScreen, string?>(nameof(Code));
     /// <summary>The set has nothing to show at all (empty library): the tube is dark with the collapsed line.</summary>
     public static readonly StyledProperty<bool> IsOffProperty = AvaloniaProperty.Register<PixelScreen, bool>(nameof(IsOff));
@@ -378,17 +378,17 @@ public sealed class PixelScreen : Panel
 
     // ===================== layers =====================
 
-    private static readonly IImmutableSolidColorBrush RoomDeep = new ImmutableSolidColorBrush(Color.Parse("#0A0908"));
-    /// <summary>Cabinet in "Regal hell" (#2A2620): clearly lighter than the room (#14120F), like the boards.</summary>
-    private static readonly IImmutableSolidColorBrush Cabinet = new ImmutableSolidColorBrush(Color.Parse("#2A2620"));
-    private static readonly IImmutableSolidColorBrush TopLight = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
-    private static readonly IImmutableSolidColorBrush Edge = new ImmutableSolidColorBrush(Color.Parse("#3A342B"));
-    private static readonly IImmutableSolidColorBrush LedOff = new ImmutableSolidColorBrush(Color.Parse("#14120F"));
-    private static readonly IImmutableSolidColorBrush DarkTube = new ImmutableSolidColorBrush(Color.Parse("#0D0C0A"));
-    private static readonly IImmutableSolidColorBrush OffLine = new ImmutableSolidColorBrush(Color.FromArgb(0x33, 0xF4, 0xEC, 0xDF));
-    private static readonly IImmutableSolidColorBrush NoSignalBrush = new ImmutableSolidColorBrush(Color.Parse("#F4ECDF"));
+    private static readonly IImmutableSolidColorBrush RoomDeep = new ImmutableSolidColorBrush(Color.Parse("#060708"));
+    /// <summary>Cabinet in "Regal hell" (#24272D): clearly lighter than the room (#0B0C0E), like the boards.</summary>
+    private static readonly IImmutableSolidColorBrush Cabinet = new ImmutableSolidColorBrush(Color.Parse("#24272D"));
+    private static readonly IImmutableSolidColorBrush TopLight = new ImmutableSolidColorBrush(Color.Parse("#17FFFFFF"));
+    private static readonly IImmutableSolidColorBrush Edge = new ImmutableSolidColorBrush(Color.Parse("#343840"));
+    private static readonly IImmutableSolidColorBrush LedOff = new ImmutableSolidColorBrush(Color.Parse("#0B0C0E"));
+    private static readonly IImmutableSolidColorBrush DarkTube = new ImmutableSolidColorBrush(Color.Parse("#090A0C"));
+    private static readonly IImmutableSolidColorBrush OffLine = new ImmutableSolidColorBrush(Color.FromArgb(0x33, 0xF5, 0xF7, 0xFA));
+    private static readonly IImmutableSolidColorBrush NoSignalBrush = new ImmutableSolidColorBrush(Color.Parse("#F5F7FA"));
     /// <summary>"Kein Signal" lifts the glass a little: wall + 4 % paper (a lit tube is never as dark as the wall).</summary>
-    private static readonly IImmutableSolidColorBrush GlassLift = new ImmutableSolidColorBrush(Color.FromArgb(0x0A, 0xF4, 0xEC, 0xDF));
+    private static readonly IImmutableSolidColorBrush GlassLift = new ImmutableSolidColorBrush(Color.FromArgb(0x0A, 0xF5, 0xF7, 0xFA));
 
     /// <summary>
     /// The cabinet (M2 QA): a body in shelf-light with a 1 px light edge on top and a 1 px edge line at the bottom, a
@@ -478,7 +478,7 @@ public sealed class PixelScreen : Panel
             // one strip of tape over the left end
             var tw = Math.Round(h * 0.9);
             using (ctx.PushTransform(Matrix.CreateTranslation(-tw / 2, -h * 0.2) * Matrix.CreateRotation(-0.14) * Matrix.CreateTranslation(label.X + 2, label.Y + 2)))
-                ctx.FillRectangle(Craft.Solid(Craft.A(Color.Parse("#F2EAD8"), 0.40)), new Rect(0, 0, tw, Math.Round(h * 0.42)));
+                ctx.FillRectangle(Craft.Solid(Craft.A(Color.Parse("#EEF2F6"), 0.40)), new Rect(0, 0, tw, Math.Round(h * 0.42)));
         }
     }
     /// <summary>One picture (snap, test card or the dark tube); two of them cross-fade.</summary>
@@ -626,8 +626,8 @@ public sealed class PixelScreen : Panel
         public bool Flash;
         public IBrush? Light;
 
-        private static readonly IImmutableSolidColorBrush SweepBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x8C, 0xF4, 0xEC, 0xDF));
-        private static readonly IImmutableSolidColorBrush FlashBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x1A, 0xF4, 0xEC, 0xDF));
+        private static readonly IImmutableSolidColorBrush SweepBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x8C, 0xF5, 0xF7, 0xFA));
+        private static readonly IImmutableSolidColorBrush FlashBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x1A, 0xF5, 0xF7, 0xFA));
         private static readonly Bitmap?[] NoiseFrames = new Bitmap?[3];
         private const int NoiseW = 160, NoiseH = 90;
 
@@ -657,7 +657,7 @@ public sealed class PixelScreen : Panel
                         var v = (byte)Math.Clamp(rnd.Next(10, 230) + streak, 0, 255);
                         var o = (y * NoiseW + x) * 4;
                         px[o] = px[o + 1] = v;
-                        px[o + 2] = (byte)Math.Min(255, v + 4); // a hair warm, like the paper
+                        px[o + 2] = v; // neutral grey snow (v2: no warm cast)
                         px[o + 3] = 255;
                     }
                 }
@@ -749,7 +749,7 @@ public sealed class PixelScreen : Panel
         // a superellipse distance: flat in the middle, falling off near the edges like a curved tube
         var d = Math.Pow(Math.Pow(Math.Abs(nx), 4) + Math.Pow(Math.Abs(ny), 4), 0.25);
         var a = Math.Clamp((d - 0.62) / 0.5, 0, 1);
-        return (0x0A, 0x09, 0x08, 0.46 * a * a);
+        return (0x06, 0x07, 0x08, 0.46 * a * a);
     });
 
     /// <summary>A switched-off tube is dark glass: a soft, wide patch of the room light in its upper left.</summary>
@@ -759,7 +759,7 @@ public sealed class PixelScreen : Panel
         var dy = (ny + 0.48) / 0.42;
         var d = Math.Sqrt(dx * dx + dy * dy);
         var a = Math.Clamp(1 - d, 0, 1);
-        return (0xF4, 0xEC, 0xDF, 0.055 * a * a * (3 - 2 * a));
+        return (0xF5, 0xF7, 0xFA, 0.055 * a * a * (3 - 2 * a));
     });
 
     private static Bitmap Generate(Func<double, double, (byte R, byte G, byte B, double A)> f)
