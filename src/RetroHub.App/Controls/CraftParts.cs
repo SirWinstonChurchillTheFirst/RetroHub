@@ -413,7 +413,7 @@ public sealed class SystemNiche : Control
         var ease = 1 - Math.Pow(1 - _t, 3);
         var box = new Rect(inner.X + (inner.Width - size) / 2, boardY - size + Math.Round(14 * (1 - ease)), size, size);
         using (ctx.PushOpacity(ease))
-            MotifCatalog.Draw(ctx, look, box, relief: true);
+            if (!SystemSpine.DrawMotifPlaque(ctx, this, look, box)) MotifCatalog.Draw(ctx, look, box, relief: true);
         // the compartment's depth: shadow under the lip at the top and left, light on the bottom lip
         ctx.FillRectangle(Craft.Fade(Colors.Black, 0.55, 0, Craft.Toward.Down), new Rect(inner.X, inner.Y, inner.Width, 10));
         ctx.FillRectangle(Craft.Fade(Colors.Black, 0.40, 0, Craft.Toward.Right), new Rect(inner.X, inner.Y, 6, inner.Height));

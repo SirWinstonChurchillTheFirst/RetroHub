@@ -25,7 +25,7 @@ namespace RetroHub.App.Controls;
 /// standing ring in the system's light and a lift of 1.03 (no cone: the wall is the light surface).
 /// DataContext = <see cref="SystemItemViewModel"/>. Drawn in one Render pass; text layouts are built on change only.
 /// </summary>
-public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
+public sealed partial class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
 {
     public static readonly StyledProperty<double> SpineWidthProperty = AvaloniaProperty.Register<SystemSpine, double>(nameof(SpineWidth), 72);
     public static readonly StyledProperty<double> FrontWidthProperty = AvaloniaProperty.Register<SystemSpine, double>(nameof(FrontWidth), 200);
@@ -293,8 +293,11 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     {
         var inset = FrontInset;
         var big = FrontWidth >= 480;
-        _boardY = Math.Round(height * 0.62);
+        var compartment = FrontCompartment(height);
+        _boardY = compartment?.BoardY ?? Math.Round(height * 0.62);
         var textBottom = 8 + Math.Round(inset * 0.8) + (_name?.Height ?? 0) + 8 + (_sub?.Height ?? 0);
+        // the rendered compartment: its opening starts where it was modelled (the name is fitted above it, see EnsureText)
+        if (compartment is { } comp) textBottom = comp.RecessTop - 2;
         var count = _covers.Count(c => c.IsVisible);
         var aspect = _system != null ? SystemPalette.BoxAspect(_system.Id) : 1.25;
         var places = big ? 3 : 2;
@@ -307,7 +310,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         _slots = new Rect[count];
         for (var i = 0; i < count; i++) _slots[i] = new Rect(inset + i * (w + 12), _boardY - h, w, h);
         // the inner compartment is cut into the front from just under the maker line down to the inner board
-        _recessTop = Math.Round(Math.Max(textBottom + 6, _boardY - Math.Max(h, big ? 150 : 110) - 18));
+        _recessTop = compartment?.RecessTop ?? Math.Round(Math.Max(textBottom + 6, _boardY - Math.Max(h, big ? 150 : 110) - 18));
         _bookend = count > 0 && count < places;
         // the motif stands on the stage board, right, in the part under the inner board
         var below = height - (_boardY + 10);
@@ -470,13 +473,21 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         // the front: the name in the poster role, measured (largest size whose words all fit, at most 3 lines; else the
         // code), the count bottom left beside the motif. A big front (Konsolen) adds maker and year under the name.
         var inset = FrontInset;
-        _name = FitName(s, FrontWidth - 2 * inset);
+        // a rendered front with a light body (white/beige housings) is printed in ink
+        var ink = FrontSprite != null && LightBody(s.Look);
+        IBrush main = ink ? Craft.Solid(Craft.LabelInk) : Paper, second = ink ? Craft.Solid(Color.Parse("#30343A")) : Text2;
         _sub = LargeFront && !string.IsNullOrEmpty(s.SubTitle)
-            ? Sentence.WithNumbers(new FormattedText(s.SubTitle, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.ReadFace, FrontWidth >= 480 ? 18 : 16, Text2)
+            ? Sentence.WithNumbers(new FormattedText(s.SubTitle, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.ReadFace, FrontWidth >= 480 ? 18 : 16, second)
             { MaxTextWidth = FrontWidth - 2 * inset }, s.SubTitle)
             : null;
+        // the rendered compartment has a fixed opening: name and maker must end above it
+        var frontHeight = Bounds.Height > 0 ? Bounds.Height : Height;
+        var budget = !double.IsNaN(frontHeight) && FrontCompartment(frontHeight) is { } comp
+            ? comp.RecessTop - 10 - (8 + Math.Round(inset * 0.8)) - (_sub != null ? _sub.Height + 8 : 0)
+            : double.PositiveInfinity;
+        _name = FitName(s, FrontWidth - 2 * inset, budget, main);
         _frontCount = new FormattedText(s.CountText, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.NumberFace,
-            LargeFront ? (FrontWidth >= 480 ? 40 : 32) : 15, Paper);
+            LargeFront ? (FrontWidth >= 480 ? 40 : 32) : 15, main);
     }
 
     private double FrontInset => LargeFront ? (FrontWidth >= 480 ? 40 : 32) : Math.Round(FrontWidth * 0.08);
@@ -485,11 +496,12 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     /// The system's name at the largest size (big fronts 44/36/30 or 36/30/26, small fronts 22/19/16 scaled with the
     /// front) that breaks only between words into ≤ 3 lines; else the code.
     /// </summary>
-    private FormattedText FitName(SystemItemViewModel s, double maxWidth)
+    private FormattedText FitName(SystemItemViewModel s, double maxWidth, double maxHeight = double.PositiveInfinity, IBrush? brush = null)
     {
         var k = FrontWidth / 200;
+        var Paper = brush ?? SystemSpine.Paper;
         double[] sizes = LargeFront
-            ? FrontWidth >= 480 ? [44, 36, 30] : [36, 30, 26]
+            ? FrontWidth >= 480 ? [44, 36, 30, 26] : [36, 30, 26, 22]
             : new[] { 22, 19, 16 }.Select(v => Math.Max(15, Math.Round(v * k))).ToArray();
         foreach (var size in sizes)
         {
@@ -501,7 +513,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 MaxTextWidth = maxWidth,
                 LineHeight = Math.Round(size * 1.1),
             };
-            if (t.Height <= 3 * Math.Round(size * 1.1) + 1) return t;
+            if (t.Height <= 3 * Math.Round(size * 1.1) + 1 && t.Height <= maxHeight) return t;
         }
         return new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, Math.Round(28 * k), Paper);
     }
@@ -531,10 +543,13 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         var area = ObjectRect;
         // depth: the right side face in the gap to the next spine and the top face above (we look slightly down onto the
         // shelf), the same oblique view as the sleeves; the front shows its faces too
-        DrawBoxFaces(ctx, area, look);
-        using (ctx.PushClip(area))
+        // the Konsolen wall from its renders (R3): the spine casts its own shadow and shows its own faces
+        var rendered = SpineSprite != null;
+        if (rendered && t < 1 && !DrawRenderedSpine(ctx, area, look, 1 - Math.Clamp(t / 0.5, 0, 1))) rendered = false;
+        if (!rendered) DrawBoxFaces(ctx, area, look);
+        using (ctx.PushClip(rendered ? area.Inflate(new Thickness(14, 20, 18, 16)) : area))
         {
-            if (t < 1) DrawSpine(ctx, area, look, 1 - Math.Clamp(t / 0.5, 0, 1));
+            if (t < 1 && !rendered) DrawSpine(ctx, area, look, 1 - Math.Clamp(t / 0.5, 0, 1));
             if (t > 0)
             {
                 var front = new Rect(area.X, 0, FrontWidth, r.Height);
@@ -544,14 +559,27 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 using (ctx.PushTransform(swinging ? Swing(area, t) : Matrix.Identity))
                 using (ctx.PushOpacity(Math.Clamp(t / 0.5, 0, 1)))
                 {
-                    SystemWall.Draw(ctx, this, front, look, band: 0, motifShare: shelf ? 0 : 0.72, motifInset: Math.Round(FrontWidth * 0.06));
-                    if (shelf) DrawRecess(ctx, front, look);
-                    DrawFrontLip(ctx, front, look);
-                    DrawPrintedBand(ctx, front, look, 1, LargeFront ? 8 : 6, LargeFront ? 12 : 9);
+                    var drawnFront = shelf && DrawRenderedFrontBody(ctx, front, look);
+                    if (!drawnFront)
+                    {
+                        SystemWall.Draw(ctx, this, front, look, band: 0, motifShare: shelf ? 0 : 0.72, motifInset: Math.Round(FrontWidth * 0.06));
+                        if (shelf) DrawRecess(ctx, front, look);
+                        DrawFrontLip(ctx, front, look);
+                        DrawPrintedBand(ctx, front, look, 1, LargeFront ? 8 : 6, LargeFront ? 12 : 9);
+                    }
                     if (shelf)
                     {
                         // the inner board across the recess, the contact shadows of the boxes on it, the motif below
-                        ShelfBoard.DrawOnWall(ctx, new Rect(front.X + RecessInset, _boardY, FrontWidth - 2 * RecessInset, 10), look, this);
+                        if (!drawnFront) ShelfBoard.DrawOnWall(ctx, new Rect(front.X + RecessInset, _boardY, FrontWidth - 2 * RecessInset, 10), look, this);
+                        else
+                            for (var i = 0; i < _covers.Count && i < _slots.Length; i++)
+                                if (_covers[i].IsVisible)
+                                {
+                                    // the rendered compartment: each box casts its shadow on the back wall
+                                    var a = _covers[i].ArtRect;
+                                    var b = a.Width > 0 ? new Rect(_slots[i].X + a.X, _slots[i].Y + a.Y, a.Width, a.Height) : _slots[i];
+                                    Craft.CastShadow(ctx, b.Translate(new Vector(front.X, 0)), 9, 0.34);
+                                }
                         for (var i = 0; i < _covers.Count && i < _slots.Length; i++)
                         {
                             if (!_covers[i].IsVisible) continue;
@@ -560,7 +588,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                             ctx.FillRectangle(ShelfBoard.ContactBrush, new Rect(front.X + span.X, _boardY + 1, span.Width, 9));
                         }
                         DrawFrontBookend(ctx, front);
-                        MotifCatalog.Draw(ctx, look, _motifBox.Translate(new Vector(front.X, 0)), relief: true);
+                        var motifBox = _motifBox.Translate(new Vector(front.X, 0));
+                        if (!drawnFront || !DrawMotifPlaque(ctx, this, look, motifBox)) MotifCatalog.Draw(ctx, look, motifBox, relief: true);
                     }
                 }
                 using (ctx.PushTransform(swinging ? Swing(area, t) : Matrix.Identity))
@@ -596,6 +625,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         var height = art.Height > 0 ? art.Height : _slots[last].Height;
         var x = front.X + right + 10;
         if (x + Bookend.SlotWidth > front.X + FrontWidth - RecessInset - 4) return;
+        if (FrontSprite != null && Bookend.DrawRendered(ctx, this, new Point(x + 4, _boardY), Math.Round(height * 0.7))) return;
         var area = new Rect(x, _boardY - height, Bookend.SlotWidth, height);
         Bookend.Draw(ctx, area, Math.Round(height * 0.7));
     }
@@ -923,7 +953,11 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     /// left corner (radians, negative = the top rests on the left neighbour); a <see cref="Flat"/> sleeve lies on the board
     /// with its spine toward the room (the last of a long row, before the bookend).
     /// </summary>
-    private readonly record struct SleeveShape(Rect Front, uint Seed, double Lean, bool Dent, bool DentLeft, double DentSize, bool Flat);
+    private readonly record struct SleeveShape(Rect Front, uint Seed, double Lean, bool Dent, bool DentLeft, double DentSize, bool Flat)
+    {
+        /// <summary>The render this sleeve is drawn from (null: drawn shapes).</summary>
+        public string? Sprite { get; init; }
+    }
 
     /// <summary>The sleeve's row height: its styled Height (known before layout), else its bounds.</summary>
     private double SleeveRowHeight => !double.IsNaN(Height) ? Height : Bounds.Height;
@@ -941,6 +975,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
             var seed = Craft.Seed(_system?.Id);
             var H = SleeveRowHeight;
             var index = IndexInRow(out var count);
+            if (RenderedSleeve(seed, H, index, count) is { } rendered) return rendered;
             var fw = Math.Max(20, SpineWidth + Craft.Pick(seed, 1, -14, 10));
             var h = Math.Max(24, H - SleeveTop - Craft.Pick(seed, 2, 0, (int)Math.Round(H * 0.13)));
             var dent = Craft.Rand(seed, 4) < 0.5;
@@ -1053,6 +1088,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     private void DrawSleeve(DrawingContext ctx, SystemLook look)
     {
         var s = Sleeve;
+        if (s.Sprite != null && DrawRenderedSleeve(ctx, look, s)) return;
         if (s.Flat)
         {
             DrawFlatSleeve(ctx, look, s);

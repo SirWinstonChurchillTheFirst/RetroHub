@@ -163,7 +163,7 @@ public sealed class SystemWall : Control
             // never wider than 46 % of the wall, so the name above and maker/count bottom left stay free
             var size = Math.Round(Math.Min(r.Height * motifShare, r.Width * 0.46));
             var box = new Rect(r.Right - motifInset - size, r.Bottom - size, size, size);
-            MotifCatalog.Draw(context, look, box, relief: relief);
+            if (!relief || !SystemSpine.DrawMotifPlaque(context, visual, look, box)) MotifCatalog.Draw(context, look, box, relief: relief);
         }
         if (band > 0) context.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, r.Width, band));
     }
@@ -202,7 +202,9 @@ public sealed class MotifView : Control
                 context.DrawGeometry(flat, null, MotifCatalog.Silhouette(look.Motif));
             return;
         }
-        // at hero size the motif gets its relief (edge light, foot, material; M5 QA)
+        // at hero size the motif is the rendered relief plaque (R3), standing bottom right; else the drawn relief (M5 QA)
+        var size = Math.Min(r.Width, r.Height);
+        if (SystemSpine.DrawMotifPlaque(context, this, look, new Rect(r.Right - size, r.Bottom - size, size, size))) return;
         MotifCatalog.Draw(context, look, r, alignRight: true, relief: true);
     }
 }

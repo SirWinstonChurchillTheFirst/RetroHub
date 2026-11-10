@@ -259,7 +259,12 @@ public sealed class CoverArt : Control
         else
         {
             using (ctx.PushOpacity(IsMissing ? 0.45 : 1))
+            {
+                // R3: the placeholder stands in the rendered keep case (shadow under it, sleeve and frame over it)
+                _cased = Rendered.DrawCase(ctx, this, art, over: false);
                 DrawPlaceholder(ctx, art);
+                if (_cased) Rendered.DrawCase(ctx, this, art, over: true);
+            }
         }
         DrawMarkers(ctx, art);
     }
@@ -341,6 +346,8 @@ public sealed class CoverArt : Control
 
     /// <summary>Texture strength on placeholders, relative to the system's wall strength (boxes read as material).</summary>
     private const double PlaceholderTextureFactor = 2.0;
+
+    private bool _cased;
 
     private void DrawPlaceholder(DrawingContext ctx, Rect r)
     {
@@ -432,7 +439,7 @@ public sealed class CoverArt : Control
             // the detail: on top under the colour band, like a printed box front)
             // the case's edges and a little wear (seeded by the title)
             var seed = Hash(Title ?? "");
-            Craft.Edges(ctx, r, lit: 0.07, dark: 0.35, grime: 0, topLit: 0, softRight: stage ? 3 : 0);
+            if (!_cased) Craft.Edges(ctx, r, lit: 0.07, dark: 0.35, grime: 0, topLit: 0, softRight: stage ? 3 : 0);
             Craft.Scuffs(ctx, r, seed, (int)(seed % 3), 0.05);
             // title and subtitle on a paper label applied by hand: left after the band, anchored at the bottom with the
             // inner margin (the pulled box of the detail: on top under the colour band, like a printed box front)

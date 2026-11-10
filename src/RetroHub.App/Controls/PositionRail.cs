@@ -174,17 +174,22 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
         var bottom = Math.Round(Bounds.Height - StripFromBottom);
         var strip = new Rect(0, bottom - StripHeight, w, StripHeight);
         var groove = Math.Round(strip.Y + StripHeight / 2 + 2);
-        var outline = Chamfer.Octagon(strip, 3);
-        // the strip: chamfered ends, grain, lit top edge, dark bottom edge, the groove cut along it
-        ctx.DrawGeometry(Craft.Solid(Strip), null, outline);
-        using (ctx.PushGeometryClip(outline))
+        // the rendered rail (R3, Blender: a brushed steel bar with a milled groove); else the drawn strip
+        var rendered = Rendered.DrawStrip(ctx, this, "rail", strip);
+        if (!rendered)
         {
-            TextureFill.Draw(ctx, this, strip, Texture.BoardGrain, 0.8);
-            ctx.FillRectangle(Craft.Hi(0.10), new Rect(strip.X, strip.Y, w, 1));
-            ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.35, Craft.Toward.Down), new Rect(strip.X, strip.Bottom - 5, w, 5));
-            ctx.FillRectangle(Craft.Dark(0.55), new Rect(strip.X, strip.Bottom - 1, w, 1));
+            var outline = Chamfer.Octagon(strip, 3);
+            // the strip: chamfered ends, grain, lit top edge, dark bottom edge, the groove cut along it
+            ctx.DrawGeometry(Craft.Solid(Strip), null, outline);
+            using (ctx.PushGeometryClip(outline))
+            {
+                TextureFill.Draw(ctx, this, strip, Texture.BoardGrain, 0.8);
+                ctx.FillRectangle(Craft.Hi(0.10), new Rect(strip.X, strip.Y, w, 1));
+                ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.35, Craft.Toward.Down), new Rect(strip.X, strip.Bottom - 5, w, 5));
+                ctx.FillRectangle(Craft.Dark(0.55), new Rect(strip.X, strip.Bottom - 1, w, 1));
+            }
+            Craft.Groove(ctx, 6, groove, w - 12, 0.60, 0.08);
         }
-        Craft.Groove(ctx, 6, groove, w - 12, 0.60, 0.08);
         // the printed scale: two minor ticks between neighbours, a major tick per system in its colour
         for (var i = 0; i < n - 1; i++)
         {
@@ -230,6 +235,20 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
             ctx.FillRectangle(Craft.Dark(0.5), new Rect(nx + 1, flag.Bottom, 1, strip.Bottom - flag.Bottom));
             ctx.FillRectangle(c.Look.LightBrush, new Rect(nx - 1, flag.Bottom - 1, 2, strip.Bottom - flag.Bottom + 1));
         }
+        // the rendered carriage riding in the groove, its anodised inlay in the system's colour
+        if (rendered && Rendered.MetaOf("slider") is { } sm)
+        {
+            var sh = strip.Height + 12;
+            var sw = Math.Round(sh * sm.Front.Width / sm.Front.Height);
+            Rendered.Draw(ctx, this, "slider", new Rect(nx - sw / 2, strip.Y + strip.Height / 2 - sh / 2, sw, sh), true,
+                new Rendered.Tint("band", c.Look.Color));
+        }
+        else DrawKnob(ctx, c, nx, groove);
+        DrawFlag(ctx, c, flag, fh, swing);
+    }
+
+    private void DrawKnob(DrawingContext ctx, SystemItemViewModel c, double nx, double groove)
+    {
         // the knob riding in the groove: chamfered, lit on top, darker at its foot, two grip lines, its shadow to the right
         var knob = new Rect(nx - 10, groove - 7, 20, 13);
         Craft.CastShadow(ctx, knob, 4, 0.5);
@@ -243,6 +262,11 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
                 if (Math.Abs(g) > 1) ctx.FillRectangle(Craft.Dark(0.40), new Rect(nx + g, knob.Y + 3, 1, 6));
         }
         ctx.FillRectangle(c.Look.LightBrush, new Rect(nx - 1, knob.Y + 1, 2, knob.Height - 2));
+    }
+
+    private void DrawFlag(DrawingContext ctx, SystemItemViewModel c, Rect flag, double fh, Matrix swing)
+    {
+        if (_code == null) return;
         var seed0 = Craft.Seed(c.Id);
         var tilt = Craft.Range(seed0, 22, -1.2, 1.2);
         // the flag with the new code comes up over the old place (Blink; reduced 100 ms)

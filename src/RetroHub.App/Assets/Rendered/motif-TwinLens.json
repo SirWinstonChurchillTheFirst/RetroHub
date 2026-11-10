@@ -1,0 +1,19 @@
+{
+ "kind": "motif",
+ "motif": "TwinLens",
+ "third": "Light",
+ "canvas": [
+  172,
+  172
+ ],
+ "scale": 1,
+ "front": [
+  6.0,
+  6.0,
+  159.8,
+  160.1
+ ],
+ "maps": [
+  "light"
+ ]
+}

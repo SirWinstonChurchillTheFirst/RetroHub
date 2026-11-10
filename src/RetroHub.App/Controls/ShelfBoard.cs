@@ -112,10 +112,19 @@ public sealed class ShelfBoard : Control
         if (seed != 0 && topFace > 0) Craft.Nicks(context, new Rect(r.X, r.Y + topFace, r.Width, 3), seed, 2 + (int)Math.Min(4, r.Width / 600));
     }
 
+    /// <summary>
+    /// The rendered board (R3, Blender): black powder-coated steel with a laminate top – the stage board (22 px lip) or
+    /// the shelf edge (12 px), tiled along <paramref name="r"/> with its top face above and its shadow below. One board for
+    /// every page and every system (theme v2: no per-system wood tones). False when the render is not available.
+    /// </summary>
+    private static bool DrawRendered(DrawingContext context, Rect r, Visual? visual, bool edge = false) =>
+        Rendered.DrawBoard(context, visual, edge || r.Height < 18 ? "board-edge" : "board-stage", r);
+
     /// <summary>Draws a board front into <paramref name="r"/> (shadow below it).</summary>
     public static void Draw(DrawingContext context, Rect r, Visual? visual = null, uint seed = 0)
     {
         if (r.Width <= 0 || r.Height <= 0) return;
+        if (DrawRendered(context, r, visual)) return;
         DrawBody(context, r, FrontBrush, StageTop, visual, seed);
         context.FillRectangle(ThemeManager.BoardLight, new Rect(r.X, r.Y, r.Width, 1));
         context.FillRectangle(ShadowBrush, new Rect(r.X, r.Bottom, r.Width, ShadowHeight));
@@ -130,6 +139,7 @@ public sealed class ShelfBoard : Control
     public static void DrawOnWall(DrawingContext context, Rect r, SystemLook look, Visual? visual = null, uint seed = 0)
     {
         if (r.Width <= 0 || r.Height <= 0) return;
+        if (DrawRendered(context, r, visual)) return;
         (IBrush Front, IBrush Lip, IBrush Edge) b;
         lock (WallBoards)
         {
@@ -152,6 +162,7 @@ public sealed class ShelfBoard : Control
     public static void DrawEdge(DrawingContext context, Rect r, Visual? visual = null, uint seed = 0)
     {
         if (r.Width <= 0 || r.Height <= 0) return;
+        if (DrawRendered(context, r, visual, edge: true)) return;
         DrawBody(context, r, FrontBrush, LipBrush, visual, seed);
         context.FillRectangle(ThemeManager.BoardLight, new Rect(r.X, r.Y, r.Width, 1));
         context.FillRectangle(ShadowBrush, new Rect(r.X, r.Bottom, r.Width, ShadowHeight));

@@ -95,15 +95,11 @@
       <Grid Name="TickerRow" ColumnDefinitions="*,220" Margin="{DynamicResource RhPageInsetX}" Height="44" IsVisible="{Binding HasSystems}">
         <c:PositionRail Name="Rail" Systems="{Binding Systems}" Current="{Binding Current}" Margin="0,0,48,0" />
         <!-- the position in a small window set into the bench, like the dial's counter (M7 "gezeichnet") -->
-        <Border Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,1" Background="#30333A" Padding="3,3,3,3"
-                IsVisible="{Binding PositionText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                BorderBrush="#454A53" BorderThickness="0,1,0,0">
-          <Panel>
-            <Border Background="{DynamicResource RhRoomDeepBrush}" />
-            <c:WindowGlass />
-            <TextBlock Classes="ui" FontSize="16" Foreground="{DynamicResource RhText2Brush}" Margin="10,3,10,2" c:Sentence.Text="{Binding PositionText}" />
-          </Panel>
-        </Border>
+        <!-- R3: the position on a riveted metal tag (rendered, like the count tags on the spines) -->
+        <c:TagPlate Name="PositionTag" Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,1" Height="28"
+                    IsVisible="{Binding PositionText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <TextBlock Classes="ui" FontSize="16" Foreground="#ECEEF0" Margin="22,0,22,1" VerticalAlignment="Center" c:Sentence.Text="{Binding PositionText}" />
+        </c:TagPlate>
       </Grid>
 
       <!-- the systems without games: thin, quiet spines on a low edge, the label hangs at its front -->

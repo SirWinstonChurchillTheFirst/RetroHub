@@ -29,7 +29,33 @@ public sealed class Bookend : Control
         WidthProperty.OverrideDefaultValue<Bookend>(RowSlotWidth);
     }
 
-    public override void Render(DrawingContext ctx) => Draw(ctx, new Rect(Bounds.Size), 140, 16);
+    public Bookend()
+    {
+        // drawn before the row it closes: its foot runs under the last sleeve
+        ZIndex = -1;
+    }
+
+    public override void Render(DrawingContext ctx)
+    {
+        var r = new Rect(Bounds.Size);
+        // the rendered bent steel (R3): the upright stands 6 px into the slot, its foot runs left under the row
+        if (DrawRendered(ctx, this, new Point(6, r.Height), Math.Min(132, Math.Round(r.Height * 0.8)))) return;
+        Draw(ctx, r, 140, 16);
+    }
+
+    /// <summary>
+    /// The rendered bookend (sheet steel bent to an L, Blender) with the inside of its bend at <paramref name="foot"/> and its
+    /// upright <paramref name="upright"/> px tall; false when the render is not available.
+    /// </summary>
+    public static bool DrawRendered(DrawingContext ctx, Visual visual, Point foot, double upright)
+    {
+        if (Rendered.MetaOf("bookend") is not { } m || upright <= 0) return false;
+        var k = upright / 132.0;
+        var fx = m.Value("footX");
+        var fy = m.Value("footY");
+        var front = new Rect(foot.X - (fx - m.Front.X) * k, foot.Y - (fy - m.Front.Y) * k, m.Front.Width * k, m.Front.Height * k);
+        return Rendered.Draw(ctx, visual, "bookend", front);
+    }
 
     /// <summary>The bookend standing on the bottom edge of <paramref name="area"/> (also inside a front's compartment).</summary>
     public static void Draw(DrawingContext ctx, Rect area, double maxUpright = 118, double thickness = 9)
