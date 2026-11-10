@@ -159,7 +159,8 @@ public partial class GameDetailPage : PageBase
         StageTitle.Sizes = _compact ? "56,40" : "72,56,40";
         TextColumn.Margin = new Thickness(0, 0, 0, _compact ? 32 : 44);
         _boxFocus.ConeHeadroom = _compact ? 40 : 56;
-        var set = _compact ? 360.0 : 400.0;
+        // R2: 360 at 1920 too – set, chin caption and board end above the footer's fade under the stage
+        var set = 360.0;
         var setHeight = PixelScreen.SetHeightFor(set);
         foreach (var screen in new[] { TitleSet, SnapSet })
         {
@@ -420,6 +421,8 @@ public partial class GameDetailPage : PageBase
             };
         }
         if (zone is { } z) _vm.SetFocus(z);
+        var fromStage = _focusInStage;
+        _focusInStage = IsInside(v, Stage);
         if (e.NavigationMethod != NavigationMethod.Directional) return;
         // the stage shows from the top; the back is shown whole when it fits under the box (turning the box around)
         if (IsInside(v, Stage))
@@ -427,7 +430,22 @@ public partial class GameDetailPage : PageBase
             ++_scrollVersion; // a scroll still queued for the back must not pull the page down again
             Scroll.Offset = default;
         }
-        else if (IsInside(v, Back)) ShowBack(FocusTarget(v));
+        else if (IsInside(v, Back))
+        {
+            // R2: turning the box around – from the stage into a back that does not fit under it, the page goes to the
+            // board stop (the back from its top, nothing of it in the footer's fade) instead of the nearest pixel
+            if (fromStage && !BackFitsUnderStage()) ScrollTo(BoardStop);
+            else ShowBack(FocusTarget(v));
+        }
+    }
+
+    private bool _focusInStage = true;
+
+    /// <summary>The whole back (with its bottom margin) visible under the stage at offset 0.</summary>
+    private bool BackFitsUnderStage()
+    {
+        var bottom = Back.TranslatePoint(new Point(0, Back.Bounds.Height), PageContent)?.Y ?? double.MaxValue;
+        return bottom + 40 <= Scroll.Viewport.Height;
     }
 
     /// <summary>
@@ -440,10 +458,20 @@ public partial class GameDetailPage : PageBase
     private void ShowBack(Control? focused)
     {
         if (focused == null) return;
-        var viewport = Scroll.Viewport.Height;
-        if (viewport <= 0) return;
         var top = focused.TranslatePoint(new Point(0, 0), PageContent)?.Y ?? 0;
         var bottom = focused.TranslatePoint(new Point(0, focused.Bounds.Height), PageContent)?.Y ?? 0;
+        ShowRange(top, bottom);
+    }
+
+    /// <summary>
+    /// Brings page y <paramref name="top"/>…<paramref name="bottom"/> into view with 40 px to spare, resting only on the
+    /// stops over the stage (0, actions, board) – also for the folds (R2: the choice list scrolled to wherever its
+    /// BringIntoView ended, cutting the title under the header at ≈ 1100).
+    /// </summary>
+    private void ShowRange(double top, double bottom)
+    {
+        var viewport = Scroll.Viewport.Height;
+        if (viewport <= 0) return;
         var actions = ActionsStop;
         var board = BoardStop;
         var offset = Scroll.Offset.Y;
@@ -463,10 +491,10 @@ public partial class GameDetailPage : PageBase
     }
 
     /// <summary>The action row (64) whole under the header, 24 px above it.</summary>
-    private double ActionsStop => Math.Max(0, (Actions.TranslatePoint(new Point(0, 0), PageContent)?.Y ?? 0) - 24);
+    internal double ActionsStop => Math.Max(0, (Actions.TranslatePoint(new Point(0, 0), PageContent)?.Y ?? 0) - 24);
 
     /// <summary>The stage board's lower edge flush under the header: the back fills the page.</summary>
-    private double BoardStop => Math.Max(ActionsStop, Stage.Height + StageBoard.Height);
+    internal double BoardStop => Math.Max(ActionsStop, Stage.Height + StageBoard.Height);
 
     private void ScrollTo(double target)
     {
@@ -608,12 +636,24 @@ public partial class GameDetailPage : PageBase
         SizeSheetViews();
         if (choice && ChoiceAnchor() is { } row)
         {
-            // the row and its list come into view before it opens (260 px below the row)
-            row.BringIntoView(new Rect(0, -48, row.Bounds.Width, row.Bounds.Height + 48 + 260));
+            // the row and its list come into view on a stop once the fold has its height (R2)
+            var openFold = _vm?.Choice == DetailChoice.Mode ? ModeFold : EmulatorFold;
+            Dispatcher.UIThread.Post(() => ShowFold(row, openFold, 260), DispatcherPriority.Loaded);
         }
         else if (sheet == DetailSheet.FileInfo)
-            FileRow.BringIntoView(new Rect(0, -48, FileRow.Bounds.Width, FileRow.Bounds.Height + 48 + 300));
+            Dispatcher.UIThread.Post(() => ShowFold(FileRow, FileFold, 300), DispatcherPriority.Loaded);
         Dispatcher.UIThread.Post(FocusSheet, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>A fold and its row in view on a stop: the row 48 px under the header's edge at most, the open list below.</summary>
+    private void ShowFold(Control row, Control fold, double fallback)
+    {
+        var top = (row.TranslatePoint(new Point(0, 0), PageContent)?.Y ?? 0) - 8;
+        var rowBottom = row.TranslatePoint(new Point(0, row.Bounds.Height), PageContent)?.Y ?? top;
+        // the fold animates open: its final height is the content's desired height, else the estimate
+        var content = (fold as Decorator)?.Child ?? fold;
+        var height = content.DesiredSize.Height > 0 ? content.DesiredSize.Height : fallback;
+        ShowRange(top, rowBottom + height);
     }
 
     private Control ChoiceAnchor() => _vm?.Choice == DetailChoice.Mode ? ModeBox : EmulatorBox;

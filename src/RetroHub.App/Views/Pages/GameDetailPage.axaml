@@ -153,23 +153,24 @@
                     Margin="-12,6,0,0" IsVisible="False">
               <TextBlock Name="ReadMoreText" Text="{l:T detail.readMore}" />
             </Button>
-            <!-- the screens stand on a shelf edge, a caption under each like the library's boxes -->
-            <Panel Name="ScreensShelf" Margin="0,32,0,0" IsVisible="{Binding HasScreens}" HorizontalAlignment="Left">
+            <!-- the screens stand on a shelf edge; R2: their captions are paper strips on the sets' chins (under the board
+                 the footer's fade took them at 1920) -->
+            <Panel Name="ScreensShelf" Margin="0,20,0,0" IsVisible="{Binding HasScreens}" HorizontalAlignment="Left">
               <StackPanel Spacing="0">
                 <StackPanel Name="ScreenSets" Orientation="Horizontal" Spacing="32" Height="335">
                   <Button Name="TitleScreenButton" Theme="{StaticResource RhScreenButton}" Command="{Binding ShowScreensCommand}" IsVisible="{Binding HasTitleScreen}"
                           AutomationProperties.Name="{l:T detail.screen.title}">
-                    <c:PixelScreen Name="TitleSet" Width="400" Height="335" PicturePath="{Binding TitleScreen}" SystemId="{Binding Game.SystemId}"
+                    <c:PixelScreen Name="TitleSet" Width="400" Height="335" PicturePath="{Binding TitleScreen}" SystemId="{Binding Game.SystemId}" Caption="{l:T detail.screen.title}"
                                    Accent="{Binding Game.Accent}" Code="{Binding Game.SystemShort}" IsTvSystem="{Binding IsTvSystem}" />
                   </Button>
                   <Button Name="SnapScreenButton" Theme="{StaticResource RhScreenButton}" Command="{Binding ShowScreensCommand}" IsVisible="{Binding HasSnapScreen}"
                           AutomationProperties.Name="{l:T detail.screen.snap}">
-                    <c:PixelScreen Name="SnapSet" Width="400" Height="335" PicturePath="{Binding SnapScreen}" SystemId="{Binding Game.SystemId}"
+                    <c:PixelScreen Name="SnapSet" Width="400" Height="335" PicturePath="{Binding SnapScreen}" SystemId="{Binding Game.SystemId}" Caption="{l:T detail.screen.snap}"
                                    Accent="{Binding Game.Accent}" Code="{Binding Game.SystemShort}" IsTvSystem="{Binding IsTvSystem}" />
                   </Button>
                 </StackPanel>
                 <c:ShelfBoard Name="ScreensBoard" IsEdge="True" Height="12" />
-                <StackPanel Name="ScreenCaptions" Orientation="Horizontal" Spacing="32" Margin="0,12,0,0">
+                <StackPanel Name="ScreenCaptions" Orientation="Horizontal" Spacing="32" Margin="0,12,0,0" IsVisible="False">
                   <TextBlock Name="TitleCaption" Classes="caption" Width="400" Text="{l:T detail.screen.title}" IsVisible="{Binding HasTitleScreen}" />
                   <TextBlock Name="SnapCaption" Classes="caption" Width="400" Text="{l:T detail.screen.snap}" IsVisible="{Binding HasSnapScreen}" />
                 </StackPanel>
@@ -181,12 +182,12 @@
           <StackPanel Name="StartSection" Spacing="0" Margin="0,16,0,0">
             <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,10">
               <c:ShelfLabel Text="{l:T detail.section.start}" VerticalAlignment="Center" />
-              <TextBlock c:Sentence.Text="{Binding PlanSummary}" Classes="read" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              <TextBlock c:Sentence.Text="{Binding PlanSummary}" Classes="read" VerticalAlignment="Center" TextTrimming="WordEllipsis" />
             </StackPanel>
             <!-- choice rows: confirm opens the in-style choice list that hangs at the row (no stock drop-down) -->
             <Button Name="EmulatorBox" Theme="{StaticResource RhInfoRow}" Tag="{l:T detail.emulator}" Command="{Binding ShowEmulatorChoiceCommand}">
               <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock Text="{Binding SelectedEmulator.Label, FallbackValue=''}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding SelectedEmulator.Label, FallbackValue=''}" VerticalAlignment="Center" TextTrimming="WordEllipsis" />
                 <TextBlock c:Sentence.Text="{Binding SelectedEmulator.Status, FallbackValue=''}" Classes="meta" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
@@ -294,7 +295,8 @@
             <!-- the other versions of this game on the shelf (folded out of "Daneben im Regal") -->
             <Button Name="VariantsRow" Theme="{StaticResource RhInfoRow}" Tag="{l:T detail.variants}" Command="{Binding ShowVariantsCommand}"
                     IsVisible="{Binding HasVariants}">
-              <TextBlock Text="{Binding VariantsText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <!-- R2: never cut mid-word – two lines before the list would be shortened -->
+              <TextBlock Text="{Binding VariantsText}" TextWrapping="Wrap" MaxLines="2" TextTrimming="WordEllipsis" VerticalAlignment="Center" Margin="0,6" />
             </Button>
           </StackPanel>
 
@@ -407,7 +409,7 @@
                           CommandParameter="{Binding}">
                     <StackPanel Orientation="Horizontal" Spacing="14">
                       <Border Width="3" Height="14" Background="{Binding Game.SystemColorBrush}" VerticalAlignment="Center" />
-                      <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                      <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="WordEllipsis" MaxWidth="560" />
                     </StackPanel>
                   </Button>
                 </DataTemplate>

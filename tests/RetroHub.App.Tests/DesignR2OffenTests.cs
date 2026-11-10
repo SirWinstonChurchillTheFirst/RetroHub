@@ -110,6 +110,38 @@ public class DesignR2OffenTests
         window.Close();
     });
 
+    [Theory]
+    [InlineData(1920, 1080)]
+    [InlineData(1100, 700)]
+    public Task Detail_back_and_choice_list_rest_on_a_scroll_stop(int width, int height) => UiTest.Run(() =>
+    {
+        // DESIGN 7.3 (R2): Down from the stage turns to the back at the board stop when the back does not fit under the
+        // stage; the emulator choice folds open on a stop too – never an offset that cuts the title under the header
+        var (window, vm) = Open(width, height);
+        var game = vm.Ctx.Items.Get(vm.Ctx.Services.Games.Query(new RetroHub.Core.Library.GameQuery()).First());
+        vm.Navigator.Navigate(PageKey.GameDetail, game);
+        Assert.True(TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel { Game: not null } d && d.Emulators.Count > 0, 6000));
+        TestSupport.Settle(300);
+        var page = window.GetVisualDescendants().OfType<Views.Pages.GameDetailPage>().Single();
+        var scroll = page.FindControl<ScrollViewer>("Scroll")!;
+        bool OnStop()
+        {
+            var y = scroll.Offset.Y;
+            return y < 0.5 || Math.Abs(y - page.ActionsStop) < 1 || y >= page.BoardStop - 1;
+        }
+        for (var i = 0; i < 6 && Focused(window)?.Name != "EmulatorBox"; i++)
+        {
+            window.Execute(i == 0 ? NavAction.Down : NavAction.Right);
+            TestSupport.Settle(120);
+            Assert.True(OnStop(), $"offset {scroll.Offset.Y} (actions {page.ActionsStop}, board {page.BoardStop}) after a move to {Focused(window)?.Name}");
+        }
+        Assert.Equal("EmulatorBox", Focused(window)?.Name);
+        window.Execute(NavAction.Accept);
+        TestSupport.Settle(400);
+        Assert.True(OnStop(), $"choice open: offset {scroll.Offset.Y} (actions {page.ActionsStop}, board {page.BoardStop})");
+        window.Close();
+    });
+
     [Fact]
     public void Wide_windows_get_a_capped_light_bitmap()
     {

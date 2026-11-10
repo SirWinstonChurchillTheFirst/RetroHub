@@ -72,6 +72,14 @@ public sealed class PixelScreen : Panel
     public string? SystemId { get => GetValue(SystemIdProperty); set => SetValue(SystemIdProperty, value); }
     public Color Accent { get => GetValue(AccentProperty); set => SetValue(AccentProperty, value); }
     public string? Code { get => GetValue(CodeProperty); set => SetValue(CodeProperty, value); }
+
+    /// <summary>
+    /// R2: what the set shows ("Titelbild", "Im Spiel"), written on a strip of paper taped to the chin beside the power
+    /// LED – the caption belongs to the object instead of standing under the board (where the footer's fade took it).
+    /// </summary>
+    public static readonly StyledProperty<string?> CaptionProperty = AvaloniaProperty.Register<PixelScreen, string?>(nameof(Caption));
+
+    public string? Caption { get => GetValue(CaptionProperty); set => SetValue(CaptionProperty, value); }
     public bool IsOff { get => GetValue(IsOffProperty); set => SetValue(IsOffProperty, value); }
     public bool IsTvSystem { get => GetValue(IsTvSystemProperty); set => SetValue(IsTvSystemProperty, value); }
 
@@ -189,7 +197,7 @@ public sealed class PixelScreen : Panel
         if (change.Property == PicturePathProperty || change.Property == SystemIdProperty || change.Property == AccentProperty
             || change.Property == CodeProperty || change.Property == IsOffProperty || change.Property == IsTvSystemProperty)
             Refresh();
-        else if (change.Property == LedBrushProperty) _set.InvalidateVisual();
+        else if (change.Property == LedBrushProperty || change.Property == CaptionProperty) _set.InvalidateVisual();
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -329,6 +337,37 @@ public sealed class PixelScreen : Panel
                 ctx.FillRectangle(RoomDeep, new Rect(pic.Right - gw, gy + i * pitch, gw, 1));
                 ctx.FillRectangle(Craft.Hi(0.07), new Rect(pic.Right - gw, gy + i * pitch + 1, gw, 1));
             }
+            DrawCaption(ctx, pic.X + led + Math.Round(14 * k), chinTop, chin, pic.Right - gw - Math.Round(16 * k));
+        }
+
+        private FormattedText? _caption;
+        private (string? Text, double Size) _captionKey;
+
+        /// <summary>The caption on a taped paper strip in the chin, between the LED and the grille (only when it fits).</summary>
+        private void DrawCaption(DrawingContext ctx, double x, double chinTop, double chin, double right)
+        {
+            var text = owner.Caption;
+            if (string.IsNullOrEmpty(text) || chin < 18) return;
+            var size = Math.Clamp(Math.Round(chin * 0.55), 12, 16);
+            if (_caption == null || _captionKey != (text, size))
+            {
+                _captionKey = (text, size);
+                _caption = new FormattedText(text, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.LabelFace, size,
+                    Craft.Solid(Craft.LabelInk));
+            }
+            var padX = Math.Round(size * 0.55);
+            var h = Math.Min(chin - 6, Math.Ceiling(_caption.Height) + 4);
+            var label = new Rect(x, Math.Round(chinTop + (chin - h) / 2), Math.Ceiling(_caption.Width) + 2 * padX, h);
+            if (label.Right > right) return;
+            var seed = Craft.Seed(text);
+            var tilt = Craft.Range(seed, 60, -1.4, 1.4);
+            Craft.DrawPaperShared(ctx, label, seed, Craft.LabelPaper, tilt, 0.45);
+            using (Craft.PushLabel(ctx, label, tilt))
+                Craft.Print(ctx, _caption, new Point(padX, (h - _caption.Height) / 2), 0.2);
+            // one strip of tape over the left end
+            var tw = Math.Round(h * 0.9);
+            using (ctx.PushTransform(Matrix.CreateTranslation(-tw / 2, -h * 0.2) * Matrix.CreateRotation(-0.14) * Matrix.CreateTranslation(label.X + 2, label.Y + 2)))
+                ctx.FillRectangle(Craft.Solid(Craft.A(Color.Parse("#F2EAD8"), 0.40)), new Rect(0, 0, tw, Math.Round(h * 0.42)));
         }
     }
     /// <summary>One picture (snap, test card or the dark tube); two of them cross-fade.</summary>
