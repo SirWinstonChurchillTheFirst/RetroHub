@@ -30,7 +30,7 @@ public sealed class InkStamp : Control
     private const double RestAngle = -9;
 
     private static readonly IImmutableSolidColorBrush InkBrush = new ImmutableSolidColorBrush(Ink);
-    private static readonly IPen Outer = new ImmutablePen(InkBrush, 3.2, new ImmutableDashStyle([14, 1.2, 6, 0.8, 22, 1.6, 9, 1], 0));
+    private static readonly IPen Outer = new ImmutablePen(InkBrush, 3.2, new ImmutableDashStyle([12, 0.35, 5, 0.25, 18, 0.45, 8, 0.3], 0));
     private static readonly IPen Inner = new ImmutablePen(InkBrush, 1.4);
     private static readonly Geometry Star = BuildStar(15, 6.4);
 

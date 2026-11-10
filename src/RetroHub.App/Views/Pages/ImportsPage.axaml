@@ -69,7 +69,10 @@
     <Style Selector="StackPanel#DeliveryNote TextBlock.meta, StackPanel#DeliveryNote TextBlock.slip-head, StackPanel#DeliveryNote TextBlock.label">
       <Setter Property="Foreground" Value="#5C5347" />
     </Style>
-    <Style Selector="StackPanel#DeliveryNote TextBlock.zero">
+    <Style Selector="StackPanel#DeliveryNote TextBlock.note-text, StackPanel#DeliveryNote TextBlock.note-count">
+      <Setter Property="Foreground" Value="#2A251E" />
+    </Style>
+    <Style Selector="StackPanel#DeliveryNote TextBlock.note-text.zero, StackPanel#DeliveryNote TextBlock.note-count.zero">
       <Setter Property="Foreground" Value="#8C8272" />
     </Style>
     <Style Selector="StackPanel#DeliveryNote TextBlock.mono">
