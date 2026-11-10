@@ -12,7 +12,7 @@ using Xunit;
 
 namespace RetroHub.Core.Tests.Metadata;
 
-/// <summary>A throw-away portable root with a real SQLite library and a small catalog (gba, nes, pc).</summary>
+/// <summary>A throw-away portable root with a real SQLite library and a small catalog (gba, nes, pc, switch via GameTDB).</summary>
 internal sealed class ArtworkTestEnv : IDisposable
 {
     public const string GbaLibretro = "Nintendo - Game Boy Advance";
@@ -34,6 +34,7 @@ internal sealed class ArtworkTestEnv : IDisposable
         Catalog.Add(new SystemDef { Id = "gba", Name = "Game Boy Advance", Folders = ["gba", "gameboyadvance"], Extensions = [".gba"], LibretroName = GbaLibretro });
         Catalog.Add(new SystemDef { Id = "nes", Name = "NES", Folders = ["nes"], Extensions = [".nes"], LibretroName = "Nintendo - Nintendo Entertainment System" });
         Catalog.Add(new SystemDef { Id = "pc", Name = "PC", Folders = ["pc"], Category = SystemCategory.Pc, FolderGames = true });
+        Catalog.Add(new SystemDef { Id = "switch", Name = "Nintendo Switch", Folders = ["switch"], Extensions = [".nsp", ".xci"], GameTdb = "switch" });
     }
 
     public ArtworkService Service(TimeSpan? downloadTimeout = null) =>

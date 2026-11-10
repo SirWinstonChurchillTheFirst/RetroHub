@@ -1,7 +1,9 @@
+using System.Text.RegularExpressions;
+
 namespace RetroHub.Core.Library;
 
 /// <summary>File/folder rules shared by the scanner, the folder watcher and drag &amp; drop.</summary>
-public static class ScanRules
+public static partial class ScanRules
 {
     /// <summary>Folder names that never contain games (case-insensitive).</summary>
     public static readonly IReadOnlySet<string> SkippedFolderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -92,4 +94,27 @@ public static class ScanRules
     /// <summary>Multi-file descriptors the scanner understands (their referenced files are hidden).</summary>
     public static bool IsPlaylistExtension(string extension) =>
         extension.ToLowerInvariant() is ".m3u" or ".cue" or ".gdi" or ".ccd" or ".mds";
+
+    [GeneratedRegex(@"\[(01[0-9A-Fa-f]{14})\]")]
+    private static partial Regex SwitchTitleId();
+
+    [GeneratedRegex(@"(?i)\b(update|upd)\b[\s_-]*v?\d|\bDLC\b\s*\d|[-–]\s*DLC\b|[(\[]DLC[)\]]")]
+    private static partial Regex SwitchAddOnWords();
+
+    /// <summary>
+    /// A Switch update or DLC package lying loose next to the games (not in an "Updates"/"DLC" folder, which is skipped
+    /// anyway): a title-ID tag whose last three hex digits are not "000" (base games end in 000, updates in 800, DLC in
+    /// other values – plain file-name arithmetic, no keys), or "Update v1.4.1" / "DLC" in the name. Only for
+    /// .nsp/.nsz/.xci/.xcz; such files are not listed as games of their own.
+    /// </summary>
+    public static bool IsSwitchAddOn(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return false;
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        if (ext is not (".nsp" or ".nsz" or ".xci" or ".xcz")) return false;
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        var id = SwitchTitleId().Match(stem);
+        if (id.Success) return !id.Groups[1].Value.EndsWith("000", StringComparison.Ordinal);
+        return SwitchAddOnWords().IsMatch(stem);
+    }
 }

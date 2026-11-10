@@ -62,6 +62,11 @@ public sealed record SystemDef
     public double? AspectRatio { get; init; }
     /// <summary>libretro-thumbnails / libretro-database system name, e.g. "Nintendo - Game Boy Advance".</summary>
     public string? LibretroName { get; init; }
+    /// <summary>
+    /// GameTDB platform ("switch") for systems libretro-thumbnails has no set for: covers then come from
+    /// art.gametdb.com instead of libretro (<see cref="Metadata.GameTdb"/>). Lower-case letters/digits only.
+    /// </summary>
+    public string? GameTdb { get; init; }
     /// <summary>Preferred emulators in order. "mgba" = standalone emulator id; "retroarch/mgba" = RetroArch with core mgba.</summary>
     public string[] Emulators { get; init; } = [];
     /// <summary>Accent colour (#RRGGBB) for tiles/backgrounds.</summary>

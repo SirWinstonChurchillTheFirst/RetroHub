@@ -241,7 +241,7 @@
     "folders": ["switch"],
     "extensions": [".xci", ".nsp", ".nro"],
     "aspectRatio": 1.7778,
-    "libretroName": "Nintendo - Nintendo Switch",
+    "gameTdb": "switch",
     "emulators": ["eden", "ryujinx"],
     "accent": "#E60012",
     "sortOrder": 160

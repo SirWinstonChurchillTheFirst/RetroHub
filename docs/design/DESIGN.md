@@ -1089,6 +1089,8 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 | Fernsehlicht | Snap → Titelbild → Cover → Systemwand |
 | Konsolen / System | immer generiert (Wand + Motiv) |
 
+**Cover-Quellen (R2)**: lokal zuerst (artwork/covers, neben der Datei, ES-DE/Batocera). Online nur mit „Cover aus dem Internet laden“: libretro-thumbnails, für **Nintendo Switch GameTDB** (libretro hat dafür keinen Satz): Spieleliste `switchtdb.zip` höchstens monatlich (ETag), Abgleich über alle Titel jeder Sprache (auch deutsche wie „Zeit der Verheerung“), Vorderseite `coverM` (352 × 570, Format ≈ echte Hülle) in der Reihenfolge **DE → EN → US**, gespeichert als `artwork/covers/switch/<Dateiname>.jpg`. Kein `coverHQ` im Raster. Lose Switch-Updates/DLC (Titel-ID nicht auf `000`, „Update v…“, „DLC 1“) werden nie eigene Spiele. Die Cover sind die Kunst des Nutzers, nie UI-Dekoration.
+
 ### 10.2 Rücken-Platzhalter (statt Initialen)
 
 Gezeichnet in `CoverArt.DrawPlaceholder`, Seitenverhältnis 0,72 (B/H) hochkant, unten bündig:

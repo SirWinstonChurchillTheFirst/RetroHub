@@ -219,8 +219,19 @@ internal sealed partial class CatalogBuilder
             AspectRatio = aspect,
             Accent = NormalizeAccent(d.Accent, ctx),
             LibretroName = string.IsNullOrWhiteSpace(d.LibretroName) ? null : d.LibretroName.Trim(),
+            GameTdb = NormalizeGameTdb(d.GameTdb, ctx),
             Bios = NormalizeBios(d.Bios, ctx),
         };
+    }
+
+    /// <summary>GameTDB platform: lower-case letters/digits ("switch"); anything else is dropped with a warning.</summary>
+    private string? NormalizeGameTdb(string? value, string ctx)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var v = value.Trim().ToLowerInvariant();
+        if (v.Length <= 16 && v.All(char.IsAsciiLetterOrDigit)) return v;
+        Warn($"{ctx}: GameTDB-Plattform „{value}“ ist ungültig und wird ignoriert.");
+        return null;
     }
 
     private EmulatorDef? NormalizeEmulator(EmulatorDef d, string source)

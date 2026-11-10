@@ -196,7 +196,7 @@ public sealed class LibraryScanner : ILibraryScanner
         public required ScanOptions Options { get; init; }
         public required CancellationToken Ct { get; init; }
         public required Throttle Progress { get; init; }
-        public int Added, Updated, Unchanged, Missing;
+        public int Added, Updated, Unchanged, Missing, AddOns;
         public readonly List<ScanIssue> Duplicates = [], Unknown = [], Errors = [];
 
         public readonly Dictionary<string, Game> ByPath = new(StringComparer.OrdinalIgnoreCase);
@@ -319,7 +319,8 @@ public sealed class LibraryScanner : ILibraryScanner
         st.Progress.Report(ScanPhases.Finishing, st.FilesSeen, st.FilesTotal, null, force: true);
         Log.Info($"Library scan: {report.Added} added, {report.Updated} updated, {report.Unchanged} unchanged, " +
                  $"{report.Missing} missing, {report.Duplicates.Count} duplicates, {report.Unknown.Count} unknown, " +
-                 $"{report.Errors.Count} errors in {report.Duration.TotalSeconds:0.0} s");
+                 $"{report.Errors.Count} errors" + (st.AddOns > 0 ? $", {st.AddOns} Switch updates/DLC skipped" : "") +
+                 $" in {report.Duration.TotalSeconds:0.0} s");
         return report;
     }
 
@@ -610,6 +611,8 @@ public sealed class LibraryScanner : ILibraryScanner
         }
 
         var name = Path.GetFileName(path);
+        // a loose Switch update/DLC package is part of its game, not a game (already listed ones stay as they are)
+        if (sys.Id == "switch" && ScanRules.IsSwitchAddOn(name)) { st.AddOns++; return; }
         if (TryMoved(st, folder, portable, name, sys, kind, status, stat, crc, sniff)) return;
         if (crc != null && FindDuplicate(st, stat.Size, crc, portable) is { } dup)
         {

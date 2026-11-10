@@ -171,7 +171,7 @@
   // ──────── artwork module (feat/artwork): covers, "Cover suchen", "Cover wählen…" ────────
   "artwork.title": "Covers",
   "artwork.hint": "Looks for missing covers in artwork/covers/<system>/, next to the game files and in ES-DE/Batocera folders (media/covers, downloaded_images). Runs automatically after every scan.",
-  "artwork.onlineOn": "Online lookup is on: missing covers are also downloaded from thumbnails.libretro.com.",
+  "artwork.onlineOn": "Online lookup is on: missing covers are also downloaded from thumbnails.libretro.com, for Switch from gametdb.com.",
   "artwork.onlineOff": "Online lookup is off – local images only (Settings › Download covers from the internet).",
   "artwork.find": "Find covers",
   "artwork.preparing": "Looking for covers …",
@@ -193,7 +193,7 @@
   "artwork.chooseFailed": "The image could not be used as cover.",
   "artwork.removed": "Cover removed",
   "artwork.removedDetail": "The image file itself is kept. Use “Choose cover…” to set a new one at any time.",
-  "artwork.settings.onlineHint": "Downloads missing covers from thumbnails.libretro.com (libretro-thumbnails project). For this, the file list of each system is fetched once from GitHub (api.github.com) and cached for 30 days. Only game and system names are sent, no personal data. Off by default.",
+  "artwork.settings.onlineHint": "Downloads missing covers from thumbnails.libretro.com (libretro-thumbnails project). For this, the file list of each system is fetched once from GitHub (api.github.com) and cached for 30 days. Nintendo Switch covers come from GameTDB: its game list (about 2 MB) is fetched from gametdb.com once a month. Only game and system names or product codes are sent, no personal data. A missing Switch cover can be added on gametdb.com. Off by default.",
   "accent.amber": "Amber",
   "accent.phosphor": "Phosphor",
   "accent.tube": "Tube white",

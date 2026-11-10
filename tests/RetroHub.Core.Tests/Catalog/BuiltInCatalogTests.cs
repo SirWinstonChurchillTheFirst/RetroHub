@@ -226,8 +226,11 @@ public sealed class BuiltInCatalogTests : IDisposable
     [Fact]
     public void LibretroNames_AreSetForAllConsoleSystems()
     {
+        // every console has an online cover source: libretro-thumbnails, or GameTDB where libretro has no set (Switch)
         foreach (var s in _catalog.Systems.Where(s => s.Id != "pc"))
-            Assert.False(string.IsNullOrWhiteSpace(s.LibretroName), s.Id);
+            Assert.True(!string.IsNullOrWhiteSpace(s.LibretroName) ^ !string.IsNullOrWhiteSpace(s.GameTdb), s.Id);
+        Assert.Equal("switch", _catalog.GetSystem("switch")!.GameTdb);
+        Assert.Null(_catalog.GetSystem("switch")!.LibretroName); // libretro-thumbnails has no Nintendo Switch repository
         Assert.Equal("Nintendo - Game Boy Advance", _catalog.GetSystem("gba")!.LibretroName);
         Assert.Equal("Sony - PlayStation", _catalog.GetSystem("ps1")!.LibretroName);
         Assert.Equal("Sega - Mega Drive - Genesis", _catalog.GetSystem("megadrive")!.LibretroName);

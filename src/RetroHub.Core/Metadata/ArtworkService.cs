@@ -18,6 +18,11 @@ namespace RetroHub.Core.Metadata;
 /// direct names are tried. Downloads land in artwork/covers/&lt;system&gt;/&lt;rom name&gt;.png (temp file + move, an existing
 /// file is never overwritten), max 4 in parallel, User-Agent "RetroHub/0.1", 404s remembered for 7 days
 /// (<see cref="ArtworkMissCache"/>). Network failures are logged and counted, never thrown.</item>
+/// <item><b>GameTDB</b> for systems libretro has no set for (<see cref="SystemDef.GameTdb"/>, Nintendo Switch): the
+/// platform's database (<see cref="GameTdbIndexStore"/>, monthly, ETag) is matched by title (<see cref="GameTdbIndex"/>)
+/// and the coverM front is fetched in German, else English, else US (<see cref="GameTdb.CoverLanguages"/>), saved as
+/// artwork/covers/&lt;system&gt;/&lt;rom name&gt;.jpg, at most 2 downloads from art.gametdb.com at a time. Same opt-in, miss
+/// cache and rules as libretro.</item>
 /// <item><b>Thumbnails</b>: Core has no image library, so downscaled copies for the UI are produced by the App's
 /// AsyncImageLoader (disk cache in data/cache/thumbs). This service only stores paths.</item>
 /// </list>
@@ -28,6 +33,8 @@ public sealed class ArtworkService : IDisposable
 {
     public const string UserAgent = "RetroHub/0.1";
     public const int MaxParallelDownloads = 4;
+    /// <summary>Parallel cover downloads from art.gametdb.com (a small volunteer host: politer than libretro's CDN).</summary>
+    public const int MaxParallelGameTdbDownloads = 2;
     private const long MaxImageBytes = 16 * 1024 * 1024;
 
     private readonly AppPaths _paths;
@@ -37,6 +44,8 @@ public sealed class ArtworkService : IDisposable
     private readonly HttpClient? _injectedHttp;
     private HttpClient? _ownHttp;
     private ThumbnailIndexStore? _indexes;
+    private GameTdbIndexStore? _gameTdb;
+    private readonly SemaphoreSlim _gameTdbDownloads = new(MaxParallelGameTdbDownloads, MaxParallelGameTdbDownloads);
     private readonly ArtworkMissCache _misses;
     private readonly SemaphoreSlim _runGate = new(1, 1);
     private readonly object _httpGate = new();
@@ -58,8 +67,11 @@ public sealed class ArtworkService : IDisposable
     /// <summary>Folder of the cached GitHub indexes (data/metadata/libretro-thumbnails).</summary>
     public string IndexCacheFolder => Path.Combine(_paths.Metadata, "libretro-thumbnails");
 
+    /// <summary>Folder of the cached GameTDB databases (data/metadata/gametdb).</summary>
+    public string GameTdbCacheFolder => Path.Combine(_paths.Metadata, "gametdb");
+
     /// <summary>HTTP requests sent by this service so far (thumbnail downloads + GitHub index; diagnostics/tests).</summary>
-    public int HttpRequests => Volatile.Read(ref _httpRequests) + (_indexes?.Requests ?? 0);
+    public int HttpRequests => Volatile.Read(ref _httpRequests) + (_indexes?.Requests ?? 0) + (_gameTdb?.Requests ?? 0);
 
     /// <summary>True while <see cref="ResolveAsync"/> runs.</summary>
     public bool IsRunning => _runGate.CurrentCount == 0;
@@ -97,6 +109,14 @@ public sealed class ArtworkService : IDisposable
         get
         {
             lock (_httpGate) return _indexes ??= new ThumbnailIndexStore(IndexCacheFolder, Http);
+        }
+    }
+
+    private GameTdbIndexStore GameTdbIndexes
+    {
+        get
+        {
+            lock (_httpGate) return _gameTdb ??= new GameTdbIndexStore(GameTdbCacheFolder, Http);
         }
     }
 
@@ -233,6 +253,7 @@ public sealed class ArtworkService : IDisposable
     private async Task<OnlineResult> FetchOnlineAsync(Game g, LocalArtworkFinder finder, CancellationToken ct)
     {
         var sys = _catalog.GetSystem(g.SystemId);
+        if (sys?.GameTdb is { Length: > 0 } platform) return await FetchGameTdbAsync(g, sys, platform, finder, ct).ConfigureAwait(false);
         if (sys?.LibretroName is not { Length: > 0 } libretroName) return OnlineResult.NotFound;
         if (g.Path.Contains("://", StringComparison.Ordinal)) return OnlineResult.NotFound;
         var stem = ArtworkNames.Stem(g);
@@ -281,6 +302,61 @@ public sealed class ArtworkService : IDisposable
         catch (Exception ex)
         {
             Log.Warn($"Online cover lookup for '{g.DisplayTitle}' failed", ex);
+            return OnlineResult.Error;
+        }
+    }
+
+    /// <summary>
+    /// A cover from GameTDB: database → title match → coverM in DE, EN, US (first that exists), saved as
+    /// &lt;rom name&gt;.jpg. No match, or no language has the cover → a miss (7 days); an unreachable database is an error
+    /// (not cached as a miss, so the next run asks again).
+    /// </summary>
+    private async Task<OnlineResult> FetchGameTdbAsync(Game g, SystemDef sys, string platform, LocalArtworkFinder finder, CancellationToken ct)
+    {
+        if (g.Path.Contains("://", StringComparison.Ordinal)) return OnlineResult.NotFound;
+        var stem = ArtworkNames.Stem(g);
+        if (!AppPaths.IsSafeName(stem)) return OnlineResult.NotFound;
+        var missKey = ArtworkMissCache.KeyFor(g.SystemId, stem);
+        if (_misses.IsRecentMiss(missKey)) return OnlineResult.RecentMiss;
+        if (!_settings.Current.OnlineCovers) return OnlineResult.Skipped;
+
+        try
+        {
+            var index = await GameTdbIndexes.GetAsync(platform, ct).ConfigureAwait(false);
+            if (index == null) return OnlineResult.Error;
+            var id = index.Match(g);
+            if (id == null)
+            {
+                Log.Debug($"No GameTDB entry matches '{stem}' ({g.SystemId})");
+                _misses.AddMiss(missKey);
+                return OnlineResult.NotFound;
+            }
+
+            var dir = Path.Combine(_paths.Covers, LocalArtworkFinder.SystemFolder(sys, g.SystemId));
+            var target = Path.Combine(dir, stem + ".jpg");
+            var anyError = false;
+            foreach (var lang in GameTdb.CoverLanguages)
+            {
+                if (!_settings.Current.OnlineCovers) return OnlineResult.Skipped;
+                DownloadResult r;
+                await _gameTdbDownloads.WaitAsync(ct).ConfigureAwait(false);
+                try { r = await DownloadAsync(GameTdb.CoverUrl(platform, lang, id), target, ct).ConfigureAwait(false); }
+                finally { _gameTdbDownloads.Release(); }
+                if (r == DownloadResult.NotFound) continue;
+                if (r == DownloadResult.Error) { anyError = true; continue; }
+                finder.Invalidate(dir);
+                SetCover(g.Id, target);
+                if (r == DownloadResult.Saved) Log.Info($"Cover downloaded for '{g.DisplayTitle}': GameTDB {id}/{lang}");
+                return OnlineResult.Downloaded;
+            }
+            if (anyError) return OnlineResult.Error;
+            _misses.AddMiss(missKey);
+            return OnlineResult.NotFound;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            Log.Warn($"GameTDB cover lookup for '{g.DisplayTitle}' failed", ex);
             return OnlineResult.Error;
         }
     }

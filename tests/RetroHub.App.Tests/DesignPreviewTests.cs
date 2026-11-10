@@ -67,7 +67,7 @@ public class DesignPreviewTests
     private static string[] OnlyTokens => (Environment.GetEnvironmentVariable("RETROHUB_DESIGN_ONLY") ?? "")
         .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen", "importe", "einschalten"];
+    private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen", "importe", "einschalten", "switch"];
     private static readonly string[] VariantTokens = ["preview", "nocovers", "demo", "demo1000", "demoall", "empty", "perf"];
 
     /// <summary>Sheets rendered by their own facts ("specimen", "motive"): asked for alone, the page runs are skipped.</summary>
@@ -377,6 +377,8 @@ public class DesignPreviewTests
 
                 var pick = PickGame(ctx);
                 if (!wallOnly && pick != null && Wants("detail", PageTokens)) DetailStates(window, vm, ctx, pick, prefix);
+                // asked for explicitly only: the Switch games (GameTDB covers) in the library and on the detail page
+                if (!wallOnly && OnlyTokens.Contains("switch")) SwitchStates(window, vm, ctx, prefix);
 
                 if (Wants("konsolen", PageTokens)) SystemsStates(window, vm, prefix);
 
@@ -1061,6 +1063,33 @@ public class DesignPreviewTests
     }
 
     /// <summary>The detail/system subject: the last played game, else one with a cover, else the first.</summary>
+    /// <summary>The library filtered to Nintendo Switch (a box focused) and the detail page of a Switch game.</summary>
+    private static void SwitchStates(MainWindow window, MainViewModel vm, UiContext ctx, string prefix)
+    {
+        vm.Navigator.Navigate(PageKey.Library);
+        TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true }, 8000);
+        if (vm.CurrentPage is not LibraryViewModel lib) return;
+        if (lib.IsListView) lib.IsListView = false;
+        var chip = lib.Chips.FirstOrDefault(c => c.SystemId == "switch");
+        if (chip == null) return;
+        lib.SelectChipCommand.Execute(chip);
+        TestSupport.Pump(() => lib.SelectedSystemId == "switch" && lib.Items.Count > 0 && lib.Items.All(i => i.SystemId == "switch"), 8000);
+        TestSupport.Settle(300);
+        var grid = window.GetVisualDescendants().OfType<Controls.CoverGrid>().First(g => g.Name == "Covers");
+        grid.FocusIndex(Math.Min(2, lib.Items.Count - 1));
+        Save(window, prefix + "-9-switch-bibliothek.png", 1400);
+        var game = ctx.Services.Games.Query(new GameQuery { SystemId = "switch" })
+            .FirstOrDefault(g => g.Title.Contains("Zeit der Verheerung", StringComparison.Ordinal))
+            ?? ctx.Services.Games.Query(new GameQuery { SystemId = "switch" }).FirstOrDefault();
+        lib.SelectChipCommand.Execute(lib.Chips.First(c => c.IsAll));
+        TestSupport.Pump(() => lib.SelectedSystemId == null, 4000);
+        if (game == null) return;
+        var item = ctx.Items.Get(game);
+        vm.Navigator.Navigate(PageKey.GameDetail, item);
+        TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel { Game: not null } d && d.Game.Id == item.Id, 8000);
+        Save(window, prefix + "-9b-switch-detail.png", 1400);
+    }
+
     private static GameItemViewModel? PickGame(UiContext ctx)
     {
         var all = ctx.Services.Games.Query(new GameQuery { Sort = GameSort.LastPlayed });

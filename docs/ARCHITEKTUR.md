@@ -75,7 +75,7 @@ RetroHub.exe (Starter, winzig)  →  app\RetroHub.App.exe
 - **Prozesssteuerung** – `Core/Emulation` (`ISessionService`, `IGameSession`, Job Object, Fenster-Embedder).
 - **Dateiverwaltung** – `AppPaths`, `SafeFile`.
 - **Datenbank** – `Core/Data` (SQLite, WAL, Migrationen).
-- **Metadaten** – `Core/Metadata` (lokale Cover, optional libretro-thumbnails).
+- **Metadaten** – `Core/Metadata` (lokale Cover, optional libretro-thumbnails; Nintendo Switch über GameTDB).
 - **Einstellungen** – `Core/Config` (`settings.json`).
 
 ## 4. Erweiterbarkeit (Plugins)

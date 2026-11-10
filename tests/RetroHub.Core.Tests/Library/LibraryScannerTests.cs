@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using RetroHub.Core.Catalog;
 using RetroHub.Core.Library;
 using Xunit;
 
@@ -190,6 +191,27 @@ public sealed class LibraryScannerTests : IDisposable
         Assert.Equal("games/nes/Zelda Test/Zelda Test.nes", Assert.Single(_repo.All()).Path);
         Assert.Empty(r.Unknown);
         Assert.Empty(r.Errors);
+    }
+
+    [Fact]
+    public async Task Loose_switch_updates_and_dlc_are_not_listed_as_games()
+    {
+        var catalog = new FakeCatalog(FakeCatalog.Default().Systems.Append(
+            new SystemDef { Id = "switch", Name = "Nintendo Switch", Folders = ["switch"], Extensions = [".nsp", ".xci", ".nsz"] }));
+        var scanner = new LibraryScanner(catalog, _repo, _tmp.Paths);
+        _tmp.Write("games/switch/Zelda/Zelda [01007EF00011E000][v0].xci", [1, 2, 3, 4]);
+        _tmp.Write("games/switch/Zelda/Zelda [01007EF00011E800][v786432].nsp", [5, 6, 7, 8]);
+        _tmp.Write("games/switch/Zelda/Zelda [01007EF00011F001][v0].nsp", [9, 9, 9, 9]);
+        _tmp.Write("games/switch/Cadence of Hyrule.nsp", [1, 1, 1, 1]);
+        _tmp.Write("games/switch/Cadence of Hyrule - Update v1.4.1.nsp", [2, 2, 2, 2]);
+        _tmp.Write("games/switch/Cadence of Hyrule - DLC 1 (Version 3).nsp", [3, 3, 3, 3]);
+
+        var r = await scanner.ScanAsync(new ScanOptions(), null, Ct);
+
+        Assert.Equal(2, r.Added);
+        Assert.Equal(["games/switch/Cadence of Hyrule.nsp", "games/switch/Zelda/Zelda [01007EF00011E000][v0].xci"],
+            _repo.All().Select(g => g.Path).Order(StringComparer.Ordinal));
+        Assert.Empty(r.Unknown);
     }
 
     [Fact]
