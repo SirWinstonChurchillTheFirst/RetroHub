@@ -164,6 +164,23 @@ public sealed class GameTdbTests : IDisposable
     }
 
     [Fact]
+    public async Task A_miss_left_by_the_old_libretro_lookup_does_not_block_gametdb()
+    {
+        Serve("DE/AXEAB");
+        var g = AddSwitchGame("Hyrule Warriors - Zeit der Verheerung/Hyrule Warriors - Zeit der Verheerung.nsp");
+        using (var old = _env.Service())
+        {
+            old.Misses.AddMiss(ArtworkMissCache.KeyFor("switch", ArtworkNames.Stem(g))); // libretro had no Switch repository
+            old.Misses.Save();
+        }
+
+        var r = await _env.Service().ResolveAsync(null, null, Ct);
+
+        Assert.Equal(1, r.Downloaded);
+        Assert.Equal(0, r.SkippedRecentMiss);
+    }
+
+    [Fact]
     public async Task Falls_back_from_german_to_english_when_there_is_no_german_box()
     {
         Serve("EN/ASWBD", "US/ASWBD");

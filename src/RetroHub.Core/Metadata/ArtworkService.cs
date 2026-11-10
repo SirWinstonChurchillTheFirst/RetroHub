@@ -316,7 +316,8 @@ public sealed class ArtworkService : IDisposable
         if (g.Path.Contains("://", StringComparison.Ordinal)) return OnlineResult.NotFound;
         var stem = ArtworkNames.Stem(g);
         if (!AppPaths.IsSafeName(stem)) return OnlineResult.NotFound;
-        var missKey = ArtworkMissCache.KeyFor(g.SystemId, stem);
+        // its own miss key: the misses the old libretro lookup recorded for Switch (no such repository) must not block it
+        var missKey = GameTdbMissKey(g.SystemId, stem);
         if (_misses.IsRecentMiss(missKey)) return OnlineResult.RecentMiss;
         if (!_settings.Current.OnlineCovers) return OnlineResult.Skipped;
 
@@ -360,6 +361,9 @@ public sealed class ArtworkService : IDisposable
             return OnlineResult.Error;
         }
     }
+
+    /// <summary>Miss key of a GameTDB cover (apart from libretro's: a system may have switched its source).</summary>
+    internal static string GameTdbMissKey(string systemId, string stem) => ArtworkMissCache.KeyFor($"{systemId}/gametdb", stem);
 
     private void SetCover(long id, string fullPath)
     {
