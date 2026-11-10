@@ -36,8 +36,6 @@ public static partial class Sentence
     /// <summary>A program name inside a sentence: read SemiBold Papier (QA 2, DESIGN 3.1), never the number face.</summary>
     public static string Name(string name) => NameMark + name + NameMark;
 
-    private static readonly IBrush Paper = new Avalonia.Media.Immutable.ImmutableSolidColorBrush(Color.Parse("#F4ECDF"));
-
     private static void Apply(TextBlock tb, string? text)
     {
         var inlines = tb.Inlines ??= new InlineCollection();
@@ -47,7 +45,13 @@ public static partial class Sentence
         for (var i = 0; i < parts.Length; i++)
         {
             if (parts[i].Length == 0) continue;
-            if (i % 2 == 1) inlines.Add(new Run(parts[i]) { FontWeight = FontWeight.SemiBold, Foreground = Paper });
+            if (i % 2 == 1)
+            {
+                // the look comes from the style "Run.name" (SemiBold Papier; on paper – the Systeminfo card – ink)
+                var name = new Run(parts[i]);
+                name.Classes.Add("name");
+                inlines.Add(name);
+            }
             else AddWithNumbers(inlines, parts[i]);
         }
     }

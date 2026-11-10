@@ -223,6 +223,7 @@ public partial class SystemPage : PageBase
         {
             _infoOpener = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
             PlaceInfo();
+            DropInfoCard();
             Dispatcher.UIThread.Post(() =>
             {
                 PlaceInfo();
@@ -253,6 +254,35 @@ public partial class SystemPage : PageBase
         var below = at.Y + StatusRow.Bounds.Height + 12;
         var y = below + height <= layer.Height - 24 ? below : Math.Max(16, at.Y - 12 - height);
         InfoPanel.Margin = new Thickness(x, y, 0, 0);
+    }
+
+    /// <summary>
+    /// R2: the index card is laid onto the page – it drops 16 px from above, turned 2°, and settles at −0.6° (Glide);
+    /// reduced motion: it only fades in; off: it is simply there.
+    /// </summary>
+    private void DropInfoCard()
+    {
+        InfoPanel.Transitions = null;
+        if (!Motion.Enabled)
+        {
+            InfoPanel.Opacity = 1;
+            InfoPanel.RenderTransform = TransformOperations.Parse("rotate(-0.6deg)");
+            return;
+        }
+        var move = Motion.AllowsMovement;
+        InfoPanel.Opacity = 0;
+        InfoPanel.RenderTransform = TransformOperations.Parse(move ? "translateY(-16px) rotate(-2deg)" : "rotate(-0.6deg)");
+        Dispatcher.UIThread.Post(() =>
+        {
+            var d = move ? Motion.GlideDuration : Motion.StepDuration;
+            InfoPanel.Transitions =
+            [
+                new DoubleTransition { Property = OpacityProperty, Duration = Motion.StepDuration, Easing = new CubicEaseOut() },
+                new TransformOperationsTransition { Property = RenderTransformProperty, Duration = d, Easing = new BackEaseOut() },
+            ];
+            InfoPanel.Opacity = 1;
+            InfoPanel.RenderTransform = TransformOperations.Parse("rotate(-0.6deg)");
+        }, DispatcherPriority.Render);
     }
 
     private bool _endQueued;

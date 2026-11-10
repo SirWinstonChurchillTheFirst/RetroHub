@@ -112,19 +112,22 @@
         <c:PageHost Name="Pages" Grid.Row="1" />
         <!-- the room fades in behind the footer (allowed translucency, DESIGN 4.6): 56 px, eased, reaching the footer's
              own tone at its top edge, so content runs out softly instead of being cut at the footer -->
-        <Border Grid.Row="1" Height="56" VerticalAlignment="Bottom" IsHitTestVisible="False">
+        <!-- R2: shorter (40) – the page now runs under the footer's front ledge (FooterLip), the shade is the ledge's
+             occlusion, not a fade into nothing -->
+        <Border Grid.Row="1" Height="40" VerticalAlignment="Bottom" IsHitTestVisible="False">
           <Border.Background>
             <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
               <GradientStop Offset="0" Color="#0014120F" />
-              <GradientStop Offset="0.35" Color="#7014120F" />
-              <GradientStop Offset="0.7" Color="#D414120F" />
-              <GradientStop Offset="1" Color="#FA14120F" />
+              <GradientStop Offset="0.45" Color="#8014120F" />
+              <GradientStop Offset="1" Color="#F014120F" />
             </LinearGradientBrush>
           </Border.Background>
         </Border>
 
         <!-- ============ Footer: location sentence + context hints ============ -->
         <Border Name="HintBar" Grid.Row="2" Background="#FA14120F">
+          <Panel>
+          <c:FooterLip VerticalAlignment="Top" />
           <Grid ColumnDefinitions="*,Auto" Margin="48,0,40,0">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="0">
               <!-- the section is a way up for the mouse on a drill-in page (Systemseite, Spiel-Detail): a text button with a
@@ -156,16 +159,17 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </Grid>
+          </Panel>
         </Border>
 
         <!-- right-click list (R2): hangs at the pointer, the same panel as the detail's "Mehr" (Regal, 1 px line, 1 px light
              edge on top, 56 px rows); a click beside it, Esc, Zurück or the mouse's back button closes it -->
         <Panel Name="ContextLayer" Grid.RowSpan="3" IsVisible="False" Background="Transparent">
-          <Border Name="ContextPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Width="320" Background="{DynamicResource RhSurfaceBrush}"
-                  BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="{DynamicResource RhRadiusPanel}" Padding="0,8,0,8"
-                  BoxShadow="{DynamicResource RhPanelShadow}" ClipToBounds="False">
+          <!-- R2: a riveted plate of the workbench (PanelPlate), not a floating card -->
+          <Border Name="ContextPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Width="320" Background="Transparent"
+                  Padding="0,10,0,10" ClipToBounds="False">
             <Panel>
-              <Border Height="1" VerticalAlignment="Top" Margin="0,-8,0,0" Background="{DynamicResource RhLightEdgeBrush}" />
+              <c:PanelPlate Margin="0,-10,0,-10" />
               <StackPanel Name="ContextRows" />
             </Panel>
           </Border>
@@ -251,18 +255,25 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ToastViewModel">
-            <Border Height="56" Background="{DynamicResource RhBaseBrush}" Padding="48,0,24,0">
-              <Grid ColumnDefinitions="Auto,12,*" VerticalAlignment="Center">
-                <Panel VerticalAlignment="Center">
-                  <c:RhIcon Data="{StaticResource Icon.Info}" Width="18" Height="18" Foreground="{DynamicResource RhText2Brush}" IsVisible="{Binding IsInfo}" />
-                  <c:RhIcon Data="{StaticResource Icon.Ok}" Width="18" Height="18" Foreground="{DynamicResource RhSuccessBrush}" IsVisible="{Binding IsSuccess}" />
-                  <c:RhIcon Data="{StaticResource Icon.Warning}" Width="18" Height="18" Foreground="{DynamicResource RhWarningBrush}" IsVisible="{Binding IsWarning}" />
-                  <c:RhIcon Data="{StaticResource Icon.Error}" Width="18" Height="18" Foreground="{DynamicResource RhDangerBrush}" IsVisible="{Binding IsError}" />
-                </Panel>
-                <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="16" TextTrimming="CharacterEllipsis" MaxLines="1">
-                  <Run Text="{Binding Text}" FontWeight="SemiBold" Foreground="{DynamicResource RhText1Brush}" /><Run Text="{Binding DetailRun}" Foreground="{DynamicResource RhText2Brush}" />
-                </TextBlock>
-              </Grid>
+            <!-- R2: the message is a slip of paper taped into the footer (ink, the icon in a dark tone of its colour); it
+                 slides up out of the footer (code-behind, Step; reduced: fades; off: it is there) -->
+            <Border Height="50" Background="{DynamicResource RhBaseBrush}" Padding="40,0,24,0">
+              <c:PaperNote SeedText="{Binding Text}" Padding="14,6,18,7" VerticalAlignment="Center" HorizontalAlignment="Left" RenderTransformOrigin="0%,50%">
+                <c:PaperNote.RenderTransform>
+                  <RotateTransform Angle="-0.7" />
+                </c:PaperNote.RenderTransform>
+                <Grid ColumnDefinitions="Auto,10,*" VerticalAlignment="Center">
+                  <Panel VerticalAlignment="Center">
+                    <c:RhIcon Data="{StaticResource Icon.Info}" Width="18" Height="18" Foreground="#4A4238" IsVisible="{Binding IsInfo}" />
+                    <c:RhIcon Data="{StaticResource Icon.Ok}" Width="18" Height="18" Foreground="#2F6B3F" IsVisible="{Binding IsSuccess}" />
+                    <c:RhIcon Data="{StaticResource Icon.Warning}" Width="18" Height="18" Foreground="#94570A" IsVisible="{Binding IsWarning}" />
+                    <c:RhIcon Data="{StaticResource Icon.Error}" Width="18" Height="18" Foreground="#A2302A" IsVisible="{Binding IsError}" />
+                  </Panel>
+                  <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="16" TextTrimming="CharacterEllipsis" MaxLines="1">
+                    <Run Text="{Binding Text}" FontWeight="SemiBold" Foreground="#1A1714" /><Run Text="{Binding DetailRun}" Foreground="#5A5248" />
+                  </TextBlock>
+                </Grid>
+              </c:PaperNote>
             </Border>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
@@ -278,11 +289,11 @@
       <Panel Name="DialogOverlay" IsVisible="{Binding Dialogs.IsOpen}">
         <!-- a click on the dim cancels (the non-destructive answer), like the other overlays; an arrow, not a hand -->
         <Border Name="DialogScrim" Background="{DynamicResource RhOverlayScrimBrush}" Cursor="Arrow" />
-        <Border Name="DialogPanel" KeyboardNavigation.TabNavigation="Cycle" Background="{DynamicResource RhSurfaceBrush}" BorderBrush="{DynamicResource RhLineBrush}"
-                BorderThickness="1" CornerRadius="{DynamicResource RhRadiusPanel}" Width="640" HorizontalAlignment="Center" VerticalAlignment="Center"
-                Padding="36,32" BoxShadow="{DynamicResource RhPanelShadow}" DataContext="{Binding Dialogs.Current}" x:DataType="vm:DialogViewModel">
+        <Border Name="DialogPanel" KeyboardNavigation.TabNavigation="Cycle" Background="Transparent" Width="640" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Padding="36,32" DataContext="{Binding Dialogs.Current}" x:DataType="vm:DialogViewModel" ClipToBounds="False">
           <Panel>
-            <Border Height="1" VerticalAlignment="Top" Margin="-36,-32,-36,0" Background="{DynamicResource RhLightEdgeBrush}" />
+            <!-- R2: the dialog is a plate of the workbench laid over the dimmed page (rivets, edges, its own shadow) -->
+            <c:PanelPlate Margin="-36,-32,-36,-32" />
             <StackPanel Spacing="16">
               <TextBlock Text="{Binding Title}" Classes="h2" TextWrapping="Wrap" />
               <TextBlock Text="{Binding Message}" Classes="read" IsVisible="{Binding HasMessage}" />

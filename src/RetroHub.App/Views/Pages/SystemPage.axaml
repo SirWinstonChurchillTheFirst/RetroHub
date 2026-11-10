@@ -181,14 +181,45 @@
            Rücken 22, the key/value grid of an opened Emulatoren row (keys Etikett 15 Text 3, 168 wide; values read
            Text 2 at + 200; folders and extensions in Cascadia Mono Regular 15). It hangs under the banner's action row
            like the detail's "Mehr" list hangs at its button – no centred modal. -->
-      <Border Name="InfoPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Width="760" Background="{DynamicResource RhSurfaceBrush}"
-              BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="0"
-              BoxShadow="{DynamicResource RhPanelShadow}" ClipToBounds="True">
+      <!-- R2: an index card (Karteikarte) of light paper taped onto the page – the head line in red, ruled lines every
+           32 px, ink text; a tab in the system's colour on its top edge. It drops in from 16 px above and settles. -->
+      <c:PaperNote Name="InfoPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Width="760" SeedText="systeminfo" Paper="#ECE3D1"
+                   RuleStep="32" RuleTop="62" RenderTransformOrigin="50%,0%">
+        <c:PaperNote.Styles>
+          <Style Selector="TextBlock.kv-key">
+            <Setter Property="Foreground" Value="#6E6457" />
+          </Style>
+          <Style Selector="TextBlock.kv-value, TextBlock.kv-mono">
+            <Setter Property="Foreground" Value="#2A241D" />
+          </Style>
+          <Style Selector="Run.name">
+            <Setter Property="Foreground" Value="#1A1714" />
+          </Style>
+          <!-- the close key: an ink outline on the card, filled ink when focused (the card's own inversion) -->
+          <Style Selector="Button#InfoCloseButton">
+            <Setter Property="Foreground" Value="#1A1714" />
+            <Setter Property="BorderBrush" Value="#1A1714" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="Background" Value="Transparent" />
+          </Style>
+          <Style Selector="Button#InfoCloseButton /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+          </Style>
+          <Style Selector="Button#InfoCloseButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#22000000" />
+          </Style>
+          <Style Selector="Button#InfoCloseButton:focus-visible">
+            <Setter Property="Foreground" Value="#ECE3D1" />
+          </Style>
+          <Style Selector="Button#InfoCloseButton:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1A1714" />
+          </Style>
+        </c:PaperNote.Styles>
         <StackPanel Spacing="0">
-          <Border Height="8" Background="{Binding System.AccentBrush, FallbackValue={x:Null}}" />
+          <Border Height="8" Width="120" HorizontalAlignment="Left" Margin="32,0,0,0" Background="{Binding System.AccentBrush, FallbackValue={x:Null}}" />
           <StackPanel Spacing="0" Margin="32,18,32,24">
             <TextBlock Name="InfoTitle" FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="22" LineHeight="28" LetterSpacing="0.6"
-                       Foreground="{DynamicResource RhText1Brush}" Margin="0,0,0,10" Text="{Binding System.Name, FallbackValue={x:Null}}" TextWrapping="Wrap" />
+                       Foreground="#1A1714" Margin="0,0,0,14" Text="{Binding System.Name, FallbackValue={x:Null}}" TextWrapping="Wrap" />
             <ItemsControl ItemsSource="{Binding InfoLines}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:InfoLine">
@@ -205,7 +236,7 @@
             </Button>
           </StackPanel>
         </StackPanel>
-      </Border>
+      </c:PaperNote>
     </Panel>
   </Panel>
 </p:PageBase>

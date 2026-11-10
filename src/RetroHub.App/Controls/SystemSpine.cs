@@ -329,7 +329,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 Transitions = Motion.Current == EffectiveMotion.Full && NavRepeatTracker.Current?.IsActive != true
                     ? [new DoubleTransition { Property = PullProperty, Duration = Motion.StepDuration, Easing = new CubicEaseOut() }]
                     : null;
-                Pull = visible ? 1 : 0;
+                // R2: the mouse resting on a sleeve draws it half out (the ring alone said little)
+                Pull = visible ? 1 : IsPointerOver ? 0.45 : 0;
             }
             var lift = visible && Opens && Motion.AllowsMovement ? 1.03 : 1.0;
             if (RenderTransform is ScaleTransform st)

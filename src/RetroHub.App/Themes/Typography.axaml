@@ -155,6 +155,11 @@
     <Setter Property="FontSize" Value="15" />
     <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
   </Style>
+  <!-- a program name inside a sentence (Sentence.Name): read SemiBold Papier (QA 2); a paper card sets it in ink -->
+  <Style Selector="Run.name">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="#F4ECDF" />
+  </Style>
   <!-- the key/value grid of an opened row (Emulatoren, Dateiinfo, Systeminfo): keys Etikett 15 Text 3, values read Text 2 -->
   <Style Selector="TextBlock.kv-key">
     <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />

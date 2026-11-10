@@ -131,6 +131,7 @@ public partial class MainWindow : Window
         Flight.LandingArt = StartBoxArt;
         // toasts lie above the embedded game: the game screen cuts a hole for them into its native host (airspace)
         GameScreen.SetHoleSource(ToastDock);
+        ToastHost.ContainerPrepared += (_, e) => SlideInToast(e.Container);
         ToastDock.SizeChanged += (_, _) => Dispatcher.UIThread.Post(GameScreen.UpdateHoles, DispatcherPriority.Render);
         Closing += (_, _) =>
         {
@@ -892,6 +893,34 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Focuses the active channel (or the active tool icon) in the header.</summary>
+    /// <summary>
+    /// R2: a new message slides up out of the footer (24 px, Step 140 ms, CubicEaseOut) and fades in; reduced motion:
+    /// it only fades; off: it is simply there.
+    /// </summary>
+    private static void SlideInToast(Control container)
+    {
+        container.Transitions = null;
+        if (!Motion.Enabled)
+        {
+            container.Opacity = 1;
+            container.RenderTransform = null;
+            return;
+        }
+        var move = Motion.AllowsMovement;
+        container.Opacity = 0;
+        container.RenderTransform = move ? Avalonia.Media.Transformation.TransformOperations.Parse("translateY(24px)") : null;
+        Dispatcher.UIThread.Post(() =>
+        {
+            container.Transitions =
+            [
+                new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = Motion.StepDuration, Easing = new Avalonia.Animation.Easings.CubicEaseOut() },
+                new Avalonia.Animation.TransformOperationsTransition { Property = RenderTransformProperty, Duration = Motion.StepDuration, Easing = new Avalonia.Animation.Easings.CubicEaseOut() },
+            ];
+            container.Opacity = 1;
+            if (move) container.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("translateY(0px)");
+        }, DispatcherPriority.Render);
+    }
+
     private void FocusHeader()
     {
         var buttons = TopBar.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("navitem") && b.IsEffectivelyVisible).ToList();

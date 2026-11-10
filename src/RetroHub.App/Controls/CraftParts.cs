@@ -159,12 +159,21 @@ public sealed class PaperNote : Decorator
     public static readonly StyledProperty<string?> SeedTextProperty = AvaloniaProperty.Register<PaperNote, string?>(nameof(SeedText));
     public static readonly StyledProperty<Color> PaperProperty = AvaloniaProperty.Register<PaperNote, Color>(nameof(Paper), Craft.LabelPaper);
     public static readonly StyledProperty<bool> TapeProperty = AvaloniaProperty.Register<PaperNote, bool>(nameof(Tape), true);
+    /// <summary>An index card: ruled lines every <see cref="RuleStep"/> from <see cref="RuleTop"/> on, a red head line at it.</summary>
+    public static readonly StyledProperty<double> RuleStepProperty = AvaloniaProperty.Register<PaperNote, double>(nameof(RuleStep));
+    public static readonly StyledProperty<double> RuleTopProperty = AvaloniaProperty.Register<PaperNote, double>(nameof(RuleTop), 56);
 
     static PaperNote()
     {
-        AffectsRender<PaperNote>(SeedTextProperty, PaperProperty, TapeProperty);
+        AffectsRender<PaperNote>(SeedTextProperty, PaperProperty, TapeProperty, RuleStepProperty, RuleTopProperty);
         ClipToBoundsProperty.OverrideDefaultValue<PaperNote>(false);
     }
+
+    public double RuleStep { get => GetValue(RuleStepProperty); set => SetValue(RuleStepProperty, value); }
+    public double RuleTop { get => GetValue(RuleTopProperty); set => SetValue(RuleTopProperty, value); }
+
+    private static readonly IImmutableSolidColorBrush RuleBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x48, 0x6E, 0x86, 0xA3));
+    private static readonly IImmutableSolidColorBrush HeadRuleBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x90, 0xB8, 0x4A, 0x3C));
 
     /// <summary>What seeds the outline and the tape (the same note always looks the same).</summary>
     public string? SeedText { get => GetValue(SeedTextProperty); set => SetValue(SeedTextProperty, value); }
@@ -179,6 +188,12 @@ public sealed class PaperNote : Decorator
         if (r.Width <= 0 || r.Height <= 0) return;
         var seed = Craft.Seed(SeedText ?? Name ?? "note");
         Craft.DrawPaper(ctx, this, r, seed, Paper, 0, jitter: 0.9, shadow: 0.45, fibres: 0.40);
+        if (RuleStep > 4)
+        {
+            ctx.FillRectangle(HeadRuleBrush, new Rect(r.X + 3, Math.Round(r.Y + RuleTop), r.Width - 6, 1.5));
+            for (var y = r.Y + RuleTop + RuleStep; y < r.Bottom - 8; y += RuleStep)
+                ctx.FillRectangle(RuleBrush, new Rect(r.X + 3, Math.Round(y), r.Width - 6, 1));
+        }
         if (!Tape) return;
         var tw = Math.Clamp(Math.Round(r.Width * 0.12), 22, 40);
         var th = Math.Round(tw * 0.36);
@@ -381,5 +396,76 @@ public sealed class SystemNiche : Control
         ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.30, Craft.Toward.Right), new Rect(inner.Right - 5, inner.Y, 5, inner.Height));
         Craft.Edges(ctx, r, lit: 0.10, dark: 0.40, grime: 0.20, grimeHeight: 6, topLit: 0.12, softRight: 0);
         ctx.FillRectangle(Craft.Hi(0.09), new Rect(inner.X, inner.Bottom, inner.Width, 1));
+    }
+}
+
+/// <summary>
+/// The body of a panel that lies over the page (R2: right-click list, the detail's "Mehr", dialogs – they read as a
+/// generic UI kit's floating cards): a plate of the workbench – chamfered corners, a grain, a lit top and left edge, a
+/// dark right edge and foot, four rivets and the plate's shadow falling down-right onto the page. Placed behind the
+/// panel's content with a negative margin equal to the panel's padding.
+/// </summary>
+public sealed class PanelPlate : Control
+{
+    internal static readonly Color Body = Color.Parse("#25211C");
+
+    static PanelPlate()
+    {
+        IsHitTestVisibleProperty.OverrideDefaultValue<PanelPlate>(false);
+        ClipToBoundsProperty.OverrideDefaultValue<PanelPlate>(false);
+    }
+
+    public override void Render(DrawingContext ctx)
+    {
+        var r = new Rect(Bounds.Size);
+        if (r.Width < 24 || r.Height < 24) return;
+        // its shadow on the page: offset down-right, soft
+        using (ctx.PushOpacity(0.55))
+        {
+            ctx.DrawGeometry(Craft.Dark(0.35), null, Chamfer.Octagon(r.Translate(new Vector(6, 9)), 6));
+            ctx.DrawGeometry(Craft.Dark(0.25), null, Chamfer.Octagon(r.Translate(new Vector(3, 4)).Inflate(2), 7));
+        }
+        var outline = Chamfer.Octagon(r, 6);
+        ctx.DrawGeometry(Craft.Solid(Body), null, outline);
+        using (ctx.PushGeometryClip(outline))
+        {
+            TextureFill.Draw(ctx, this, r, Texture.Grain, 0.55);
+            ctx.FillRectangle(Craft.Fade(Craft.Light, 0.05, 0, Craft.Toward.Down), new Rect(r.X, r.Y, r.Width, Math.Min(40, r.Height)));
+            Craft.Edges(ctx, r, lit: 0.12, dark: 0.45, grime: 0.25, grimeHeight: 8, topLit: 0.16, softRight: 3);
+        }
+        // four rivets set into the corners
+        foreach (var (x, y) in new[] { (r.X + 10, r.Y + 10), (r.Right - 14, r.Y + 10), (r.X + 10, r.Bottom - 14), (r.Right - 14, r.Bottom - 14) })
+        {
+            ctx.DrawEllipse(Craft.Dark(0.55), null, new Rect(x, y + 0.5, 4, 4));
+            ctx.DrawEllipse(Craft.Solid(Color.Parse("#4A443A")), null, new Rect(x, y, 4, 4));
+            ctx.DrawEllipse(Craft.Hi(0.25), null, new Rect(x + 0.8, y + 0.6, 1.6, 1.4));
+        }
+    }
+}
+
+/// <summary>
+/// The front edge of the footer (R2): the footer is the bench's front ledge, and the page slides UNDER it – a 6 px top
+/// face (lit edge, grain, a darker underside line) instead of content fading out into a flat band. Rows cut at the
+/// bottom of a list then read as going behind the ledge, not as half-drawn.
+/// </summary>
+public sealed class FooterLip : Control
+{
+    private static readonly IImmutableSolidColorBrush Face = new ImmutableSolidColorBrush(Color.Parse("#1F1B17"));
+
+    static FooterLip()
+    {
+        HeightProperty.OverrideDefaultValue<FooterLip>(6);
+        IsHitTestVisibleProperty.OverrideDefaultValue<FooterLip>(false);
+    }
+
+    public override void Render(DrawingContext ctx)
+    {
+        var r = new Rect(Bounds.Size);
+        if (r.Width <= 0) return;
+        ctx.FillRectangle(Face, r);
+        TextureFill.Draw(ctx, this, r, Texture.BoardGrain, 0.5);
+        ctx.FillRectangle(Craft.Hi(0.13), new Rect(r.X, r.Y, r.Width, 1));
+        ctx.FillRectangle(Craft.Fade(Craft.Light, 0.04, 0, Craft.Toward.Down), new Rect(r.X, r.Y + 1, r.Width, r.Height - 2));
+        ctx.FillRectangle(Craft.Dark(0.5), new Rect(r.X, r.Bottom - 1, r.Width, 1));
     }
 }
