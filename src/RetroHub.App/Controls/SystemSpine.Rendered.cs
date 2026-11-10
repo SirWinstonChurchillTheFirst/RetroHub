@@ -15,11 +15,21 @@ namespace RetroHub.App.Controls;
 /// </summary>
 public sealed partial class SystemSpine
 {
-    /// <summary>"l" (Konsolen 128 × 460) or "s" (≈1100: 96 × 360) when the wall spine is drawn from the renders, else null.</summary>
-    private string? SpineSprite => ShowMotif && Opens && Available ? (SpineWidth >= 112 ? "l" : "s") : null;
+    /// <summary>
+    /// The render a closed spine is drawn from: "l"/"s" on the Konsolen wall (128 × 460 / ≈1100: 96 × 360), "m"/"xs" on
+    /// Start's shelf (72 × 200 / ≈1100: 56 × 160); null = drawn shapes.
+    /// </summary>
+    internal string? SpineSprite => !Opens || !Available ? null
+        : ShowMotif ? (SpineWidth >= 112 ? "l" : "s")
+        : SpineWidth >= 64 ? "m" : "xs";
 
-    /// <summary>The big front is drawn from the renders ("front-l" 520 × 600, "front-s" 380 × 460).</summary>
-    private string? FrontSprite => HasShelf && Available ? (FrontWidth >= 480 ? "front-l" : "front-s") : null;
+    /// <summary>
+    /// The render a front is drawn from: the big Konsolen fronts with their compartment ("front-l" 520 × 600, "front-s"
+    /// 380 × 460), Start's square fronts without one ("front-m" 200, "front-xs" 160); null = drawn.
+    /// </summary>
+    internal string? FrontSprite => !Opens || !Available ? null
+        : HasShelf ? (FrontWidth >= 480 ? "front-l" : "front-s")
+        : !ShowMotif && !LargeFront ? (FrontWidth >= 180 ? "front-m" : "front-xs") : null;
 
     /// <summary>
     /// The housing tone the body of a rendered spine/front takes (theme v2: neutral greys, no warm grey, beige or wood;
@@ -62,16 +72,16 @@ public sealed partial class SystemSpine
         if (_labelKey == key && _labelCode != null) return;
         _labelKey = key;
         if (_system is not { } s) return;
-        var size = SpineSprite == "l" ? 28.0 : 22.0;
+        var size = SpineSprite switch { "l" => 28.0, "s" => 22.0, "m" => 18.0, _ => 16.0 };
         var ink = Craft.Solid(Craft.LabelInk);
         while (true)
         {
             _labelCode = new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, size, ink);
-            if ((_labelCode.Width <= labelRoom && _labelCode.Height <= m.Rect("label").Width - 4) || size <= 14) break;
+            if ((_labelCode.Width <= labelRoom && _labelCode.Height <= m.Rect("label").Width - 4) || size <= 13) break;
             size--;
         }
         _tagCount = new FormattedText(s.GameCount.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-            FontRoles.NumberFace, SpineSprite == "l" ? 21 : 17, TagInk);
+            FontRoles.NumberFace, SpineSprite switch { "l" => 21, "s" => 17, "m" => 14, _ => 13 }, TagInk);
     }
 
     private static readonly IImmutableSolidColorBrush TagInk = new ImmutableSolidColorBrush(Color.Parse("#ECEEF0"));
@@ -93,7 +103,7 @@ public sealed partial class SystemSpine
         {
             if (!Draw(ctx, this, name, front, true, new Tint("body", HousingBody(look)), new Tint("band", look.Color))) return false;
             var label = Map(m.Rect("label"));
-            var pad = Math.Round(label.Width * 0.2);
+            var pad = Math.Round(label.Width * (size is "l" or "s" ? 0.2 : 0.14));
             EnsureSpriteText(m, label.Height - 2 * pad);
             if (_labelCode is { } code)
                 using (ctx.PushClip(label))
@@ -107,8 +117,10 @@ public sealed partial class SystemSpine
             if (_tagCount is { } count && s.GameCount > 0)
             {
                 var tag = size == "l" ? "tag-l" : "tag-s";
-                var th = MetaOf(tag)?.Front.Height ?? 28;
-                var tw = Math.Max(size == "l" ? 48 : 40, Math.Round(count.Width + (size == "l" ? 30 : 24)));
+                // Start's small spines carry a smaller tag (the s tag scaled to 18 / 16 px)
+                var th = size switch { "m" => 18.0, "xs" => 16.0, _ => MetaOf(tag)?.Front.Height ?? 28 };
+                var tw = Math.Max(size switch { "l" => 48.0, "s" => 40, "m" => 34, _ => 30 },
+                    Math.Round(count.Width + (size == "l" ? 30 : size == "s" ? 24 : 18)));
                 var cx = front.X + (m.Value("tagCenterX") - m.Front.X) * sx;
                 var cy = front.Y + (m.Value("tagCenterY") - m.Front.Y) * sy;
                 var plate = new Rect(Math.Round(cx - tw / 2), Math.Round(cy - th / 2), tw, th);
@@ -129,7 +141,7 @@ public sealed partial class SystemSpine
     /// </summary>
     private (double RecessTop, double BoardY)? FrontCompartment(double height)
     {
-        if (FrontSprite is not { } name || MetaOf(name) is not { } m) return null;
+        if (FrontSprite is not { } name || MetaOf(name) is not { } m || !m.Rects.ContainsKey("recess")) return null;
         var k = height / m.Front.Height;
         return (Math.Round((m.Rect("recess").Y - m.Front.Y) * k), Math.Round((m.Rect("innerBoard").Y - m.Front.Y) * k));
     }
@@ -138,6 +150,9 @@ public sealed partial class SystemSpine
 
     /// <summary>"l" (row ≥ 130 px) or "s" (≈1100) when the sleeves are drawn from the renders, else null.</summary>
     private string? SleeveSprite => !Opens && Available ? (SleeveRowHeight >= 130 ? "l" : "s") : null;
+
+    /// <summary>The render this "Noch leer" sleeve is drawn from (null: drawn shapes; tests).</summary>
+    internal string? SleeveSpriteName => Opens ? null : Sleeve.Sprite;
 
     /// <summary>The lean of the rendered leaning sleeve (≈ 6.5°, top resting on its left neighbour).</summary>
     private const double RenderedLean = -0.113;
@@ -154,8 +169,8 @@ public sealed partial class SystemSpine
             name = $"sleeve-{size}flat";
             flat = true;
         }
-        // one rendered lean looks alike wherever it stands: at most one in eight, never two side by side (odd places)
-        else if (index > 0 && index % 2 == 1 && Craft.Rand(seed, 3) < 0.25)
+        // one rendered lean looks alike wherever it stands: at most one in eight, never two near each other (places 1, 5, 9 …)
+        else if (index % 4 == 1 && Craft.Rand(seed, 3) < 0.5)
         {
             name = $"sleeve-{size}lean";
             lean = RenderedLean;

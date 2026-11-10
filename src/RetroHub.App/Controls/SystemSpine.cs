@@ -559,7 +559,15 @@ public sealed partial class SystemSpine : Button, Avalonia.Rendering.ICustomHitT
                 using (ctx.PushTransform(swinging ? Swing(area, t) : Matrix.Identity))
                 using (ctx.PushOpacity(Math.Clamp(t / 0.5, 0, 1)))
                 {
-                    var drawnFront = shelf && DrawRenderedFrontBody(ctx, front, look);
+                    var drawnFront = DrawRenderedFrontBody(ctx, front, look);
+                    if (drawnFront && !shelf)
+                    {
+                        // Start's square front: the motif plaque stands bottom right (72 % of the height, ≤ 46 % wide)
+                        var size = Math.Round(Math.Min(front.Height * 0.62, FrontWidth * 0.46));
+                        var inset = Math.Round(FrontWidth * 0.07);
+                        var box = new Rect(front.Right - inset - size, front.Bottom - inset - size, size, size);
+                        if (!DrawMotifPlaque(ctx, this, look, box)) MotifCatalog.Draw(ctx, look, box, relief: true);
+                    }
                     if (!drawnFront)
                     {
                         SystemWall.Draw(ctx, this, front, look, band: 0, motifShare: shelf ? 0 : 0.72, motifInset: Math.Round(FrontWidth * 0.06));

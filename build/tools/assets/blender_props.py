@@ -544,26 +544,32 @@ def catchers(y_wall, floor=True, wall=True, z_floor=0.0, wall_from=-50, wall_to=
 
 # ------------------------------------------------------------------------------------------------------------------ jobs
 
+SPINE_DIMS = {"l": (1.28, 4.60, 1.60), "s": (0.96, 3.60, 1.30), "m": (0.72, 2.00, 1.00), "xs": (0.56, 1.60, 0.85)}
+TAG_Z = {"l": 0.27, "s": 0.23, "m": 0.175, "xs": 0.15}
+
+
 def spine(size, variant):
     """The big system 'Fach' of the Konsolen wall: a stiff cardboard slipcase standing on the board, its front a
     printed spine: colour band, a recessed label holder with a paper insert (the code), a debossed square where the
     motif is printed, room for the count tag at the foot."""
-    W, H, D = (1.28, 4.60, 1.60) if size == "l" else (0.96, 3.60, 1.30)
-    rnd = random.Random(1000 + variant * 17 + (0 if size == "l" else 500))
-    band = (H - (0.20 if size == "l" else 0.18), H - 0.08)
+    # l/s: the Konsolen wall (1080 / ~1100); m/xs: the system spines on Start's shelf (72 x 200 / 56 x 160)
+    W, H, D = SPINE_DIMS[size]
+    small = size in ("m", "xs")
+    rnd = random.Random(1000 + variant * 17 + {"l": 0, "s": 500, "m": 800, "xs": 900}[size])
+    band = (H - (0.20 if size == "l" else 0.18 if size == "s" else 0.13), H - (0.06 if small else 0.08))
     mat = mat_cardboard(f"spine-{size}{variant}", rnd, band=band, rough=0.56)   # laminated print: a satin sheen
     ob = box("spine", 0, 0, 0, W, D, H, mat)
     # label holder (recess 2 px) with a paper insert
-    m = round(W * 0.25, 2)
-    lt = H - (0.32 if size == "l" else 0.28)
-    lb = lt - round(H * (0.36 if size == "l" else 0.36), 2)
+    m = round(W * (0.22 if small else 0.25), 2)
+    lt = H - {"l": 0.32, "s": 0.28, "m": 0.21, "xs": 0.19}[size]
+    lb = lt - round(H * (0.42 if small else 0.36), 2)
     cutter = box("c_label", m, -0.1, lb, W - m, 0.04, lt)
     cut(ob, cutter)
     s = round(W - 2 * max(0.12, round(W * 0.14, 2)), 2)
-    mb = 0.52 if size == "l" else 0.44
+    mb = {"l": 0.52, "s": 0.44, "m": 0.36, "xs": 0.31}[size]
     cm = box("c_motif", (W - s) / 2, -0.1, mb, (W + s) / 2, 0.03, mb + s)
     cut(ob, cm)
-    add_bevel(ob, 0.04 if size == "l" else 0.03, 4)
+    add_bevel(ob, 0.04 if size == "l" else 0.03 if size == "s" else 0.02, 4)
     # slight per-item variation: a hair of lean and a dented corner
     ob.rotation_euler = (0, math.radians(rnd.uniform(-0.25, 0.25)), 0)
     paper = mat_paper(f"label-{size}{variant}", rnd, 0.60)
@@ -578,7 +584,7 @@ def spine(size, variant):
         "band": rect_px(fr, ob, 0, band[0], W, band[1]),
         "label": rect_px(fr, ob, m + 0.015, lb + 0.015, W - m - 0.015, lt - 0.015, y=0.03),
         "motif": rect_px(fr, ob, (W - s) / 2, mb, (W + s) / 2, mb + s, y=0.03),
-        "tagCenterY": round(to_px(fr, ob.matrix_world @ Vector((W / 2, 0, (0.27 if size == "l" else 0.23))))[1], 1),
+        "tagCenterY": round(to_px(fr, ob.matrix_world @ Vector((W / 2, 0, TAG_Z[size])))[1], 1),
         "tagCenterX": round(to_px(fr, ob.matrix_world @ Vector((W / 2, 0, 0.27)))[0], 1),
     }
 
@@ -590,26 +596,32 @@ FRONT_RECESS = {"l": (26, 168, 376, 10), "s": (20, 128, 285, 8)}
 def front(size, variant):
     """The open front of the focused system: the same printed cardboard as a big panel, band at the top, and a
     compartment cut into it (3 px deep walls, its own small board) where the app stands up to three boxes."""
-    W, H, D = (5.20, 6.00, 1.60) if size == "l" else (3.80, 4.60, 1.30)
-    rnd = random.Random(3000 + variant * 31 + (0 if size == "l" else 500))
-    band = (H - 0.22, H - 0.08)
+    # l/s: the Konsolen front with its compartment; m/xs: Start's small front (200 / 160 square, no compartment)
+    W, H, D = {"l": (5.20, 6.00, 1.60), "s": (3.80, 4.60, 1.30), "m": (2.00, 2.00, 1.00), "xs": (1.60, 1.60, 0.85)}[size]
+    small = size in ("m", "xs")
+    rnd = random.Random(3000 + variant * 31 + {"l": 0, "s": 500, "m": 800, "xs": 900}[size])
+    band = (H - 0.22, H - 0.08) if not small else (H - 0.16, H - 0.06)
     mat = mat_cardboard(f"front-{size}", rnd, band=band, wear=0.45, rough=0.56)
     ob = box("front", 0, 0, 0, W, D, H, mat)
-    ins, top, btop, bh = [v * PX for v in FRONT_RECESS[size]]
-    rz1, rz0 = H - top, H - btop - bh
-    cut(ob, box("c_recess", ins, -0.1, rz0, W - ins, 0.34, rz1))
+    if not small:
+        ins, top, btop, bh = [v * PX for v in FRONT_RECESS[size]]
+        rz1, rz0 = H - top, H - btop - bh
+        cut(ob, box("c_recess", ins, -0.1, rz0, W - ins, 0.34, rz1))
     # a debossed rule framing the face under the band (a pressed line in the board, 1 px wide, ~0.6 px deep)
-    ri, rw, rd = (0.16 if size == "l" else 0.12), 0.012, 0.006
+    ri, rw, rd = (0.16 if size == "l" else 0.12 if size == "s" else 0.07), 0.012, 0.006
     rt = band[0] - ri * 0.6
     for nm, a in (("t", (ri, rt - rw, W - ri, rt)), ("b", (ri, ri, W - ri, ri + rw)),
                   ("l", (ri, ri, ri + rw, rt)), ("r", (W - ri - rw, ri, W - ri, rt))):
         cut(ob, box(f"c_rule{nm}", a[0], -0.1, a[1], a[2], rd, a[3]))
-    add_bevel(ob, 0.03, 3)
+    add_bevel(ob, 0.03 if not small else 0.02, 3)
     smooth(ob)
+    cat = catchers(D + 0.35)
+    if small:
+        return [ob], cat, {"kind": "front", "size": size}, lambda fr: {
+            "front": rect_px(fr, ob, 0, 0, W, H), "band": rect_px(fr, ob, 0, band[0], W, band[1])}
     shelf = box("innerboard", ins - 0.01, 0.0, rz0 - 0.01, W - ins + 0.01, 0.35, H - btop, mat_powder("inner", rnd, level=0.75),
                 bevel=0.008, segs=2)
     smooth(shelf)
-    cat = catchers(D + 0.35)
     return [ob, shelf], cat, {"kind": "front", "size": size}, lambda fr: {
         "front": rect_px(fr, ob, 0, 0, W, H), "band": rect_px(fr, ob, 0, band[0], W, band[1]),
         "recess": rect_px(fr, ob, ins, rz0, W - ins, rz1, y=0.34),
@@ -854,6 +866,12 @@ def main():
     jobs = []
     want = set(JOBS)
     every = "all" in want
+    for size in ("m", "xs"):
+        if every or f"spine-{size}" in want:
+            for v in range(3):
+                jobs.append((f"spine-{size}{v}", (lambda s=size, v=v: spine(s, v)), 16, (0, 0, 0, 0)))
+        if every or f"front-{size}" in want:
+            jobs.append((f"front-{size}", (lambda s=size: front(s, 0)), 16, (0, 0, 0, 0)))
     for size in ("l", "s"):
         if every or f"spine-{size}" in want:
             for v in range(3):

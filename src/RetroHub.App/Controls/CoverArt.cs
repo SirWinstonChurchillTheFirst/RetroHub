@@ -561,6 +561,14 @@ public sealed class CoverArt : Control
                 var narrow = PlaceholderTitle.Fit(main, maxWidth, budget, size, PlaceholderTitle.MaxLines, condensed: true);
                 if (narrow.Size > fit.Size) { fit = narrow; face = FontRoles.SpineFace; }
             }
+            else if (NarrowPortrait(r) && (fit.Lines >= 3 || fit.Trimmed))
+            {
+                // R2 QA 14: on a narrow portrait case (GameCube, PS2, Wii, NES) the poster face broke a plain title into
+                // three or four lines and the label covered the whole front. The same size in the condensed spine face
+                // takes fewer lines – the row keeps one size, the label leaves the case's front visible.
+                var narrow = PlaceholderTitle.Fit(main, maxWidth, budget, size, PlaceholderTitle.MaxLines, condensed: true);
+                if (narrow.Size >= fit.Size && (narrow.Lines < fit.Lines || (fit.Trimmed && !narrow.Trimmed))) { fit = narrow; face = FontRoles.SpineFace; }
+            }
             _titleText = new FormattedText(fit.Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, face, fit.Size, LabelInkBrush)
             {
                 LineHeight = Math.Round(fit.Size * PlaceholderTitle.LineFactor),
@@ -614,6 +622,9 @@ public sealed class CoverArt : Control
             if (spineTitle.Width <= withYear) _spineTitle = spineTitle;
         }
     }
+
+    /// <summary>A narrow portrait case of a shelf or grid (width under 170 and under 0.8 × its height).</summary>
+    internal static bool NarrowPortrait(Rect r) => r.Width < 170 && r.Width < 0.8 * r.Height;
 
     /// <summary>Title size of a box front printed with the title on top (Plakat 32, M4 QA).</summary>
     public const double TopTitleSize = 32;

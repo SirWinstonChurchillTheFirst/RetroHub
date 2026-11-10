@@ -47,6 +47,7 @@ public sealed class EmptyShelfDrawing : Control
         var w = Bounds.Width;
         var h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
+        if (DrawRendered(ctx, w, h)) return;
         if (Gesture)
         {
             // the leaning box of the grid (x 69–100, y 71–120) at the control's height, its foot on the bottom edge
@@ -86,6 +87,24 @@ public sealed class EmptyShelfDrawing : Control
             Poly(true, 84, foot, 69, 114.5, 85, 71.3, 100, 76.8);  // one box leaning against it (20°)
         }
         ctx.DrawGeometry(null, Line, g);
+    }
+
+    private static readonly Rendered.Tint[] EmptyCard = [new("body", Color.Parse("#2E3136")), new("band", Color.Parse("#5E646E"))];
+
+    /// <summary>
+    /// The same gesture from the rendered objects (R3: the white line drawing read as a wireframe beside the rendered
+    /// shelves): an empty grey slipcase leaning, and – unless <see cref="Gesture"/> – the bookend holding it, standing on
+    /// the bottom edge at the control's height.
+    /// </summary>
+    private bool DrawRendered(DrawingContext ctx, double w, double h)
+    {
+        if (!Rendered.Available || Rendered.MetaOf("sleeve-llean") is not { } m) return false;
+        var height = Tight || Gesture ? h : Math.Min(h, Math.Min(w, h) * 0.75);
+        var k = height / m.Front.Height;
+        var x = Tight || Gesture ? 2 : Math.Round((w - (m.Front.Width + 60) * k) / 2);
+        var front = new Rect(x, h - m.Front.Height * k, m.Front.Width * k, m.Front.Height * k);
+        if (!Gesture) Bookend.DrawRendered(ctx, this, new Point(front.Right + 4 * k, h), Math.Round(height * 0.8));
+        return Rendered.Draw(ctx, this, "sleeve-llean", front, true, EmptyCard);
     }
 }
 
@@ -143,20 +162,63 @@ public sealed class EmptySlot : Control
         var r = Aspect > 0 ? CoverArt.Compute(outer, null, false, Aspect) : outer;
         if (Recessed)
         {
+            // a spine-shaped place (the Konsolen wall) takes a blank spine, a box-shaped one (a shelf) an empty case
+            if (r.Width < 0.45 * r.Height ? DrawBlankSpine(ctx, r) : DrawEmptyCase(ctx, r)) return;
             DrawGhost(ctx, r);
             return;
         }
         if (r.Width <= 4 || r.Height <= 4) return;
         // the place where a box stood (M7: the dashed outline read as a wireframe or a failed image): the wall behind it
         // a touch cleaner, dust settled all around it – thickest on the board at its foot – and a soft rim
-        ctx.FillRectangle(Craft.Hi(0.025), r);
+        ctx.FillRectangle(Craft.Hi(0.04), r);
         TextureFill.Draw(ctx, this, new Rect(r.X - 6, r.Y - 5, r.Width + 12, 5), Texture.Dust, 0.30);
         TextureFill.Draw(ctx, this, new Rect(r.X - 6, r.Y, 6, r.Height), Texture.Dust, 0.30);
         TextureFill.Draw(ctx, this, new Rect(r.Right, r.Y, 6, r.Height), Texture.Dust, 0.30);
         TextureFill.Draw(ctx, this, new Rect(r.X - 8, r.Bottom - 4, r.Width + 16, 4), Texture.Dust, 0.55);
-        ctx.FillRectangle(Craft.Hi(0.06), new Rect(r.X, r.Y, r.Width, 1));
-        ctx.FillRectangle(Craft.Hi(0.05), new Rect(r.X, r.Y + 1, 1, r.Height - 1));
-        ctx.FillRectangle(Craft.Hi(0.05), new Rect(r.Right - 1, r.Y + 1, 1, r.Height - 1));
+        ctx.FillRectangle(Craft.Hi(0.09), new Rect(r.X, r.Y, r.Width, 1));
+        ctx.FillRectangle(Craft.Hi(0.07), new Rect(r.X, r.Y + 1, 1, r.Height - 1));
+        ctx.FillRectangle(Craft.Hi(0.07), new Rect(r.Right - 1, r.Y + 1, 1, r.Height - 1));
+    }
+
+    private static readonly IImmutableSolidColorBrush CaseBack = new ImmutableSolidColorBrush(Color.Parse("#141619"));
+
+    /// <summary>
+    /// A box-shaped place on an empty shelf (R3 QA "zu leise"): the rendered keep case standing empty – the dark back of
+    /// the case behind its clear sleeve – at 55 %, slightly narrower than the place and seeded in height, so a row of
+    /// them reads as cases waiting to be filled, not as outlines.
+    /// </summary>
+    private bool DrawEmptyCase(DrawingContext ctx, Rect r)
+    {
+        if (!Rendered.Available) return false;
+        var x = Bounds.X + (this.GetVisualParent() is Visual p ? p.Bounds.X : 0);
+        var seed = Craft.Mix(Craft.Seed("leere-huelle"), (int)Math.Round(x));
+        var h = Math.Round(r.Height * Craft.Range(seed, 1, 0.86, 1.0));
+        var w = Math.Round(Math.Min(r.Width, h * 0.8));
+        var art = new Rect(r.X + Math.Round((r.Width - w) / 2), r.Bottom - h, w, h);
+        using (ctx.PushOpacity(0.55))
+        {
+            if (!Rendered.DrawCase(ctx, this, art, over: false)) return false;
+            ctx.FillRectangle(CaseBack, art);
+            Rendered.DrawCase(ctx, this, art, over: true);
+        }
+        return true;
+    }
+
+    private static readonly Color BlankBody = Color.Parse("#2B2E33");
+    private static readonly Color BlankBand = Color.Parse("#4A4F57");
+
+    /// <summary>
+    /// A place on the empty Konsolen wall (R3 QA "zu leise"): a blank rendered spine – no code, no motif, no count, a grey
+    /// band – standing at 55 %, a binder waiting for its system instead of a dark rectangle. Seeded variant per place.
+    /// </summary>
+    private bool DrawBlankSpine(DrawingContext ctx, Rect r)
+    {
+        if (!Rendered.Available) return false;
+        var x = Bounds.X + (this.GetVisualParent() is Visual p ? p.Bounds.X : 0);
+        var seed = Craft.Mix(Craft.Seed("leerer-platz"), (int)Math.Round(x));
+        var name = $"spine-{(r.Width >= 112 ? "l" : "s")}{Craft.Pick(seed, 5, 0, 2)}";
+        using (ctx.PushOpacity(0.55))
+            return Rendered.Draw(ctx, this, name, r, true, new Rendered.Tint("body", BlankBody), new Rendered.Tint("band", BlankBand));
     }
 
     /// <summary>
