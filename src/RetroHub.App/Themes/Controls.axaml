@@ -184,6 +184,81 @@
                           ContentTemplate="{TemplateBinding ContentTemplate}" VerticalContentAlignment="Center" />
       </ControlTemplate>
     </Setter>
+    <!-- as a link (Lieferschein spine, Gerätefach segment, R2): pulled up under the pointer, pressed back down -->
+    <Style Selector="^.game-link, ^.segment">
+      <Setter Property="Transitions">
+        <Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut" /></Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^.game-link:pointerover">
+      <Setter Property="RenderTransform" Value="translateY(-4px)" />
+    </Style>
+    <Style Selector="^.segment:pointerover">
+      <Setter Property="RenderTransform" Value="translateY(-2px)" />
+    </Style>
+    <Style Selector="^.game-link:pressed, ^.segment:pressed">
+      <Setter Property="RenderTransform" Value="translateY(0px)" />
+    </Style>
+  </ControlTheme>
+
+  <!-- footer hint as a mouse target (R2): no face; hover lights the glyph (ButtonGlyph.Hot) and draws a 1 px line in
+       Text 3 under the hint, press presses it in (0.97). Never focusable: the controller focus stays on the page. -->
+  <ControlTheme x:Key="RhHintButton" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="MinHeight" Value="40" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="Transitions">
+      <Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" /></Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel Background="Transparent">
+          <ContentPresenter Name="PART_ContentPresenter" Background="Transparent" Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}" VerticalContentAlignment="Center" />
+          <Border Name="PART_Under" Height="1" VerticalAlignment="Bottom" Margin="6,0,6,6" Background="{DynamicResource RhText3Brush}"
+                  Opacity="0" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Under">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="RenderTransform" Value="scale(0.97)" />
+    </Style>
+  </ControlTheme>
+
+  <!-- the footer's section word ("Bibliothek ›") as a way up: Text 3, on hover Text 1 with a 1 px underline in Text 3 -->
+  <ControlTheme x:Key="RhCrumbButton" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel Background="Transparent">
+          <ContentPresenter Name="PART_ContentPresenter" Background="Transparent" Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}"
+                            VerticalContentAlignment="Center" />
+          <Border Name="PART_Under" Height="1" VerticalAlignment="Bottom" Margin="0,0,0,7" Background="{DynamicResource RhText3Brush}"
+                  Opacity="0" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Under">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
   </ControlTheme>
 
   <!-- ================= Header channels ("1 Start  2 Bibliothek  3 Konsolen") ================= -->
@@ -312,6 +387,10 @@
       <Setter Property="Transitions">
         <Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut" /></Transitions>
       </Setter>
+    </Style>
+    <!-- mouse hover (R2): the box comes 3 % forward, the ring at 40 % (FocusLayer); focus (1.06) and press win -->
+    <Style Selector="^:pointerover /template/ Panel#PART_CoverArea">
+      <Setter Property="RenderTransform" Value="scale(1.03)" />
     </Style>
     <Style Selector="^:focus-visible /template/ Panel#PART_CoverArea">
       <Setter Property="RenderTransform" Value="scale(1.06)" />
@@ -442,6 +521,9 @@
       <Setter Property="Transitions">
         <Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut" /></Transitions>
       </Setter>
+    </Style>
+    <Style Selector="^:pointerover /template/ Panel#PART_CoverArea">
+      <Setter Property="RenderTransform" Value="scale(1.03)" />
     </Style>
     <Style Selector="^:focus-visible /template/ Panel#PART_CoverArea">
       <Setter Property="RenderTransform" Value="scale(1.06)" />
@@ -658,6 +740,11 @@
     </Style>
     <Style Selector="^ /template/ Border#PART_Previous:pointerover > Path, ^ /template/ Border#PART_Next:pointerover > Path">
       <Setter Property="Fill" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <!-- the arrow clicked (R2): accent and pressed in for 90 ms -->
+    <Style Selector="^ /template/ Border#PART_Previous.pressed > Path, ^ /template/ Border#PART_Next.pressed > Path">
+      <Setter Property="Fill" Value="{DynamicResource RhAccentBrush}" />
+      <Setter Property="RenderTransform" Value="scale(0.85)" />
     </Style>
     <Style Selector="^:focus-visible /template/ Path">
       <Setter Property="Fill" Value="{DynamicResource RhText1Brush}" />
@@ -883,7 +970,9 @@
     <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Template">
       <ControlTemplate>
-        <Grid Name="PART_Host" RowDefinitions="Auto,24,4">
+        <!-- transparent ground: the whole shelf (gaps and board too) keeps the pointer, so the wheel and the plates
+             do not drop out between two boxes (R2) -->
+        <Grid Name="PART_Host" RowDefinitions="Auto,24,4" Background="Transparent">
           <c:ShelfBoard Grid.Row="1" Height="24" WallLook="{TemplateBinding BoardLook}" />
           <c:ShelfTrack Name="PART_Track" Grid.RowSpan="3" Margin="{TemplateBinding ItemsMargin}">
             <StackPanel Name="PART_Row" Orientation="Horizontal" Spacing="{TemplateBinding ItemSpacing}" VerticalAlignment="Top"
@@ -908,6 +997,11 @@
                       IsVisible="{TemplateBinding Header, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
             <c:ShelfLabel Text="{TemplateBinding Header}" Height="24" />
             <TextBlock Text="{TemplateBinding SubHeader}" Classes="meta" VerticalAlignment="Center" />
+          </StackPanel>
+          <!-- mouse: two "Winkel" plates at the board's right end (R2), shown while the pointer is over an overflowing row -->
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,24,0">
+            <c:ShelfEdge Name="PART_EdgeLeft" Direction="-1" />
+            <c:ShelfEdge Name="PART_EdgeRight" Direction="1" />
           </StackPanel>
         </Grid>
       </ControlTemplate>

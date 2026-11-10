@@ -210,8 +210,11 @@
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:GameItemViewModel">
-                      <c:MiniSpine Width="24" Height="96" SystemId="{Binding SystemId}" Code="{Binding Title}" CodeSize="14" ShowMotif="False"
-                                   ToolTip.Tip="{Binding Title}" />
+                      <!-- a click opens the game (R2): the spine is pulled 4 px up under the pointer -->
+                      <Button Theme="{StaticResource RhTickerItem}" Classes="game-link" Height="96" Focusable="False" ToolTip.Tip="{Binding Title}"
+                              AutomationProperties.Name="{Binding Title}">
+                        <c:MiniSpine Width="24" Height="96" SystemId="{Binding SystemId}" Code="{Binding Title}" CodeSize="14" ShowMotif="False" />
+                      </Button>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>

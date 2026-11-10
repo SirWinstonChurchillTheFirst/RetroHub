@@ -97,6 +97,18 @@ public sealed class CoverGrid : UserControl
     public static readonly StyledProperty<bool> SnapToEndProperty =
         AvaloniaProperty.Register<CoverGrid, bool>(nameof(SnapToEnd));
 
+    /// <summary>
+    /// A mouse click on a row that is not the selected one only selects it (the list's preview fills); a click on the
+    /// selected row (or a double click) opens it. Keyboard/controller Accept always opens (the focused row is selected).
+    /// </summary>
+    public static readonly StyledProperty<bool> ClickSelectsFirstProperty =
+        AvaloniaProperty.Register<CoverGrid, bool>(nameof(ClickSelectsFirst));
+
+    public bool ClickSelectsFirst { get => GetValue(ClickSelectsFirstProperty); set => SetValue(ClickSelectsFirstProperty, value); }
+
+    private int _pressIndex = -1;
+    private bool _pressWasSelected;
+
     private readonly ScrollViewer _scroll;
     private readonly ItemsControl _rows;
     private readonly StackPanel _outer;
@@ -311,6 +323,14 @@ public sealed class CoverGrid : UserControl
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         AddHandler(GotFocusEvent, OnTileGotFocus, RoutingStrategies.Bubble);
         AddHandler(Button.ClickEvent, OnTileClick, RoutingStrategies.Bubble);
+        AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            _pressIndex = e.GetCurrentPoint(this).Properties.IsLeftButtonPressed ? IndexOfTile(e.Source as Visual) : -1;
+            // before the press moves the focus: was this row already the selected, focused one?
+            _pressWasSelected = _pressIndex >= 0 && _pressIndex == SelectedIndex && IsKeyboardFocusWithin;
+        }, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerReleasedEvent, (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(() => _pressIndex = -1),
+            RoutingStrategies.Bubble, handledEventsToo: true);
         ApplyPadding();
     }
 
@@ -672,6 +692,11 @@ public sealed class CoverGrid : UserControl
             if (v is Control { Parent: CoverRowPresenter } tile && tile.DataContext is { } item && _indexOf.TryGetValue(item, out var idx))
             {
                 SelectedIndex = idx;
+                if (ClickSelectsFirst && _pressIndex == idx && !_pressWasSelected)
+                {
+                    e.Handled = true; // the first click selects (the preview shows it); the page does not open it
+                    return;
+                }
                 ItemInvoked?.Invoke(this, new CoverGridItemEventArgs(item, idx));
                 if (ItemInvokedCommand?.CanExecute(item) == true) ItemInvokedCommand.Execute(item);
                 return;

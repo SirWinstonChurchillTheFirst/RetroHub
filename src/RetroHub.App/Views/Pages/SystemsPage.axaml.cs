@@ -13,7 +13,9 @@ namespace RetroHub.App.Views.Pages;
 /// <summary>
 /// Konsolen (DESIGN 7.4): the wall of spines on one board, the position rail, the "Noch leer" edge. Left/right walk along a
 /// row (boundary feedback at the ends), down reaches the "Noch leer" edge, up goes back to the remembered spine (and
-/// from the wall up into the header). The focused system becomes the page ground; a ticker click turns its front.
+/// from the wall up into the header). The focused system becomes the page ground. The mouse (R2): the first click on a
+/// spine turns its front forward, a click on the open front opens the system; a click or a drag on the rail and the wheel
+/// over the wall or the rail step through the systems.
 /// </summary>
 public partial class SystemsPage : PageBase
 {
@@ -37,6 +39,17 @@ public partial class SystemsPage : PageBase
         SizeChanged += (_, e) => ApplySize(e.NewSize);
         Stack.SizeChanged += (_, _) => PlaceStack();
         Rail.TickClicked += index => Wall.FocusItem(index);
+        // nothing scrolls vertically here: the wheel over the wall or the rail turns the next/previous front forward
+        Wall.AddHandler(PointerWheelChangedEvent, OnWallWheel, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        Rail.PointerWheelChanged += OnWallWheel;
+    }
+
+    private void OnWallWheel(object? sender, Avalonia.Input.PointerWheelEventArgs e)
+    {
+        var d = Math.Abs(e.Delta.X) > Math.Abs(e.Delta.Y) ? -e.Delta.X : -e.Delta.Y;
+        if (Math.Abs(d) < 0.01 || Wall.Items().Count == 0) return;
+        e.Handled = true;
+        Wall.FocusItem(Math.Clamp(Wall.RememberedIndex + (d > 0 ? 1 : -1), 0, Wall.Items().Count - 1));
     }
 
     private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

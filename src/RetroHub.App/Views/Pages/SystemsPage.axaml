@@ -98,7 +98,7 @@
 
       <!-- the systems without games: thin, quiet spines on a low edge, the label hangs at its front -->
       <Panel Name="UnusedShelf" IsVisible="{Binding HasEmptySystems}" Margin="0,32,0,0">
-        <c:Shelf Name="Unused" ItemsSource="{Binding EmptySystems}" ItemTemplate="{StaticResource UnusedSpine}" ItemSpacing="8" TopGap="0"
+        <c:Shelf Name="Unused" WheelScrollsRow="True" ItemsSource="{Binding EmptySystems}" ItemTemplate="{StaticResource UnusedSpine}" ItemSpacing="8" TopGap="0"
                  ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}" Header="{l:T systems.unused}"
                  BoardLook="{Binding Current.Look, FallbackValue={x:Null}}"
                  ItemHeight="148" AnchorX="640" />

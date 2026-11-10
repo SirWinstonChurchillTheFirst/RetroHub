@@ -67,7 +67,7 @@ public class DesignPreviewTests
     private static string[] OnlyTokens => (Environment.GetEnvironmentVariable("RETROHUB_DESIGN_ONLY") ?? "")
         .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen", "importe", "einschalten", "switch"];
+    private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen", "importe", "einschalten", "switch", "maus"];
     private static readonly string[] VariantTokens = ["preview", "nocovers", "demo", "demo1000", "demoall", "empty", "perf"];
 
     /// <summary>Sheets rendered by their own facts ("specimen", "motive"): asked for alone, the page runs are skipped.</summary>
@@ -379,6 +379,8 @@ public class DesignPreviewTests
                 if (!wallOnly && pick != null && Wants("detail", PageTokens)) DetailStates(window, vm, ctx, pick, prefix);
                 // asked for explicitly only: the Switch games (GameTDB covers) in the library and on the detail page
                 if (!wallOnly && OnlyTokens.Contains("switch")) SwitchStates(window, vm, ctx, prefix);
+                // asked for explicitly only: what the mouse sees (R2) – hover, the Winkel plates, the right-click list
+                if (!wallOnly && OnlyTokens.Contains("maus")) MouseStates(window, vm, prefix);
 
                 if (Wants("konsolen", PageTokens)) SystemsStates(window, vm, prefix);
 
@@ -1063,6 +1065,80 @@ public class DesignPreviewTests
     }
 
     /// <summary>The detail/system subject: the last played game, else one with a cover, else the first.</summary>
+    /// <summary>
+    /// The mouse's view (R2), with real headless pointer input: Start with the pointer resting on a shelf box (hover ring,
+    /// the Winkel plates on the board, the stage presenting it after the dwell); the library with a box hovered and its
+    /// right-click list; the sort list; the footer with a hint under the pointer; Konsolen with a rail tick hovered.
+    /// </summary>
+    private static void MouseStates(MainWindow window, MainViewModel vm, string prefix)
+    {
+        Avalonia.Point At(Avalonia.Visual v, double fx = 0.5, double fy = 0.5) =>
+            Avalonia.VisualExtensions.TranslatePoint(v, new Avalonia.Point(v.Bounds.Width * fx, v.Bounds.Height * fy), window) ?? default;
+        vm.Navigator.Navigate(PageKey.Home);
+        TestSupport.Settle(400);
+        var viewport = window.GetVisualDescendants().OfType<Controls.ShelfViewport>().FirstOrDefault();
+        if (viewport != null && viewport.Shelves.Count > 0)
+        {
+            var shelf = viewport.Shelves[viewport.ActiveIndex];
+            var box = shelf.Items().OfType<GameTile>().Skip(2).FirstOrDefault() ?? shelf.Items().FirstOrDefault();
+            if (box != null)
+            {
+                window.MouseMove(At(box));
+                Save(window, prefix + "-8-maus-start.png", 900);
+            }
+        }
+        vm.Navigator.Navigate(PageKey.Library);
+        TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true }, 8000);
+        TestSupport.Settle(400);
+        var tile = window.GetVisualDescendants().OfType<GameTile>().Where(t => t.IsEffectivelyVisible && t.Bounds.Width > 0).Skip(1).FirstOrDefault();
+        if (tile != null)
+        {
+            window.MouseMove(At(tile));
+            Save(window, prefix + "-8b-maus-bibliothek-hover.png", 600);
+            window.MouseDown(At(tile, 0.6, 0.4), Avalonia.Input.MouseButton.Right);
+            window.MouseUp(At(tile, 0.6, 0.4), Avalonia.Input.MouseButton.Right);
+            Save(window, prefix + "-8c-maus-rechtsklick.png", 500);
+            window.Execute(Input.NavAction.Back);
+            TestSupport.Settle(200);
+        }
+        var sort = window.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Name == "SortButton");
+        if (sort != null)
+        {
+            window.MouseMove(At(sort));
+            window.MouseDown(At(sort), Avalonia.Input.MouseButton.Left);
+            window.MouseUp(At(sort), Avalonia.Input.MouseButton.Left);
+            Save(window, prefix + "-8d-maus-sortierung.png", 500);
+            window.Execute(Input.NavAction.Back);
+            TestSupport.Settle(200);
+        }
+        var hint = window.GetVisualDescendants().OfType<Button>().LastOrDefault(b => b.DataContext is HintItem { IsClickable: true } && b.IsEffectivelyVisible);
+        if (hint != null)
+        {
+            window.MouseMove(At(hint));
+            Save(window, prefix + "-8e-maus-fussleiste.png", 400);
+        }
+        vm.Navigator.Navigate(PageKey.Systems);
+        TestSupport.Pump(() => vm.CurrentPage is SystemsViewModel { IsLoaded: true }, 8000);
+        TestSupport.Settle(400);
+        var rail = window.GetVisualDescendants().OfType<Controls.PositionRail>().FirstOrDefault();
+        var unused = window.GetVisualDescendants().OfType<Controls.Shelf>().FirstOrDefault(s => s.Name == "Unused");
+        if (rail != null)
+        {
+            window.MouseMove(At(rail, 0.7, 0.8));
+            Save(window, prefix + "-8f-maus-konsolen-schiene.png", 500);
+        }
+        if (unused is { IsEffectivelyVisible: true })
+        {
+            var spine = unused.Items().Skip(3).FirstOrDefault();
+            if (spine != null)
+            {
+                window.MouseMove(At(spine));
+                Save(window, prefix + "-8g-maus-konsolen-leer.png", 500);
+            }
+        }
+        window.MouseMove(new Avalonia.Point(2, 2));
+    }
+
     /// <summary>The library filtered to Nintendo Switch (a box focused) and the detail page of a Switch game.</summary>
     private static void SwitchStates(MainWindow window, MainViewModel vm, UiContext ctx, string prefix)
     {

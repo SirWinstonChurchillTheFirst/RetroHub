@@ -127,7 +127,10 @@
         <Border Name="HintBar" Grid.Row="2" Background="#FA14120F">
           <Grid ColumnDefinitions="*,Auto" Margin="48,0,40,0">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="0">
-              <TextBlock Text="{Binding LocationParent}" FontSize="16" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />
+              <!-- the section is a way up for the mouse on a drill-in page (Systemseite, Spiel-Detail): a text button with a
+                   1 px underline on hover; on a top-level page it is plain text (nothing to go up to) -->
+              <Button Name="LocationParentButton" Theme="{StaticResource RhCrumbButton}" Content="{Binding LocationParent}"
+                      IsHitTestVisible="{Binding CanGoBack}" Click="OnLocationParentClick" />
               <TextBlock Text="{l:T shell.location.sep}" FontSize="16" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" IsVisible="{Binding HasLocationText}" />
               <TextBlock Name="LocationText" c:Sentence.Text="{Binding LocationText}" FontSize="16" Foreground="{DynamicResource RhText2Brush}" VerticalAlignment="Center"
                          TextTrimming="CharacterEllipsis" MaxWidth="760" />
@@ -135,20 +138,38 @@
             <ItemsControl Grid.Column="1" ItemsSource="{Binding VisibleHints}" VerticalAlignment="Center" IsVisible="{Binding ShowHints}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="28" />
+                  <StackPanel Orientation="Horizontal" Spacing="16" />
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:HintItem">
-                  <StackPanel Orientation="Horizontal" Spacing="10">
-                    <c:ButtonGlyph Action="{Binding Action}" Keyboard="{Binding $parent[Window].((vm:MainViewModel)DataContext).KeyboardGlyphs}" VerticalAlignment="Center" />
-                    <TextBlock Classes="hint" Text="{Binding Label}" />
-                  </StackPanel>
+                  <!-- every hint but "Öffnen/Starten" (that acts on the focused object) is a mouse target: the same action as
+                       its key or button (R2); never focusable, so the controller focus stays where it is -->
+                  <Button Theme="{StaticResource RhHintButton}" IsHitTestVisible="{Binding IsClickable}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <c:ButtonGlyph Action="{Binding Action}" Keyboard="{Binding $parent[Window].((vm:MainViewModel)DataContext).KeyboardGlyphs}"
+                                     Hot="{Binding $parent[Button].IsPointerOver}" VerticalAlignment="Center" />
+                      <TextBlock Classes="hint" Text="{Binding Label}" />
+                    </StackPanel>
+                  </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </Grid>
         </Border>
+
+        <!-- right-click list (R2): hangs at the pointer, the same panel as the detail's "Mehr" (Regal, 1 px line, 1 px light
+             edge on top, 56 px rows); a click beside it, Esc, Zurück or the mouse's back button closes it -->
+        <Panel Name="ContextLayer" Grid.RowSpan="3" IsVisible="False" Background="Transparent">
+          <Border Name="ContextPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Width="320" Background="{DynamicResource RhSurfaceBrush}"
+                  BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="{DynamicResource RhRadiusPanel}" Padding="0,8,0,8"
+                  BoxShadow="{DynamicResource RhPanelShadow}" ClipToBounds="False">
+            <Panel>
+              <Border Height="1" VerticalAlignment="Top" Margin="0,-8,0,0" Background="{DynamicResource RhLightEdgeBrush}" />
+              <StackPanel Name="ContextRows" />
+            </Panel>
+          </Border>
+        </Panel>
       </Grid>
     </LayoutTransformControl>
 
@@ -255,7 +276,8 @@
     <!-- ============ Dialog overlay (scaled like the shell) ============ -->
     <LayoutTransformControl Name="DialogScaleHost" IsVisible="{Binding Dialogs.IsOpen}">
       <Panel Name="DialogOverlay" IsVisible="{Binding Dialogs.IsOpen}">
-        <Border Background="{DynamicResource RhOverlayScrimBrush}" />
+        <!-- a click on the dim cancels (the non-destructive answer), like the other overlays; an arrow, not a hand -->
+        <Border Name="DialogScrim" Background="{DynamicResource RhOverlayScrimBrush}" Cursor="Arrow" />
         <Border Name="DialogPanel" KeyboardNavigation.TabNavigation="Cycle" Background="{DynamicResource RhSurfaceBrush}" BorderBrush="{DynamicResource RhLineBrush}"
                 BorderThickness="1" CornerRadius="{DynamicResource RhRadiusPanel}" Width="640" HorizontalAlignment="Center" VerticalAlignment="Center"
                 Padding="36,32" BoxShadow="{DynamicResource RhPanelShadow}" DataContext="{Binding Dialogs.Current}" x:DataType="vm:DialogViewModel">

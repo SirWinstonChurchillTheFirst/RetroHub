@@ -139,8 +139,10 @@
       </StackPanel>
     </c:ShelfViewport>
     <!-- the shelf that peeks in from below shows only the top of its boxes (bands, codes of covers – never a half
-         title): a short gradient, then the room; a flat-tone overlay, no opacity mask. Its top is set in code. -->
-    <StackPanel Name="ShelfFade" VerticalAlignment="Top" IsHitTestVisible="False">
+         title): a short gradient, then the room; a flat-tone overlay, no opacity mask. Its top is set in code.
+         It takes the pointer (R2): the boxes under it are invisible and must not be clicked; a click or the wheel
+         there brings the next shelf up. -->
+    <StackPanel Name="ShelfFade" VerticalAlignment="Top" Background="Transparent" Cursor="Hand">
       <Border Height="24">
         <Border.Background>
           <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">

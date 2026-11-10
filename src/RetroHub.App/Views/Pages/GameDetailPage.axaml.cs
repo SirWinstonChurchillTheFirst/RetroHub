@@ -76,6 +76,9 @@ public partial class GameDetailPage : PageBase
             _vm?.CloseSheetCommand.Execute(null);
         };
         CoverView.PointerPressed += (_, _) => _vm?.CloseSheetCommand.Execute(null);
+        // a fold open in the page (a choice list, Dateiinfo, Weiterlesen) closes on a click anywhere else; the click
+        // still reaches what it hit (R2)
+        Root.AddHandler(PointerPressedEvent, OnRootPointerPressed, RoutingStrategies.Tunnel);
         ScreensView.PointerPressed += (_, _) => _vm?.CloseSheetCommand.Execute(null);
 
         SizeChanged += (_, e) => ApplyLayout(e.NewSize);
@@ -547,6 +550,25 @@ public partial class GameDetailPage : PageBase
 
     // ===================== overlays =====================
 
+    /// <summary>Set while a click beside an open fold closes it: the focus then goes where the click goes, not back.</summary>
+    private bool _closeByPointer;
+
+    private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_vm?.Sheet is not (DetailSheet.Choice or DetailSheet.FileInfo or DetailSheet.Description) || e.Source is not Visual v) return;
+        var anchor = _vm.Sheet switch
+        {
+            DetailSheet.Choice => ChoiceAnchor(),
+            DetailSheet.FileInfo => FileRow,
+            _ => (Control)ReadMoreButton,
+        };
+        // inside the fold or on its own row: the row toggles, the fold handles its clicks
+        if (IsInChoice(v) || IsInside(v, anchor) || (_vm.Sheet == DetailSheet.Description && IsInside(v, DescriptionHost))) return;
+        _closeByPointer = true;
+        try { _vm.CloseSheetCommand.Execute(null); }
+        finally { _closeByPointer = false; }
+    }
+
     private void ApplySheet()
     {
         var sheet = _vm?.Sheet ?? DetailSheet.None;
@@ -576,6 +598,7 @@ public partial class GameDetailPage : PageBase
         {
             var back = _sheetOpener;
             _sheetOpener = null;
+            if (_closeByPointer) return;
             if (back is { IsEffectivelyVisible: true }) Dispatcher.UIThread.Post(() => FocusVisible(back), DispatcherPriority.Loaded);
             else if (IsEffectivelyVisible) Dispatcher.UIThread.Post(() => FocusDefault(), DispatcherPriority.Loaded);
             return;

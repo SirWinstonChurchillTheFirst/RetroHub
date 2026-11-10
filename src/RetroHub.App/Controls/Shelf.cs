@@ -43,6 +43,8 @@ public class Shelf : TemplatedControl
     public static readonly StyledProperty<double> TopGapProperty = AvaloniaProperty.Register<Shelf, double>(nameof(TopGap), 40);
     /// <summary>Where the focused box's left edge stands, measured from the board's first box (DESIGN 7.1: x 240 − margin 96).</summary>
     public static readonly StyledProperty<double> AnchorXProperty = AvaloniaProperty.Register<Shelf, double>(nameof(AnchorX), 144);
+    /// <summary>The plain (vertical) mouse wheel scrolls this row sideways (a row with nothing to scroll vertically).</summary>
+    public static readonly StyledProperty<bool> WheelScrollsRowProperty = AvaloniaProperty.Register<Shelf, bool>(nameof(WheelScrollsRow));
     /// <summary>The board stands in front of this system's wall (Konsolen): its front takes the wall's tone (ShelfBoard.WallLook).</summary>
     public static readonly StyledProperty<SystemLook?> BoardLookProperty = AvaloniaProperty.Register<Shelf, SystemLook?>(nameof(BoardLook));
 
@@ -67,6 +69,7 @@ public class Shelf : TemplatedControl
     public double TopGap { get => GetValue(TopGapProperty); set => SetValue(TopGapProperty, value); }
     public double AnchorX { get => GetValue(AnchorXProperty); set => SetValue(AnchorXProperty, value); }
     public SystemLook? BoardLook { get => GetValue(BoardLookProperty); set => SetValue(BoardLookProperty, value); }
+    public bool WheelScrollsRow { get => GetValue(WheelScrollsRowProperty); set => SetValue(WheelScrollsRowProperty, value); }
 
     /// <summary>The focus visuals of this shelf (null until the template is applied).</summary>
     public FocusLayer? FocusVisuals { get; private set; }
@@ -77,8 +80,14 @@ public class Shelf : TemplatedControl
     /// <summary>Raised when an item of this shelf got the focus: (shelf, item control, index, count).</summary>
     public event Action<Shelf, Control, int, int>? ItemFocused;
 
+    /// <summary>Raised when the mouse pointer came onto an item of this shelf: (shelf, item control, index, count).</summary>
+    public event Action<Shelf, Control, int, int>? ItemHovered;
+
+    private Control? _hovered;
+
     private ShelfTrack? _track;
     private Panel? _row;
+    private ShelfEdge? _edgeLeft, _edgeRight;
     private readonly TranslateTransform _offset = new();
     private double _target;
 
@@ -97,6 +106,14 @@ public class Shelf : TemplatedControl
         if (_row != null) _row.LayoutUpdated += (_, _) => contacts.InvalidateVisual();
         _track.Children.Add(FocusVisuals.Front);
         _track.AddHandler(GotFocusEvent, OnItemGotFocus, RoutingStrategies.Bubble, handledEventsToo: true);
+        _track.AddHandler(PointerPressedEvent, OnTrackPointerPressed, RoutingStrategies.Tunnel);
+        _track.AddHandler(PointerMovedEvent, OnTrackPointerMoved, RoutingStrategies.Bubble, handledEventsToo: true);
+        _edgeLeft = e.NameScope.Find<ShelfEdge>("PART_EdgeLeft");
+        _edgeRight = e.NameScope.Find<ShelfEdge>("PART_EdgeRight");
+        if (_edgeLeft != null) _edgeLeft.Clicked += () => PageBy(-1);
+        if (_edgeRight != null) _edgeRight.Clicked += () => PageBy(+1);
+        if (_row != null) _row.SizeChanged += (_, _) => UpdateEdges();
+        UpdateEdges();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -125,8 +142,104 @@ public class Shelf : TemplatedControl
             if (items[i] == v || v.FindAncestorOfType<Button>(includeSelf: true) == items[i]) { index = i; break; }
         if (index < 0) return;
         RememberedIndex = index;
-        Anchor(items, index);
+        // a mouse press focuses on PRESS: gliding now would carry the box away under the pointer and the release would
+        // miss it (no click). The row stays where it is; the next key/controller move anchors it.
+        if (e.NavigationMethod != NavigationMethod.Pointer) Anchor(items, index);
         ItemFocused?.Invoke(this, items[index], index, items.Count);
+    }
+
+    /// <summary>
+    /// A press on a closed system spine turns its front forward first (directional focus, the row glides to the anchor)
+    /// instead of starting a click: closing the open front would move the pressed spine away. The open front then
+    /// opens its page on the next click.
+    /// </summary>
+    private void OnTrackPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if ((e.Source as Visual)?.FindAncestorOfType<SystemSpine>(includeSelf: true) is not { Opens: true, IsOpen: false } spine) return;
+        var items = Items();
+        var index = IndexOf(items, spine);
+        if (index < 0) return;
+        e.Handled = true;
+        FocusItem(index);
+    }
+
+    private void OnTrackPointerMoved(object? sender, PointerEventArgs e)
+    {
+        var items = Items();
+        var index = e.Source is Control c ? IndexOf(items, c) : -1;
+        var item = index >= 0 ? items[index] : null;
+        if (item == _hovered) return;
+        _hovered = item;
+        if (item != null) ItemHovered?.Invoke(this, item, index, items.Count);
+    }
+
+    // ===== mouse: the wheel and the two "Winkel" plates at the board's right end move the row sideways =====
+
+    /// <summary>Total width of the row and the visible width (current item widths).</summary>
+    private (double Total, double View) RowExtent()
+    {
+        var items = Items();
+        double total = 0;
+        for (var i = 0; i < items.Count; i++) total += TargetWidth(items[i], false) + (i < items.Count - 1 ? ItemSpacing : 0);
+        return (total, Bounds.Width - ItemsMargin.Left - ItemsMargin.Right);
+    }
+
+    /// <summary>Moves the row by <paramref name="dx"/> px (negative = towards its end), clamped. False when it cannot move.</summary>
+    public bool ScrollRow(double dx)
+    {
+        var (total, view) = RowExtent();
+        var min = Math.Min(0, view - total);
+        var to = Math.Round(Math.Clamp(_target + dx, min, 0));
+        if (Math.Abs(to - _target) < 0.5) return false;
+        SetOffset(to, animate: true);
+        return true;
+    }
+
+    /// <summary>One view width (less one box) towards the end (+1) or the start (−1).</summary>
+    public bool PageBy(int direction)
+    {
+        var (_, view) = RowExtent();
+        return ScrollRow(-direction * Math.Max(ItemHeight, view - ItemHeight));
+    }
+
+    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
+    {
+        base.OnPointerWheelChanged(e);
+        if (e.Handled) return;
+        var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        var d = Math.Abs(e.Delta.X) > Math.Abs(e.Delta.Y) ? e.Delta.X : shift || WheelScrollsRow ? e.Delta.Y : 0;
+        if (Math.Abs(d) < 0.01) return; // plain vertical wheel: the shelf viewport switches shelves
+        var items = Items();
+        var step = items.Count == 0 ? ItemHeight : 2 * items.Average(i => TargetWidth(i, false));
+        ScrollRow(Math.Sign(d) * step);
+        e.Handled = true;
+    }
+
+    protected override void OnPointerEntered(PointerEventArgs e)
+    {
+        base.OnPointerEntered(e);
+        UpdateEdges();
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        _hovered = null;
+        UpdateEdges();
+    }
+
+    /// <summary>The plates show while the pointer is over an overflowing shelf; each is live only towards hidden boxes.</summary>
+    private void UpdateEdges()
+    {
+        if (_edgeLeft == null || _edgeRight == null) return;
+        var (total, view) = RowExtent();
+        var overflow = total > view + 1;
+        var show = overflow && IsPointerOver;
+        _edgeLeft.Show(show);
+        _edgeRight.Show(show);
+        _edgeLeft.IsLive = _target < -0.5;
+        _edgeRight.IsLive = _target > view - total + 0.5;
     }
 
     /// <summary>Focuses item <paramref name="index"/> (clamped) with visible (directional) focus. False when the shelf is empty.</summary>
@@ -194,6 +307,7 @@ public class Shelf : TemplatedControl
         _offset.Transitions = d == TimeSpan.Zero ? null :
             [new DoubleTransition { Property = TranslateTransform.XProperty, Duration = d, Easing = repeat ? new LinearEasing() : new CubicEaseOut() }];
         _offset.X = x;
+        UpdateEdges();
     }
 
     /// <summary>The row's current target offset (tests).</summary>
@@ -275,6 +389,9 @@ public sealed class ShelfViewport : Decorator
     public ShelfViewport()
     {
         AddHandler(GotFocusEvent, OnGotFocus, RoutingStrategies.Bubble, handledEventsToo: true);
+        // after the click (the button raised it on release, bubbling before this): now the stack may glide
+        AddHandler(PointerReleasedEvent, (_, _) => ApplyPointerActivation(), RoutingStrategies.Bubble, handledEventsToo: true);
+        AddHandler(PointerCaptureLostEvent, (_, _) => ApplyPointerActivation(), RoutingStrategies.Bubble, handledEventsToo: true);
         Background = Brushes.Transparent; // wheel input over the gaps
     }
 
@@ -316,11 +433,25 @@ public sealed class ShelfViewport : Decorator
         if (Background != null) context.FillRectangle(Background, new Rect(Bounds.Size));
     }
 
+    private int _pointerActive = -1;
+
     private void OnGotFocus(object? sender, FocusChangedEventArgs e)
     {
         if ((e.Source as Visual)?.FindAncestorOfType<Shelf>() is not { } shelf) return;
         var index = IndexOf(shelf);
-        if (index >= 0) SetActive(index);
+        if (index < 0) return;
+        // a mouse press on a box of another shelf (the one peeking in): the stack glides only after the release,
+        // otherwise the box would move away under the pointer and the click would be lost
+        if (e.NavigationMethod == NavigationMethod.Pointer && index != _active) { _pointerActive = index; return; }
+        SetActive(index);
+    }
+
+    private void ApplyPointerActivation()
+    {
+        if (_pointerActive < 0) return;
+        var index = _pointerActive;
+        _pointerActive = -1;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => SetActive(index));
     }
 
     private int IndexOf(Shelf shelf)

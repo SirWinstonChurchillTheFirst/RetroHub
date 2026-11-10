@@ -5,7 +5,14 @@ using RetroHub.App.Localization;
 namespace RetroHub.App.ViewModels;
 
 /// <summary>One controller hint in the bottom bar ("A Starten").</summary>
-public sealed record HintItem(NavAction Action, string Label);
+public sealed record HintItem(NavAction Action, string Label)
+{
+    /// <summary>
+    /// The footer hint is a mouse target that runs its action (R2). Not for Accept: "Öffnen"/"Starten" acts on the
+    /// focused object, which a mouse user clicks directly.
+    /// </summary>
+    public bool IsClickable => Action != NavAction.Accept;
+}
 
 /// <summary>Base class of all page view models.</summary>
 public abstract partial class PageViewModel(UiContext ctx) : ObservableObject

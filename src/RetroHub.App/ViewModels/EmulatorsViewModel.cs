@@ -266,7 +266,7 @@ public sealed partial class EmulatorsViewModel : PageViewModel
         Location = system1?.Name;
         var ready = rows.Count(r => r.Ready);
         // the "Gerätefach" of the side column (QA 2): one segment per system in its colour, lit when it can start
-        Segments = rows.Select(r => new ReadySegment(r.Code, r.Ready ? r.Look!.ColorBrush : r.Look!.WallHiBrush, r.Ready)).ToList();
+        Segments = rows.Select(r => new ReadySegment(r.Code, r.Ready ? r.Look!.ColorBrush : r.Look!.WallHiBrush, r.Ready, r)).ToList();
         ReadyText = Loc.T("emulators.readyCount", ready, rows.Count);
         NoneInstalled = ready == 0 && rows.Count > 0;
         Quiet = bare >= QuietFrom;
@@ -335,6 +335,17 @@ public sealed partial class EmulatorsViewModel : PageViewModel
         if (row != null) row.IsOpen = !row.IsOpen;
     }
 
+    /// <summary>A segment of the Gerätefach clicked: that system's row opens (the page brings it into view).</summary>
+    public event Action<EmulatorRowViewModel>? SegmentOpened;
+
+    [RelayCommand]
+    private void OpenSegment(ReadySegment? segment)
+    {
+        if (segment?.Row is not { } row || !Rows.Contains(row)) return;
+        row.IsOpen = true;
+        SegmentOpened?.Invoke(row);
+    }
+
     [RelayCommand]
     private void ShowAll()
     {
@@ -376,4 +387,4 @@ public sealed partial class EmulatorsViewModel : PageViewModel
 }
 
 /// <summary>A segment of the Gerätefach: a system's colour when it can start, its Wand hell when it cannot.</summary>
-public sealed record ReadySegment(string Code, Avalonia.Media.IBrush Brush, bool Ready);
+public sealed record ReadySegment(string Code, Avalonia.Media.IBrush Brush, bool Ready, EmulatorRowViewModel? Row = null);

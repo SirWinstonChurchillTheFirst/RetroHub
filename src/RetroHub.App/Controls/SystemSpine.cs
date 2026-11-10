@@ -276,7 +276,10 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         UpdateState();
     }
 
-    /// <summary>Keyboard/controller focus opens the front (a mouse click navigates right away; hover shows the ring at 40 %).</summary>
+    /// <summary>
+    /// Keyboard/controller focus opens the front; hover shows the ring at 40 %. The mouse: the first click on a closed spine
+    /// turns its front forward (Shelf), the click on the open front opens the system's page.
+    /// </summary>
     private void UpdateState()
     {
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>

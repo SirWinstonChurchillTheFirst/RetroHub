@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -137,7 +138,17 @@ public sealed class FlightLayer : Canvas
             Finish();
             return;
         }
+        // while the screen goes dark the page below is already back: a stray click must not hit an invisible control
+        // (R2) – the layer takes the pointer until the switch-off is done (HideParts gives it back)
+        Background = Brushes.Transparent;
+        IsHitTestVisible = true;
         Start();
+    }
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        if (IsHitTestVisible) e.Handled = true;
     }
 
     /// <summary>The launch ended before the start surface was needed (failed start): everything goes, the box comes back.</summary>
@@ -261,6 +272,8 @@ public sealed class FlightLayer : Canvas
 
     private void HideParts()
     {
+        IsHitTestVisible = false;
+        Background = null;
         _copy.IsVisible = _line.IsVisible = _edgeTop.IsVisible = _edgeBottom.IsVisible = _flash.IsVisible = _off.IsVisible = _tube.IsVisible = false;
     }
 

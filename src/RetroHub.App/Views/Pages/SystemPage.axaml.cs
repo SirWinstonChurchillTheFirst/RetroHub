@@ -54,12 +54,23 @@ public partial class SystemPage : PageBase
         BannerBoard.Casters = [BannerMotif];
         // the grid does not scroll to focused elements by itself (it snaps rows): the footer's button asks for its place,
         // with the footer and its fade below it (they lie over the page's last ≈ 96 px)
-        ImportsButton.GotFocus += (_, _) => ImportsButton.BringIntoView(new Rect(0, 0, ImportsButton.Bounds.Width, ImportsButton.Bounds.Height + 96));
-        InfoButton.GotFocus += (_, _) => Banner.BringIntoView();
+        // keyboard/controller only: on a mouse press the scroll would move the button away and the click would be lost
+        ImportsButton.GotFocus += (_, e) =>
+        {
+            if (e.NavigationMethod != NavigationMethod.Pointer) ImportsButton.BringIntoView(new Rect(0, 0, ImportsButton.Bounds.Width, ImportsButton.Bounds.Height + 96));
+        };
+        InfoButton.GotFocus += (_, e) => { if (e.NavigationMethod != NavigationMethod.Pointer) Banner.BringIntoView(); };
         SizeChanged += (_, e) => ApplySize(e.NewSize);
         BannerSentence.SizeChanged += (_, _) => FitTitle();
         StatusRow.SizeChanged += (_, _) => FitTitle();
         Covers.Scrolled += UpdateCompactHeader;
+        // the compact header's name: back up to the banner
+        CompactName.PointerPressed += (_, e) =>
+        {
+            if (!e.GetCurrentPoint(CompactName).Properties.IsLeftButtonPressed) return;
+            e.Handled = true;
+            Covers.ScrollViewer.Offset = default;
+        };
         InfoScrim.PointerPressed += (_, e) =>
         {
             e.Handled = true;

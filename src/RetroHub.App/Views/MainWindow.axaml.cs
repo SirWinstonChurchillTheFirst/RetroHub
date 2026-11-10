@@ -18,6 +18,9 @@ using RetroHub.Core.Logging;
 
 namespace RetroHub.App.Views;
 
+/// <summary>One row of the right-click list: icon resource key, label, action; <paramref name="Lit"/> = filled in the favourite colour.</summary>
+internal sealed record ContextEntry(string Icon, string Label, Action Run, bool Lit = false);
+
 /// <summary>Implemented by page views: where the focus goes when the page is shown (keyboard/controller).</summary>
 public interface IPageView
 {
@@ -63,6 +66,25 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, (_, e) => _repeat.OnKeyUp(e.Key), RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerPressedEvent, (_, _) => _pointerMode = true, RoutingStrategies.Tunnel, handledEventsToo: true);
+        // the mouse's back button is Back everywhere (dialogs, a page's open fold or sheet, the back stack) – not while a
+        // game runs inside RetroHub (the emulator keeps its buttons)
+        AddHandler(PointerPressedEvent, OnMouseBackButton, RoutingStrategies.Tunnel, handledEventsToo: true);
+        // footer hints are mouse targets (R2): the same action as their key/button
+        HintBar.AddHandler(Button.ClickEvent, OnHintClick, RoutingStrategies.Bubble);
+        // the right-click list: a click beside it closes it (and does nothing else); a page change closes it too
+        ContextLayer.PointerPressed += (_, e) =>
+        {
+            if (e.Source != ContextLayer) return;
+            e.Handled = true;
+            HideContext(restoreFocus: true);
+        };
+        vm.PageShown += (_, _) => HideContext(restoreFocus: false);
+        DialogScrim.PointerPressed += (_, e) =>
+        {
+            if (!e.GetCurrentPoint(DialogScrim).Properties.IsLeftButtonPressed) return;
+            e.Handled = true;
+            _vm.Dialogs.Current?.Cancel();
+        };
         // scroll bars show only while scrolling (Styles.axaml: ScrollViewer.scrolling)
         AddHandler(ScrollViewer.ScrollChangedEvent, OnAnyScroll, RoutingStrategies.Bubble, handledEventsToo: true);
         SizeChanged += (_, e) =>
@@ -622,6 +644,106 @@ public partial class MainWindow : Window
         if (Execute(action.Value)) e.Handled = true;
     }
 
+    // ================= right-click list (R2) =================
+
+    private Control? _contextReturn;
+
+    /// <summary>True while the right-click list is open.</summary>
+    internal bool IsContextOpen => ContextLayer.IsVisible;
+
+    /// <summary>
+    /// Opens the right-click list at <paramref name="at"/> (a point in <paramref name="anchor"/>), kept inside the shell. The
+    /// first row takes the focus (visible, so the controller and the keyboard can use the list too).
+    /// </summary>
+    internal void ShowContext(Control anchor, Point at, IReadOnlyList<ContextEntry> entries, int focusIndex = 0)
+    {
+        if (entries.Count == 0) return;
+        _contextReturn = FocusManager?.GetFocusedElement() as Control;
+        ContextRows.Children.Clear();
+        foreach (var entry in entries)
+        {
+            var icon = new RhIcon { Width = 22, Height = 22, Filled = entry.Lit };
+            if (this.TryFindResource(entry.Icon, out var geo) && geo is Geometry g) icon.Data = g;
+            if (entry.Lit && this.TryFindResource("RhFavoriteBrush", out var lit) && lit is IBrush b) icon.Foreground = b;
+            var row = new Button
+            {
+                Content = new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    Spacing = 14,
+                    Children = { icon, new TextBlock { Text = entry.Label, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center } },
+                },
+            };
+            if (this.TryFindResource("RhSheetRow", out var theme) && theme is Avalonia.Styling.ControlTheme ct) row.Theme = ct;
+            var run = entry.Run;
+            row.Click += (_, e) =>
+            {
+                e.Handled = true;
+                HideContext(restoreFocus: true);
+                try { run(); } catch (Exception ex) { Log.Error("Context action failed", ex); }
+            };
+            ContextRows.Children.Add(row);
+        }
+        ContextLayer.IsVisible = true;
+        var p = anchor.TranslatePoint(at, Shell) ?? new Point(Shell.Bounds.Width / 2, Shell.Bounds.Height / 2);
+        ContextPanel.Measure(Size.Infinity);
+        var size = ContextPanel.DesiredSize;
+        var x = Math.Clamp(p.X, 8, Math.Max(8, Shell.Bounds.Width - size.Width - 8));
+        var y = Math.Clamp(p.Y, 8, Math.Max(8, Shell.Bounds.Height - 56 - size.Height - 8));
+        ContextPanel.Margin = new Thickness(Math.Round(x), Math.Round(y), 0, 0);
+        var first = Math.Clamp(focusIndex, 0, ContextRows.Children.Count - 1);
+        Dispatcher.UIThread.Post(() => (ContextRows.Children.ElementAtOrDefault(first) as Control)?.Focus(NavigationMethod.Directional), DispatcherPriority.Loaded);
+    }
+
+    internal void HideContext(bool restoreFocus)
+    {
+        if (!ContextLayer.IsVisible) return;
+        ContextLayer.IsVisible = false;
+        ContextRows.Children.Clear();
+        var back = _contextReturn;
+        _contextReturn = null;
+        if (restoreFocus && back is { IsEffectivelyVisible: true }) back.Focus(_pointerMode ? NavigationMethod.Pointer : NavigationMethod.Directional);
+    }
+
+    private void OnMouseBackButton(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.PointerUpdateKind != PointerUpdateKind.XButton1Pressed) return;
+        _pointerMode = true;
+        e.Handled = true;
+        MouseBack();
+    }
+
+    /// <summary>
+    /// Back for the mouse (back button, footer hint "Zurück"): the dialog cancels, a page's own fold/sheet/overlay closes,
+    /// else one step back in the history. Unlike the controller's Back it never moves the focus into the header.
+    /// </summary>
+    internal void MouseBack()
+    {
+        if (_vm.Launch.IsActive) return;
+        if (_vm.Dialogs.Current is { } dialog) { dialog.Cancel(); return; }
+        if (IsContextOpen) { HideContext(restoreFocus: true); return; }
+        if (_vm.CurrentPage?.HandleAction(NavAction.Back) == true) return;
+        if (_vm.Navigator.GoBack()) return;
+        // a top-level page without history: back to Start (the controller's Back would go to the header)
+        if (_vm.Navigator.Current != PageKey.Home) _vm.Navigator.Navigate(PageKey.Home);
+    }
+
+    private void OnHintClick(object? sender, RoutedEventArgs e)
+    {
+        if (e.Source is not Button { DataContext: HintItem { IsClickable: true } hint }) return;
+        e.Handled = true;
+        _pointerMode = true;
+        if (hint.Action == NavAction.Back) MouseBack();
+        else Execute(hint.Action);
+    }
+
+    private void OnLocationParentClick(object? sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        _pointerMode = true;
+        _vm.GoToSection();
+    }
+
     /// <summary>Executes a UI action (keyboard or controller). Returns true when it was consumed.</summary>
     public bool Execute(NavAction action)
     {
@@ -648,6 +770,22 @@ public partial class MainWindow : Window
                 case NavAction.Left or NavAction.Right or NavAction.Up or NavAction.Down:
                     if (focused is not Visual v || !IsInside(v, DialogPanel)) { FocusDialog(); return true; }
                     fm?.FindNextElement(ToDirection(action), new FindNextElementOptions { SearchRoot = DialogPanel })?.Focus(NavigationMethod.Directional);
+                    return true;
+                default: return true;
+            }
+        }
+        // the right-click list is modal while open: up/down inside it, Accept runs a row, Back closes it
+        if (IsContextOpen)
+        {
+            switch (action)
+            {
+                case NavAction.Back: HideContext(restoreFocus: true); return true;
+                case NavAction.Accept: return Invoke(focused);
+                case NavAction.Up or NavAction.Down:
+                    var rows = ContextRows.Children.OfType<Control>().ToList();
+                    var at = rows.IndexOf(focused as Control ?? null!);
+                    var next = at < 0 ? 0 : Math.Clamp(at + (action == NavAction.Down ? 1 : -1), 0, rows.Count - 1);
+                    if (rows.Count > 0) rows[next].Focus(NavigationMethod.Directional);
                     return true;
                 default: return true;
             }

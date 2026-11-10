@@ -190,7 +190,7 @@ public sealed partial class ImportsViewModel : PageViewModel
         {
             var folders = Ctx.Services.Games.Folders();
             Folders = folders.OrderByDescending(f => f.IsBuiltIn).ThenBy(f => f.Path, StringComparer.OrdinalIgnoreCase)
-                .Select(f => new FolderItemViewModel(f, Ctx.Services, SetFolderEnabled, item => MenuFolder = item)).ToList();
+                .Select(f => new FolderItemViewModel(f, Ctx.Services, SetFolderEnabled, ToggleMenu)).ToList();
             var last = folders.Where(f => f.Enabled).Max(f => f.LastScanUtc);
             var now = DateTime.UtcNow;
             LastScanText = last is not { } at ? Loc.T("imports.never")
@@ -503,6 +503,9 @@ public sealed partial class ImportsViewModel : PageViewModel
     }
 
     [RelayCommand] private void CloseMenu() => MenuFolder = null;
+
+    /// <summary>A folder row's "Mehr": opens its list; the same row again (a second click) closes it.</summary>
+    private void ToggleMenu(FolderItemViewModel item) => MenuFolder = ReferenceEquals(MenuFolder, item) ? null : item;
 
     [RelayCommand] private void ToggleIssues() => IssuesOpen = !IssuesOpen;
 

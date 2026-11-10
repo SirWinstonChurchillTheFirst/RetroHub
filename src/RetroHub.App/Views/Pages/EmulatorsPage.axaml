@@ -297,7 +297,11 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ReadySegment">
-            <Border Width="24" Height="10" Background="{Binding Brush}" ToolTip.Tip="{Binding Code}" />
+            <!-- a click opens that system's row in the list (R2) -->
+            <Button Theme="{StaticResource RhTickerItem}" Classes="segment" Width="24" Height="10" Focusable="False" ToolTip.Tip="{Binding Code}"
+                    Command="{Binding $parent[ItemsControl].((vm:EmulatorsViewModel)DataContext).OpenSegmentCommand}" CommandParameter="{Binding}">
+              <Border Width="24" Height="10" Background="{Binding Brush}" />
+            </Button>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

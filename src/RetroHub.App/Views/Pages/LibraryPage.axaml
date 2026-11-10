@@ -205,7 +205,7 @@
 
     <!-- ===== list (44 %) + preview (56 %) ===== -->
     <Grid Name="ListView" Grid.Row="2" ColumnDefinitions="44*,56*" IsVisible="{Binding IsListView}">
-      <c:CoverGrid Name="Rows" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource ListRow}" ShowBoard="False"
+      <c:CoverGrid Name="Rows" ClickSelectsFirst="True" ItemsSource="{Binding Items}" ItemTemplate="{StaticResource ListRow}" ShowBoard="False"
                    ItemWidth="4000" MaxStretch="1" Spacing="0" RowSpacing="0" CoverAspect="0" CaptionHeight="64"
                    ContentPadding="{DynamicResource RhListInset}" />
       <!-- the preview: the box on a shelf edge, the title, the sentence, Spielen and Details. No TV light. -->

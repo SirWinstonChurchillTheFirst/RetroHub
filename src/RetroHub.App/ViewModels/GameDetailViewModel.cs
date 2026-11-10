@@ -547,6 +547,8 @@ public sealed partial class GameDetailViewModel : PageViewModel
     private void ShowEmulatorChoice()
     {
         if (Emulators.Count == 0) return;
+        // the row again (a second click): the list closes
+        if (Sheet == DetailSheet.Choice && Choice == DetailChoice.Emulator) { Sheet = DetailSheet.None; return; }
         Choice = DetailChoice.Emulator;
         ChoiceItems = Emulators.Select(e => new PickOption(e, e.Label, e.Status, ReferenceEquals(e, SelectedEmulator))).ToList();
         Sheet = DetailSheet.Choice;
@@ -557,6 +559,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
     private void ShowModeChoice()
     {
         if (Modes.Count == 0) return;
+        if (Sheet == DetailSheet.Choice && Choice == DetailChoice.Mode) { Sheet = DetailSheet.None; return; }
         Choice = DetailChoice.Mode;
         ChoiceItems = Modes.Select(m => new PickOption(m, m.Label, null, ReferenceEquals(m, SelectedMode))).ToList();
         Sheet = DetailSheet.Choice;

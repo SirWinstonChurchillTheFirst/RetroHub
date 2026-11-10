@@ -14,12 +14,13 @@ namespace RetroHub.App.Views.Pages;
 
 /// <summary>
 /// Importe (DESIGN 7.6): left/right on a folder row switch it ◀ Aktiv ▶ / ◀ Pausiert ▶; confirm opens its "Mehr" list,
-/// which hangs under the row and keeps the focus until it closes (Zurück, a choice, a click on the dim).
+/// which hangs under the row and keeps the focus until it closes (Zurück, a choice, the row again, a click beside it).
 /// </summary>
 public partial class ImportsPage : PageBase
 {
     private ImportsViewModel? _vm;
     private Control? _menuOpener;
+    private bool _closeByPointer;
 
     public ImportsPage()
     {
@@ -32,7 +33,22 @@ public partial class ImportsPage : PageBase
             _vm.PickFolder = PickFolderAsync;
             _vm.PropertyChanged += OnVmChanged;
         };
-        AddHandler(GotFocusEvent, (_, e) => { if (_vm?.IsMenuOpen != true) EmulatorsPage.KeepClear(e.Source as Control); }, RoutingStrategies.Bubble);
+        // not for a mouse press (the row would scroll away under the pointer, the click would be lost)
+        AddHandler(GotFocusEvent, (_, e) =>
+        {
+            if (_vm?.IsMenuOpen != true && e.NavigationMethod != NavigationMethod.Pointer) EmulatorsPage.KeepClear(e.Source as Control);
+        }, RoutingStrategies.Bubble);
+        // a click beside the open list closes it; the click still reaches what it hit (R2)
+        AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            if (_vm?.IsMenuOpen != true || e.Source is not Visual v) return;
+            var (row, buttons) = OpenMenu();
+            var fold = row?.GetVisualParent()?.GetVisualChildren().OfType<FoldPanel>().FirstOrDefault();
+            if ((row != null && (row == v || row.IsVisualAncestorOf(v))) || (fold != null && (fold == v || fold.IsVisualAncestorOf(v)))) return;
+            _closeByPointer = true; // the focus goes where the click goes
+            try { _vm.CloseMenuCommand.Execute(null); }
+            finally { _closeByPointer = false; }
+        }, RoutingStrategies.Tunnel);
     }
 
     /// <summary>The owner row of the open list and the list's buttons (the fold right under the row).</summary>
@@ -59,6 +75,7 @@ public partial class ImportsPage : PageBase
         {
             var back = _menuOpener;
             _menuOpener = null;
+            if (_closeByPointer) return;
             Dispatcher.UIThread.Post(() =>
             {
                 if (back is { IsEffectivelyVisible: true }) FocusVisible(back);

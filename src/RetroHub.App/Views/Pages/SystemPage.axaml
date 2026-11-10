@@ -132,9 +132,32 @@
       <Border Name="CompactWall" Height="64" VerticalAlignment="Top" Background="{Binding System.WallBrush, FallbackValue={x:Null}}" />
       <Border Name="CompactFade" Height="12" VerticalAlignment="Top" Margin="0,64,0,0" />
       <Border Height="4" VerticalAlignment="Top" Background="{Binding System.AccentBrush, FallbackValue={x:Null}}" />
-      <TextBlock Name="CompactName" Classes="poster" FontSize="28" LineHeight="32" LetterSpacing="-0.28" Margin="96,18,300,0"
-                 VerticalAlignment="Top" TextTrimming="CharacterEllipsis" MaxLines="1"
+      <!-- the name scrolls back up to the banner on a click (R2) -->
+      <TextBlock Name="CompactName" Classes="poster" FontSize="28" LineHeight="32" LetterSpacing="-0.28" Margin="96,18,640,0"
+                 VerticalAlignment="Top" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis" MaxLines="1" Cursor="Hand" Background="Transparent"
                  Text="{Binding System.Name, FallbackValue={x:Null}}" />
+      <!-- the mouse keeps the banner's actions while it is scrolled out (R2): the neighbours and the Systeminfo, quiet
+           text buttons on the wall; never focusable (the controller has the shoulders and the banner) -->
+      <StackPanel Name="CompactActions" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,184,0">
+        <Button Name="CompactPrev" Theme="{StaticResource RhGhostButton}" Classes="wall-text" MinHeight="36" Focusable="False"
+                Command="{Binding PreviousSystemCommand}" IsVisible="{Binding HasNeighbours}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:RhIcon Data="{StaticResource Icon.ChevronLeft}" Width="16" Height="16" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Previous.ShortName, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Name="CompactNext" Theme="{StaticResource RhGhostButton}" Classes="wall-text" MinHeight="36" Focusable="False"
+                Command="{Binding NextSystemCommand}" IsVisible="{Binding HasNeighbours}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="{Binding Next.ShortName, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+            <c:RhIcon Data="{StaticResource Icon.ChevronRight}" Width="16" Height="16" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Name="CompactInfo" Theme="{StaticResource RhGhostButton}" Classes="wall-text" Width="36" Height="36" MinHeight="36" Padding="0" Focusable="False"
+                Command="{Binding ShowInfoCommand}" ToolTip.Tip="{l:T system.info}">
+          <c:RhIcon Data="{StaticResource Icon.Info}" Width="20" Height="20" />
+        </Button>
+      </StackPanel>
       <c:MotifView Name="CompactMotif" Width="44" Height="44" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,120,0"
                    SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#948A7A}" />
       <c:ShelfBoard Name="CompactBoard" Height="6" Width="76" HorizontalAlignment="Right" Margin="0,58,104,0"

@@ -102,6 +102,12 @@ public class ServiceRow : Button
         e.Handled = true;
         Focus(NavigationMethod.Pointer);
         Step(direction);
+        // the press shows on the arrow itself (R2): accent fill and pressed in for 90 ms
+        if ((direction < 0 ? _previous : _next) is { } arrow)
+        {
+            arrow.Classes.Add("pressed");
+            Avalonia.Threading.DispatcherTimer.RunOnce(() => arrow.Classes.Remove("pressed"), TimeSpan.FromMilliseconds(90));
+        }
     }
 
     /// <summary>The end of an ordered row: a short push against it (DESIGN 8.4 Grenz-Feedback), as on the shelves.</summary>

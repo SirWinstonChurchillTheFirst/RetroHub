@@ -44,7 +44,24 @@ public partial class HomePage : PageBase
         FavoriteButton.Click += (_, _) => _vm?.StageFavoriteCommand.Execute(null);
         ImportsButton.Click += (_, _) => _vm?.ShowImportsCommand.Execute(null);
 
-        foreach (var shelf in ShelfList.Children.OfType<Shelf>()) shelf.ItemFocused += OnShelfItemFocused;
+        foreach (var shelf in ShelfList.Children.OfType<Shelf>())
+        {
+            shelf.ItemFocused += OnShelfItemFocused;
+            shelf.ItemHovered += OnShelfItemHovered;
+        }
+        // the dark area below the active shelf hides the next shelf: a click there brings it up, the wheel works on
+        ShelfFade.PointerPressed += (_, e) =>
+        {
+            if (!e.GetCurrentPoint(ShelfFade).Properties.IsLeftButtonPressed) return;
+            e.Handled = true;
+            Shelves.SetActive(Shelves.ActiveIndex + 1);
+        };
+        ShelfFade.PointerWheelChanged += (_, e) =>
+        {
+            if (Math.Abs(e.Delta.Y) < 0.01) return;
+            Shelves.SetActive(Shelves.ActiveIndex + (e.Delta.Y < 0 ? 1 : -1));
+            e.Handled = true;
+        };
         EmptyShelf.ItemsSource = Enumerable.Range(0, 5).ToArray();
         Stage.AddHandler(GotFocusEvent, OnStageGotFocus, Avalonia.Interactivity.RoutingStrategies.Bubble, handledEventsToo: true);
         NavRepeatTracker.AnyChanged += OnRepeatChanged;
@@ -169,6 +186,30 @@ public partial class HomePage : PageBase
         var version = ++_dwell;
         if (NavRepeatTracker.Current?.IsActive == true) return; // resumes when the repeat ends
         StartDwell(version);
+    }
+
+    /// <summary>
+    /// The mouse resting on a shelf box (R2): after the same dwell as the focus, the stage presents it – a mouse user
+    /// can look at a game on the TV without opening it. Not while the keyboard/controller browses the shelves (their
+    /// visible focus leads) or a direction is held; leaving the box before the dwell ends cancels it.
+    /// </summary>
+    private void OnShelfItemHovered(Shelf shelf, Control item, int index, int count)
+    {
+        if (_vm == null || NavRepeatTracker.Current?.IsActive == true) return;
+        if (TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is Control f && f.Classes.Contains(":focus-visible") && IsInside(f, Shelves)) return;
+        if (item.DataContext is not (GameItemViewModel or SystemItemViewModel)) return;
+        var dataCount = count - (shelf.ActionLabel != null ? 1 : 0);
+        var version = ++_dwell;
+        _pending = null;
+        _ = Task.Delay(Motion.Dwell).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        {
+            if (version != _dwell || _vm == null || !item.IsPointerOver) return;
+            switch (item.DataContext)
+            {
+                case GameItemViewModel g: _vm.Present(g, shelf.Header ?? "", index, dataCount); break;
+                case SystemItemViewModel s: _vm.Present(s, shelf.Header ?? "", index, dataCount); break;
+            }
+        }), TaskScheduler.Default);
     }
 
     private void StartDwell(int version) =>

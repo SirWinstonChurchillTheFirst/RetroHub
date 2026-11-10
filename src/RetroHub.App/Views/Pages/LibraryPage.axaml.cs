@@ -42,7 +42,6 @@ public partial class LibraryPage : PageBase
                 _vm.FocusSearchRequested += FocusSearch;
                 _vm.PropertyChanging += OnVmChanging;
                 _vm.PropertyChanged += OnVmChanged;
-                BuildSortMenu();
                 ApplyContext();
                 Mirror.Items = _vm.Items;
             }
@@ -53,6 +52,8 @@ public partial class LibraryPage : PageBase
         Covers.ViewportChanged += UpdateMirrorRange;
         Rows.ViewportChanged += UpdateMirrorRange;
         Mirror.Scrub += index => ActiveGrid.ScrollToIndex(index);
+        // the wheel over the mirror scrolls the grid like the wheel over the grid
+        Mirror.Wheel += dy => ActiveGrid.ScrollViewer.Offset = ActiveGrid.ScrollViewer.Offset.WithY(Math.Max(0, ActiveGrid.ScrollViewer.Offset.Y - dy * 120));
         SearchToggle.Click += (_, _) => FocusSearchNow();
         Search.LostFocus += (_, _) => Dispatcher.UIThread.Post(() =>
         {
@@ -61,6 +62,16 @@ public partial class LibraryPage : PageBase
         Search.AddHandler(KeyDownEvent, (_, e) =>
         {
             if (e.Key == Key.Escape && string.IsNullOrEmpty(_vm?.SearchText)) { SetSearchOpen(false); FocusVisible(SearchToggle); e.Handled = true; }
+        }, RoutingStrategies.Tunnel);
+        SortButton.Click += (_, _) => ShowSortList();
+        // the plain mouse wheel scrolls the ticker sideways (the ScrollViewer only does that with Shift)
+        TickerScroll.AddHandler(PointerWheelChangedEvent, (_, e) =>
+        {
+            var d = Math.Abs(e.Delta.X) > 0.01 ? e.Delta.X : e.Delta.Y;
+            var max = Math.Max(0, TickerScroll.Extent.Width - TickerScroll.Viewport.Width);
+            if (max <= 0) return;
+            TickerScroll.Offset = TickerScroll.Offset.WithX(Math.Clamp(TickerScroll.Offset.X - d * 120, 0, max));
+            e.Handled = true;
         }, RoutingStrategies.Tunnel);
         TickerScroll.ScrollChanged += (_, _) => UpdateFades();
         TickerScroll.SizeChanged += (_, _) => UpdateFades();
@@ -203,17 +214,18 @@ public partial class LibraryPage : PageBase
         PreviewArt.Height = Math.Max(120, Math.Min(560, size.Height - ShelfBoard.EdgeHeight));
     }
 
-    private void BuildSortMenu()
+    /// <summary>
+    /// The sort choice as the in-style hanging list (R2: the stock Fluent menu was the last stock control): right-aligned
+    /// under the button, the current order checked and focused; Esc, Zurück or a click beside it closes it.
+    /// </summary>
+    private void ShowSortList()
     {
-        if (_vm == null) return;
-        var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
-        foreach (var option in _vm.SortOptions)
-        {
-            var item = new MenuItem { Header = option.Label };
-            item.Click += (_, _) => _vm.SelectedSort = option;
-            menu.Items.Add(item);
-        }
-        SortButton.Flyout = menu;
+        if (_vm == null || TopLevel.GetTopLevel(this) is not MainWindow window) return;
+        var vm = _vm;
+        var options = vm.SortOptions.ToList();
+        var entries = options.Select(o => new ContextEntry(ReferenceEquals(o, vm.SelectedSort) ? "Icon.Check" : "", o.Label, () => vm.SelectedSort = o)).ToList();
+        var current = Math.Max(0, options.FindIndex(o => ReferenceEquals(o, vm.SelectedSort)));
+        window.ShowContext(SortButton, new Point(SortButton.Bounds.Width - 320, SortButton.Bounds.Height + 8), entries, current);
     }
 
     /// <summary>The search slides out over the ticker (180 ms) and back when it is left empty.</summary>

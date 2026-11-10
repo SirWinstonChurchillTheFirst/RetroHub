@@ -118,7 +118,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         ShowDemoChip = IsDemo && ShowControllerName;
         IsSidebarCollapsed = !ShowControllerName;
         var max = LogicalWidth < 1300 ? 3 : 4;
-        VisibleHints = Hints.Count <= max ? Hints : Hints.Take(max).ToList();
+        if (Hints.Count <= max) { VisibleHints = Hints; return; }
+        // "Zurück" never drops out (the mouse's way back on a drill-in page): it takes the last place
+        var back = Hints.FirstOrDefault(h => h.Action == Input.NavAction.Back);
+        VisibleHints = back == null ? Hints.Take(max).ToList() : Hints.Where(h => h != back).Take(max - 1).Append(back).ToList();
+    }
+
+    /// <summary>
+    /// The footer's section word: back up to the top-level page the current page was opened from (Back as often as needed,
+    /// so every page on the way restores its focus); without a back stack, that section is opened.
+    /// </summary>
+    public void GoToSection()
+    {
+        var nav = Ctx.Navigator;
+        while (!Navigator.IsTopLevel(nav.Current) && nav.GoBack()) { }
+        if (!Navigator.IsTopLevel(nav.Current)) nav.Navigate(nav.Section);
     }
 
     /// <summary>Lazily created page view model (kept alive).</summary>

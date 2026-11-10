@@ -39,6 +39,7 @@ public sealed class ShelfMirror : Control
     /// <summary>Space above the band: bracket at 4 px above it, the mark reaches 4 px higher still.</summary>
     public const double Top = 8;
 
+    private static readonly IImmutableSolidColorBrush HoverTick = new ImmutableSolidColorBrush(ColorUtil.WithAlpha(SystemPalette.Paper, 0x99));
     private static readonly IImmutableSolidColorBrush Bracket = new ImmutableSolidColorBrush(ColorUtil.WithAlpha(SystemPalette.Paper, 0xB3));
 
     /// <summary>Spine colour strength on the ground (M3 QA: 60 %, was 70 %).</summary>
@@ -139,6 +140,12 @@ public sealed class ShelfMirror : Control
             x = Math.Clamp(x, 0, band.Width - 2);
             ctx.FillRectangle(new ImmutableSolidColorBrush(MarkColor ?? ThemeManager.CurrentAccent), new Rect(x, band.Y - 6, 2, 20));
         }
+        // hover (R2): a 1 × 12 paper tick at 60 % where a click would jump to
+        if (_hover >= 0 && _hover < n && !_dragging)
+        {
+            var hx = Math.Clamp(Math.Round((_hover + 0.5) * unit), 0, band.Width - 1);
+            ctx.FillRectangle(HoverTick, new Rect(hx, band.Y, 1, BandHeight));
+        }
     }
 
     private static double UiScaleOf(Visual v, TopLevel top) =>
@@ -197,8 +204,46 @@ public sealed class ShelfMirror : Control
         return bmp;
     }
 
-    // ===== pointer: click or drag scrolls the grid to that position =====
+    // ===== pointer: click or drag scrolls the grid to that position; the wheel scrolls it (R2) =====
     private bool _dragging;
+    private int _hover = -1;
+
+    /// <summary>Raised for the mouse wheel over the band (the page scrolls the grid).</summary>
+    public event Action<double>? Wheel;
+
+    private int IndexAt(double x)
+    {
+        var n = _systems.Count;
+        return n == 0 || Bounds.Width <= 0 ? -1 : Math.Clamp((int)(x / Bounds.Width * n), 0, n - 1);
+    }
+
+    private void SetHover(int index)
+    {
+        if (_hover == index) return;
+        _hover = index;
+        ToolTip.SetTip(this, index >= 0 && Items is IList list && index < list.Count && list[index] is GameItemViewModel g ? $"{g.Title} · {g.SystemShort}" : null);
+        InvalidateVisual();
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        SetHover(-1);
+    }
+
+    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
+    {
+        base.OnPointerWheelChanged(e);
+        if (Math.Abs(e.Delta.Y) < 0.01) return;
+        Wheel?.Invoke(e.Delta.Y);
+        e.Handled = true;
+    }
+
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        _dragging = false; // after an Alt-Tab mid-drag plain moves must not scrub
+    }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -213,7 +258,12 @@ public sealed class ShelfMirror : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        if (_dragging) RaiseScrub(e.GetPosition(this).X);
+        if (_dragging && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) RaiseScrub(e.GetPosition(this).X);
+        else
+        {
+            _dragging = false;
+            SetHover(IndexAt(e.GetPosition(this).X));
+        }
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)

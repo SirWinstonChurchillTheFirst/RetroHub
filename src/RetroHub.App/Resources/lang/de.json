@@ -170,6 +170,8 @@
   "detail.solution.file": "Importe öffnen",
   "detail.more": "Mehr",
   "detail.openFolder": "Ordner öffnen",
+  "context.open": "Öffnen",
+  "context.showInLibrary": "In der Bibliothek zeigen",
   "detail.website": "Website",
 
   "mode.embedded": "Eingebettet",

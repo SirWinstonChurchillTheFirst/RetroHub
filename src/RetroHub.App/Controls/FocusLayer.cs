@@ -38,7 +38,8 @@ public sealed class FocusLayer
         _watched = watched;
         Back = new BackLayer(this);
         Front = new FrontLayer(this);
-        foreach (var layer in new[] { Back, Front })
+        Hover = new HoverLayer(this);
+        foreach (var layer in new[] { Back, Front, Hover })
         {
             layer.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
             layer.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
@@ -46,9 +47,16 @@ public sealed class FocusLayer
         }
         watched.AddHandler(InputElement.GotFocusEvent, OnGotFocus, RoutingStrategies.Bubble, handledEventsToo: true);
         watched.AddHandler(InputElement.LostFocusEvent, OnLostFocus, RoutingStrategies.Bubble, handledEventsToo: true);
+        // mouse hover (R2): the ring at 40 % around the box under the pointer – no cone, no board piece
+        watched.AddHandler(InputElement.PointerMovedEvent, OnPointerMoved, RoutingStrategies.Bubble, handledEventsToo: true);
+        watched.PointerExited += (_, _) => SetHover(null);
+        // the hover ring lies above everything of the host: added once the host's own children are in place (the
+        // host may be attached already – a shelf builds its layers in OnApplyTemplate)
+        Avalonia.Threading.Dispatcher.UIThread.Post(AddHover);
         host.LayoutUpdated += (_, _) => { if (_tile != null) Reposition(); };
         host.AttachedToVisualTree += (_, _) =>
         {
+            Avalonia.Threading.Dispatcher.UIThread.Post(AddHover);
             NavRepeatTracker.AnyChanged += OnRepeatChanged;
             // the cone is clipped to the visible viewport: re-render it when the content scrolls
             _viewport = host.FindAncestorOfType<ScrollViewer>();
@@ -76,6 +84,65 @@ public sealed class FocusLayer
     public Control Back { get; }
     /// <summary>Layer above the rows (add as the last child of the host panel).</summary>
     public Control Front { get; }
+    /// <summary>The hover ring (added to the host by the layer itself).</summary>
+    public Control Hover { get; }
+
+    private GameTile? _hoverTile;
+    private Rect _hoverRect;
+
+    private void AddHover()
+    {
+        if (!_host.Children.Contains(Hover)) _host.Children.Add(Hover);
+    }
+
+    private void OnPointerMoved(object? sender, PointerEventArgs e) =>
+        SetHover((e.Source as Visual)?.FindAncestorOfType<GameTile>(includeSelf: true));
+
+    private void SetHover(GameTile? tile)
+    {
+        if (tile != null && (tile.Art == null || !tile.IsEffectivelyVisible)) tile = null;
+        if (tile == null && _hoverTile == null) return;
+        _hoverTile = tile;
+        var rect = tile == null ? default : HoverRect(tile);
+        if (rect == _hoverRect) return;
+        _hoverRect = rect;
+        if (rect.Width > 0)
+        {
+            var region = rect.Inflate(RingGap + RingWidth + 2);
+            Hover.Width = Math.Ceiling(region.Width);
+            Hover.Height = Math.Ceiling(region.Height);
+            Hover.RenderTransform = new TranslateTransform(Math.Floor(region.X), Math.Floor(region.Y));
+        }
+        Hover.InvalidateVisual();
+    }
+
+    /// <summary>The hovered box in host coordinates, with the 1.03 hover scale (from the bottom centre) when motion is full.</summary>
+    private Rect HoverRect(GameTile tile)
+    {
+        var art = tile.Art!;
+        var r = art.ArtRect;
+        if (r.Width <= 0 || LayoutOffset(art, _host) is not { } origin) return default;
+        var rect = new Rect(origin.X + r.X, origin.Y + r.Y, r.Width, r.Height);
+        if (tile.Spine is { IsVisible: true } spine && spine.SpineRect is { Width: > 0 } sr)
+            rect = new Rect(rect.X - sr.Width, rect.Y, rect.Width + sr.Width, rect.Height);
+        if (Motion.Current == EffectiveMotion.Full)
+            rect = new Rect(rect.Center.X - rect.Width * HoverLift / 2, rect.Bottom - rect.Height * HoverLift, rect.Width * HoverLift, rect.Height * HoverLift);
+        return new Rect(Math.Round(rect.X), Math.Round(rect.Y), Math.Round(rect.Width), Math.Round(rect.Height));
+    }
+
+    /// <summary>Scale of a hovered box (GameTile theme, :pointerover).</summary>
+    public const double HoverLift = 1.03;
+
+    private void RenderHover(DrawingContext ctx)
+    {
+        var tile = _hoverTile;
+        // the focused box shows its full focus instead
+        if (tile == null || _hoverRect.Width <= 0 || (tile.IsKeyboardFocusWithin && IsVisibleFocus(tile)) || !tile.IsPointerOver) return;
+        if (Hover.RenderTransform is not TranslateTransform tt) return;
+        using var toHost = ctx.PushTransform(Matrix.CreateTranslation(-tt.X, -tt.Y));
+        using var fade = ctx.PushOpacity(0.4);
+        Chamfer.DrawStandingRing(ctx, _hoverRect, new ImmutableSolidColorBrush(RingColor(Light)), RingGap, RingWidth);
+    }
 
     /// <summary>Height of the board front under the boxes (10 = shelf edge in the grid, 24 = stage board).</summary>
     public double BoardFront { get; set; } = ShelfBoard.EdgeHeight;
@@ -399,5 +466,11 @@ public sealed class FocusLayer
     {
         static FrontLayer() { IsHitTestVisibleProperty.OverrideDefaultValue<FrontLayer>(false); }
         public override void Render(DrawingContext context) => owner.RenderFront(context);
+    }
+
+    private sealed class HoverLayer(FocusLayer owner) : Control
+    {
+        static HoverLayer() { IsHitTestVisibleProperty.OverrideDefaultValue<HoverLayer>(false); }
+        public override void Render(DrawingContext context) => owner.RenderHover(context);
     }
 }
