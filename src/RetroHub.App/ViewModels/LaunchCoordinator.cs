@@ -63,6 +63,9 @@ internal sealed class XInputExitCombo : IExitComboSource
 /// </summary>
 public sealed partial class LaunchCoordinator : ObservableObject
 {
+    /// <summary>The UI dispatcher, taken when this object was made (posts from other threads never create a new one).</summary>
+    private readonly Avalonia.Threading.Dispatcher _ui = Avalonia.Threading.Dispatcher.UIThread;
+
     private readonly UiContext _ctx;
     private IGameSession? _session;
     private IExitComboSource? _exitCombo;
@@ -370,7 +373,7 @@ public sealed partial class LaunchCoordinator : ObservableObject
         try { combo.Dispose(); } catch (Exception ex) { Log.Warn("Exit combo watcher dispose failed", ex); }
     }
 
-    private void OnExitCombo() => Dispatcher.UIThread.Post(() =>
+    private void OnExitCombo() => _ui.Post(() =>
     {
         Log.Info("Exit combo → Spiel beenden");
         TestHooks.Report("exit-combo");
@@ -397,7 +400,7 @@ public sealed partial class LaunchCoordinator : ObservableObject
         }
     }
 
-    private void OnSessionEnded(IGameSession session) => Dispatcher.UIThread.Post(() =>
+    private void OnSessionEnded(IGameSession session) => _ui.Post(() =>
     {
         if (_session != session) return;
         var item = Game;

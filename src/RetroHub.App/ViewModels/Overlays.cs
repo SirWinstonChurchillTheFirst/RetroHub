@@ -29,6 +29,9 @@ public sealed partial class ToastViewModel : ObservableObject
 /// </summary>
 public sealed partial class ToastService : ObservableObject
 {
+    /// <summary>The UI dispatcher, taken when this object was made (posts from other threads never create a new one).</summary>
+    private readonly Dispatcher _ui = Dispatcher.UIThread;
+
     public const int MaxVisible = 4;
     public ObservableCollection<ToastViewModel> Items { get; } = [];
 
@@ -41,8 +44,8 @@ public sealed partial class ToastService : ObservableObject
             while (Items.Count > MaxVisible) Items.RemoveAt(0);
             DispatcherTimer.RunOnce(() => Items.Remove(toast), TimeSpan.FromSeconds(seconds));
         }
-        if (Dispatcher.UIThread.CheckAccess()) Add();
-        else Dispatcher.UIThread.Post(Add);
+        if (_ui.CheckAccess()) Add();
+        else _ui.Post(Add);
     }
 
     [RelayCommand]

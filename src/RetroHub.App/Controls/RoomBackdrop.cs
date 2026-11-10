@@ -146,12 +146,12 @@ public sealed class RoomBackdrop : Panel
 
     private void ScheduleDwell(int version)
     {
-        _ = Task.Delay(Motion.Dwell).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        _ = Task.Delay(Motion.Dwell).ContinueWith((_, ui) => ((Dispatcher)ui!).Post(() =>
         {
             if (version != _version) return;
             if (NavRepeatTracker.Current?.IsActive == true) return; // resumes via OnRepeatEnded
             _ = LoadAndApplyAsync(_target, version);
-        }), TaskScheduler.Default);
+        }), Dispatcher.UIThread, TaskScheduler.Default);
     }
 
     private async Task LoadAndApplyAsync(BackdropSpec spec, int version)
@@ -300,15 +300,15 @@ public sealed class RoomBackdrop : Panel
         _scrimKey = key;
         var version = ++_scrimVersion;
         if (immediate || newLight) StartLightRender(key, version);
-        else _ = Task.Delay(150).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        else _ = Task.Delay(150).ContinueWith((_, ui) => ((Dispatcher)ui!).Post(() =>
         {
             if (version == _scrimVersion) StartLightRender(key, version);
-        }), TaskScheduler.Default);
+        }), Dispatcher.UIThread, TaskScheduler.Default);
     }
 
     private void StartLightRender(LightKey key, int version)
     {
-        _ = Task.Run(() => RenderLight(key)).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+        _ = Task.Run(() => RenderLight(key)).ContinueWith((t, ui) => ((Dispatcher)ui!).Post(() =>
         {
             if (t.IsFaulted) { Log.Warn("Room light: light bitmap failed", t.Exception); return; }
             if (version != _scrimVersion) { t.Result.Dispose(); return; }
@@ -320,7 +320,7 @@ public sealed class RoomBackdrop : Panel
             _scrim.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
             _scrim.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
             previous?.Dispose();
-        }), TaskScheduler.Default);
+        }), Dispatcher.UIThread, TaskScheduler.Default);
     }
 
     /// <summary>Widest light bitmap; wider windows get it upscaled (the dither survives a factor below 2).</summary>

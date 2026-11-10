@@ -650,14 +650,15 @@ public sealed partial class GameDetailViewModel : PageViewModel
         var cts = _screenCts = new CancellationTokenSource();
         var id = game.Id;
         var online = Ctx.Services.Settings.Current.OnlineCovers;
+        var ui = Avalonia.Threading.Dispatcher.UIThread;
         _ = Task.Run(async () =>
         {
             var local = artwork.FindScreens(game);
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyScreens(id, local.Title, local.Snap));
+            ui.Post(() => ApplyScreens(id, local.Title, local.Snap));
             if ((local.Snap != null && local.Title != null) || !online) return;
             var fetched = await artwork.FetchScreensAsync(game, cts.Token).ConfigureAwait(false);
             if (fetched.Snap != local.Snap || fetched.Title != local.Title)
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyScreens(id, fetched.Title, fetched.Snap));
+                ui.Post(() => ApplyScreens(id, fetched.Title, fetched.Snap));
         }, cts.Token).ContinueWith(t => { if (t.IsFaulted) Log.Warn("Detail screen lookup failed", t.Exception); }, TaskScheduler.Default);
     }
 

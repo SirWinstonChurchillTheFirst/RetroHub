@@ -89,7 +89,8 @@ public sealed partial class ImportsViewModel : PageViewModel
     {
         Title = Loc.T("nav.imports");
         ctx.LibraryChanged += () => { if (!IsScanning) LoadFolders(); };
-        ctx.Services.Settings.Saved += _ => Avalonia.Threading.Dispatcher.UIThread.Post(UpdateCoverHint);
+        var ui = Avalonia.Threading.Dispatcher.UIThread;
+        ctx.Services.Settings.Saved += _ => ui.Post(UpdateCoverHint);
         UpdateCoverHint();
     }
 

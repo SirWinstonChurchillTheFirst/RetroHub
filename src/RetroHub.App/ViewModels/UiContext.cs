@@ -7,6 +7,9 @@ namespace RetroHub.App.ViewModels;
 /// <summary>Everything a page view model needs: the core services plus the shell's UI services.</summary>
 public sealed class UiContext : IDisposable
 {
+    /// <summary>The UI dispatcher, taken when this object was made (posts from other threads never create a new one).</summary>
+    private readonly Avalonia.Threading.Dispatcher _ui = Avalonia.Threading.Dispatcher.UIThread;
+
     private readonly DispatcherTimer _libraryDebounce;
 
     public UiContext(AppServices services)
@@ -33,7 +36,7 @@ public sealed class UiContext : IDisposable
     /// <summary>Emulator registry changed (UI thread).</summary>
     public event Action? EmulatorsChanged;
 
-    private void OnRepositoryChanged() => Dispatcher.UIThread.Post(() =>
+    private void OnRepositoryChanged() => _ui.Post(() =>
     {
         _libraryDebounce.Stop();
         _libraryDebounce.Start();
@@ -45,7 +48,7 @@ public sealed class UiContext : IDisposable
         try { LibraryChanged?.Invoke(); } catch (Exception ex) { Log.Error("LibraryChanged handler failed", ex); }
     }
 
-    private void OnEmulatorsChanged() => Dispatcher.UIThread.Post(() =>
+    private void OnEmulatorsChanged() => _ui.Post(() =>
     {
         try { EmulatorsChanged?.Invoke(); } catch (Exception ex) { Log.Error("EmulatorsChanged handler failed", ex); }
     });

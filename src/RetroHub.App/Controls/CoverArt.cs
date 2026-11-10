@@ -191,11 +191,14 @@ public sealed class CoverArt : Control
 
     private async Task LoadAsync(string source, int width, CancellationToken ct)
     {
+        // the dispatcher of THIS thread (the UI): the decode continues on the pool, where Dispatcher.UIThread could
+        // create a new dispatcher after a test session reset it
+        var ui = Dispatcher.UIThread;
         Bitmap? bitmap;
         try { bitmap = await AsyncImageLoader.Shared.LoadAsync(source, width, ct).ConfigureAwait(false); }
         catch (OperationCanceledException) { return; }
         if (ct.IsCancellationRequested || bitmap == null) return;
-        Dispatcher.UIThread.Post(() =>
+        ui.Post(() =>
         {
             if (ct.IsCancellationRequested || Source != source) return;
             SetBitmap(bitmap);

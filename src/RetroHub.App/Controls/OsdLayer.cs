@@ -73,10 +73,10 @@ public sealed class OsdLayer : Panel
         _box.IsVisible = false;
         _notice.IsVisible = true;
         var version = ++_noticeVersion;
-        _ = Task.Delay(NoticeDuration).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        _ = Task.Delay(NoticeDuration).ContinueWith((_, ui) => ((Dispatcher)ui!).Post(() =>
         {
             if (version == _noticeVersion) _notice.IsVisible = false;
-        }), TaskScheduler.Default);
+        }), Dispatcher.UIThread, TaskScheduler.Default);
     }
 
     private double _scale = 1;
@@ -128,10 +128,10 @@ public sealed class OsdLayer : Panel
         HideNoticeNow(); // one display at a time
         _box.IsVisible = true;
         var version = ++_version;
-        _ = Task.Delay(duration ?? Motion.Osd).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        _ = Task.Delay(duration ?? Motion.Osd).ContinueWith((_, ui) => ((Dispatcher)ui!).Post(() =>
         {
             if (version == _version) _box.IsVisible = false;
-        }), TaskScheduler.Default);
+        }), Dispatcher.UIThread, TaskScheduler.Default);
     }
 
     public void HideNow()

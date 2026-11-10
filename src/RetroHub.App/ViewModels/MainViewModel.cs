@@ -25,6 +25,9 @@ public sealed partial class NavItemViewModel : ObservableObject
 /// <summary>Shell state: navigation, pages, header channels, footer (location + hints), clock, overlays.</summary>
 public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
+    /// <summary>The UI dispatcher, taken when this object was made (posts from other threads never create a new one).</summary>
+    private readonly Avalonia.Threading.Dispatcher _ui = Avalonia.Threading.Dispatcher.UIThread;
+
     private readonly Dictionary<PageKey, PageViewModel> _pages = new();
     private readonly DispatcherTimer _clock;
 
@@ -44,8 +47,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Tools = NavItems.Where(n => !n.IsChannel).ToList();
         UpdateTexts();
         ctx.Navigator.Navigated += OnNavigated;
-        ctx.Services.Ui.Changed += _ => Dispatcher.UIThread.Post(UpdatePreferences);
-        ctx.Services.Input.ControllerChanged += () => Dispatcher.UIThread.Post(UpdateController);
+        ctx.Services.Ui.Changed += _ => _ui.Post(UpdatePreferences);
+        ctx.Services.Input.ControllerChanged += () => _ui.Post(UpdateController);
         ctx.LibraryChanged += UpdateStatus;
         Loc.LanguageChanged += OnLanguageChanged;
         _clock = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(10) };
@@ -218,7 +221,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 w.FoldersChanged -= OnFoldersChanged;
                 w.FoldersChanged += OnFoldersChanged;
             }
-            Ctx.Services.WatcherChanged += () => Dispatcher.UIThread.Post(Hook);
+            Ctx.Services.WatcherChanged += () => _ui.Post(Hook);
             Hook();
 
             if (!Ctx.Services.Settings.Current.ScanOnStartup) return null;
@@ -232,7 +235,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void OnFoldersChanged(IReadOnlyList<long> folderIds) => Dispatcher.UIThread.Post(() =>
+    private void OnFoldersChanged(IReadOnlyList<long> folderIds) => _ui.Post(() =>
     {
         // A game is running: do not compete for the disk; the next change or the next start will pick it up.
         if (Ctx.Services.Sessions.Current != null) return;

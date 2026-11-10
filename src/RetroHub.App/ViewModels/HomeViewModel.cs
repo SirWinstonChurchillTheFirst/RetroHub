@@ -293,13 +293,14 @@ public sealed partial class HomeViewModel : PageViewModel
         if (screenGame == null || Ctx.Services.Artwork is not { } artwork) return;
         var cts = _screenCts = new CancellationTokenSource();
         var game = screenGame.Game;
+        var ui = Avalonia.Threading.Dispatcher.UIThread;
         _ = Task.Run(async () =>
         {
             var local = artwork.FindScreens(game);
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyScreen(version, stage, local.Best));
+            ui.Post(() => ApplyScreen(version, stage, local.Best));
             if (local.Snap != null || !Ctx.Services.Settings.Current.OnlineCovers) return;
             var fetched = await artwork.FetchScreensAsync(game, cts.Token).ConfigureAwait(false);
-            if (fetched.Best != local.Best) Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyScreen(version, stage, fetched.Best));
+            if (fetched.Best != local.Best) ui.Post(() => ApplyScreen(version, stage, fetched.Best));
         }, cts.Token).ContinueWith(t => { if (t.IsFaulted) Core.Logging.Log.Warn("Stage screen lookup failed", t.Exception); }, TaskScheduler.Default);
     }
 
