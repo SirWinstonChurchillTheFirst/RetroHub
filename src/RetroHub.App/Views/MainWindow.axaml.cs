@@ -81,7 +81,13 @@ public partial class MainWindow : Window
         vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.CurrentPage)) WatchPage(vm.CurrentPage);
+            else if (e.PropertyName == nameof(MainViewModel.ShowOsd))
+            {
+                Osd.Enabled = vm.ShowOsd;
+                if (!vm.ShowOsd) Osd.HideNow();
+            }
         };
+        Osd.Enabled = vm.ShowOsd;
         vm.Dialogs.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName != nameof(DialogService.Current)) return;
@@ -92,6 +98,9 @@ public partial class MainWindow : Window
         vm.Launch.PropertyChanged += (_, e) => OnLaunchChanged(e.PropertyName);
         vm.Launch.Returned += OnGameReturned;
         GameScreen.FullscreenRequested += () => SetFullscreen(WindowState != WindowState.FullScreen);
+        // the power-on (DESIGN 9.3): the flight dims the launch overlay and opens its start surface
+        Flight.Scrim = LaunchScrim;
+        Flight.Reveal = StartPanel;
         // toasts lie above the embedded game: the game screen cuts a hole for them into its native host (airspace)
         GameScreen.SetHoleSource(ToastHost);
         ToastHost.SizeChanged += (_, _) => Dispatcher.UIThread.Post(GameScreen.UpdateHoles, DispatcherPriority.Render);
@@ -185,6 +194,7 @@ public partial class MainWindow : Window
         switch (property)
         {
             case nameof(LaunchCoordinator.Phase):
+                OnPowerPhase(launch.Phase);
                 OnOverlayChanged();
                 UpdateGameObscured();
                 if (launch.Phase == LaunchPhase.Running) Dispatcher.UIThread.Post(FocusRunningGame, DispatcherPriority.Loaded);
@@ -199,6 +209,72 @@ public partial class MainWindow : Window
                 break;
         }
     }
+
+    private LaunchPhase _powerPhase = LaunchPhase.Idle;
+    private bool _gameShown;
+
+    /// <summary>
+    /// The staged moment of DESIGN 9.3: Starting → power-on from the box the game was started from (the OSD shows the
+    /// system code for 300 ms while the line grows); Running → the transition's own parts go (the start surface was
+    /// already open); back to Idle after a session that was shown → power-off; a start that failed → no switch-off.
+    /// </summary>
+    private void OnPowerPhase(LaunchPhase phase)
+    {
+        var before = _powerPhase;
+        _powerPhase = phase;
+        // the game screen (masked, still loading) must not show through the flight and the opening line
+        GameScreenPanel.Opacity = phase == LaunchPhase.Starting ? 0 : 1;
+        var game = _vm.Launch.Game;
+        var light = game != null ? SystemPalette.Get(game.SystemId, game.Accent).Light : ThemeManager.CurrentAccent;
+        switch (phase)
+        {
+            case LaunchPhase.Starting when before == LaunchPhase.Idle:
+                _gameShown = false;
+                _powerLight = light;
+                Flight.PowerOn(FindLaunchBox(game), light, Motion.Current);
+                if (game != null)
+                {
+                    var code = game.SystemShort;
+                    var delay = Motion.Current == EffectiveMotion.Full ? TimeSpan.FromMilliseconds(FlightLayer.FlyEnd) : TimeSpan.Zero;
+                    DispatcherTimer.RunOnce(() =>
+                    {
+                        if (_vm.Launch.IsStarting) Osd.Show(null, code, light, TimeSpan.FromMilliseconds(300), nameSize: 40);
+                    }, delay <= TimeSpan.Zero ? TimeSpan.FromMilliseconds(1) : delay);
+                }
+                break;
+            case LaunchPhase.Running:
+                _gameShown = true;
+                Flight.EndPowerOn();
+                break;
+            case LaunchPhase.Idle:
+                if (_gameShown && !_hiddenForGame) Flight.PowerOff(_powerLight, Motion.Current);
+                else if (_gameShown) Flight.PowerOff(_powerLight, EffectiveMotion.Off);
+                else Flight.Cancel();
+                _gameShown = false;
+                break;
+        }
+    }
+
+    private Color _powerLight = Color.Parse("#FFB547");
+
+    /// <summary>
+    /// The box the game was started from: a visible cover of that game on the current page – the one inside the focused
+    /// element first (the stage box, the pulled box of the detail), else the largest one.
+    /// </summary>
+    private CoverArt? FindLaunchBox(GameItemViewModel? game)
+    {
+        if (game == null || Pages.Current is not { } page) return null;
+        var arts = page.GetVisualDescendants().OfType<CoverArt>()
+            .Where(a => a.IsEffectivelyVisible && a.Opacity > 0 && a.DataContext is GameItemViewModel g && g.Id == game.Id && a.ArtRect.Width > 4)
+            .ToList();
+        if (arts.Count == 0) return null;
+        var focused = FocusManager?.GetFocusedElement() as Visual;
+        return arts.FirstOrDefault(a => focused != null && (focused.IsVisualAncestorOf(a) || a == focused))
+               ?? arts.OrderByDescending(a => a.ArtRect.Width * a.ArtRect.Height).First();
+    }
+
+    /// <summary>Design previews: one frame of the power-on (or the switch-off) on the current page.</summary>
+    internal FlightLayer FlightLayerControl => Flight;
 
     private void FocusRunningGame()
     {
@@ -373,6 +449,8 @@ public partial class MainWindow : Window
         if (Math.Abs(s - _scale) < 0.0001) return;
         _scale = s;
         ScaleHost.LayoutTransform = new ScaleTransform(s, s);
+        StartScale.LayoutTransform = new ScaleTransform(s, s);
+        Flight.Scale = s;
         DialogScaleHost.LayoutTransform = new ScaleTransform(s, s);
         Osd.Scale = s;
         var logical = client.Width / s;
@@ -505,8 +583,6 @@ public partial class MainWindow : Window
             return;
         }
         var focused = FocusManager?.GetFocusedElement();
-        if (focused is ComboBox { IsDropDownOpen: true }) return;
-        if (focused is Slider && e.Key is Key.Left or Key.Right) return;
         var inText = focused is TextBox;
         if (inText && e.Key == Key.Escape)
         {
@@ -654,7 +730,6 @@ public partial class MainWindow : Window
     private static bool Invoke(IInputElement? focused)
     {
         if (focused is not Control control || !control.IsEffectivelyEnabled) return false;
-        if (focused is ComboBox combo) { combo.IsDropDownOpen = !combo.IsDropDownOpen; return true; }
         var peer = ControlAutomationPeer.CreatePeerForElement(control);
         if (peer is IInvokeProvider invoke) { invoke.Invoke(); return true; }
         if (peer is IToggleProvider toggle) { toggle.Toggle(); return true; }

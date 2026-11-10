@@ -84,6 +84,8 @@ public sealed partial class LaunchCoordinator : ObservableObject
     [ObservableProperty] public partial GameItemViewModel? Game { get; private set; }
     [ObservableProperty] public partial string EmulatorName { get; private set; } = "";
     [ObservableProperty] public partial string ModeText { get; private set; } = "";
+    /// <summary>"mGBA startet …" on the start surface (DESIGN 9.3).</summary>
+    [ObservableProperty] public partial string StartingText { get; private set; } = "";
     [ObservableProperty] public partial string ElapsedText { get; private set; } = "";
     /// <summary>Short status next to the elapsed time ("wird beendet …").</summary>
     [ObservableProperty] public partial string StatusNote { get; private set; } = "";
@@ -178,6 +180,7 @@ public sealed partial class LaunchCoordinator : ObservableObject
 
         Game = item;
         EmulatorName = plan.Emulator?.Def.Name + (plan.Core != null ? $" · {plan.Core}" : "");
+        StartingText = Loc.T("launch.startingWith", plan.Emulator?.Def.Name ?? Loc.T("launch.theEmulator"));
         ModeText = Fmt.Mode(plan.Mode);
         ElapsedText = "";
         StatusNote = "";

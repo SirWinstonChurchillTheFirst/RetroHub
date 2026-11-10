@@ -64,7 +64,7 @@
         </Border>
         <TextBlock Name="LoadingTitle" Classes="h2" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,28,0,6" MaxWidth="640" TextWrapping="Wrap" />
         <TextBlock Name="LoadingNote" Classes="meta" HorizontalAlignment="Center" TextAlignment="Center" MinWidth="260" />
-        <ProgressBar Name="LoadingBar" IsIndeterminate="True" Width="200" Margin="0,22,0,0" HorizontalAlignment="Center" />
+        <c:SegmentBar Name="LoadingBar" IsIndeterminate="True" Margin="0,22,0,0" HorizontalAlignment="Center" />
       </StackPanel>
       <c:GameScreenHost Name="Host" HorizontalAlignment="Center" VerticalAlignment="Center" />
     </Panel>

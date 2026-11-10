@@ -1,8 +1,8 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <!--
-    Maps the "Fernsehlicht" tokens onto the Fluent theme's resource keys, so stock controls (TextBox, ComboBox,
-    ToggleSwitch, Slider, scroll bars, popups) fit in. All opaque. Light-colour-dependent Fluent keys
+    Maps the "Fernsehlicht" tokens onto the Fluent theme's resource keys, so the few stock controls left (TextBox, scroll
+    bars, tool tips) fit in. M6: no ComboBox, ToggleSwitch, Slider or ProgressBar remains in RetroHub. All opaque. Light-colour-dependent Fluent keys
     (SystemAccentColor*) are set at runtime by ThemeManager.
   -->
   <!-- text fields: Regal, 2 px light frame when focused -->
@@ -23,48 +23,10 @@
   <Thickness x:Key="TextControlBorderThemeThickness">1</Thickness>
   <Thickness x:Key="TextControlBorderThemeThicknessFocused">2</Thickness>
 
-  <!-- combo boxes + drop-downs -->
-  <SolidColorBrush x:Key="ComboBoxBackground" Color="#2A2620" />
-  <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#332E27" />
-  <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#1E1B17" />
-  <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#2A2620" />
-  <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#2A2620" />
-  <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#3A342B" />
-  <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#3A342B" />
-  <SolidColorBrush x:Key="ComboBoxForeground" Color="#F4ECDF" />
-  <SolidColorBrush x:Key="ComboBoxDropDownGlyphForeground" Color="#C9BFAF" />
-  <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#1E1B17" />
-  <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#3A342B" />
-  <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="#2A2620" />
-  <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#2A2620" />
-  <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#332E27" />
-  <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#F4ECDF" />
-  <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="#F4ECDF" />
   <CornerRadius x:Key="OverlayCornerRadius">6</CornerRadius>
   <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
 
-  <!-- toggles -->
-  <SolidColorBrush x:Key="ToggleSwitchFillOff" Color="#1E1B17" />
-  <SolidColorBrush x:Key="ToggleSwitchFillOffPointerOver" Color="#2A2620" />
-  <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="#948A7A" />
-  <SolidColorBrush x:Key="ToggleSwitchStrokeOffPointerOver" Color="#C9BFAF" />
-  <SolidColorBrush x:Key="ToggleSwitchKnobFillOff" Color="#C9BFAF" />
-  <SolidColorBrush x:Key="ToggleSwitchKnobFillOffPointerOver" Color="#F4ECDF" />
-  <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#14120F" />
-  <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="#14120F" />
-  <SolidColorBrush x:Key="ToggleSwitchContentForeground" Color="#F4ECDF" />
-  <!-- switches/sliders are not on the Bernstein list (DESIGN 2.2): paper-grey -->
-  <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#C9BFAF" />
-  <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#DCD3C4" />
-  <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="#C9BFAF" />
-  <SolidColorBrush x:Key="SliderTrackValueFill" Color="#C9BFAF" />
-  <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="#DCD3C4" />
 
-  <!-- slider -->
-  <SolidColorBrush x:Key="SliderTrackFill" Color="#3A342B" />
-  <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="#4A4337" />
-  <SolidColorBrush x:Key="SliderThumbBackground" Color="#F4ECDF" />
-  <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#F4ECDF" />
 
   <!-- popups / tooltips -->
   <SolidColorBrush x:Key="ToolTipBackground" Color="#1E1B17" />

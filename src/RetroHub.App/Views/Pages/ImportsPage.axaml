@@ -7,181 +7,237 @@
             xmlns:lib="using:RetroHub.Core.Library"
             x:Class="RetroHub.App.Views.Pages.ImportsPage"
             x:DataType="vm:ImportsViewModel">
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="{DynamicResource RhPageInset}" Spacing="0">
-      <TextBlock Text="{l:T nav.imports}" Classes="title" />
-      <TextBlock Text="{l:T imports.intro}" Classes="body" MaxWidth="860" HorizontalAlignment="Left" Margin="0,8,0,24" />
+  <!--
+    Importe (DESIGN 7.6): left the library folders as service-menu rows (path, how it is read, "◀ Aktiv ▶"; confirm
+    opens the folder's "Mehr" list), right the scan column: "Jetzt scannen", the segment bar while it runs and the
+    delivery note ("Lieferschein") of the last scan instead of a toast – it stands until the next scan begins. Below,
+    the covers in the same flat language. No cards, no stat tiles, no progress pill.
+  -->
+  <p:PageBase.Styles>
+    <Style Selector="TextBlock.note-count">
+      <Setter Property="FontFamily" Value="{DynamicResource RhFontNumber}" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="LineHeight" Value="24" />
+      <Setter Property="TextAlignment" Value="Right" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+      <Setter Property="FontFeatures">
+        <FontFeatureCollection>
+          <FontFeature Tag="tnum" />
+        </FontFeatureCollection>
+      </Setter>
+    </Style>
+    <Style Selector="TextBlock.note-text">
+      <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="LineHeight" Value="24" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.note-count.zero, TextBlock.note-text.zero">
+      <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.percent">
+      <Setter Property="FontFamily" Value="{DynamicResource RhFontNumber}" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="FontSize" Value="28" />
+      <Setter Property="LineHeight" Value="32" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+      <Setter Property="FontFeatures">
+        <FontFeatureCollection>
+          <FontFeature Tag="tnum" />
+        </FontFeatureCollection>
+      </Setter>
+    </Style>
+  </p:PageBase.Styles>
 
-      <Grid ColumnDefinitions="*,24,*">
-        <!-- library folders -->
-        <Border Classes="glass" Padding="24,22" VerticalAlignment="Top">
-          <StackPanel Spacing="16">
-            <Grid ColumnDefinitions="*,Auto">
-              <StackPanel Spacing="2">
-                <TextBlock Text="{l:T imports.folders}" Classes="h2" />
-                <TextBlock Text="{l:T imports.folders.hint}" Classes="meta" TextWrapping="Wrap" />
-              </StackPanel>
-              <Button Grid.Column="1" Command="{Binding AddFolderCommand}" VerticalAlignment="Top">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <c:RhIcon Data="{StaticResource Icon.Plus}" Width="16" Height="16" />
-                  <TextBlock Text="{l:T imports.addFolder}" VerticalAlignment="Center" />
-                </StackPanel>
-              </Button>
-            </Grid>
-            <ItemsControl ItemsSource="{Binding Folders}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Spacing="10" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
+  <Panel>
+    <ScrollViewer Name="Scroller" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="{DynamicResource RhPageInset}" Spacing="0">
+        <TextBlock Text="{l:T nav.imports}" Classes="title" />
+        <TextBlock Text="{l:T imports.intro}" Classes="read" MaxWidth="860" HorizontalAlignment="Left" Margin="0,14,0,0" />
+
+        <Grid Name="Columns" ColumnDefinitions="*,56,420" Margin="0,32,0,0">
+          <!-- ===== library folders ===== -->
+          <StackPanel Name="FolderColumn" Spacing="0">
+            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,12">
+              <c:ShelfLabel Text="{l:T imports.folders}" VerticalAlignment="Center" />
+              <TextBlock Text="{l:T imports.folders.hint}" Classes="meta" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Border Height="1" Background="{DynamicResource RhLineBrush}" />
+            <ItemsControl Name="FolderList" ItemsSource="{Binding Folders}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:FolderItemViewModel">
-                  <Border CornerRadius="{DynamicResource RhRadiusControl}" Padding="16,14" Background="{DynamicResource RhSurfaceHiBrush}" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1">
-                    <Grid ColumnDefinitions="Auto,*,Auto">
-                      <Border Width="40" Height="40" CornerRadius="{DynamicResource RhRadiusControl}" Background="{DynamicResource RhSurfaceHiBrush}" VerticalAlignment="Top">
-                        <c:RhIcon Data="{StaticResource Icon.Folder}" Width="19" Height="19" Foreground="{DynamicResource RhText2Brush}" />
-                      </Border>
-                      <StackPanel Grid.Column="1" Margin="14,0,12,0" Spacing="3">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                          <TextBlock Text="{Binding PathText}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                          <Border Classes="chip" Padding="7,1" CornerRadius="{DynamicResource RhRadiusSmall}" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding BadgeText}" FontSize="15" />
-                          </Border>
-                        </StackPanel>
-                        <TextBlock Classes="meta" FontSize="15" TextWrapping="Wrap">
-                          <Run Text="{Binding SystemText}" /><Run Text=", " /><Run Text="{Binding OptionsText}" /><Run Text=", " /><Run Text="{Binding ScanText}" />
-                        </TextBlock>
-                      </StackPanel>
-                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                        <Button Theme="{StaticResource RhIconButton}" Width="38" Height="38" ToolTip.Tip="{l:T imports.openFolder}"
-                                Command="{Binding $parent[p:PageBase].((vm:ImportsViewModel)DataContext).OpenFolderCommand}" CommandParameter="{Binding}">
-                          <c:RhIcon Data="{StaticResource Icon.External}" Width="16" Height="16" />
-                        </Button>
-                        <ToggleSwitch IsChecked="{Binding IsEnabled, Mode=OneWay}" IsVisible="{Binding CanRemove}" OnContent="" OffContent="" MinWidth="0"
-                                      Command="{Binding $parent[p:PageBase].((vm:ImportsViewModel)DataContext).ToggleFolderCommand}" CommandParameter="{Binding}"
-                                      ToolTip.Tip="{l:T imports.toggleFolder}" />
-                        <Button Theme="{StaticResource RhIconButton}" Width="38" Height="38" IsVisible="{Binding CanRemove}" ToolTip.Tip="{l:T imports.removeFolder}"
-                                Command="{Binding $parent[p:PageBase].((vm:ImportsViewModel)DataContext).RemoveFolderCommand}" CommandParameter="{Binding}">
-                          <c:RhIcon Data="{StaticResource Icon.Close}" Width="15" Height="15" />
-                        </Button>
-                      </StackPanel>
-                    </Grid>
-                  </Border>
+                  <c:ServiceRow Classes="folder" DataContext="{Binding Row}" />
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,24,0,0">
+              <Button Name="AddFolderButton" Command="{Binding AddFolderCommand}" MinHeight="48">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <c:RhIcon Data="{StaticResource Icon.Plus}" Width="18" Height="18" />
+                  <TextBlock Text="{l:T imports.addFolder}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <TextBlock Text="{l:T imports.neverChanged}" Classes="meta" VerticalAlignment="Center" />
+            </StackPanel>
           </StackPanel>
-        </Border>
 
-        <!-- scan -->
-        <StackPanel Grid.Column="2" Spacing="18">
-          <Border Classes="glass" Padding="24,22">
-            <StackPanel Spacing="14">
-              <TextBlock Text="{l:T imports.scan}" Classes="h2" />
-              <TextBlock Text="{l:T imports.scan.hint}" Classes="body" />
-              <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
-                <Button Name="ScanButton" Theme="{StaticResource RhPrimaryButton}" Command="{Binding ScanCommand}">
-                  <StackPanel Orientation="Horizontal" Spacing="10">
-                    <c:RhIcon Data="{StaticResource Icon.Refresh}" Width="17" Height="17" />
-                    <TextBlock Text="{l:T imports.scanNow}" VerticalAlignment="Center" />
-                  </StackPanel>
+          <!-- ===== scan column ===== -->
+          <StackPanel Name="ScanColumn" Grid.Column="2" Spacing="0">
+            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,12">
+              <c:ShelfLabel Text="{l:T imports.lastReport}" VerticalAlignment="Center" />
+            </StackPanel>
+            <Border Height="1" Background="{DynamicResource RhLineBrush}" Margin="0,0,0,20" />
+            <TextBlock c:Sentence.Text="{Binding LastScanText}" Classes="read" Margin="0,0,0,16" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Button Name="ScanButton" Theme="{StaticResource RhPrimaryButton}" Command="{Binding ScanCommand}" IsVisible="{Binding !IsScanning}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <c:RhIcon Data="{StaticResource Icon.Refresh}" Width="18" Height="18" />
+                  <TextBlock Text="{l:T imports.scanNow}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Name="CancelScanButton" Command="{Binding CancelScanCommand}" IsVisible="{Binding IsScanning}" Content="{l:T common.cancel}" MinHeight="56" />
+            </StackPanel>
+
+            <!-- running: the segment bar and the phase -->
+            <StackPanel Spacing="10" Margin="0,28,0,0" IsVisible="{Binding IsScanning}">
+              <TextBlock Classes="percent" IsVisible="{Binding !IsIndeterminate}" Text="{Binding Progress, StringFormat={}{0:0} %}" />
+              <c:SegmentBar Value="{Binding Progress}" IsIndeterminate="{Binding IsIndeterminate}" HorizontalAlignment="Left" />
+              <TextBlock Text="{Binding ProgressText}" Classes="ui" Foreground="{DynamicResource RhText2Brush}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding CurrentFile}" Classes="mono" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+
+            <!-- the delivery note of the last scan -->
+            <Border Name="DeliveryNote" Margin="0,28,0,0" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="0" Padding="20,16,20,14"
+                    IsVisible="{Binding HasReport}">
+              <StackPanel Spacing="0">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                  <TextBlock Text="{l:T imports.note}" Classes="label" Foreground="{DynamicResource RhText2Brush}" />
+                  <TextBlock Grid.Column="1" c:Sentence.Text="{Binding ReportTitle}" Classes="meta" />
+                </Grid>
+                <Border Height="1" Background="{DynamicResource RhLineBrush}" Margin="0,0,0,8" />
+                <ItemsControl ItemsSource="{Binding Delivery}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DeliveryLine">
+                      <Grid ColumnDefinitions="64,16,*" Height="32">
+                        <TextBlock Classes="note-count" Classes.zero="{Binding IsZero}" Text="{Binding CountText}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Classes="note-text" Classes.zero="{Binding IsZero}" Text="{Binding Text}" VerticalAlignment="Center" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <!-- "3 Hinweise ›": folds the notes open below -->
+                <Button Name="IssuesButton" Theme="{StaticResource RhFoldRow}" Classes="fold-row" MinHeight="40" Margin="-20,2,-20,0" IsVisible="{Binding HasIssues}"
+                        Command="{Binding ToggleIssuesCommand}">
+                  <Grid ColumnDefinitions="64,16,*,Auto" Height="40" Margin="20,0,20,0">
+                    <TextBlock Classes="note-count" Text="{Binding IssueCount}" VerticalAlignment="Center" Foreground="{DynamicResource RhWarningBrush}" />
+                    <Border Grid.Column="2" Classes="row-chip" Padding="8,1" CornerRadius="2" Margin="-8,0,0,0" HorizontalAlignment="Left"
+                            VerticalAlignment="Center">
+                      <TextBlock Classes="note-text" Text="{Binding IssuesText}" />
+                    </Border>
+                    <c:RhIcon Grid.Column="3" Classes="row-chevron" Data="{StaticResource Icon.Expand}" Width="16" Height="16" StrokeThickness="2.6"
+                              Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" IsVisible="{Binding !IssuesOpen}" />
+                    <c:RhIcon Grid.Column="3" Classes="row-chevron" Data="{StaticResource Icon.Collapse}" Width="16" Height="16" StrokeThickness="2.6"
+                              Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" IsVisible="{Binding IssuesOpen}" />
+                  </Grid>
                 </Button>
-                <Button Command="{Binding CancelScanCommand}" IsVisible="{Binding IsScanning}" Content="{l:T common.cancel}" MinHeight="48" />
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0" IsVisible="{Binding ReportClean}">
+                  <c:RhIcon Data="{StaticResource Icon.Ok}" Width="16" Height="16" Foreground="{DynamicResource RhSuccessBrush}" VerticalAlignment="Center" />
+                  <TextBlock Text="{l:T imports.clean}" Classes="meta" Foreground="{DynamicResource RhSuccessBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+                <c:FoldPanel IsOpen="{Binding IssuesOpen}">
+                  <ItemsControl ItemsSource="{Binding Issues}" Margin="0,10,0,4">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Spacing="14" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:IssueGroup">
+                        <StackPanel Spacing="4">
+                          <TextBlock Classes="label" Foreground="{DynamicResource RhText2Brush}">
+                            <Run Text="{Binding Title}" /><Run Text=" · " /><Run Text="{Binding Total}" />
+                          </TextBlock>
+                          <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="lib:ScanIssue">
+                                <StackPanel Margin="0,4">
+                                  <TextBlock Text="{Binding Path}" Classes="mono" TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Text="{Binding Reason}" Classes="meta" TextWrapping="Wrap" />
+                                </StackPanel>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <TextBlock Text="{Binding MoreText}" IsVisible="{Binding HasMore}" Classes="meta" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </c:FoldPanel>
+                <TextBlock c:Sentence.Text="{Binding ReportFoot}" Classes="meta" Margin="0,10,0,0" />
               </StackPanel>
-              <StackPanel Spacing="8" IsVisible="{Binding IsScanning}">
-                <ProgressBar Value="{Binding Progress}" IsIndeterminate="{Binding IsIndeterminate}" Maximum="100" />
-                <TextBlock Text="{Binding ProgressText}" FontSize="15" FontWeight="Medium" />
-                <TextBlock Text="{Binding CurrentFile}" Classes="mono" FontSize="15" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
-            </StackPanel>
-          </Border>
+            </Border>
 
-          <!-- covers (artwork module) -->
-          <Border Classes="glass" Padding="24,22">
-            <StackPanel Spacing="14">
-              <TextBlock Text="{l:T artwork.title}" Classes="h2" />
-              <TextBlock Text="{l:T artwork.hint}" Classes="body" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding CoverOnlineText}" Classes="meta" FontSize="15" TextWrapping="Wrap" />
-              <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
-                <Button Name="CoversButton" Command="{Binding FindCoversCommand}" MinHeight="48">
-                  <StackPanel Orientation="Horizontal" Spacing="10">
-                    <c:RhIcon Data="{StaticResource Icon.Search}" Width="17" Height="17" />
-                    <TextBlock Text="{l:T artwork.find}" VerticalAlignment="Center" />
-                  </StackPanel>
-                </Button>
-                <Button Command="{Binding CancelCoversCommand}" IsVisible="{Binding IsFindingCovers}" Content="{l:T common.cancel}" MinHeight="48" />
-              </StackPanel>
-              <StackPanel Spacing="8" IsVisible="{Binding IsFindingCovers}">
-                <ProgressBar Value="{Binding CoverProgress}" IsIndeterminate="{Binding CoverIndeterminate}" Maximum="100" />
-                <TextBlock Text="{Binding CoverProgressText}" FontSize="15" FontWeight="Medium" />
-                <TextBlock Text="{Binding CoverCurrent}" Classes="meta" FontSize="15" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
-              <TextBlock Text="{Binding CoverResultText}" IsVisible="{Binding HasCoverResult}" Classes="meta" FontSize="15" TextWrapping="Wrap" />
+            <!-- covers (artwork module) -->
+            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,48,0,12">
+              <c:ShelfLabel Text="{l:T artwork.title}" VerticalAlignment="Center" />
             </StackPanel>
-          </Border>
+            <Border Height="1" Background="{DynamicResource RhLineBrush}" Margin="0,0,0,16" />
+            <TextBlock Text="{Binding CoverOnlineText}" Classes="read" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,16,0,0">
+              <Button Name="CoversButton" Command="{Binding FindCoversCommand}" MinHeight="48">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <c:RhIcon Data="{StaticResource Icon.Search}" Width="18" Height="18" />
+                  <TextBlock Text="{l:T artwork.find}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Command="{Binding CancelCoversCommand}" IsVisible="{Binding IsFindingCovers}" Content="{l:T common.cancel}" MinHeight="48" />
+            </StackPanel>
+            <StackPanel Spacing="10" Margin="0,20,0,0" IsVisible="{Binding IsFindingCovers}">
+              <TextBlock Classes="percent" IsVisible="{Binding !CoverIndeterminate}" Text="{Binding CoverProgress, StringFormat={}{0:0} %}" />
+              <c:SegmentBar Value="{Binding CoverProgress}" IsIndeterminate="{Binding CoverIndeterminate}" HorizontalAlignment="Left" />
+              <TextBlock Text="{Binding CoverProgressText}" Classes="ui" Foreground="{DynamicResource RhText2Brush}" />
+              <TextBlock Text="{Binding CoverCurrent}" Classes="meta" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <TextBlock c:Sentence.Text="{Binding CoverResultText}" IsVisible="{Binding HasCoverResult}" Classes="meta" TextWrapping="Wrap" Margin="0,14,0,0" />
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+    </ScrollViewer>
 
-          <!-- last report -->
-          <Border Classes="glass" Padding="24,22" IsVisible="{Binding HasReport}">
-            <StackPanel Spacing="16">
-              <StackPanel Spacing="2">
-                <TextBlock Text="{l:T imports.lastReport}" Classes="h2" />
-                <TextBlock Text="{Binding ReportTitle}" Classes="meta" />
+    <!-- ===== a folder's "Mehr" list: hangs under its row, the page dims (Raum-Tief 72 %, no blur) ===== -->
+    <Panel Name="MenuLayer" IsVisible="{Binding IsMenuOpen}" Background="Transparent">
+      <Border Name="MenuScrim" Background="#B80A0908" />
+      <Border Name="MenuPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Width="420" Background="{DynamicResource RhSurfaceBrush}"
+              BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="{DynamicResource RhRadiusPanel}" Padding="0,8,0,8"
+              BoxShadow="{DynamicResource RhPanelShadow}">
+        <Panel>
+          <Border Height="1" VerticalAlignment="Top" Margin="0,-8,0,0" Background="{DynamicResource RhLightEdgeBrush}" />
+          <StackPanel Name="MenuRows" Spacing="0">
+            <Button Theme="{StaticResource RhSheetRow}" Command="{Binding OpenFolderCommand}" CommandParameter="{Binding MenuFolder}">
+              <StackPanel Orientation="Horizontal" Spacing="14">
+                <c:RhIcon Data="{StaticResource Icon.Folder}" Width="22" Height="22" />
+                <TextBlock Text="{l:T imports.openFolder}" VerticalAlignment="Center" />
               </StackPanel>
-              <Grid ColumnDefinitions="*,10,*,10,*,10,*">
-                <Border Classes="card" Padding="14,12">
-                  <StackPanel><TextBlock Text="{Binding Report.Added}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.added}" Classes="meta" FontSize="15" /></StackPanel>
-                </Border>
-                <Border Grid.Column="2" Classes="card" Padding="14,12">
-                  <StackPanel><TextBlock Text="{Binding Report.Updated}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.updated}" Classes="meta" FontSize="15" /></StackPanel>
-                </Border>
-                <Border Grid.Column="4" Classes="card" Padding="14,12">
-                  <StackPanel><TextBlock Text="{Binding Report.Unchanged}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.unchanged}" Classes="meta" FontSize="15" /></StackPanel>
-                </Border>
-                <Border Grid.Column="6" Classes="card" Padding="14,12">
-                  <StackPanel><TextBlock Text="{Binding Report.Missing}" FontSize="22" FontWeight="Bold" /><TextBlock Text="{l:T imports.missing}" Classes="meta" FontSize="15" /></StackPanel>
-                </Border>
-              </Grid>
-              <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ReportClean}">
-                <c:RhIcon Data="{StaticResource Icon.Check}" Width="16" Height="16" Foreground="{DynamicResource RhSuccessBrush}" />
-                <TextBlock Text="{l:T imports.clean}" FontSize="15" Foreground="{DynamicResource RhSuccessBrush}" />
+            </Button>
+            <Button Theme="{StaticResource RhSheetRow}" Command="{Binding ToggleFolderCommand}" CommandParameter="{Binding MenuFolder}"
+                    IsVisible="{Binding MenuFolder.CanRemove, FallbackValue=False}">
+              <StackPanel Orientation="Horizontal" Spacing="14">
+                <c:RhIcon Data="{StaticResource Icon.Refresh}" Width="22" Height="22" />
+                <TextBlock Text="{Binding MenuFolder.ToggleText, FallbackValue=''}" VerticalAlignment="Center" />
               </StackPanel>
-              <ItemsControl ItemsSource="{Binding Issues}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Spacing="14" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:IssueGroup">
-                    <StackPanel Spacing="6">
-                      <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="{Binding Title}" Classes="h3" FontSize="15" />
-                        <Border Classes="chip" Padding="7,1" CornerRadius="{DynamicResource RhRadiusSmall}">
-                          <TextBlock Text="{Binding Total}" FontSize="15" />
-                        </Border>
-                      </StackPanel>
-                      <ItemsControl ItemsSource="{Binding Items}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="lib:ScanIssue">
-                            <Grid ColumnDefinitions="Auto,*" Margin="0,3">
-                              <Ellipse Width="5" Height="5" Fill="{DynamicResource RhText3Brush}" VerticalAlignment="Top" Margin="2,8,10,0" />
-                              <StackPanel Grid.Column="1">
-                                <TextBlock Text="{Binding Path}" Classes="mono" FontSize="15" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{Binding Reason}" Classes="meta" FontSize="15" TextWrapping="Wrap" />
-                              </StackPanel>
-                            </Grid>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                      <TextBlock Text="{Binding MoreText}" IsVisible="{Binding HasMore}" Classes="meta" FontSize="15" />
-                    </StackPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
-        </StackPanel>
-      </Grid>
-    </StackPanel>
-  </ScrollViewer>
+            </Button>
+            <Button Theme="{StaticResource RhSheetRow}" Command="{Binding RemoveFolderCommand}" CommandParameter="{Binding MenuFolder}"
+                    IsVisible="{Binding MenuFolder.CanRemove, FallbackValue=False}">
+              <StackPanel Orientation="Horizontal" Spacing="14">
+                <c:RhIcon Data="{StaticResource Icon.Remove}" Width="22" Height="22" />
+                <TextBlock Text="{l:T imports.removeFolder}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Panel>
+      </Border>
+    </Panel>
+  </Panel>
 </p:PageBase>

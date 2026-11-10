@@ -167,42 +167,6 @@
     </Style>
   </ControlTheme>
 
-  <!-- ticker entry / segmented option (class "selected" = active): 3 px underline in the light colour -->
-  <ControlTheme x:Key="RhChip" TargetType="Button" BasedOn="{StaticResource RhButton}">
-    <Setter Property="MinHeight" Value="40" />
-    <Setter Property="Height" Value="40" />
-    <Setter Property="Padding" Value="10,0" />
-    <Setter Property="FontSize" Value="17" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusSmall}" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
-    <Setter Property="Template">
-      <ControlTemplate>
-        <Panel>
-          <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}"
-                            Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
-                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-          <Border Name="PART_Mark" Height="3" VerticalAlignment="Bottom" Margin="10,0,10,0" Background="{DynamicResource RhAccentBrush}" Opacity="0" IsHitTestVisible="False" />
-        </Panel>
-      </ControlTemplate>
-    </Setter>
-    <Style Selector="^:pointerover">
-      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-    </Style>
-    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
-    </Style>
-    <Style Selector="^.selected">
-      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-    </Style>
-    <Style Selector="^.selected /template/ Border#PART_Mark">
-      <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="^:focus-visible">
-      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
-    </Style>
-  </ControlTheme>
 
   <!-- ticker entry (DESIGN 7.2.1, 8.2): no face of its own; the content (code chip, count, underline) is styled by the
        page. Focus = inversion of the code chip only, the underline stays. -->
@@ -268,8 +232,6 @@
       <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
     </Style>
   </ControlTheme>
-  <!-- v0 key (sidebar items) → channel look -->
-  <ControlTheme x:Key="RhNavItem" TargetType="Button" BasedOn="{StaticResource RhChannel}" />
 
   <!-- ================= Caption buttons (own min/max/close, OS frame kept) ================= -->
   <ControlTheme x:Key="RhCaptionButton" TargetType="Button">
@@ -435,73 +397,6 @@
     </Style>
   </ControlTheme>
 
-  <!-- ================= Selection row (DESIGN 7.3 "Auswahlzeilen", 8.2) ================= -->
-  <!-- A ComboBox as a 64 px flat row: label (Tag) in ui 18 Text 3 (200 wide), value in ui 18 paper, an arrow right;
-       no box, no chevron. Focus = row in Regal hell, 8 px side bar, 1 px light edge on top, label in a paper chip.
-       Confirm opens the choice list as an overlay. -->
-  <ControlTheme x:Key="RhChoiceRow" TargetType="ComboBox">
-    <Setter Property="Height" Value="64" />
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
-    <Setter Property="FontSize" Value="18" />
-    <Setter Property="FontWeight" Value="Medium" />
-    <Setter Property="FocusAdorner" Value="{x:Null}" />
-    <Setter Property="Cursor" Value="Hand" />
-    <Setter Property="MaxDropDownHeight" Value="420" />
-    <Setter Property="Template">
-      <ControlTemplate>
-        <Panel>
-          <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
-          <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
-          <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource RhLineBrush}" />
-          <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
-          <Grid ColumnDefinitions="200,*,Auto" Margin="16,0,16,0">
-            <Border Name="PART_Chip" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="8,4" CornerRadius="2" Margin="-8,0,0,0" Background="Transparent">
-              <TextBlock Name="PART_Label" Text="{TemplateBinding Tag}" Foreground="{DynamicResource RhText3Brush}" />
-            </Border>
-            <ContentControl Grid.Column="1" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding ItemTemplate}"
-                            VerticalAlignment="Center" Margin="0,0,16,0" />
-            <!-- the "Winkel": the chamfered chevron, 16 px, Text 3 (Papier on focus) - not a filled media triangle (M4 QA) -->
-            <c:RhIcon Grid.Column="2" Name="PART_Arrow" Data="{DynamicResource Icon.ChevronRight}" Width="16" Height="16" StrokeThickness="3" VerticalAlignment="Center"
-                      Foreground="{DynamicResource RhText3Brush}" />
-          </Grid>
-          <Popup Name="PART_Popup" WindowManagerAddShadowHint="False" IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}"
-                 MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="{TemplateBinding MaxDropDownHeight}"
-                 IsLightDismissEnabled="True" InheritsTransform="True" Placement="Bottom">
-            <Border Background="{DynamicResource RhSurfaceBrush}" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1"
-                    CornerRadius="{DynamicResource RhRadiusPanel}" Padding="4" BoxShadow="{DynamicResource RhPanelShadow}">
-              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
-              </ScrollViewer>
-            </Border>
-          </Popup>
-        </Panel>
-      </ControlTemplate>
-    </Setter>
-    <Style Selector="^:pointerover /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ Border#PART_Edge">
-      <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ Border#PART_Bar">
-      <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ Border#PART_Chip">
-      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ TextBlock#PART_Label">
-      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ c|RhIcon#PART_Arrow">
-      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-    </Style>
-  </ControlTheme>
 
   <!-- the solution button (DESIGN 7.3 "Spielen nicht möglich"): a chamfered plate in Regal hell with a 2 px warning
        contour, Icon.Warning and the way out ("Emulator einrichten"); focus = the paper ring like the primary plate -->
@@ -656,6 +551,142 @@
     </Style>
   </ControlTheme>
 
+  <!-- ================= Service menu (DESIGN 7.6) ================= -->
+  <!-- A row of the service menu: label in ui-l Papier (one meta line under it), the value right between two filled
+       arrows in a fixed 320 px column (the values of a section stand on one axis, like a TV's service menu), or an
+       action ("Öffnen ›"). No toggle switch, no slider, no segment control. Focus = the row language of 8.2: Regal hell,
+       8 px Bernstein bar, 1 px light edge, the label in a paper chip; the arrows turn Papier. An arrow at the end of an
+       ordered row stays dim. -->
+  <ControlTheme x:Key="{x:Type c:ServiceRow}" TargetType="c:ServiceRow">
+    <Setter Property="MinHeight" Value="72" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate x:DataType="vm:ServiceSetting">
+        <Panel>
+          <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
+          <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
+          <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource RhLineBrush}" />
+          <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
+          <Grid ColumnDefinitions="*,320" Margin="24,0,8,0">
+            <StackPanel VerticalAlignment="Center" Spacing="1" Margin="0,10,24,10">
+              <Border Name="PART_Chip" HorizontalAlignment="Left" Padding="8,2" CornerRadius="2" Margin="-8,0,0,0" Background="Transparent">
+                <TextBlock Name="PART_Label" Text="{Binding Label}" FontFamily="{DynamicResource RhFontUi}" FontWeight="Medium" FontSize="20" LineHeight="26"
+                           Foreground="{DynamicResource RhText1Brush}" />
+              </Border>
+              <TextBlock Name="PART_Hint" Text="{Binding Hint}" IsVisible="{Binding HasHint}" FontFamily="{DynamicResource RhFontRead}" FontSize="15" LineHeight="20"
+                         Foreground="{DynamicResource RhText3Brush}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <!-- ◀ value ▶ -->
+            <Grid Name="PART_Value" Grid.Column="1" ColumnDefinitions="44,*,44" IsVisible="{Binding IsChoice}" VerticalAlignment="Stretch">
+              <Border Name="PART_Previous" Background="Transparent" Cursor="Hand" IsVisible="{Binding !IsFixed}">
+                <c:RhIcon Name="PART_PrevIcon" Data="{DynamicResource Icon.ArrowLeft}" Filled="True" Width="20" Height="20" Foreground="{DynamicResource RhText3Brush}"
+                          Classes.end="{Binding !CanPrevious}" />
+              </Border>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border Width="16" Height="16" Background="{Binding Swatch}" IsVisible="{Binding HasSwatch}" VerticalAlignment="Center" />
+                <TextBlock Name="PART_ValueText" Text="{Binding ValueText}" FontFamily="{DynamicResource RhFontUi}" FontWeight="SemiBold" FontSize="18" LineHeight="22"
+                           LetterSpacing="0.3" Foreground="{DynamicResource RhText1Brush}" VerticalAlignment="Center" />
+              </StackPanel>
+              <Border Name="PART_Next" Grid.Column="2" Background="Transparent" Cursor="Hand" IsVisible="{Binding !IsFixed}">
+                <c:RhIcon Name="PART_NextIcon" Data="{DynamicResource Icon.ArrowRight}" Filled="True" Width="20" Height="20" Foreground="{DynamicResource RhText3Brush}"
+                          Classes.end="{Binding !CanNext}" />
+              </Border>
+            </Grid>
+            <!-- action: "Öffnen ›" right-aligned on the arrows' outer edge -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"
+                        IsVisible="{Binding IsAction}">
+              <TextBlock Name="PART_ActionText" Text="{Binding ActionText}" FontFamily="{DynamicResource RhFontUi}" FontWeight="SemiBold" FontSize="18" LineHeight="22"
+                         LetterSpacing="0.3" Foreground="{DynamicResource RhText2Brush}" VerticalAlignment="Center" />
+              <c:RhIcon Name="PART_Chevron" Data="{DynamicResource Icon.ChevronRight}" Width="16" Height="16" StrokeThickness="3" Foreground="{DynamicResource RhText3Brush}"
+                        VerticalAlignment="Center" />
+            </StackPanel>
+          </Grid>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ c|RhIcon.end">
+      <Setter Property="Opacity" Value="0.3" />
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
+    </Style>
+    <Style Selector="^ /template/ Border#PART_Previous:pointerover > c|RhIcon, ^ /template/ Border#PART_Next:pointerover > c|RhIcon">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Edge">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Bar">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Chip">
+      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ TextBlock#PART_Label">
+      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ c|RhIcon">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ TextBlock#PART_ActionText">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- a row that folds open (DESIGN 7.6 Emulatoren: one row per system): the header is this button; the fold below it
+       belongs to the page. Same focus language as every row (8.2); the bar takes the system's colour (Tag = brush). -->
+  <ControlTheme x:Key="RhFoldRow" TargetType="Button">
+    <Setter Property="MinHeight" Value="72" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
+          <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
+          <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
+          <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="0" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Edge">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Bar">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <!-- a row that brings its own bar (the system's colour band of an emulator row grows to the full height instead) -->
+    <Style Selector="^.own-bar:focus-visible /template/ Border#PART_Bar">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <!-- the content's own parts (band, label chip, chevron) are styled in Styles.axaml (Button.fold-row …): a control
+         theme may not reach into its content -->
+  </ControlTheme>
+
   <!-- a screen on the back (title screen, snap): the set stands on a shelf edge; focus = the standing ring in the light
        colour around the set and a lift of 1.03 from its foot (an object, DESIGN 8.2) -->
   <ControlTheme x:Key="RhScreenButton" TargetType="Button">
@@ -694,17 +725,6 @@
     </Style>
   </ControlTheme>
 
-  <!-- ================= Stat tile (legacy; flat) ================= -->
-  <ControlTheme x:Key="{x:Type c:StatTile}" TargetType="c:StatTile">
-    <Setter Property="Template">
-      <ControlTemplate>
-        <StackPanel Spacing="0">
-          <TextBlock Text="{TemplateBinding Value}" Classes="number" FontSize="28" Foreground="{DynamicResource RhText1Brush}" />
-          <TextBlock Text="{TemplateBinding Label}" Classes="meta" TextTrimming="CharacterEllipsis" />
-        </StackPanel>
-      </ControlTemplate>
-    </Setter>
-  </ControlTheme>
 
   <!-- toggle (e.g. "Favoriten" filter): checked = favourite yellow; focus = inversion -->
   <ControlTheme x:Key="RhToggleChip" TargetType="ToggleButton">

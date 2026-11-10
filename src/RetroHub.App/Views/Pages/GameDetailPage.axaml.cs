@@ -540,13 +540,14 @@ public partial class GameDetailPage : PageBase
     private void ApplySheet()
     {
         var sheet = _vm?.Sheet ?? DetailSheet.None;
-        var panel = sheet is DetailSheet.More or DetailSheet.FileInfo or DetailSheet.Description or DetailSheet.Variants;
+        var panel = sheet is DetailSheet.More or DetailSheet.FileInfo or DetailSheet.Description or DetailSheet.Variants or DetailSheet.Choice;
         // Mehr and "Auch im Regal" are lists that hang at their button (M4 QA: a centred 680 px card for four short
         // items read as a stock modal); file info and the description stay a centred sheet
-        var list = sheet is DetailSheet.More or DetailSheet.Variants;
+        var list = sheet is DetailSheet.More or DetailSheet.Variants or DetailSheet.Choice;
         SheetPanel.IsVisible = panel;
         MoreRows.IsVisible = sheet == DetailSheet.More;
         VariantRows.IsVisible = sheet == DetailSheet.Variants;
+        ChoiceRows.IsVisible = sheet == DetailSheet.Choice;
         FileLines.IsVisible = sheet == DetailSheet.FileInfo;
         DescriptionScroll.IsVisible = sheet == DetailSheet.Description;
         SheetFolderButton.IsVisible = sheet == DetailSheet.FileInfo;
@@ -589,6 +590,9 @@ public partial class GameDetailPage : PageBase
         {
             DetailSheet.More => MoreRows.Children.OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible),
             DetailSheet.Variants => VariantRows.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible),
+            // the list opens on the current choice
+            DetailSheet.Choice => ChoiceRows.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible && b.Classes.Contains("current"))
+                                  ?? ChoiceRows.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible),
             DetailSheet.FileInfo or DetailSheet.Description => SheetCloseButton,
             _ => null,
         };
@@ -606,6 +610,7 @@ public partial class GameDetailPage : PageBase
         {
             DetailSheet.More => (Control)MoreButton,
             DetailSheet.Variants => VariantsRow,
+            DetailSheet.Choice => _vm?.Choice == DetailChoice.Mode ? ModeBox : EmulatorBox,
             _ => null,
         };
         if (anchor == null || anchor.TranslatePoint(new Point(0, 0), Root) is not { } at)
@@ -617,9 +622,15 @@ public partial class GameDetailPage : PageBase
         }
         var layer = Root.Bounds.Size;
         // the variants list starts under the row's value column (label 200 + inset 16)
-        var x = anchor == VariantsRow ? at.X + 216 - 28 : at.X;
+        // the row lists start under the row's value column (label 200 + inset 16)
+        var x = anchor == VariantsRow || anchor == EmulatorBox || anchor == ModeBox ? at.X + 216 - 28 : at.X;
         x = Math.Clamp(x, 16, Math.Max(16, layer.Width - SheetPanel.Width - 16));
-        var rows = sheet == DetailSheet.More ? MoreRows.Children.Count(c => c.IsVisible) : _vm?.Variants.Count ?? 0;
+        var rows = sheet switch
+        {
+            DetailSheet.More => MoreRows.Children.Count(c => c.IsVisible),
+            DetailSheet.Choice => _vm?.ChoiceItems.Count ?? 0,
+            _ => _vm?.Variants.Count ?? 0,
+        };
         var height = rows * 56 + 16 + 2;
         var below = at.Y + anchor.Bounds.Height + 8;
         var y = below + height <= layer.Height - 64 ? below : Math.Max(16, at.Y - 8 - height);

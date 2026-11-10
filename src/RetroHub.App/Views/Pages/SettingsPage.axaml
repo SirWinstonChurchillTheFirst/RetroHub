@@ -6,225 +6,46 @@
             xmlns:l="using:RetroHub.App.Localization"
             x:Class="RetroHub.App.Views.Pages.SettingsPage"
             x:DataType="vm:SettingsViewModel">
-  <p:PageBase.Styles>
-    <Style Selector="Grid.row">
-      <Setter Property="Margin" Value="0,4" />
-      <Setter Property="MinHeight" Value="72" />
-    </Style>
-    <Style Selector="TextBlock.rowTitle">
-      <Setter Property="FontSize" Value="20" />
-      <Setter Property="FontWeight" Value="Medium" />
-      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-    </Style>
-    <!-- descriptions = the meta class: Atkinson 15/20 in Text 3 -->
-    <Style Selector="TextBlock.rowHint">
-      <Setter Property="FontFamily" Value="{DynamicResource RhFontRead}" />
-      <Setter Property="FontWeight" Value="Normal" />
-      <Setter Property="FontSize" Value="15" />
-      <Setter Property="LineHeight" Value="20" />
-      <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
-      <Setter Property="TextWrapping" Value="Wrap" />
-      <Setter Property="Margin" Value="0,2,0,0" />
-    </Style>
-    <Style Selector="ToggleSwitch">
-      <Setter Property="OnContent" Value="" />
-      <Setter Property="OffContent" Value="" />
-      <Setter Property="MinWidth" Value="0" />
-    </Style>
-    <!-- round accent swatches: the focus ring follows the circle -->
-    <Style Selector="Button.swatch /template/ Border#PART_Ring">
-      <Setter Property="CornerRadius" Value="24" />
-    </Style>
-  </p:PageBase.Styles>
-
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="{DynamicResource RhPageInset}" MaxWidth="1100" HorizontalAlignment="Left" Spacing="22">
-      <StackPanel Spacing="2">
+  <!--
+    Einstellungen as a service menu (DESIGN 7.6): one continuous list on the room, paper labels as section heads, flat
+    72 px rows with the value between two arrows on one axis (◀ Wert ▶). Left/right change a value at once, confirm moves
+    it on, the mouse clicks the arrows; shoulder left/right jump between the sections. No cards, no toggle switches, no
+    sliders, no segment controls, no drop-down.
+  -->
+  <ScrollViewer Name="Scroller" HorizontalScrollBarVisibility="Disabled">
+    <!-- the menu is at most 1100 wide and stands left at the page margin (DESIGN 7.6) -->
+    <Grid Margin="{DynamicResource RhPageInset}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1000*" MaxWidth="1100" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+    <StackPanel Spacing="0">
+      <StackPanel Spacing="2" HorizontalAlignment="Left">
         <TextBlock Text="{l:T nav.settings}" Classes="title" />
         <TextBlock Text="{l:T settings.intro}" Classes="meta" />
       </StackPanel>
 
-      <!-- appearance -->
-      <Border Padding="0,8">
-        <StackPanel Spacing="10">
-          <c:ShelfLabel Text="{l:T settings.appearance}" Margin="0,0,0,6" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.accent}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.accent.hint}" Classes="rowHint" />
-            </StackPanel>
-            <ItemsControl Grid.Column="1" Name="AccentList" ItemsSource="{Binding Accents}" VerticalAlignment="Center" ClipToBounds="False">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="10" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:AccentOption">
-                  <Button Theme="{StaticResource RhIconButton}" Classes="swatch" Width="40" Height="40" CornerRadius="{DynamicResource RhRadiusControl}" Padding="3" ToolTip.Tip="{Binding Name}"
-                          Classes.selected="{Binding IsSelected}" Background="Transparent" BorderThickness="0"
-                          HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
-                          Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectAccentCommand}" CommandParameter="{Binding}">
-                    <Panel>
-                      <Border Background="{Binding Swatch}" CornerRadius="2" />
-                      <c:RhIcon Data="{StaticResource Icon.Check}" Width="18" Height="18" Foreground="{DynamicResource RhInkBrush}" IsVisible="{Binding IsSelected}" StrokeThickness="2.6" />
-                    </Panel>
-                  </Button>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.motion}" Classes="rowTitle" />
-              <TextBlock Text="{Binding MotionHint}" Classes="rowHint" />
-            </StackPanel>
-            <Border Grid.Column="1" Classes="chip" Padding="4" CornerRadius="{DynamicResource RhRadiusControl}" VerticalAlignment="Center">
-              <ItemsControl ItemsSource="{Binding MotionOptions}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="2" />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
+      <ItemsControl Name="SectionList" ItemsSource="{Binding Sections}" Margin="0,16,0,0">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ServiceSection">
+            <StackPanel Spacing="0" Margin="0,32,0,0" Classes="section">
+              <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,12">
+                <c:ShelfLabel Text="{Binding Title}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Note}" Classes="meta" VerticalAlignment="Center" IsVisible="{Binding HasNote}" />
+              </StackPanel>
+              <Border Height="1" Background="{DynamicResource RhLineBrush}" />
+              <ItemsControl ItemsSource="{Binding Rows}">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ChoiceOption">
-                    <Button Theme="{StaticResource RhChip}" Classes.selected="{Binding IsSelected}" Content="{Binding Label}" BorderThickness="0"
-                            Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).SelectMotionCommand}" CommandParameter="{Binding}" />
+                  <DataTemplate x:DataType="vm:ServiceSetting">
+                    <c:ServiceRow />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-            </Border>
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.language}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.language.hint}" Classes="rowHint" />
             </StackPanel>
-            <ComboBox Grid.Column="1" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}" Width="220" VerticalAlignment="Center">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:ChoiceOption">
-                  <TextBlock Text="{Binding Label}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.fullscreen}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.fullscreen.hint}" Classes="rowHint" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartFullscreen}" VerticalAlignment="Center" />
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.hints}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.hints.hint}" Classes="rowHint" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowHints}" VerticalAlignment="Center" />
-          </Grid>
-        </StackPanel>
-      </Border>
-
-      <!-- controller -->
-      <Border Padding="0,8">
-        <StackPanel Spacing="10">
-          <!-- the state is a meta line under the label (no floating chip) -->
-          <StackPanel Spacing="6" Margin="0,0,0,6">
-            <c:ShelfLabel Text="{l:T settings.controller}" />
-            <TextBlock Text="{Binding ControllerStatus}" Classes="meta" />
-          </StackPanel>
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.controller.enabled}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.controller.enabled.hint}" Classes="rowHint" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ControllerEnabled}" VerticalAlignment="Center" />
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.exitCombo}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.exitCombo.hint}" Classes="rowHint" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-              <Slider Width="200" Minimum="0" Maximum="3" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding ExitComboSeconds}" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding ExitComboText}" Width="64" FontWeight="SemiBold" VerticalAlignment="Center" />
-            </StackPanel>
-          </Grid>
-        </StackPanel>
-      </Border>
-
-      <!-- library -->
-      <Border Padding="0,8">
-        <StackPanel Spacing="10">
-          <c:ShelfLabel Text="{l:T settings.library}" Margin="0,0,0,6" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.scanOnStartup}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.scanOnStartup.hint}" Classes="rowHint" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ScanOnStartup}" VerticalAlignment="Center" />
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.watchFolders}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.watchFolders.hint}" Classes="rowHint" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding WatchFolders}" VerticalAlignment="Center" />
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.hashes}" Classes="rowTitle" />
-              <TextBlock Text="{l:T settings.hashes.hint}" Classes="rowHint" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ComputeHashes}" VerticalAlignment="Center" />
-          </Grid>
-          <Border Classes="divider" />
-          <Grid Classes="row" ColumnDefinitions="*,Auto">
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="{l:T settings.onlineCovers}" Classes="rowTitle" />
-              <TextBlock Text="{l:T artwork.settings.onlineHint}" Classes="rowHint" />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding OnlineCovers}" VerticalAlignment="Center" />
-          </Grid>
-        </StackPanel>
-      </Border>
-
-      <!-- folders -->
-      <Border Padding="0,8">
-        <StackPanel Spacing="8">
-          <c:ShelfLabel Text="{l:T settings.paths}" />
-          <TextBlock Text="{l:T settings.paths.hint}" Classes="rowHint" Margin="0,0,0,8" />
-          <ItemsControl ItemsSource="{Binding Paths}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Spacing="2" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:PathEntry">
-                <Grid ColumnDefinitions="180,*,Auto" MinHeight="46">
-                  <TextBlock Text="{Binding Label}" FontSize="15" FontWeight="Medium" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Text="{Binding Display}" Classes="mono" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
-                  <Button Grid.Column="2" Theme="{StaticResource RhGhostButton}"
-                          Command="{Binding $parent[p:PageBase].((vm:SettingsViewModel)DataContext).OpenPathCommand}" CommandParameter="{Binding}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <c:RhIcon Data="{StaticResource Icon.Folder}" Width="16" Height="16" />
-                      <TextBlock Text="{l:T settings.openFolder}" VerticalAlignment="Center" FontSize="15" />
-                    </StackPanel>
-                  </Button>
-                </Grid>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-      </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
     </StackPanel>
+    </Grid>
   </ScrollViewer>
 </p:PageBase>

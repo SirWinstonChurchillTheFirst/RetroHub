@@ -39,6 +39,7 @@ public sealed class OsdLayer : Panel
     }
 
     private double _scale = 1;
+    private double _nameSize = 28;
 
     /// <summary>UI scale of the shell (the layer itself is not scaled).</summary>
     public double Scale
@@ -48,7 +49,7 @@ public sealed class OsdLayer : Panel
         {
             _scale = value;
             _digit.FontSize = 40 * value;
-            _name.FontSize = 28 * value;
+            _name.FontSize = _nameSize * value;
             _box.Spacing = 12 * value;
             _box.Margin = new Thickness(0, 104 * value, PageMargin * value, 0);
         }
@@ -62,9 +63,10 @@ public sealed class OsdLayer : Panel
     public bool IsShowing => _box.IsVisible;
 
     /// <summary>Shows "<paramref name="digit"/> <paramref name="name"/>" for <paramref name="duration"/> (default 1200 ms).</summary>
-    public void Show(string? digit, string name, Color light, TimeSpan? duration = null)
+    public void Show(string? digit, string name, Color light, TimeSpan? duration = null, double nameSize = 28)
     {
         if (!Enabled) return;
+        _nameSize = nameSize;
         var brush = new ImmutableSolidColorBrush(light);
         _digit.Text = digit;
         _digit.IsVisible = !string.IsNullOrEmpty(digit);

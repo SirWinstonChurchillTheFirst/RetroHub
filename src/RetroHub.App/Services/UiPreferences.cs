@@ -6,21 +6,16 @@ using RetroHub.Core.Logging;
 
 namespace RetroHub.App.Services;
 
-/// <summary>Sidebar mode: follow the window width, or keep it expanded / collapsed.</summary>
-[JsonConverter(typeof(JsonStringEnumConverter<SidebarMode>))]
-public enum SidebarMode { Auto, Expanded, Collapsed }
-
 /// <summary>
 /// Purely visual preferences owned by the UI (data/config/ui.json). Kept out of <c>AppSettings</c> so the core
 /// contract does not need UI-only fields.
 /// </summary>
 public sealed class UiPreferences
 {
-    [JsonConverter(typeof(JsonStringEnumConverter<GlyphStyle>))]
-    public GlyphStyle Glyphs { get; set; } = GlyphStyle.Auto;
-    public SidebarMode Sidebar { get; set; } = SidebarMode.Auto;
     /// <summary>Show the controller hint bar at the bottom.</summary>
     public bool ShowHints { get; set; } = true;
+    /// <summary>The channel display (OSD) on a channel switch and at a game start (DESIGN 7.0, "Kanalanzeige").</summary>
+    public bool ShowOsd { get; set; } = true;
     /// <summary>Last library sort (GameSort name) and system filter.</summary>
     public string LibrarySort { get; set; } = "Title";
 }

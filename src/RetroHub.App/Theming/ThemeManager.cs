@@ -89,19 +89,10 @@ public static class ThemeManager
         CurrentAccent = a;
         var r = app.Resources;
 
-        r["RhAccentAColor"] = a;
-        r["RhAccentBColor"] = a;
-        r["RhAccentSoftColor"] = ColorUtil.WithAlpha(a, 0x33);
         r["RhAccentBrush"] = new SolidColorBrush(a);
-        r["RhAccentBBrush"] = new SolidColorBrush(a);
         r["RhAccentPressedBrush"] = new SolidColorBrush(ColorUtil.Mix(a, Colors.Black, 0.12));
         r["RhAccentSoftBrush"] = new SolidColorBrush(ColorUtil.WithAlpha(a, 0x33));
-        r["RhAccentFaintBrush"] = new SolidColorBrush(ColorUtil.WithAlpha(a, 0x1F));
         r["RhAccentTextBrush"] = new SolidColorBrush(ColorUtil.Mix(a, Colors.White, 0.22));
-        // legacy gradient keys: solid
-        r["RhAccentGradientBrush"] = new SolidColorBrush(a);
-        r["RhAccentGradientDiagBrush"] = new SolidColorBrush(a);
-        r["RhFocusRingBrush"] = new SolidColorBrush(a);
         r["RhBoardLightBrush"] = BoardLight;
 
         // Fluent controls (selection, progress, slider) follow the light colour too.

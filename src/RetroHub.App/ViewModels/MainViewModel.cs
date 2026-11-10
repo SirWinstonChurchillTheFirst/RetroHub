@@ -76,10 +76,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] public partial string PageTitle { get; private set; } = "";
     [ObservableProperty] public partial bool CanGoBack { get; private set; }
     /// <summary>Legacy (v0 brand glyphs); the footer glyphs are position-based now.</summary>
-    [ObservableProperty] public partial GlyphStyle Glyphs { get; private set; } = GlyphStyle.Auto;
     /// <summary>The last input was the keyboard: the footer shows key caps instead of pad glyphs.</summary>
     [ObservableProperty] public partial bool KeyboardGlyphs { get; set; } = true;
     [ObservableProperty] public partial bool ShowHints { get; private set; } = true;
+    /// <summary>Setting "Kanalanzeige": the OSD shows channel switches and the system code at a game start.</summary>
+    [ObservableProperty] public partial bool ShowOsd { get; private set; } = true;
     [ObservableProperty] public partial bool ControllerConnected { get; private set; }
     [ObservableProperty] public partial string ControllerName { get; private set; } = "";
     [ObservableProperty] public partial string StatusText { get; private set; } = "";
@@ -257,6 +258,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         var prefs = Ctx.Services.Ui.Current;
         ShowHints = prefs.ShowHints;
+        ShowOsd = prefs.ShowOsd;
         UpdateCompact();
     }
 

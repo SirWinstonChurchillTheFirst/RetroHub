@@ -22,8 +22,5 @@ public enum NavAction
     PageRight,
 }
 
-/// <summary>Which button glyphs the hint bar shows.</summary>
-public enum GlyphStyle { Auto, Xbox, PlayStation }
-
-/// <summary>Controller family reported by an input source (decides the glyphs in <see cref="GlyphStyle.Auto"/>).</summary>
+/// <summary>Controller family reported by an input source (only pad or keyboard glyphs follow from it; DESIGN 5.3).</summary>
 public enum ControllerFamily { None, Xbox, PlayStation, Generic }

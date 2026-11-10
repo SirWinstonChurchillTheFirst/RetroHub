@@ -21,6 +21,12 @@ public sealed record ModeOption(LaunchMode? Mode, string Label, string Hint)
     public override string ToString() => Label;
 }
 
+/// <summary>One entry of the detail's choice list (emulator or start mode): label, a note ("nicht installiert"), the current one checked.</summary>
+public sealed record PickOption(object Value, string Label, string? Note, bool IsCurrent)
+{
+    public bool HasNote => !string.IsNullOrEmpty(Note);
+}
+
 /// <summary>
 /// A launch problem as shown on the detail page: one sentence (the planner's first sentence); a download link in the
 /// message moves behind a "Website" action instead of standing in the text.
@@ -68,7 +74,10 @@ public sealed record VariantOption(GameItemViewModel Game, string Label);
 public sealed record InfoLine(string Label, string Value, bool Mono = false);
 
 /// <summary>The overlays of the detail page (DESIGN 7.3).</summary>
-public enum DetailSheet { None, More, FileInfo, Description, Cover, Screens, Variants }
+public enum DetailSheet { None, More, FileInfo, Description, Cover, Screens, Variants, Choice }
+
+/// <summary>What the choice list of the detail page offers.</summary>
+public enum DetailChoice { Emulator, Mode }
 
 /// <summary>Where the focus is on the detail page: the footer names the action of the focused element.</summary>
 public enum DetailFocus { Play, Solve, Favorite, More, Box, System, Row, File, Variants, Screen, ReadMore, Neighbour, Sheet }
@@ -166,6 +175,9 @@ public sealed partial class GameDetailViewModel : PageViewModel
     // ===================== overlays =====================
 
     [ObservableProperty] public partial DetailSheet Sheet { get; private set; }
+    /// <summary>The choice list's entries (the emulators or the start modes) and what it chooses.</summary>
+    [ObservableProperty] public partial IReadOnlyList<PickOption> ChoiceItems { get; private set; } = [];
+    [ObservableProperty] public partial DetailChoice Choice { get; private set; }
     public bool IsSheetOpen => Sheet != DetailSheet.None;
     [ObservableProperty] public partial IReadOnlyList<InfoLine> FileLines { get; private set; } = [];
     /// <summary>The game has a per-game emulator or mode choice ("Startoptionen zurücksetzen" is offered).</summary>
@@ -206,7 +218,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
         get
         {
             if (IsSheetOpen)
-                return Sheet is DetailSheet.More or DetailSheet.FileInfo or DetailSheet.Variants
+                return Sheet is DetailSheet.More or DetailSheet.FileInfo or DetailSheet.Variants or DetailSheet.Choice
                     ? [new(NavAction.Accept, Loc.T("hint.select")), new(NavAction.Back, Loc.T("hint.close"))]
                     : [new(NavAction.Back, Loc.T("hint.close"))];
             var accept = _focus switch
@@ -501,6 +513,42 @@ public sealed partial class GameDetailViewModel : PageViewModel
     // ===================== overlays (DESIGN 7.3) =====================
 
     [RelayCommand] private void ShowMore() => Sheet = DetailSheet.More;
+
+    /// <summary>"Emulator ›": the choices as a list at the row, the current one checked (DESIGN 7.3, in-style picker).</summary>
+    [RelayCommand]
+    private void ShowEmulatorChoice()
+    {
+        if (Emulators.Count == 0) return;
+        Choice = DetailChoice.Emulator;
+        ChoiceItems = Emulators.Select(e => new PickOption(e, e.Label, e.Status, ReferenceEquals(e, SelectedEmulator))).ToList();
+        Sheet = DetailSheet.Choice;
+    }
+
+    /// <summary>"Startmodus ›": the modes of the chosen emulator.</summary>
+    [RelayCommand]
+    private void ShowModeChoice()
+    {
+        if (Modes.Count == 0) return;
+        Choice = DetailChoice.Mode;
+        ChoiceItems = Modes.Select(m => new PickOption(m, m.Label, null, ReferenceEquals(m, SelectedMode))).ToList();
+        Sheet = DetailSheet.Choice;
+    }
+
+    /// <summary>A choice taken: stored at once (the plan and its problems follow), the list closes.</summary>
+    [RelayCommand]
+    private void Pick(PickOption? option)
+    {
+        Sheet = DetailSheet.None;
+        switch (option?.Value)
+        {
+            case EmulatorOption e when !ReferenceEquals(e, SelectedEmulator):
+                SelectedEmulator = e;
+                break;
+            case ModeOption m when !ReferenceEquals(m, SelectedMode):
+                SelectedMode = m;
+                break;
+        }
+    }
 
     /// <summary>"Auch im Regal": one other version opens at once, several are offered in a list at the row.</summary>
     [RelayCommand]

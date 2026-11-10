@@ -157,15 +157,15 @@
     <!-- ============ Launch overlay ("Spiel wird gestartet", embedded game screen, running state) ============ -->
     <!-- modal: Tab cycles inside the overlay and never reaches the shell behind it -->
     <Panel Name="LaunchOverlay" IsVisible="{Binding Launch.IsActive}" KeyboardNavigation.TabNavigation="Cycle">
-      <Border Background="{DynamicResource RhLaunchScrimBrush}" />
+      <Border Name="LaunchScrim" Background="{DynamicResource RhLaunchScrimBrush}" />
       <!-- embedded: the emulator window lives in the game screen (masked while the start transition lies above it) -->
-      <Panel IsVisible="{Binding Launch.ShowGameScreen}">
+      <Panel Name="GameScreenPanel" IsVisible="{Binding Launch.ShowGameScreen}">
         <c:GameScreen Name="GameScreen" DataContext="{Binding Launch}" />
       </Panel>
       <!-- running in its own window (windowed, released, recovered, or fullscreen without a window) -->
       <Grid IsVisible="{Binding Launch.ShowRunningOverlay}" RowDefinitions="Auto,*,Auto" Margin="48,72,48,40">
         <StackPanel HorizontalAlignment="Center" Spacing="8">
-          <TextBlock Text="{l:T launch.running}" Classes="label accent" HorizontalAlignment="Center" />
+          <TextBlock Text="{l:T launch.running}" Classes="label" HorizontalAlignment="Center" />
           <TextBlock Text="{Binding Launch.Game.Title}" Classes="poster-s" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="1100" />
           <TextBlock HorizontalAlignment="Center" Classes="read" Foreground="{DynamicResource RhText2Brush}">
             <Run Text="{Binding Launch.EmulatorName}" /><Run Text=", " /><Run Text="{Binding Launch.ModeText}" /><Run Text=", " /><Run Text="{Binding Launch.ElapsedText}" />
@@ -175,12 +175,15 @@
         <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
           <c:RhIcon Data="{StaticResource Icon.Window}" Width="48" Height="48" Foreground="{DynamicResource RhText3Brush}" HorizontalAlignment="Center" />
           <TextBlock Text="{l:T launch.externalHint}" Classes="read" TextAlignment="Center" MaxWidth="560" />
-          <Border Classes="chip warn" HorizontalAlignment="Center" Margin="0,8,0,0" IsVisible="{Binding Launch.WindowMissing}">
-            <TextBlock Text="{l:T launch.fullscreen.noWindow.hint}" TextWrapping="Wrap" MaxWidth="560" TextAlignment="Center" />
-          </Border>
-          <Border Classes="chip" HorizontalAlignment="Center" Margin="0,8,0,0" IsVisible="{Binding Launch.IsRecovered}">
-            <TextBlock Text="{l:T launch.recovered.hint}" TextWrapping="Wrap" MaxWidth="560" TextAlignment="Center" />
-          </Border>
+          <!-- status as icon + sentence (DESIGN 2.3: no pills) -->
+          <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,8,0,0" IsVisible="{Binding Launch.WindowMissing}">
+            <c:RhIcon Data="{StaticResource Icon.Warning}" Width="20" Height="20" Foreground="{DynamicResource RhWarningBrush}" VerticalAlignment="Top" Margin="0,4,0,0" />
+            <TextBlock Text="{l:T launch.fullscreen.noWindow.hint}" Classes="read" Foreground="{DynamicResource RhText1Brush}" MaxWidth="560" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,8,0,0" IsVisible="{Binding Launch.IsRecovered}">
+            <c:RhIcon Data="{StaticResource Icon.Info}" Width="20" Height="20" Foreground="{DynamicResource RhText2Brush}" VerticalAlignment="Top" Margin="0,4,0,0" />
+            <TextBlock Text="{l:T launch.recovered.hint}" Classes="read" MaxWidth="560" />
+          </StackPanel>
         </StackPanel>
         <Button Name="StopButton" Grid.Row="2" Theme="{StaticResource RhDangerButton}" HorizontalAlignment="Center" Command="{Binding Launch.StopCommand}">
           <StackPanel Orientation="Horizontal" Spacing="10">
@@ -189,24 +192,28 @@
           </StackPanel>
         </Button>
       </Grid>
-      <!-- starting (above the masked game screen) -->
-      <Panel IsVisible="{Binding Launch.IsStarting}">
+      <!-- starting (above the masked game screen): the start surface that opens from the power-on line (FlightLayer,
+           DESIGN 9.3) – the box on a board, the title as a poster, "mGBA startet …" and the segment light -->
+      <Panel Name="StartPanel" IsVisible="{Binding Launch.IsStarting}">
         <Border Background="{DynamicResource RhRoomDeepBrush}" />
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
-          <Panel Width="240" Height="336" HorizontalAlignment="Center">
-            <c:CoverArt Source="{Binding Launch.Game.CoverPath}" Title="{Binding Launch.Game.Title}" Badge="{Binding Launch.Game.SystemShort}"
-                        SystemId="{Binding Launch.Game.SystemId}" Accent="{Binding Launch.Game.Accent}" />
-          </Panel>
-          <c:ShelfBoard Width="420" Height="10" />
-          <TextBlock Text="{l:T launch.starting}" Classes="label accent" HorizontalAlignment="Center" Margin="0,40,0,8" />
-          <TextBlock Text="{Binding Launch.Game.Title}" Classes="poster-s" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="1000" TextWrapping="Wrap" />
-          <TextBlock HorizontalAlignment="Center" Classes="read-l" Margin="0,10,0,0">
-            <Run Text="{Binding Launch.EmulatorName}" /><Run Text=", " /><Run Text="{Binding Launch.ModeText}" />
-          </TextBlock>
-          <ProgressBar IsIndeterminate="{Binding Launch.IsStarting}" Width="280" Margin="0,28,0,0" HorizontalAlignment="Center" />
-        </StackPanel>
+        <LayoutTransformControl Name="StartScale" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <StackPanel Spacing="0">
+            <Panel Width="240" Height="336" HorizontalAlignment="Center">
+              <c:CoverArt Source="{Binding Launch.Game.CoverPath}" Title="{Binding Launch.Game.Title}" Badge="{Binding Launch.Game.SystemShort}"
+                          SystemId="{Binding Launch.Game.SystemId}" Accent="{Binding Launch.Game.Accent}" Year="{Binding Launch.Game.YearText}" />
+            </Panel>
+            <c:ShelfBoard Width="420" Height="10" IsEdge="True" />
+            <TextBlock Text="{Binding Launch.Game.Title}" Classes="poster-s" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="1000" TextWrapping="Wrap"
+                       Margin="0,44,0,0" />
+            <TextBlock HorizontalAlignment="Center" Classes="read-l" Margin="0,12,0,0" Text="{Binding Launch.StartingText}" />
+            <c:SegmentBar IsIndeterminate="{Binding Launch.IsStarting}" HorizontalAlignment="Center" Margin="0,32,0,0" />
+          </StackPanel>
+        </LayoutTransformControl>
       </Panel>
     </Panel>
+
+    <!-- the power-on line, the flying box, the switch-off (unscaled; DESIGN 9.3) -->
+    <c:FlightLayer Name="Flight" />
 
     <!-- ============ Toasts ============ -->
     <ItemsControl Name="ToastHost" ItemsSource="{Binding Toasts.Items}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,32,80" Width="420">

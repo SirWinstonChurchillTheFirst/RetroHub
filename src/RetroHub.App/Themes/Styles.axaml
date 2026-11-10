@@ -16,30 +16,6 @@
   </Style>
 
   <!-- ===== Surfaces (opaque; no cards in cards – DESIGN 4.3) ===== -->
-  <!-- "glass"/"card" are legacy class names: flat, opaque shelf surfaces now (removed in M6) -->
-  <Style Selector="Border.glass">
-    <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource RhLineBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusPanel}" />
-  </Style>
-  <Style Selector="Border.card">
-    <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource RhLineBrush}" />
-    <Setter Property="BorderThickness" Value="0,1,0,0" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusNone}" />
-  </Style>
-  <!-- chip = paper label ("Etikett"): paper, ink, square -->
-  <Style Selector="Border.chip">
-    <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusSmall}" />
-    <Setter Property="Padding" Value="8,3" />
-  </Style>
-  <Style Selector="Border.chip > TextBlock">
-    <Setter Property="FontSize" Value="15" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
-  </Style>
   <!-- etikett = the paper label of DESIGN 1.2 as a plain border (demo mode in the header): paper, ink, 15, 8 × 3, R 0 -->
   <Style Selector="Border.etikett">
     <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
@@ -51,24 +27,6 @@
     <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
-  </Style>
-  <Style Selector="Border.chip.ok">
-    <Setter Property="Background" Value="{DynamicResource RhSuccessSoftBrush}" />
-  </Style>
-  <Style Selector="Border.chip.ok > TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource RhSuccessBrush}" />
-  </Style>
-  <Style Selector="Border.chip.warn">
-    <Setter Property="Background" Value="{DynamicResource RhWarningSoftBrush}" />
-  </Style>
-  <Style Selector="Border.chip.warn > TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource RhWarningBrush}" />
-  </Style>
-  <Style Selector="Border.chip.bad">
-    <Setter Property="Background" Value="{DynamicResource RhDangerSoftBrush}" />
-  </Style>
-  <Style Selector="Border.chip.bad > TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource RhDangerBrush}" />
   </Style>
   <Style Selector="Border.divider">
     <Setter Property="Height" Value="1" />
@@ -93,41 +51,6 @@
       </Template>
     </Setter>
   </Style>
-  <Style Selector="ComboBox">
-    <Setter Property="MinHeight" Value="48" />
-    <Setter Property="CornerRadius" Value="{DynamicResource RhRadiusControl}" />
-    <Setter Property="Padding" Value="14,0,10,0" />
-    <Setter Property="FontSize" Value="18" />
-    <Setter Property="FocusAdorner" Value="{x:Null}" />
-  </Style>
-  <!-- choice fields (replaced by service-menu rows in M6): a 2 px paper frame when focused -->
-  <Style Selector="ComboBox:focus-visible /template/ Border#Background, ComboBox:focus /template/ Border#Background">
-    <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
-  </Style>
-  <Style Selector="ComboBox:focus-visible /template/ Border#Background">
-    <Setter Property="BorderBrush" Value="{DynamicResource RhPaperBrush}" />
-    <Setter Property="BorderThickness" Value="2" />
-  </Style>
-  <Style Selector="ComboBox:focus-visible /template/ Border#HighlightBackground, ComboBox:focus /template/ Border#HighlightBackground">
-    <Setter Property="IsVisible" Value="False" />
-  </Style>
-  <Style Selector="ToggleSwitch">
-    <Setter Property="FocusAdorner" Value="{x:Null}" />
-  </Style>
-  <Style Selector="ToggleSwitch:focus-visible /template/ Border#OuterBorder">
-    <Setter Property="BorderBrush" Value="{DynamicResource RhPaperBrush}" />
-    <Setter Property="BorderThickness" Value="2" />
-  </Style>
-  <Style Selector="Slider:focus-visible /template/ Thumb">
-    <Setter Property="BorderBrush" Value="{DynamicResource RhPaperBrush}" />
-  </Style>
-  <Style Selector="ProgressBar">
-    <Setter Property="MinHeight" Value="6" />
-    <Setter Property="Height" Value="6" />
-    <Setter Property="CornerRadius" Value="0" />
-    <Setter Property="Foreground" Value="{DynamicResource RhAccentBrush}" />
-    <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
-  </Style>
   <Style Selector="ScrollViewer">
     <Setter Property="AllowAutoHide" Value="True" />
   </Style>
@@ -144,6 +67,24 @@
   </Style>
   <Style Selector="ScrollBar /template/ Thumb">
     <Setter Property="Background" Value="{DynamicResource RhLineBrush}" />
+  </Style>
+
+  <!-- ===== Rows that fold open (RhFoldRow + class "fold-row", DESIGN 7.6, 8.2) ===== -->
+  <!-- the system's colour band grows to the full row height; the label turns into a paper chip; the chevron Papier -->
+  <Style Selector="Button.fold-row Border.row-band">
+    <Setter Property="Margin" Value="0,12" />
+  </Style>
+  <Style Selector="Button.fold-row:focus-visible Border.row-band">
+    <Setter Property="Margin" Value="0" />
+  </Style>
+  <Style Selector="Button.fold-row:focus-visible Border.row-chip">
+    <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
+  </Style>
+  <Style Selector="Button.fold-row:focus-visible Border.row-chip > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
+  </Style>
+  <Style Selector="Button.fold-row:focus-visible c|RhIcon.row-chevron">
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
   </Style>
 
   <!-- ===== Motion levels (classes on the shell root) ===== -->

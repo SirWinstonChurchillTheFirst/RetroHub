@@ -67,7 +67,7 @@ public class DesignPreviewTests
     private static string[] OnlyTokens => (Environment.GetEnvironmentVariable("RETROHUB_DESIGN_ONLY") ?? "")
         .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen"];
+    private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen", "importe", "einschalten"];
     private static readonly string[] VariantTokens = ["preview", "nocovers", "demo", "demo1000", "demoall", "empty", "perf"];
 
     /// <summary>Sheets rendered by their own facts ("specimen", "motive"): asked for alone, the page runs are skipped.</summary>
@@ -383,18 +383,11 @@ public class DesignPreviewTests
                 if (pick != null && Wants("systemseite", PageTokens)) SystemStates(window, vm, ctx, pick, prefix);
 
                 if (wallOnly) continue;
-                if (Wants("emulatoren", PageTokens))
-                {
-                    vm.Navigator.Navigate(PageKey.Emulators);
-                    TestSupport.Pump(() => vm.CurrentPage is EmulatorsViewModel, 8000);
-                    Save(window, prefix + "-6-emulatoren.png", 600);
-                }
-
-                if (Wants("einstellungen", PageTokens))
-                {
-                    vm.Navigator.Navigate(PageKey.Settings);
-                    Save(window, prefix + "-7-einstellungen.png", 600);
-                }
+                if (Wants("emulatoren", PageTokens)) EmulatorStates(window, vm, prefix);
+                if (Wants("einstellungen", PageTokens)) SettingsStates(window, vm, prefix);
+                // a scan only in the demo: the preview roots are copies of a real library whose folders are not here
+                if (Wants("importe", PageTokens)) ImportsStates(window, vm, prefix, scan: root == null);
+                if (pick != null && root == null && Wants("einschalten", PageTokens)) PowerOnStates(window, vm, pick, prefix);
             }
             finally
             {
@@ -881,8 +874,16 @@ public class DesignPreviewTests
         window.Execute(Input.NavAction.Down);
         Save(window, prefix + "-3c-detail-rueckseite.png", 900);
         // the start rows of the back (the screens come first at 1920 when there are some)
-        for (var i = 0; i < 3 && Focused() is not ComboBox; i++) window.Execute(Input.NavAction.Right);
-        if (Focused() is ComboBox) Save(window, prefix + "-3d-detail-start.png", 700);
+        for (var i = 0; i < 3 && Focused()?.Name != "EmulatorBox"; i++) window.Execute(Input.NavAction.Right);
+        if (Focused()?.Name == "EmulatorBox")
+        {
+            Save(window, prefix + "-3d-detail-start.png", 700);
+            // the in-style choice list at the row (replaces the stock drop-down)
+            window.Execute(Input.NavAction.Accept);
+            Save(window, prefix + "-3l-detail-auswahl.png", 600);
+            window.Execute(Input.NavAction.Back);
+            TestSupport.Settle(200);
+        }
         // the shoulder on to "Daneben im Regal" (the last section): its boxes take the object focus
         window.Execute(Input.NavAction.PageRight);
         TestSupport.Settle(150);
@@ -905,6 +906,147 @@ public class DesignPreviewTests
         Save(window, prefix + "-3j-detail-schlicht.png", 1200);
         window.Execute(Input.NavAction.Down);
         Save(window, prefix + "-3k-detail-schlicht-rueckseite.png", 900);
+    }
+
+    /// <summary>
+    /// Emulatoren (DESIGN 7.6): the system rows; the first one opened by confirm; the page filtered to a system that
+    /// cannot start (as from a game's "Emulator einrichten"); the folded "Weitere Programme" opened.
+    /// </summary>
+    private static void EmulatorStates(MainWindow window, MainViewModel vm, string prefix)
+    {
+        Control? Focused() => window.FocusManager?.GetFocusedElement() as Control;
+        vm.Navigator.Navigate(PageKey.Emulators);
+        TestSupport.Pump(() => vm.CurrentPage is EmulatorsViewModel, 8000);
+        Save(window, prefix + "-6-emulatoren.png", 700);
+        if (vm.CurrentPage is not EmulatorsViewModel emus) return;
+        window.Execute(Input.NavAction.Accept);
+        Save(window, prefix + "-6b-emulatoren-offen.png", 600);
+        window.Execute(Input.NavAction.Accept);
+        TestSupport.Settle(300);
+        if (emus.Rows.FirstOrDefault(r => r.NotReady) is { System: { } missing })
+        {
+            vm.Navigator.Navigate(PageKey.Emulators, missing.Id);
+            TestSupport.Settle(400);
+            Save(window, prefix + "-6c-emulatoren-fehlt.png", 700);
+            vm.Navigator.GoBack();
+            TestSupport.Settle(300);
+            vm.Navigator.Navigate(PageKey.Emulators);
+            TestSupport.Pump(() => vm.CurrentPage is EmulatorsViewModel { IsFiltered: false }, 3000);
+        }
+        if (emus.OthersRow is { } others)
+        {
+            others.IsOpen = true;
+            var button = window.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Name == "OthersButton");
+            button?.Focus(Avalonia.Input.NavigationMethod.Directional);
+            TestSupport.Settle(400);
+            button?.BringIntoView();
+            Save(window, prefix + "-6d-emulatoren-weitere.png", 600);
+            others.IsOpen = false;
+        }
+        _ = Focused();
+    }
+
+    /// <summary>
+    /// Einstellungen as the service menu (DESIGN 7.6): the first row in focus; one step right on "Lichtfarbe" (and back);
+    /// the shoulder to "Steuerung" with "Zurück zu RetroHub"; the folders at the end.
+    /// </summary>
+    private static void SettingsStates(MainWindow window, MainViewModel vm, string prefix)
+    {
+        Control? Focused() => window.FocusManager?.GetFocusedElement() as Control;
+        vm.Navigator.Navigate(PageKey.Settings);
+        TestSupport.Pump(() => Focused() is Controls.ServiceRow, 3000);
+        Save(window, prefix + "-7-einstellungen.png", 600);
+        if (Focused() is not Controls.ServiceRow) return;
+        // a value changes at once: the next light colour – the shot shows the new light, then it goes back
+        window.Execute(Input.NavAction.Right);
+        Save(window, prefix + "-7b-einstellungen-wert.png", 600);
+        window.Execute(Input.NavAction.Left);
+        TestSupport.Settle(200);
+        window.Execute(Input.NavAction.PageRight);
+        window.Execute(Input.NavAction.PageRight);
+        window.Execute(Input.NavAction.Down);
+        Save(window, prefix + "-7c-einstellungen-steuerung.png", 600);
+        for (var i = 0; i < 4; i++) window.Execute(Input.NavAction.PageRight);
+        Save(window, prefix + "-7d-einstellungen-ordner.png", 600);
+    }
+
+    /// <summary>
+    /// Importe (DESIGN 7.6): the folders and the scan column; in the demo a scan running (segment bar), its delivery
+    /// note with the notes folded open, and a folder's "Mehr" list.
+    /// </summary>
+    private static void ImportsStates(MainWindow window, MainViewModel vm, string prefix, bool scan)
+    {
+        Control? Focused() => window.FocusManager?.GetFocusedElement() as Control;
+        vm.Navigator.Navigate(PageKey.Imports);
+        TestSupport.Pump(() => vm.CurrentPage is ImportsViewModel, 3000);
+        Save(window, prefix + "-8-importe.png", 600);
+        if (vm.CurrentPage is not ImportsViewModel imports) return;
+        if (scan)
+        {
+            imports.ScanCommand.Execute(null);
+            TestSupport.Pump(() => imports.IsScanning && !imports.IsIndeterminate && imports.Progress > 30, 6000);
+            Save(window, prefix + "-8b-importe-scan.png", 120);
+            TestSupport.Pump(() => imports.HasReport, 15_000);
+            imports.IssuesOpen = true;
+            Save(window, prefix + "-8c-importe-lieferschein.png", 600);
+            imports.IssuesOpen = false;
+        }
+        // the first folder row (left of the scan column), then its Mehr list
+        var row = window.GetVisualDescendants().OfType<Controls.ServiceRow>().FirstOrDefault(r => r.Classes.Contains("folder") && r.Setting?.IsFixed == false)
+                  ?? window.GetVisualDescendants().OfType<Controls.ServiceRow>().FirstOrDefault(r => r.Classes.Contains("folder"));
+        if (row == null) return;
+        row.Focus(Avalonia.Input.NavigationMethod.Directional);
+        Save(window, prefix + "-8d-importe-ordner.png", 400);
+        window.Execute(Input.NavAction.Accept);
+        Save(window, prefix + "-8e-importe-mehr.png", 600);
+        window.Execute(Input.NavAction.Back);
+        TestSupport.Settle(200);
+        _ = Focused();
+    }
+
+    /// <summary>
+    /// The start transition "Einschalten" (DESIGN 9.3) as fixed frames of the FlightLayer, rendered with the detail of
+    /// <paramref name="pick"/> behind it: the box on its way (120 ms), the line in the system's light (270 ms), the
+    /// overexposed frame (320 ms), the opening (420 ms), the start overlay (600 ms), the switch-off (return).
+    /// </summary>
+    private static void PowerOnStates(MainWindow window, MainViewModel vm, GameItemViewModel pick, string prefix)
+    {
+        Control? Focused() => window.FocusManager?.GetFocusedElement() as Control;
+        vm.Navigator.Navigate(PageKey.GameDetail, pick);
+        TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel { Game: not null } d && d.Game.Id == pick.Id && d.Emulators.Count > 0, 8000);
+        TestSupport.Settle(600);
+        if (window.CurrentPageView is Views.Pages.PageBase page) page.FocusDefault();
+        TestSupport.Settle(300);
+        // a real demo launch held in "Starting" (the start surface stays), the frames frozen on the flight's timeline
+        var before = vm.Launch.MinimumTransition;
+        vm.Launch.MinimumTransition = TimeSpan.FromSeconds(30);
+        try
+        {
+            _ = vm.Launch.LaunchAsync(pick);
+            if (!TestSupport.Pump(() => vm.Launch.IsStarting, 5000)) return;
+            var flight = window.FlightLayerControl;
+            TestSupport.Settle(50);
+            foreach (var (ms, name) in new[] { (110, "a-flug"), (270, "b-linie"), (325, "c-blitz"), (400, "d-oeffnen"), (520, "e-start") })
+            {
+                flight.Freeze(ms);
+                Save(window, prefix + $"-9{name}.png", 60);
+            }
+            if (vm.Launch.StopCommand.CanExecute(null)) vm.Launch.StopCommand.Execute(null);
+            TestSupport.Pump(() => vm.Launch.Phase == LaunchPhase.Idle, 8000);
+            TestSupport.Settle(400);
+            var light = Theming.SystemPalette.Get(pick.SystemId, pick.Accent).Light;
+            foreach (var (ms, name) in new[] { (80, "f-aus"), (200, "g-aus-punkt") })
+            {
+                flight.FreezeOff(light, ms);
+                Save(window, prefix + $"-9{name}.png", 60);
+            }
+            flight.Clear();
+        }
+        finally
+        {
+            vm.Launch.MinimumTransition = before;
+        }
+        _ = Focused();
     }
 
     /// <summary>The detail/system subject: the last played game, else one with a cover, else the first.</summary>

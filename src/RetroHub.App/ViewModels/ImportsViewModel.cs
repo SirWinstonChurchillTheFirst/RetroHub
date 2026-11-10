@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using RetroHub.App.Input;
 using RetroHub.App.Localization;
 using RetroHub.App.Services;
 using RetroHub.Core;
@@ -9,20 +10,56 @@ using RetroHub.Core.Metadata;
 
 namespace RetroHub.App.ViewModels;
 
-public sealed class FolderItemViewModel(LibraryFolder folder, AppServices services)
+/// <summary>
+/// A library folder as a service-menu row (DESIGN 7.6 Importe): the path is the label, one meta line says how it is
+/// read, the value is its state "◀ Aktiv ▶" / "◀ Pausiert ▶" (left/right switch it at once); confirm opens its
+/// "Mehr" list. The built-in games/ folder is always active (no arrows).
+/// </summary>
+public sealed class FolderItemViewModel
 {
-    public LibraryFolder Folder { get; } = folder;
-    public string PathText { get; } = folder.IsBuiltIn ? folder.Path + "/" : folder.Path;
-    public string FullPath { get; } = services.Paths.FromPortable(folder.Path);
-    public string SystemText { get; } = folder.SystemId == null
-        ? Loc.T("imports.detectAuto")
-        : Loc.T("imports.fixedSystem", services.Catalog.GetSystem(folder.SystemId)?.Name ?? folder.SystemId);
-    public string ScanText { get; } = folder.LastScanUtc == null ? Loc.T("imports.neverScanned") : Loc.T("imports.lastScan", Fmt.LastPlayed(folder.LastScanUtc));
-    public string OptionsText { get; } = folder.Recursive ? Loc.T("imports.recursive") : Loc.T("imports.topLevelOnly");
+    public FolderItemViewModel(LibraryFolder folder, AppServices services, Action<FolderItemViewModel, bool> setEnabled, Action<FolderItemViewModel> openMenu)
+    {
+        Folder = folder;
+        PathText = folder.IsBuiltIn ? folder.Path + "/" : folder.Path;
+        FullPath = services.Paths.FromPortable(folder.Path);
+        SystemText = folder.SystemId == null
+            ? Loc.T("imports.detectAuto")
+            : Loc.T("imports.fixedSystem", services.Catalog.GetSystem(folder.SystemId)?.Name ?? folder.SystemId);
+        ScanText = folder.LastScanUtc == null ? Loc.T("imports.neverScanned") : Loc.T("imports.lastScan", Fmt.LastPlayed(folder.LastScanUtc));
+        OptionsText = folder.Recursive ? Loc.T("imports.recursive") : Loc.T("imports.topLevelOnly");
+        // "Durchsucht vor 2 Tagen, mit Unterordnern, System automatisch erkennen." – one line, no chips; the time first,
+        // so a narrow row (≈ 1100) cuts the least important part
+        var hint = $"{Fmt.SentenceStart(ScanText)}, {OptionsText}, {SystemText}";
+        Row = folder.IsBuiltIn
+            ? ServiceSetting.Choice(PathText, hint, [new ServiceValue(true, Loc.T("imports.alwaysActive"))], 0, _ => { })
+            : ServiceSetting.Choice(PathText, hint,
+                [new ServiceValue(true, Loc.T("imports.active")), new ServiceValue(false, Loc.T("imports.inactive"))],
+                folder.Enabled ? 0 : 1, v => setEnabled(this, (bool)v.Value!));
+        Row.ActivateOverride = () => openMenu(this);
+    }
+
+    public LibraryFolder Folder { get; }
+    public ServiceSetting Row { get; }
+    public string PathText { get; }
+    public string FullPath { get; }
+    public string SystemText { get; }
+    public string ScanText { get; }
+    public string OptionsText { get; }
     public bool IsBuiltIn => Folder.IsBuiltIn;
     public bool CanRemove => !Folder.IsBuiltIn;
     public bool IsEnabled => Folder.Enabled;
-    public string BadgeText { get; } = folder.IsBuiltIn ? Loc.T("imports.builtIn") : folder.Enabled ? Loc.T("imports.active") : Loc.T("imports.inactive");
+    /// <summary>"Pausieren" / "Aktivieren" in the Mehr list.</summary>
+    public string ToggleText => Folder.Enabled ? Loc.T("imports.pause") : Loc.T("imports.resume");
+}
+
+/// <summary>
+/// The delivery note of the last scan (DESIGN 7.6 "Lieferschein", replaces the result toast): lines in Etikett 18 with
+/// the numbers in the Zahl role on one right-aligned axis. It stands until the next scan begins.
+/// </summary>
+public sealed record DeliveryLine(int Count, string Text)
+{
+    public string CountText => Count.ToString(Loc.Culture);
+    public bool IsZero => Count == 0;
 }
 
 /// <summary>One group of scan issues (duplicates / unknown / errors).</summary>
@@ -67,6 +104,28 @@ public sealed partial class ImportsViewModel : PageViewModel
     [ObservableProperty] public partial string ReportTitle { get; private set; } = "";
     [ObservableProperty] public partial IReadOnlyList<IssueGroup> Issues { get; private set; } = [];
     [ObservableProperty] public partial bool ReportClean { get; private set; }
+    /// <summary>The lines of the delivery note ("412 Dateien geprüft", "12 neu" …).</summary>
+    [ObservableProperty] public partial IReadOnlyList<DeliveryLine> Delivery { get; private set; } = [];
+    [ObservableProperty] public partial int IssueCount { get; private set; }
+    public bool HasIssues => IssueCount > 0;
+    partial void OnIssueCountChanged(int value) => OnPropertyChanged(nameof(HasIssues));
+    /// <summary>"3 Hinweise ›" folds the notes open under the delivery note.</summary>
+    [ObservableProperty] public partial bool IssuesOpen { get; set; }
+    [ObservableProperty] public partial string IssuesText { get; private set; } = "";
+    /// <summary>"Dauer 2,1 s" at the foot of the delivery note.</summary>
+    [ObservableProperty] public partial string ReportFoot { get; private set; } = "";
+    /// <summary>When the folders were last read ("Zuletzt gescannt vor 3 Stunden.") or "Noch nie gescannt.".</summary>
+    [ObservableProperty] public partial string LastScanText { get; private set; } = "";
+
+    /// <summary>The folder whose "Mehr" list is open (null = none).</summary>
+    [ObservableProperty] public partial FolderItemViewModel? MenuFolder { get; private set; }
+    public bool IsMenuOpen => MenuFolder != null;
+    partial void OnMenuFolderChanged(FolderItemViewModel? value)
+    {
+        OnPropertyChanged(nameof(IsMenuOpen));
+        HeaderDim = value != null ? GameDetailViewModel.SheetDim : default;
+        RaiseHintsChanged();
+    }
 
     // ---- covers (ArtworkService) ----
     [ObservableProperty] public partial bool IsFindingCovers { get; private set; }
@@ -80,6 +139,24 @@ public sealed partial class ImportsViewModel : PageViewModel
     [ObservableProperty] public partial ArtworkReport? LastCoverReport { get; private set; }
     public bool CoversAvailable => Ctx.Services.Artwork != null;
     public bool CoversUnavailable => !CoversAvailable;
+
+    public override IReadOnlyList<HintItem> Hints => IsMenuOpen
+        ? [new(NavAction.Accept, Loc.T("hint.select")), new(NavAction.Back, Loc.T("hint.close"))]
+        : [new(NavAction.Accept, Loc.T("hint.select")), new(NavAction.Back, Loc.T("hint.back"))];
+
+    public override bool HandleAction(NavAction action)
+    {
+        if (!IsMenuOpen) return false;
+        if (action == NavAction.Back) MenuFolder = null;
+        // the list is modal: shoulders, favourite, search do nothing behind it
+        return true;
+    }
+
+    public override void OnNavigatedFrom()
+    {
+        base.OnNavigatedFrom();
+        MenuFolder = null;
+    }
 
     public override void OnNavigatedTo(object? argument, bool isBack)
     {
@@ -95,8 +172,15 @@ public sealed partial class ImportsViewModel : PageViewModel
     {
         try
         {
-            Folders = Ctx.Services.Games.Folders().OrderByDescending(f => f.IsBuiltIn).ThenBy(f => f.Path, StringComparer.OrdinalIgnoreCase)
-                .Select(f => new FolderItemViewModel(f, Ctx.Services)).ToList();
+            var folders = Ctx.Services.Games.Folders();
+            Folders = folders.OrderByDescending(f => f.IsBuiltIn).ThenBy(f => f.Path, StringComparer.OrdinalIgnoreCase)
+                .Select(f => new FolderItemViewModel(f, Ctx.Services, SetFolderEnabled, item => MenuFolder = item)).ToList();
+            var last = folders.Where(f => f.Enabled).Max(f => f.LastScanUtc);
+            var now = DateTime.UtcNow;
+            LastScanText = last is not { } at ? Loc.T("imports.never")
+                : Loc.T("imports.lastSentence", (now.ToLocalTime().Date - at.ToLocalTime().Date).Days < 30
+                    ? Fmt.LastPlayedInSentence(at, now)
+                    : Loc.T("system.sentence.on", Fmt.DateInSentence(at, now)));
         }
         catch (Exception ex)
         {
@@ -135,6 +219,9 @@ public sealed partial class ImportsViewModel : PageViewModel
         }
         IsScanning = true;
         IsIndeterminate = true;
+        // the delivery note of the last scan stands until the next one begins
+        HasReport = false;
+        IssuesOpen = false;
         Progress = 0;
         ProgressText = Loc.T("imports.preparing");
         CurrentFile = "";
@@ -155,7 +242,8 @@ public sealed partial class ImportsViewModel : PageViewModel
             var report = await Task.Run(() => scanner.ScanAsync(options, progress, ct), ct).ConfigureAwait(true);
             ShowReport(report);
             scanned = true;
-            if (!quiet || report.Added > 0 || report.Errors.Count > 0)
+            // the delivery note replaces the result toast; a toast only reaches the user who is elsewhere (start-up scan)
+            if (Ctx.Navigator.Current != PageKey.Imports && (!quiet || report.Added > 0 || report.Errors.Count > 0))
                 Ctx.Toasts.Show(Loc.T("imports.done"), ToastKind.Success, Loc.T("imports.doneDetail", report.Added, report.Updated, report.Missing));
         }
         catch (OperationCanceledException)
@@ -272,6 +360,18 @@ public sealed partial class ImportsViewModel : PageViewModel
         if (r.Errors.Count > 0) groups.Add(new IssueGroup(Loc.T("imports.errors"), r.Errors.Take(50).ToList(), r.Errors.Count, true));
         Issues = groups;
         ReportClean = groups.Count == 0;
+        var files = r.Added + r.Updated + r.Unchanged + r.Duplicates.Count + r.Unknown.Count + r.Errors.Count;
+        Delivery =
+        [
+            new(files, Loc.T(files == 1 ? "imports.note.file" : "imports.note.files")),
+            new(r.Added, Loc.T("imports.note.added")),
+            new(r.Updated, Loc.T("imports.note.updated")),
+            new(r.Missing, Loc.T(r.Missing == 1 ? "imports.note.missingOne" : "imports.note.missing")),
+        ];
+        IssueCount = r.Duplicates.Count + r.Unknown.Count + r.Errors.Count;
+        IssuesText = Loc.T(IssueCount == 1 ? "imports.note.issue" : "imports.note.issues");
+        ReportTitle = Fmt.DateTimeText(DateTime.UtcNow);
+        ReportFoot = Loc.T("imports.note.duration", r.Duration.TotalSeconds.ToString("0.0", Loc.Culture));
     }
 
     private static string PhaseText(string phase) => phase switch
@@ -314,6 +414,7 @@ public sealed partial class ImportsViewModel : PageViewModel
     [RelayCommand]
     private async Task RemoveFolderAsync(FolderItemViewModel? item)
     {
+        MenuFolder = null;
         if (item == null || item.IsBuiltIn) return;
         var ok = await Ctx.Dialogs.ConfirmAsync(Loc.T("imports.remove.title"), Loc.T("imports.remove.message", item.PathText), Loc.T("imports.remove.confirm"));
         if (!ok) return;
@@ -329,22 +430,40 @@ public sealed partial class ImportsViewModel : PageViewModel
         }
     }
 
+    /// <summary>"◀ Aktiv ▶" / "◀ Pausiert ▶": stored at once; the row keeps its focus (no reload of the list).</summary>
+    private void SetFolderEnabled(FolderItemViewModel item, bool enabled)
+    {
+        if (item.IsBuiltIn || item.Folder.Enabled == enabled) return;
+        try
+        {
+            item.Folder.Enabled = enabled;
+            Ctx.Services.Games.UpsertFolder(item.Folder);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Updating a library folder failed", ex);
+            item.Folder.Enabled = !enabled;
+            item.Row.Show(item.Folder.Enabled ? 0 : 1);
+        }
+    }
+
+    /// <summary>"Pausieren" / "Aktivieren" in the Mehr list (the same as left/right on the row).</summary>
     [RelayCommand]
     private void ToggleFolder(FolderItemViewModel? item)
     {
+        MenuFolder = null;
         if (item == null || item.IsBuiltIn) return;
-        try
-        {
-            item.Folder.Enabled = !item.Folder.Enabled;
-            Ctx.Services.Games.UpsertFolder(item.Folder);
-            LoadFolders();
-        }
-        catch (Exception ex) { Log.Error("Updating a library folder failed", ex); }
+        item.Row.Step(+1);
     }
+
+    [RelayCommand] private void CloseMenu() => MenuFolder = null;
+
+    [RelayCommand] private void ToggleIssues() => IssuesOpen = !IssuesOpen;
 
     [RelayCommand]
     private void OpenFolder(FolderItemViewModel? item)
     {
+        MenuFolder = null;
         if (item != null && !ShellOpen.Folder(item.FullPath, createIfInside: Ctx.Services.Paths.Games))
             Ctx.Toasts.Show(Loc.T("common.folderMissing", item.FullPath), ToastKind.Warning);
     }

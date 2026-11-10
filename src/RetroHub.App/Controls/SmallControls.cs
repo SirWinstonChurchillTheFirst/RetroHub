@@ -134,18 +134,6 @@ public class GameTile : Button
     }
 }
 
-/// <summary>Legacy dashboard statistic (removed from the pages; deleted in M6).</summary>
-public class StatTile : TemplatedControl
-{
-    public static readonly StyledProperty<string?> ValueProperty = AvaloniaProperty.Register<StatTile, string?>(nameof(Value));
-    public static readonly StyledProperty<string?> LabelProperty = AvaloniaProperty.Register<StatTile, string?>(nameof(Label));
-    public static readonly StyledProperty<Geometry?> IconProperty = AvaloniaProperty.Register<StatTile, Geometry?>(nameof(Icon));
-
-    public string? Value { get => GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
-    public string? Label { get => GetValue(LabelProperty); set => SetValue(LabelProperty, value); }
-    public Geometry? Icon { get => GetValue(IconProperty); set => SetValue(IconProperty, value); }
-}
-
 /// <summary>
 /// Controller/keyboard glyph of the footer (DESIGN 5.3), brand-free and monochrome. Pad: the face buttons are a
 /// diamond of four dots with the meant POSITION filled (south = confirm, east = back, west = favourite, north = search;
@@ -158,8 +146,6 @@ public sealed class ButtonGlyph : Control
     /// <summary>Show keyboard key caps instead of pad glyphs.</summary>
     public static readonly StyledProperty<bool> KeyboardProperty = AvaloniaProperty.Register<ButtonGlyph, bool>(nameof(Keyboard));
     public static readonly StyledProperty<bool> SwapAcceptBackProperty = AvaloniaProperty.Register<ButtonGlyph, bool>(nameof(SwapAcceptBack));
-    /// <summary>Legacy (v0 brand glyphs); ignored – the glyphs are position-based now.</summary>
-    public static readonly StyledProperty<GlyphStyle> GlyphsProperty = AvaloniaProperty.Register<ButtonGlyph, GlyphStyle>(nameof(Glyphs), GlyphStyle.Auto);
 
     private static readonly IImmutableSolidColorBrush Paper = new ImmutableSolidColorBrush(Color.Parse("#F4ECDF"));
     private static readonly IImmutableSolidColorBrush Ink = new ImmutableSolidColorBrush(Color.Parse("#14120F"));
@@ -189,7 +175,6 @@ public sealed class ButtonGlyph : Control
     public NavAction Action { get => GetValue(ActionProperty); set => SetValue(ActionProperty, value); }
     public bool Keyboard { get => GetValue(KeyboardProperty); set => SetValue(KeyboardProperty, value); }
     public bool SwapAcceptBack { get => GetValue(SwapAcceptBackProperty); set => SetValue(SwapAcceptBackProperty, value); }
-    public GlyphStyle Glyphs { get => GetValue(GlyphsProperty); set => SetValue(GlyphsProperty, value); }
 
     /// <summary>Key name for the keyboard caps (matches <see cref="KeyboardMap"/>).</summary>
     public static string KeyName(NavAction a) => a switch

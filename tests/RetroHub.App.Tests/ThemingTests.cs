@@ -19,12 +19,12 @@ public class ThemingTests
         Assert.Equal(Color.Parse("#8CC4FF"), ((ISolidColorBrush)brush!).Color);
         Assert.True(app.TryGetResource("SystemAccentColor", null, out var fluent));
         Assert.Equal(Color.Parse("#8CC4FF"), (Color)fluent!);
-        // the legacy gradient keys are solid now (no decorative gradients)
-        Assert.True(app.TryGetResource("RhAccentGradientBrush", null, out var legacy));
-        Assert.IsAssignableFrom<ISolidColorBrush>(legacy);
+        // the v0 gradient and glass keys are gone (M6 clean-up), they are not even re-created at runtime
+        Assert.False(app.TryGetResource("RhAccentGradientBrush", null, out _));
+        Assert.False(app.TryGetResource("RhGlassBrush", null, out _));
 
         ThemeManager.ApplyAccent(null); // back to Standby-Bernstein
-        app.TryGetResource("RhAccentBBrush", null, out var b);
+        app.TryGetResource("RhAccentBrush", null, out var b);
         Assert.Equal(Color.Parse("#FFB547"), ((ISolidColorBrush)b!).Color);
         Assert.Equal(Color.Parse("#FFB547"), ThemeManager.CurrentAccent);
 

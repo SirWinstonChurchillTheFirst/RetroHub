@@ -5,6 +5,7 @@
     Warm, opaque neutrals; the only brand colour is Standby-Bernstein #FFB547 (closed list of uses, DESIGN 2.2:
     grep "#FFB547|RhAccent" and compare). Radii 0/2/4/6 only. No glass, no alpha-white surfaces, no glow.
     Every consumer uses DynamicResource; light-colour-dependent tokens are replaced at runtime by ThemeManager.ApplyAccent.
+    M6: the v0 "Nova" keys (glass, sidebar, hover/pressed/selected, gradients, glows, ambient brushes, size doubles) are gone.
     Rule (from MonHub DESIGN.md): a token key never equals a ControlTheme/style key.
   -->
 
@@ -18,10 +19,6 @@
   <Color x:Key="RhText2Color">#C9BFAF</Color>
   <Color x:Key="RhText3Color">#948A7A</Color>
   <Color x:Key="RhInkColor">#14120F</Color>
-  <!-- light colour (Bernstein by default; replaced at runtime) -->
-  <Color x:Key="RhAccentAColor">#FFB547</Color>
-  <Color x:Key="RhAccentBColor">#FFB547</Color>
-  <Color x:Key="RhAccentSoftColor">#33FFB547</Color>
 
   <!-- ===== Surfaces (all opaque) ===== -->
   <SolidColorBrush x:Key="RhRoomDeepBrush" Color="#0A0908" />
@@ -30,24 +27,14 @@
   <SolidColorBrush x:Key="RhSurfaceHiBrush" Color="#2A2620" />
   <SolidColorBrush x:Key="RhPaperBrush" Color="#F4ECDF" />
   <SolidColorBrush x:Key="RhInkBrush" Color="#14120F" />
-  <!-- legacy keys (v0 "Nova"): point at opaque values, deleted in M6 -->
-  <SolidColorBrush x:Key="RhSidebarBrush" Color="#14120F" />
-  <SolidColorBrush x:Key="RhGlassBrush" Color="#1E1B17" />
-  <SolidColorBrush x:Key="RhGlassHiBrush" Color="#2A2620" />
-  <SolidColorBrush x:Key="RhGlassFaintBrush" Color="#2A2620" />
-  <SolidColorBrush x:Key="RhHoverBrush" Color="#2A2620" />
-  <SolidColorBrush x:Key="RhPressedBrush" Color="#1E1B17" />
-  <SolidColorBrush x:Key="RhSelectedBrush" Color="#2A2620" />
   <!-- the few allowed translucencies (DESIGN 4.6) -->
   <SolidColorBrush x:Key="RhOverlayScrimBrush" Color="#B80A0908" />
   <SolidColorBrush x:Key="RhLaunchScrimBrush" Color="#F00A0908" />
 
   <!-- ===== Lines ===== -->
   <SolidColorBrush x:Key="RhLineBrush" Color="#3A342B" />
-  <SolidColorBrush x:Key="RhLineStrongBrush" Color="#4A4337" />
   <!-- 1 px light edge: wall split, top of overlays -->
   <SolidColorBrush x:Key="RhLightEdgeBrush" Color="#17FFF3E0" />
-  <SolidColorBrush x:Key="RhGlassBorderBrush" Color="#3A342B" />
   <!-- RhBoardLightBrush: ONE shared SolidColorBrush with a ColorTransition, added by ThemeManager (DESIGN 2.5.6) -->
 
   <!-- ===== Text ===== -->
@@ -58,22 +45,11 @@
 
   <!-- ===== Light colour / accent (replaced at runtime; solid colours only) ===== -->
   <SolidColorBrush x:Key="RhAccentBrush" Color="#FFB547" />
-  <SolidColorBrush x:Key="RhAccentBBrush" Color="#FFB547" />
   <SolidColorBrush x:Key="RhAccentPressedBrush" Color="#E59A2E" />
   <SolidColorBrush x:Key="RhAccentSoftBrush" Color="#33FFB547" />
-  <SolidColorBrush x:Key="RhAccentFaintBrush" Color="#1FFFB547" />
   <SolidColorBrush x:Key="RhAccentTextBrush" Color="#FFC877" />
-  <!-- legacy gradient keys: now solid (no decorative gradients) -->
-  <SolidColorBrush x:Key="RhAccentGradientBrush" Color="#FFB547" />
-  <SolidColorBrush x:Key="RhAccentGradientDiagBrush" Color="#FFB547" />
-  <SolidColorBrush x:Key="RhFocusRingBrush" Color="#FFB547" />
-  <BoxShadows x:Key="RhFocusGlow">0 0 0 0 #00000000</BoxShadows>
-  <BoxShadows x:Key="RhButtonGlow">0 0 0 0 #00000000</BoxShadows>
-  <BoxShadows x:Key="RhFocusShadow">0 0 0 0 #00000000</BoxShadows>
+  <!-- the only shadow: dialogs and overlays (DESIGN 4.4) -->
   <BoxShadows x:Key="RhPanelShadow">0 24 64 -16 #F0000000</BoxShadows>
-  <BoxShadows x:Key="RhNoShadow">0 0 0 0 #00000000</BoxShadows>
-  <SolidColorBrush x:Key="RhAmbientBrushA" Color="Transparent" />
-  <SolidColorBrush x:Key="RhAmbientBrushB" Color="Transparent" />
 
   <!-- ===== States (DESIGN 2.3; always with an icon) ===== -->
   <SolidColorBrush x:Key="RhSuccessBrush" Color="#8FD694" />
@@ -95,7 +71,6 @@
   <CornerRadius x:Key="RhRadiusPill">4</CornerRadius>
   <x:Double x:Key="RhChamferRing">6</x:Double>
   <x:Double x:Key="RhChamferPlate">4</x:Double>
-  <Thickness x:Key="RhPagePadding">96,8,96,32</Thickness>
   <!-- page margins: 96 px at a logical width ≥ 1600, else 56 (the shell replaces these at runtime, DESIGN 7.0) -->
   <Thickness x:Key="RhPageInset">96,24,96,48</Thickness>
   <Thickness x:Key="RhGridInset">96,48,96,64</Thickness>
@@ -112,11 +87,5 @@
   <FontFamily x:Key="RhFontRead">avares://RetroHub.App/Assets/Fonts/Atkinson#Atkinson Hyperlegible Next, fonts:Inter#Inter</FontFamily>
   <!-- the window default: UI role -->
   <FontFamily x:Key="RhFont">avares://RetroHub.App/Assets/Fonts/ArchivoSemiCondensed#Archivo SemiCondensed, fonts:Inter#Inter</FontFamily>
-  <x:Double x:Key="RhFontDisplay">56</x:Double>
-  <x:Double x:Key="RhFontTitle">40</x:Double>
-  <x:Double x:Key="RhFontH2">24</x:Double>
-  <x:Double x:Key="RhFontBody">18</x:Double>
-  <x:Double x:Key="RhFontMeta">15</x:Double>
-  <x:Double x:Key="RhFontLabel">15</x:Double>
   <!-- Motion tokens (DESIGN 9.1) live in Theming/Motion.cs; XAML transitions use the literal values 0.09/0.14/0.22/0.28/0.42 s. -->
 </ResourceDictionary>

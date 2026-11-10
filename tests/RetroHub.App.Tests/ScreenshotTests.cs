@@ -73,7 +73,7 @@ public class ScreenshotTests
         Save(window, "system-gba");
 
         vm.Navigator.Navigate(PageKey.Emulators);
-        TestSupport.Pump(() => vm.CurrentPage is EmulatorsViewModel { Items.Count: > 0 });
+        TestSupport.Pump(() => vm.CurrentPage is EmulatorsViewModel { Rows.Count: > 0 });
         Save(window, "emulators");
 
         vm.Navigator.Navigate(PageKey.Imports);
