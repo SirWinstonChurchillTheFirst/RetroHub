@@ -111,6 +111,47 @@ public class ArtworkUiTests
         try { Directory.Delete(dir, true); } catch (IOException) { }
     });
 
+    [Fact]
+    public Task Thumbnail_cache_cleanup_drops_removed_and_changed_covers_only() => UiTest.Run(() =>
+    {
+        var dir = NewDir();
+        var thumbs = Path.Combine(dir, "thumbs");
+        var kept = WriteNoisePng(dir, "kept.png", 600, 840, transparentCorner: false);
+        var changed = WriteNoisePng(dir, "changed.png", 600, 840, transparentCorner: false);
+        var removed = WriteNoisePng(dir, "removed.png", 600, 840, transparentCorner: false);
+
+        var loader = new AsyncImageLoader(16) { DiskCacheFolder = thumbs };
+        foreach (var p in new[] { kept, changed, removed })
+        {
+            Assert.NotNull(loader.LoadAsync(p, 256, CancellationToken.None).GetAwaiter().GetResult());
+            Assert.NotNull(loader.LoadAsync(p, 384, CancellationToken.None).GetAwaiter().GetResult());
+        }
+        Assert.Equal(6, Directory.GetFiles(thumbs).Length);
+        // an old-format leftover, a foreign file and a temp file of a running save
+        File.WriteAllText(Path.Combine(thumbs, "0123456789abcdef01234567.jpg"), "old");
+        File.WriteAllText(Path.Combine(thumbs, "readme.txt"), "not ours");
+        var temp = Path.Combine(thumbs, "x.jpg.1" + RetroHub.Core.IO.SafeFile.TempSuffix);
+        File.WriteAllText(temp, "tmp");
+
+        // the "changed" cover was replaced in place (new mtime), "removed" is no longer a game's cover
+        File.SetLastWriteTimeUtc(changed, DateTime.UtcNow.AddMinutes(3));
+        var deleted = loader.CleanDiskCache([kept, changed]);
+
+        Assert.Equal(5, deleted); // 2 changed + 2 removed + 1 old format
+        var left = Directory.GetFiles(thumbs).Select(Path.GetFileName).ToList();
+        Assert.Equal(2, left.Count(n => n!.StartsWith(AsyncImageLoader.PathHash(kept), StringComparison.Ordinal)));
+        Assert.Contains("readme.txt", left);
+        Assert.True(File.Exists(temp));
+
+        // the kept thumbnails are still used (no new files), the changed cover gets fresh ones
+        var next = new AsyncImageLoader(16) { DiskCacheFolder = thumbs };
+        Assert.NotNull(next.LoadAsync(kept, 256, CancellationToken.None).GetAwaiter().GetResult());
+        Assert.NotNull(next.LoadAsync(changed, 256, CancellationToken.None).GetAwaiter().GetResult());
+        Assert.Equal(1, Directory.GetFiles(thumbs).Count(f => Path.GetFileName(f).StartsWith(AsyncImageLoader.PathHash(changed), StringComparison.Ordinal)));
+        Assert.Equal(0, next.CleanDiskCache([kept, changed]));
+        try { Directory.Delete(dir, true); } catch (IOException) { }
+    });
+
     /// <summary>Routes requests to a callback (GitHub index + thumbnails) without network access.</summary>
     private sealed class FakeHttp(Func<HttpRequestMessage, HttpResponseMessage> handler) : HttpMessageHandler
     {

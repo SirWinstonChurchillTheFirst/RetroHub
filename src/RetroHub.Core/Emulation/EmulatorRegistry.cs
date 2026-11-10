@@ -21,7 +21,8 @@ namespace RetroHub.Core.Emulation;
 /// from the folder/exe name ("mGBA-0.10.5-win64" → "0.10.5"). RetroArch has no version resource and a version-less
 /// folder ("RetroArch-Win64"), so for it <c>retroarch.exe --version</c> is run once (hidden, stdout/stderr redirected,
 /// 3 s timeout), falling back to the "Version: x.y.z" string inside the binary; the result is cached by exe path + size +
-/// mtime in data/cache/emulator-versions.json (<see cref="EmulatorVersionCache"/>). RetroArch: <see cref="EmulatorInstall.InstalledCores"/>
+/// mtime in data/cache/emulator-versions.json (<see cref="EmulatorVersionCache"/>). Dolphin has no version resource either:
+/// its binary is read (never run) for "Dolphin 2609b", cached the same way. RetroArch: <see cref="EmulatorInstall.InstalledCores"/>
 /// = cores/*_libretro.dll next to the exe. Detection is read-only and never throws (unreadable folders are skipped).
 /// </summary>
 public sealed class EmulatorRegistry : IEmulatorRegistry
@@ -173,10 +174,20 @@ public sealed class EmulatorRegistry : IEmulatorRegistry
             Def = def,
             ExePath = exe,
             UserConfigured = user,
-            Version = ReadVersion(exe, _paths.Emulators)
-                      ?? (def.Kind == EmulatorKind.RetroArch ? _versions.GetOrProbe(exe, EmulatorVersionProbe.RetroArch) : null),
+            Version = ReadVersion(exe, _paths.Emulators) ?? ProbeVersion(def, exe),
             InstalledCores = def.Kind == EmulatorKind.RetroArch ? Cores(exe) : [],
         };
+    }
+
+    /// <summary>
+    /// Exes without a version resource: RetroArch answers "--version"; Dolphin (no resource, folder "Dolphin-x64") is
+    /// only read, never run — its binary carries "Dolphin 2609b" / the user agent "Dolphin/2609b". Cached like RetroArch.
+    /// </summary>
+    private string? ProbeVersion(EmulatorDef def, string exe)
+    {
+        if (def.Kind == EmulatorKind.RetroArch) return _versions.GetOrProbe(exe, EmulatorVersionProbe.RetroArch);
+        if (EmulatorVersionProbe.IsDolphin(def, exe)) return _versions.GetOrProbe(exe, EmulatorVersionProbe.DolphinFromBinary);
+        return null;
     }
 
     private static bool HasWildcard(string pattern) => pattern.IndexOfAny(['*', '?']) >= 0;
@@ -350,6 +361,41 @@ internal static partial class EmulatorVersionProbe
 
     [GeneratedRegex(@"RetroArch(?:-WIMP)?/(\d+\.\d+(?:\.\d+){0,2})", RegexOptions.CultureInvariant)]
     private static partial Regex UserAgentToken();
+
+    [GeneratedRegex(@"Dolphin[ /](\d{4}[a-z]?(?:-\d{1,6})?|\d+\.\d+(?:\.\d+)?(?:-\d{1,6})?)\0", RegexOptions.CultureInvariant)]
+    private static partial Regex DolphinToken();
+
+    /// <summary>Dolphin by catalog id or exe name ("Dolphin.exe"; not DolphinTool/DolphinNoGUI's helper tools).</summary>
+    public static bool IsDolphin(EmulatorDef def, string exe) =>
+        string.Equals(def.Id, "dolphin", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(Path.GetFileNameWithoutExtension(exe), "Dolphin", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Dolphin: the version descriptor in the binary (read only, never executed); null when none.</summary>
+    public static string? DolphinFromBinary(string exe)
+    {
+        try
+        {
+            var info = new FileInfo(exe);
+            if (!info.Exists || info.Length > 256L * 1024 * 1024) return null;
+            return DolphinFromBinaryText(System.Text.Encoding.Latin1.GetString(File.ReadAllBytes(exe)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OutOfMemoryException)
+        {
+            Log.Debug($"Reading {exe} for a Dolphin version failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// "…\0Dolphin 2609b\0…Dolphin/2609b\0" → "2609b"; old builds "Dolphin 5.0-21460" → "5.0-21460". Only whole
+    /// zero-terminated strings count ("Dolphin 2003-2024 team" in a licence text does not); the most frequent wins.
+    /// </summary>
+    internal static string? DolphinFromBinaryText(string text)
+    {
+        var best = DolphinToken().Matches(text).Select(m => m.Groups[1].Value)
+            .GroupBy(v => v).OrderByDescending(g => g.Count()).ThenByDescending(g => g.Key.Length).FirstOrDefault();
+        return best?.Key;
+    }
 
     /// <summary>RetroArch: "--version" output, else the version string embedded in the binary.</summary>
     public static string? RetroArch(string exe) => FromProcess(exe, "--version") ?? FromBinary(exe);

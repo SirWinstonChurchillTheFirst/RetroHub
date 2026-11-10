@@ -230,7 +230,8 @@ und unter dem Titel angezeigt („SNES · Deutsch“), damit die neun Fassungen 
 **Bekannt / offen:**
 - Cemu: zeigt eine Fehlermeldung statt sich zu beenden; „Beenden“ in RetroHub greift erst, wenn Cemu reagiert – der
   Testtreiber hat RetroHub nach 90 s abgebrochen, der Neustart hat die Sitzung per Absturz-Wiederherstellung verbucht (90 s).
-- Dolphin zeigt auf der Emulatoren-Seite keine Version („Version unbekannt“).
+- ~~Dolphin zeigt auf der Emulatoren-Seite keine Version („Version unbekannt“).~~ Behoben: Dolphin.exe hat keine
+  Versionsressource; RetroHub liest die Kennung („Dolphin 2609b“) aus der Datei (ohne sie zu starten) und merkt sie sich.
 - Bildschirmaufnahmen (GDI) sehen OpenGL-/D3D-Vollbild teils nicht; für Tests: Fenstermodus oder RetroArch-eigene Screenshots.
 
 ## Switch mit Eden – 09.11.2026

@@ -96,7 +96,7 @@ RetroHub/
 │   ├── database/           retrohub.db (SQLite, WAL)
 │   ├── config/             settings.json (+ .bak)
 │   ├── metadata/           importierte Metadaten (z. B. gamelist.xml)
-│   ├── cache/thumbs/       verkleinerte Cover
+│   ├── cache/thumbs/       verkleinerte Cover (beim Start aufgeräumt: entfernte Spiele, geänderte Cover)
 │   └── logs/               retrohub-JJJJMMTT.log (14 Tage)
 ├── games/<system>/         nes, snes, n64, gc, wii, gb, gbc, gba, nds, 3ds, psx, ps2, psp, …, pc
 ├── emulators/<emulator>/   retroarch, mgba, melonds, desmume, azahar, dolphin, pcsx2, ppsspp, duckstation, …

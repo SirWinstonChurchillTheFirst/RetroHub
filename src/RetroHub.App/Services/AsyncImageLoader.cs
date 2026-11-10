@@ -10,8 +10,10 @@ namespace RetroHub.App.Services;
 /// needed for the tile width), an in-memory LRU cache by (path, width), de-duplication of concurrent requests,
 /// and cancellation when a tile is recycled before its image arrived. Missing/broken files yield null (placeholder).
 /// With <see cref="DiskCacheFolder"/> set (data/cache/thumbs), large source images (&gt; <see cref="DiskCacheMinBytes"/>)
-/// are decoded once and saved as a downscaled JPEG (quality 90; PNG when the image has transparent pixels) named after a hash of (path, size, mtime, width); later loads decode
-/// the small file. Core has no image library, so this App-side cache is RetroHub's thumbnail cache.
+/// are decoded once and saved as a downscaled JPEG (quality 90; PNG when the image has transparent pixels) named
+/// "&lt;hash of path&gt;-&lt;hash of size+mtime&gt;-&lt;width&gt;"; later loads decode the small file. Core has no image library,
+/// so this App-side cache is RetroHub's thumbnail cache. <see cref="CleanDiskCache"/> removes thumbnails of covers
+/// that are no longer in the library or whose file changed (run once per start, off the UI thread).
 /// </summary>
 public sealed class AsyncImageLoader
 {
@@ -150,9 +152,67 @@ public sealed class AsyncImageLoader
     {
         var folder = DiskCacheFolder;
         if (folder == null || source.Length < DiskCacheMinBytes) return null;
-        var id = $"{source.FullName.ToLowerInvariant()}|{source.Length}|{source.LastWriteTimeUtc.Ticks}|{width}";
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(id)), 0, 12).ToLowerInvariant();
-        return Path.Combine(folder, hash);
+        return Path.Combine(folder, $"{PathHash(source.FullName)}-{VersionHash(source)}-{width}");
+    }
+
+    /// <summary>12 hex digits of SHA-256 over the lower-case full path: which cover a thumbnail belongs to.</summary>
+    internal static string PathHash(string fullPath) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(fullPath).ToLowerInvariant())), 0, 6).ToLowerInvariant();
+
+    /// <summary>8 hex digits over size + mtime: which state of the cover file a thumbnail was made from.</summary>
+    internal static string VersionHash(FileInfo source) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{source.Length}|{source.LastWriteTimeUtc.Ticks}")), 0, 4).ToLowerInvariant();
+
+    private static readonly System.Text.RegularExpressions.Regex ThumbName =
+        new(@"^([0-9a-f]{12})-([0-9a-f]{8})-\d{1,5}\.(?:jpg|png)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>Names of the first cache format (one 24-digit hash, not traceable to its cover): always stale.</summary>
+    private static readonly System.Text.RegularExpressions.Regex OldThumbName =
+        new(@"^[0-9a-f]{24}\.(?:jpg|png)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Deletes thumbnails whose cover is not among <paramref name="liveSources"/> (game removed, other cover chosen),
+    /// whose cover file changed or vanished (size/mtime differ), and files of the old naming scheme. Only files that
+    /// match the cache's own naming are touched (temp files are left to <see cref="RetroHub.Core.IO.SafeFile.SweepTemps"/>).
+    /// Never throws; returns the number of deleted files.
+    /// </summary>
+    public int CleanDiskCache(IEnumerable<string> liveSources)
+    {
+        var folder = DiskCacheFolder;
+        if (folder == null) return 0;
+        int deleted = 0;
+        try
+        {
+            if (!Directory.Exists(folder)) return 0;
+            var current = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var src in liveSources)
+            {
+                if (string.IsNullOrWhiteSpace(src)) continue;
+                try
+                {
+                    var info = new FileInfo(src);
+                    if (info.Exists && info.Length >= DiskCacheMinBytes) current[PathHash(info.FullName)] = VersionHash(info);
+                }
+                catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException or IOException or UnauthorizedAccessException) { _ = ex; }
+            }
+            foreach (var file in Directory.EnumerateFiles(folder, "*", new EnumerationOptions { IgnoreInaccessible = true }))
+            {
+                var name = Path.GetFileName(file);
+                bool stale;
+                var m = ThumbName.Match(name);
+                if (m.Success) stale = !current.TryGetValue(m.Groups[1].Value, out var ver) || ver != m.Groups[2].Value;
+                else stale = OldThumbName.IsMatch(name);
+                if (!stale) continue;
+                try { File.Delete(file); deleted++; }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Debug($"Stale thumbnail {name} not deleted: {ex.Message}"); }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            Log.Warn("Cleaning the thumbnail cache failed", ex);
+        }
+        if (deleted > 0) Log.Info($"Thumbnail cache: {deleted} stale file(s) removed");
+        return deleted;
     }
 
     /// <summary>

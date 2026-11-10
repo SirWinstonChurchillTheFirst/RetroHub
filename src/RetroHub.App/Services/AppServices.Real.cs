@@ -78,12 +78,28 @@ public sealed partial class AppServices
             {
                 try { artwork.FillCoverSizes(); }
                 catch (Exception ex) { Log.Debug($"Cover size backfill skipped: {ex.Message}"); }
+                // thumbnails of removed games / replaced or changed covers (the cache only ever grew before)
+                try { AsyncImageLoader.Shared.CleanDiskCache(LiveCoverPaths(games, paths)); }
+                catch (Exception ex) { Log.Debug($"Thumbnail cache cleanup skipped: {ex.Message}"); }
             });
         }
         catch
         {
             games.Dispose();
             throw;
+        }
+    }
+
+    /// <summary>Full paths of every game's cover (hidden and missing games included: their thumbnails stay).</summary>
+    internal static IEnumerable<string> LiveCoverPaths(IGameRepository games, AppPaths paths)
+    {
+        foreach (var g in games.Query(new GameQuery { IncludeHidden = true, IncludeMissing = true }))
+        {
+            if (string.IsNullOrEmpty(g.CoverPath)) continue;
+            string full;
+            try { full = paths.FromPortable(g.CoverPath); }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { _ = ex; continue; }
+            yield return full;
         }
     }
 

@@ -98,6 +98,45 @@ public sealed class EmulatorVersionTests : IDisposable
         Assert.Null(reg.Get("other")!.Version); // standalone emulators are never executed for a version
     }
 
+    [Theory]
+    [InlineData("\0Dolphin Version: \0Dolphin 2609b\0HEAD\0Dolphin/2609b\0dolphin-emu.org\0", "2609b")]
+    [InlineData("\0Dolphin 5.0-21460\0Dolphin/5.0-21460\0", "5.0-21460")]
+    [InlineData("\0Dolphin 2412\0", "2412")]
+    [InlineData("\0Dolphin is too old for traversal server\0Dolphin Emulator\0Dolphin 2003-2024 team members\0", null)]
+    [InlineData("", null)]
+    public void Reads_the_dolphin_version_from_its_binary(string text, string? expected) =>
+        Assert.Equal(expected, EmulatorVersionProbe.DolphinFromBinaryText(text));
+
+    [Fact]
+    public void Registry_reads_dolphins_version_from_the_binary_without_running_it()
+    {
+        var catalog = new FakeCatalog()
+            .Add(new EmulatorDef { Id = "dolphin", Name = "Dolphin", Exe = ["Dolphin.exe"] });
+        var bytes = FakePe(16384);
+        var marker = System.Text.Encoding.ASCII.GetBytes("\0Dolphin 2609b\0Dolphin/2609b\0");
+        marker.CopyTo(bytes, 5000);
+        var exe = _t.Touch("emulators/dolphin/Dolphin-x64/Dolphin.exe", bytes);
+        var cacheFile = Path.Combine(_t.Root, "data", "cache", "emulator-versions.json");
+
+        var reg = new EmulatorRegistry(catalog, _t.Paths, _t.Settings, cacheFile);
+
+        Assert.Equal("2609b", reg.Get("dolphin")!.Version);
+        Assert.True(File.Exists(cacheFile)); // cached: the 20 MB binary is not read on every start
+        Assert.Contains("2609b", File.ReadAllText(cacheFile));
+        Assert.True(EmulatorVersionProbe.IsDolphin(new EmulatorDef { Id = "x", Name = "x", Exe = [] }, exe));
+    }
+
+    [Fact]
+    public void Real_dolphin_reports_its_version()
+    {
+        const string realDolphin = @"D:\RetroHub\emulators\dolphin\Dolphin-x64\Dolphin.exe";
+        Assert.SkipUnless(File.Exists(realDolphin), "Dolphin test install not present");
+        var v = EmulatorVersionProbe.DolphinFromBinary(realDolphin);
+        TestContext.Current.TestOutputHelper?.WriteLine($"Dolphin binary scan: {v}");
+        Assert.NotNull(v);
+        Assert.Matches(@"^\d{4}[a-z]?(-\d+)?$|^\d+\.\d+", v);
+    }
+
     [Fact]
     public void Real_retroarch_reports_its_version()
     {
