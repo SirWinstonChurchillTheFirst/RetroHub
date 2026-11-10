@@ -129,9 +129,11 @@ public partial class HomePage : PageBase
         Shelves.AnchorY = anchor;
         ShelfList.Spacing = spacing;
         // QA 2: the next shelf no longer peeks in – between the footer's own fade and this one only a strip of 2 px colour
-        // dashes was left (it read as a rendering glitch). The fade now ends 8 px above the next shelf's boxes.
-        var topGap = compact ? 32.0 : 40.0; // Shelf.TopGap of the Start shelves (HomePage.axaml)
-        var nextBoxes = shelvesTop + anchor + item + Shelf.BoardHeight + Shelf.BelowBoard + spacing + topGap;
+        // dashes was left (it read as a rendering glitch). The fade ends 8 px above the next shelf's boxes.
+        // R2: the shelf's TopGap is headroom ABOVE the anchored row (lift, ring), not space inside the next shelf: the next
+        // shelf's boxes start right after the spacing. Counting it put the fade 40 px too low, and the top 30 px of the
+        // next row's boxes stood half-faded above the footer ("half-cut content").
+        var nextBoxes = shelvesTop + anchor + item + Shelf.BoardHeight + Shelf.BelowBoard + spacing;
         ShelfFade.Margin = new Thickness(0, Math.Max(0, nextBoxes - 8 - 24), 0, 0);
     }
 

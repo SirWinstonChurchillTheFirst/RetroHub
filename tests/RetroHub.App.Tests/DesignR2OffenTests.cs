@@ -167,6 +167,25 @@ public class DesignR2OffenTests
         window.Close();
     });
 
+    [Theory]
+    [InlineData(1920, 1080)]
+    [InlineData(1100, 700)]
+    public Task Start_the_next_shelf_lies_wholly_under_its_fade(int width, int height) => UiTest.Run(() =>
+    {
+        // DESIGN 7.1 (R2): no strip of box tops above the footer – the fade is opaque 8 px above the next row's boxes
+        var (window, vm) = Open(width, height);
+        TestSupport.Settle(300);
+        var page = window.GetVisualDescendants().OfType<Views.Pages.HomePage>().Single();
+        var fade = page.GetVisualDescendants().OfType<StackPanel>().First(s => s.Name == "ShelfFade");
+        var shelves = page.GetVisualDescendants().OfType<Shelf>().Where(s => s.IsVisible).ToList();
+        Assert.True(shelves.Count >= 2);
+        var next = shelves[1].GetVisualDescendants().OfType<GameTile>().First(t => t.IsEffectivelyVisible && t.Bounds.Height > 0);
+        var tileTop = next.TranslatePoint(default, page)!.Value.Y;
+        var opaqueFrom = fade.TranslatePoint(default, page)!.Value.Y + 24;
+        Assert.True(opaqueFrom <= tileTop - 7.5, $"fade opaque from {opaqueFrom}, next boxes from {tileTop}");
+        window.Close();
+    });
+
     [Fact]
     public void Wide_windows_get_a_capped_light_bitmap()
     {
