@@ -105,9 +105,17 @@
             <TextBlock Name="EmptyTitle" Classes="poster-s" Text="{l:T system.emptyTitle}" Margin="0,48,0,0" />
             <TextBlock Classes="read-l" Text="{Binding EmptyText}" TextWrapping="Wrap" Margin="0,12,0,0" />
           </StackPanel>
+          <!-- R2: the sentence is a paper note; with one row of games it stands IN the compartment beside the last box
+               (code-behind), never below it in the footer's fade -->
           <StackPanel Name="EndRow" Orientation="Horizontal" Spacing="24" Margin="0,8,0,0">
-            <TextBlock Name="FewText" Classes="read-l" Text="{l:T system.fewGames}" IsVisible="{Binding IsFewGames}" VerticalAlignment="Center" />
-            <Button Name="ImportsButton" MinHeight="48" Padding="24,0" Command="{Binding OpenImportsCommand}" VerticalAlignment="Center">
+            <c:PaperNote Name="FewNote" SeedText="fachende" Padding="18,14,22,16" IsVisible="{Binding IsFewGames}" VerticalAlignment="Center"
+                         HorizontalAlignment="Left" RenderTransformOrigin="50%,50%">
+              <c:PaperNote.RenderTransform>
+                <RotateTransform Angle="-1.2" />
+              </c:PaperNote.RenderTransform>
+              <TextBlock Name="FewText" Classes="read-l" Text="{l:T system.fewGames}" Foreground="#1A1714" TextWrapping="Wrap" />
+            </c:PaperNote>
+            <Button Name="ImportsButton" MinHeight="48" Padding="24,0" Command="{Binding OpenImportsCommand}" VerticalAlignment="Center" HorizontalAlignment="Left">
               <Button.IsVisible>
                 <MultiBinding Converter="{x:Static BoolConverters.Or}">
                   <Binding Path="IsEmpty" />

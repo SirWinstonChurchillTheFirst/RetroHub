@@ -25,11 +25,15 @@ public sealed class Bookend : Control
         WidthProperty.OverrideDefaultValue<Bookend>(SlotWidth);
     }
 
-    public override void Render(DrawingContext ctx)
+    public override void Render(DrawingContext ctx) => Draw(ctx, new Rect(Bounds.Size));
+
+    /// <summary>The bookend standing on the bottom edge of <paramref name="area"/> (also inside a front's compartment).</summary>
+    public static void Draw(DrawingContext ctx, Rect area, double maxUpright = 118)
     {
-        var H = Bounds.Height;
+        var H = area.Height;
         if (H <= 0) return;
-        var up = Math.Min(118, Math.Round(H * 0.8));
+        using var _ = ctx.PushTransform(Matrix.CreateTranslation(area.X, area.Y));
+        var up = Math.Min(maxUpright, Math.Round(H * 0.8));
         var upright = new Rect(2, H - up, 9, up);
         const double footH = 3, footW = 30;
         Craft.CastShadow(ctx, upright, 12, 0.42);

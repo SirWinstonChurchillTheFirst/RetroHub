@@ -63,4 +63,18 @@ public static partial class Sentence
         }
         if (at < text.Length) inlines.Add(new Run(text[at..]));
     }
+
+    /// <summary>
+    /// The same rule for drawn text: every number of <paramref name="t"/> (made from <paramref name="text"/>) in the
+    /// number face, bold, tabular – "Nintendo, 1996" on a front, never Atkinson's slashed zero in a year.
+    /// </summary>
+    public static FormattedText WithNumbers(FormattedText t, string text)
+    {
+        foreach (Match m in Number().Matches(text))
+        {
+            t.SetFontTypeface(FontRoles.NumberFace, m.Index, m.Length);
+            t.SetFontFeatures(Tabular, m.Index, m.Length);
+        }
+        return t;
+    }
 }

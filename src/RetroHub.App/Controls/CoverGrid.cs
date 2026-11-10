@@ -291,7 +291,8 @@ public sealed class CoverGrid : UserControl
             ClipToBounds = false,
         };
         _headerHost = new ContentControl();
-        _footerHost = new ContentControl();
+        // never clipped: a page may stand its footer up beside the last row (Systemseite "Fachende", R2)
+        _footerHost = new ContentControl { ClipToBounds = false };
         _outer = new StackPanel { Children = { _headerHost, _rows, _footerHost, _tail } };
         // one focus layer per grid, inside the scroll content (scrolls along): cone behind the rows, ring above them
         _content = new Panel();

@@ -264,17 +264,19 @@ public static class MotifCatalog
             B("M4,92 H116 V120 H4 Z"),
             X("M44,103 H76 V108 H44 Z"),
         ],
-        // slot loader: a wide, low block; the disc lies flat in perspective and slides into the slot along the block's top
-        // edge – only its far half shows (a flat lens with the hub and one ring segment), no disc face standing above the
-        // block (M5 QA: the round disc on the block read as a head on a body, an avatar icon)
-        Motif.SlotDisc =>
+        // a remote (R2, replaces the slot loader – a flat white block with a sliver of disc was the weakest motif): a
+        // slim upright stick with a cross pad, one big key, two small keys and four lamps, its wrist strap curling at
+        // the foot and two motion arcs beside the head – "eine Fernbedienung, geschwenkt", a category, no product
+        Motif.Remote =>
         [
-            new(Group(new EllipseGeometry(new Rect(12, 64, 96, 40))), Paint.Color),
-            new(new EllipseGeometry(new Rect(52, 76, 16, 6)), Paint.Cut),
-            new(P("M28,80 Q60,62 92,80"), Paint.Cut, 2),
-            B("M4,84 H116 V120 H4 Z"),
-            X("M14,84 H106 V87 H14 Z"),
-            X("M16,108 H32 V111 H16 Z"),
+            B("M44,26 Q44,14 60,14 Q76,14 76,26 V112 Q76,120 68,120 H52 Q44,120 44,112 Z"),
+            X(Cross(60, 36, 10, 5)),
+            new(Dot(60, 58, 7), Paint.Color),
+            new(Group(Dot(60, 82, 3.5), Dot(60, 93, 3.5)), Paint.Cut),
+            C("M50,106 H53 V109 H50 Z M55,106 H58 V109 H55 Z M62,106 H65 V109 H62 Z M67,106 H70 V109 H67 Z"),
+            new(P("M45,116 C34,119 26,112 25,102 C24,94 32,90 36,98"), Paint.Color, 2),
+            new(P("M86,22 Q94,34 86,46"), Paint.Color, 3),
+            new(P("M96,12 Q108,34 96,56"), Paint.Color, 3),
         ],
         // a second screen: a tablet with keys standing in front of a large screen drawn as an outline (no monitor
         // stand: on its own stand it read as a monitor)
@@ -335,14 +337,18 @@ public static class MotifCatalog
             B("M28,64 H96 V120 H28 Z"),
         ],
         Motif.KeyBlock => [B("M4,52 H116 V120 H4 Z"), new(KeyBlock(), Paint.Color)],
-        // tower: a body in its own colour lifted to L 0.55 (M5 QA: the near-black body vanished on the black wall), one
-        // disc slot at 30 % height, the lower grooves as 2 px seams, standing on a 6 px foot plate (not a PC case)
+        // standing slab (R2: the tower with five grooves read as a PC case): a slim slab in its own colour lifted to
+        // L 0.55, its top and right faces in the body tone (depth), a vertical tray slit with two keys, two card slots at
+        // the foot, short slanted ridges along the side – standing on an oval stand, which no PC case has
         Motif.Tower =>
         [
-            new(P("M34,4 H86 V112 H34 Z"), Paint.Lift),
-            X("M42,34 H78 V36 H42 Z"),
-            X("M42,60 H78 V62 H42 Z M42,70 H78 V72 H42 Z M42,80 H78 V82 H42 Z M42,90 H78 V92 H42 Z M42,100 H78 V102 H42 Z"),
-            new(P("M24,114 H96 V120 H24 Z"), Paint.Lift),
+            new(new EllipseGeometry(new Rect(28, 108, 64, 12)), Paint.Body),
+            B("M46,12 L58,4 H86 V104 L74,112 V12 Z"),
+            new(P("M46,12 H74 V112 H46 Z"), Paint.Lift),
+            X("M67,18 H69 V66 H67 Z"),
+            new(Group(Dot(68, 74, 2), Dot(68, 81, 2)), Paint.Cut),
+            X("M51,94 H62 V97 H51 Z M51,101 H62 V104 H51 Z"),
+            new(P("M77,26 L84,22 M77,46 L84,42 M77,66 L84,62 M77,86 L84,82"), Paint.Cut, 1.5),
         ],
         _ => [B("M14,10 H106 V120 H14 Z")],
     };

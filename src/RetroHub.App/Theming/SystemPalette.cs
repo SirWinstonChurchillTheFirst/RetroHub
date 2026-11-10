@@ -11,7 +11,7 @@ public enum Motif
     Cart8, CartWide, Cart16, CartGrip, Cart64, CartStack, Card,
     HandheldTall, HandheldTallDouble, HandheldNarrow, HandheldWide, HandheldBig, HandheldLong, HandheldCompact, HandheldBroad,
     Clamshell, ClamshellWide,
-    Disc, DiscTrack, DiscBands, DiscHalftone, MiniDisc, Tray, SlotDisc, Tablet, Dock,
+    Disc, DiscTrack, DiscBands, DiscHalftone, MiniDisc, Tray, Remote, Tablet, Dock,
     TwinLens, ControlPanel, Stick, StickGrip, Floppy, KeyBlock, Tower,
 }
 
@@ -47,7 +47,22 @@ public sealed class SystemLook
         // "Flächen über 120×120 px bekommen nie die volle Farbe": the ticker/mirror use 70 %, motif ghosts 18 %
         Color70Brush = Freeze(ColorUtil.WithAlpha(Color, 0xB3));
         Color18Brush = Freeze(ColorUtil.WithAlpha(Color, 0x2E));
+        // R2: on the near-black housing an empty case (#18181B on #0F0F11, 1.1 : 1) and a front's compartment were
+        // black holes – the plastic and the compartment's back wall are lifted to read as objects (≥ 1.3 : 1)
+        (CaseLo, CaseHi) = housing == Housing.Black ? (Color.Parse("#1C1C20"), Color.Parse("#27272C")) : (Wall, WallHi);
+        Recess = housing == Housing.Black ? Color.Parse("#1D1C20") : ColorUtil.Mix(WallHi, Colors.Black, 0.22);
+        CaseLoBrush = Freeze(CaseLo);
+        CaseHiBrush = Freeze(CaseHi);
     }
+
+    /// <summary>The plastic of an empty case (placeholder): the wall tones, lifted on the black housing.</summary>
+    public Color CaseHi { get; }
+    public Color CaseLo { get; }
+    public IImmutableSolidColorBrush CaseHiBrush { get; }
+    public IImmutableSolidColorBrush CaseLoBrush { get; }
+
+    /// <summary>The back wall of a front's inner compartment.</summary>
+    public Color Recess { get; }
 
     public string Id { get; }
     public Housing Housing { get; }
@@ -124,7 +139,7 @@ public static class SystemPalette
         ["gbc"] = new(Housing.Berry, Motif.HandheldTallDouble, Texture.Lcd, 0.08, "#8E3BD0", "#2FB8A6"),
         ["gba"] = new(Housing.Violet, Motif.HandheldWide, Texture.Lcd, 0.08, "#5A46D9", "#A9A2E8"),
         ["gamecube"] = new(Housing.Violet, Motif.MiniDisc, Texture.Halftone, 0.07, "#6450CC", "#F29A3B"),
-        ["wii"] = new(Housing.White, Motif.SlotDisc, Texture.Halftone, 0.04, "#3FC0EE", "#E6EEF2"),
+        ["wii"] = new(Housing.White, Motif.Remote, Texture.Halftone, 0.04, "#3FC0EE", "#E6EEF2"),
         ["wiiu"] = new(Housing.White, Motif.Tablet, Texture.Halftone, 0.07, "#12A0CC", "#F0F0F0"),
         ["nds"] = new(Housing.CoolGrey, Motif.Clamshell, Texture.Lcd, 0.08, "#8FA3B8", "#3C4654"),
         ["3ds"] = new(Housing.Anthracite, Motif.ClamshellWide, Texture.Lcd, 0.08, "#C21D26", "#2B2B30"),

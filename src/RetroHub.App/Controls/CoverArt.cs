@@ -356,8 +356,8 @@ public sealed class CoverArt : Control
                 var textBottom = TopBand(r) + pad0 + Math.Ceiling(band0.Height) + (_subText is { } sub0 ? SubGap + Math.Ceiling(sub0.Height) : 0) + pad0;
                 split = Math.Max(split, Math.Round(textBottom));
             }
-            if (split > 0) ctx.FillRectangle(look.WallHiBrush, new Rect(r.X, r.Y, w, split));
-            ctx.FillRectangle(split > 0 ? look.WallBrush : look.WallHiBrush, new Rect(r.X, r.Y + split, w, r.Height - split));
+            if (split > 0) ctx.FillRectangle(look.CaseHiBrush, new Rect(r.X, r.Y, w, split));
+            ctx.FillRectangle(split > 0 ? look.CaseLoBrush : look.CaseHiBrush, new Rect(r.X, r.Y + split, w, r.Height - split));
             if (TextureBrushes.Get(look.Texture) is { } tex)
             {
                 var hash = Hash(Title ?? "");
@@ -511,7 +511,7 @@ public sealed class CoverArt : Control
                 ctx.DrawGeometry(Craft.Dark(0.30 * k), null, g);
         using (ctx.PushOpacity(Math.Min(1, k)))
         using (ctx.PushTransform(m))
-            ctx.DrawGeometry(Craft.Solid(ColorUtil.Mix(look.Wall, look.Color, 0.16)), null, g);
+            ctx.DrawGeometry(Craft.Solid(ColorUtil.Mix(look.CaseLo, look.Color, 0.16)), null, g);
     }
 
     private void EnsureText(Rect r, SystemLook look)

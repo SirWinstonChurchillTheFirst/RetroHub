@@ -64,6 +64,13 @@ public partial class SystemPage : PageBase
         BannerSentence.SizeChanged += (_, _) => FitTitle();
         StatusRow.SizeChanged += (_, _) => FitTitle();
         Covers.Scrolled += UpdateCompactHeader;
+        // R2: the "Fachende" beside a single row of games (placed after every layout pass that can move it)
+        Covers.RowsRebuilt += QueuePlaceEnding;
+        Covers.SizeChanged += (_, _) => QueuePlaceEnding();
+        EndRow.SizeChanged += (_, _) => QueuePlaceEnding();
+        // rows are realised and recycled after the grid's own layout: follow every pass while it matters (cheap: one
+        // TranslatePoint, and the margin only changes when the row moved)
+        Covers.LayoutUpdated += (_, _) => { if (_vm?.IsFewGames == true || EndBeside) PlaceEnding(); };
         // the compact header's name: back up to the banner
         CompactName.PointerPressed += (_, e) =>
         {
@@ -94,6 +101,10 @@ public partial class SystemPage : PageBase
                 break;
             case nameof(SystemViewModel.HasNeighbours):
                 ApplyBanner();
+                break;
+            case nameof(SystemViewModel.IsFewGames):
+            case nameof(SystemViewModel.IsLoaded):
+                QueuePlaceEnding();
                 break;
         }
     }
@@ -244,6 +255,64 @@ public partial class SystemPage : PageBase
         InfoPanel.Margin = new Thickness(x, y, 0, 0);
     }
 
+    private bool _endQueued;
+
+    /// <summary>True while the "Fachende" stands in the compartment beside the last box (one row of games).</summary>
+    internal bool EndBeside { get; private set; }
+
+    private void QueuePlaceEnding()
+    {
+        if (_endQueued) return;
+        _endQueued = true;
+        Dispatcher.UIThread.Post(() => { _endQueued = false; PlaceEnding(); }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
+    /// R2 (DESIGN 7.5.4): with one to six games in ONE row and room beside them, the note and "Importe öffnen" stand in
+    /// the compartment right of the last box, their foot on the board – the empty half of the shelf holds the way to
+    /// more, and at ≈ 1100 nothing lies in the footer's fade any more. Otherwise they stay under the grid.
+    /// </summary>
+    private void PlaceEnding()
+    {
+        var count = Covers.ItemCount;
+        var cols = Covers.Columns;
+        var free = (cols - count) * (Covers.TileWidth + Covers.Spacing) - Covers.Spacing;
+        var beside = _vm is { IsFewGames: true } && count > 0 && cols > count && free >= 300;
+        if (beside)
+        {
+            // the first box not realised yet (rows are rebuilt after the grid's layout): keep the current place for now
+            if (Covers.TileForIndex(0) is not { IsEffectivelyVisible: true } tile || _vm!.Games.Count == 0
+                || !ReferenceEquals(tile.DataContext, _vm.Games[0]) || Ending.GetVisualParent() is not { } host
+                || tile.TranslatePoint(default, host) is not { } at) return;
+            PlaceBeside(at, count, free);
+            return;
+        }
+        if (EndBeside)
+        {
+            EndBeside = false;
+            EndRow.Orientation = Avalonia.Layout.Orientation.Horizontal;
+            EndRow.Spacing = 24;
+            FewText.MaxWidth = double.PositiveInfinity;
+            Ending.Margin = new Thickness(0, 4, 0, 40);
+        }
+    }
+
+    private bool PlaceBeside(Point tileTop, int count, double free)
+    {
+        EndBeside = true;
+        EndRow.Orientation = Avalonia.Layout.Orientation.Vertical;
+        EndRow.Spacing = 20;
+        FewText.MaxWidth = Math.Min(290, free - 80); // two even lines, no orphan "Fach."
+        var coverBottom = tileTop.Y + Covers.TileWidth * Covers.CoverAspect;
+        var height = EndRow.Bounds.Height > 0 ? EndRow.Bounds.Height : 150;
+        // the foot of the button stands 8 px above the board, the note leans over it; the stack never rises over the tile top
+        var top = Math.Max(tileTop.Y, coverBottom - 8 - height) - EndRow.Margin.Top;
+        var left = count * (Covers.TileWidth + Covers.Spacing) + 24;
+        var target = new Thickness(left, Math.Round(top), 0, 40);
+        if (Math.Abs(Ending.Margin.Left - target.Left) > 0.5 || Math.Abs(Ending.Margin.Top - target.Top) > 0.5) Ending.Margin = target;
+        return true;
+    }
+
     private bool InBanner(Control c) => IsInside(c, Banner);
 
     private static bool IsInside(Visual v, Visual root)
@@ -267,6 +336,12 @@ public partial class SystemPage : PageBase
         if (action == NavAction.Up && focused.FindAncestorOfType<CoverGrid>(includeSelf: true) == Covers
             && Covers.SelectedIndex >= 0 && Covers.SelectedIndex < Math.Max(1, Covers.Columns))
             return FocusVisible(InfoButton);
+        // the Fachende beside the row: right from the last box, left/up back to it
+        if (EndBeside && focused.FindAncestorOfType<CoverGrid>(includeSelf: true) == Covers && Covers.SelectedIndex == Covers.ItemCount - 1
+            && action is NavAction.Right or NavAction.Down)
+            return FocusVisible(ImportsButton);
+        if (EndBeside && focused == ImportsButton && action is NavAction.Left or NavAction.Up)
+            return Covers.FocusWhenReady(Covers.ItemCount - 1);
         if (action == NavAction.Up && focused == ImportsButton)
             return Covers.ItemCount > 0 ? Covers.FocusWhenReady(Math.Max(0, Covers.SelectedIndex)) : FocusVisible(InfoButton);
         if (action == NavAction.Down && InBanner(focused))

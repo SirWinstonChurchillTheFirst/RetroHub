@@ -147,3 +147,53 @@ public sealed class PaperSlip : Control
         ctx.FillRectangle(Craft.Fade(Colors.Black, 0.45, 0, Craft.Toward.Down), new Rect(r.X + 6, r.Bottom, r.Width - 4, 10));
     }
 }
+
+/// <summary>
+/// A note of cut paper (R2): an irregular, seeded outline with its thickness, a soft shadow, card fibres and one or
+/// two strips of tape at the top; the content (ink text, keys) sits on it. Used where a page explains itself on the
+/// shelf ("Weitere Spiele kommen über Importe ins Fach.") instead of floating a sentence in the room. Tilt it with a
+/// RenderTransform; the paper itself is drawn upright so content and paper turn together.
+/// </summary>
+public sealed class PaperNote : Decorator
+{
+    public static readonly StyledProperty<string?> SeedTextProperty = AvaloniaProperty.Register<PaperNote, string?>(nameof(SeedText));
+    public static readonly StyledProperty<Color> PaperProperty = AvaloniaProperty.Register<PaperNote, Color>(nameof(Paper), Craft.LabelPaper);
+    public static readonly StyledProperty<bool> TapeProperty = AvaloniaProperty.Register<PaperNote, bool>(nameof(Tape), true);
+
+    static PaperNote()
+    {
+        AffectsRender<PaperNote>(SeedTextProperty, PaperProperty, TapeProperty);
+        ClipToBoundsProperty.OverrideDefaultValue<PaperNote>(false);
+    }
+
+    /// <summary>What seeds the outline and the tape (the same note always looks the same).</summary>
+    public string? SeedText { get => GetValue(SeedTextProperty); set => SetValue(SeedTextProperty, value); }
+    public Color Paper { get => GetValue(PaperProperty); set => SetValue(PaperProperty, value); }
+    public bool Tape { get => GetValue(TapeProperty); set => SetValue(TapeProperty, value); }
+
+    private static readonly IImmutableSolidColorBrush TapeBrush = new ImmutableSolidColorBrush(Craft.A(Color.Parse("#F2EAD8"), 0.42));
+
+    public override void Render(DrawingContext ctx)
+    {
+        var r = new Rect(Bounds.Size);
+        if (r.Width <= 0 || r.Height <= 0) return;
+        var seed = Craft.Seed(SeedText ?? Name ?? "note");
+        Craft.DrawPaper(ctx, this, r, seed, Paper, 0, jitter: 0.9, shadow: 0.45, fibres: 0.40);
+        if (!Tape) return;
+        var tw = Math.Clamp(Math.Round(r.Width * 0.12), 22, 40);
+        var th = Math.Round(tw * 0.36);
+        var corners = Craft.Pick(seed, 51, 1, 2);
+        var first = Craft.Pick(seed, 52, 0, 1);
+        for (var i = 0; i < corners; i++)
+        {
+            var right = (first + i) % 2 == 1;
+            var cx = right ? r.Right - tw * 0.3 : r.X + tw * 0.3;
+            var angle = (right ? 1 : -1) * Craft.Range(seed, 53 + i, 7, 12) * Math.PI / 180;
+            using (ctx.PushTransform(Matrix.CreateTranslation(-tw / 2, -th / 2) * Matrix.CreateRotation(angle) * Matrix.CreateTranslation(cx, r.Y + 1)))
+            {
+                ctx.FillRectangle(TapeBrush, new Rect(0, 0, tw, th));
+                ctx.FillRectangle(Craft.Hi(0.10), new Rect(0, 0, tw, 1));
+            }
+        }
+    }
+}

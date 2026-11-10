@@ -57,6 +57,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     private readonly List<CoverArt> _covers = [];
     private Rect[] _slots = [];
     private double _boardY, _recessTop;
+    private bool _bookend;
     private Rect _motifBox;
     private Avalonia.Threading.DispatcherTimer? _dwell;
     private FormattedText? _code, _codeLit, _codeInk, _codeShadow, _count, _name, _sub, _frontCount;
@@ -249,6 +250,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     /// The big front's layout (front coordinates, origin top left of the front): the inner board at 62 % of the height
     /// (10 px, the wall's board tone), up to three boxes standing on it from the inset (art height 150, ≈1100: 110, gap
     /// 12, the system's box format, never into the name and maker above), below it the count left and the motif right.
+    /// R2: a system with fewer games than places shows them bigger (up to 196 / 140, as far as the compartment allows),
+    /// and a bookend holds the row when room is left beside the last box – the compartment never ends in an empty half.
     /// </summary>
     private void LayoutFront(double height)
     {
@@ -258,7 +261,9 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         var textBottom = 8 + Math.Round(inset * 0.8) + (_name?.Height ?? 0) + 8 + (_sub?.Height ?? 0);
         var count = _covers.Count(c => c.IsVisible);
         var aspect = _system != null ? SystemPalette.BoxAspect(_system.Id) : 1.25;
-        var h = Math.Min(big ? 150 : 110, _boardY - textBottom - 16);
+        var places = big ? 3 : 2;
+        var cap = count > 0 && count < places ? (big ? 196 : 140) : (big ? 150 : 110);
+        var h = Math.Min(cap, _boardY - textBottom - 16);
         var room = FrontWidth - 2 * inset;
         if (count > 0 && count * h / aspect + (count - 1) * 12 > room) h = (room - (count - 1) * 12) / count * aspect;
         h = Math.Max(0, Math.Floor(h));
@@ -267,6 +272,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         for (var i = 0; i < count; i++) _slots[i] = new Rect(inset + i * (w + 12), _boardY - h, w, h);
         // the inner compartment is cut into the front from just under the maker line down to the inner board
         _recessTop = Math.Round(Math.Max(textBottom + 6, _boardY - Math.Max(h, big ? 150 : 110) - 18));
+        _bookend = count > 0 && count < places;
         // the motif stands on the stage board, right, in the part under the inner board
         var below = height - (_boardY + 10);
         var size = Math.Round(Math.Min(below - (big ? 24 : 16), FrontWidth * 0.46));
@@ -384,8 +390,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         var inset = FrontInset;
         _name = FitName(s, FrontWidth - 2 * inset);
         _sub = LargeFront && !string.IsNullOrEmpty(s.SubTitle)
-            ? new FormattedText(s.SubTitle, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.ReadFace, FrontWidth >= 480 ? 18 : 16, Text2)
-            { MaxTextWidth = FrontWidth - 2 * inset }
+            ? Sentence.WithNumbers(new FormattedText(s.SubTitle, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.ReadFace, FrontWidth >= 480 ? 18 : 16, Text2)
+            { MaxTextWidth = FrontWidth - 2 * inset }, s.SubTitle)
             : null;
         _frontCount = new FormattedText(s.CountText, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.NumberFace,
             LargeFront ? (FrontWidth >= 480 ? 40 : 32) : 15, Paper);
@@ -462,6 +468,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                             var span = art.Width > 0 ? new Rect(_slots[i].X + art.X, 0, art.Width, 0) : _slots[i];
                             ctx.FillRectangle(ShelfBoard.ContactBrush, new Rect(front.X + span.X, _boardY + 1, span.Width, 9));
                         }
+                        DrawFrontBookend(ctx, front);
                         MotifCatalog.Draw(ctx, look, _motifBox.Translate(new Vector(front.X, 0)), relief: true);
                     }
                 }
@@ -479,6 +486,25 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
 
     // ===================== drawn parts of spine and front (M7 "gezeichnet") =====================
 
+    /// <summary>
+    /// The bookend beside the last box of a short row (R2): 10 px after the box's art, standing on the inner board, its
+    /// upright 70 % of the box height; only when it fits inside the compartment.
+    /// </summary>
+    private void DrawFrontBookend(DrawingContext ctx, Rect front)
+    {
+        if (!_bookend) return;
+        var last = -1;
+        for (var i = 0; i < _covers.Count && i < _slots.Length; i++) if (_covers[i].IsVisible) last = i;
+        if (last < 0) return;
+        var art = _covers[last].ArtRect;
+        var right = art.Width > 0 ? _slots[last].X + art.Right : _slots[last].Right;
+        var height = art.Height > 0 ? art.Height : _slots[last].Height;
+        var x = front.X + right + 10;
+        if (x + Bookend.SlotWidth > front.X + FrontWidth - RecessInset - 4) return;
+        var area = new Rect(x, _boardY - height, Bookend.SlotWidth, height);
+        Bookend.Draw(ctx, area, Math.Round(height * 0.7));
+    }
+
     /// <summary>Inset of the inner compartment from the sides of a big front.</summary>
     private const double RecessInset = 20;
 
@@ -491,7 +517,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     {
         var r = new Rect(front.X + RecessInset, _recessTop, FrontWidth - 2 * RecessInset, Math.Max(0, _boardY - _recessTop));
         if (r.Height < 20) return;
-        ctx.FillRectangle(Craft.Solid(ColorUtil.Mix(look.WallHi, Colors.Black, 0.22)), r);
+        ctx.FillRectangle(Craft.Solid(look.Recess), r);
         SystemWall.DrawTextures(ctx, this, r, look);
         ctx.FillRectangle(Craft.Fade(Colors.Black, 0.50, 0, Craft.Toward.Down), new Rect(r.X, r.Y, r.Width, 8));
         ctx.FillRectangle(Craft.Fade(Colors.Black, 0.40, 0, Craft.Toward.Right), new Rect(r.X, r.Y, 4, r.Height));

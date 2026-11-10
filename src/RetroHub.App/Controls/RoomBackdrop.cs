@@ -18,10 +18,13 @@ namespace RetroHub.App.Controls;
 /// <list type="number">
 /// <item>Source: the page's <see cref="BackdropSpec"/> (game image → system wall → room).</item>
 /// <item>Softening is precomputed off the UI thread: decode to 96 px, crop 16:9, resample to 64×36, blur (three box
-/// passes ≈ gaussian), into a small LRU; shown as an Image (UniformToFill, high quality) at 0.38. No BlurEffect.</item>
+/// passes ≈ gaussian), upsample ×4 to 256×144 and quantise with interleaved-gradient-noise dithering (R2), into a small
+/// LRU; shown as an Image (UniformToFill, high quality) at 0.38. No BlurEffect.</item>
 /// <item>Picture light: saturation-weighted mean colour of the 64×36 pixels, clamped to L 0.55–0.70, S ≤ 0.70, cached per game.</item>
-/// <item>Scrims flattened into ONE cached bitmap per window-size bucket (64 px grid).</item>
-/// <item>Glow at the source: a radial gradient in the picture light, recoloured on change only.</item>
+/// <item>Scrims AND the glow at the source are computed together in float on a worker thread into ONE premultiplied
+/// bitmap at device resolution (≤ 2560 px wide), the colour dithered by ±½ LSB (R2: drawn as gradients they quantised
+/// into visible contour rings and vertical bands; the grain under the scrim could not reach them). Re-rendered per
+/// window-size bucket (64 px), stage height, glow colour/strength and glow position.</item>
 /// <item>Board light: the shared <see cref="ThemeManager.BoardLight"/> gets the picture light at 35 % (wall: light 22 %).</item>
 /// <item>Grain (korn-128 at 6 %, QA 2: at 2.5 % it stayed under one LSB and the blurred backdrop banded into contour rings) only here, against banding.</item>
 /// <item>Crossfade between two image layers (Light 420 ms), started only after <see cref="Motion.Dwell"/> of rest and
@@ -33,7 +36,6 @@ public sealed class RoomBackdrop : Panel
 {
     public const double ImageOpacity = 0.38;
 
-    private static readonly IImmutableSolidColorBrush RoomBrush = new ImmutableSolidColorBrush(Color.Parse("#14120F"));
     private static readonly Color Room = Color.Parse("#14120F");
     private static readonly Color RoomDeep = Color.Parse("#0A0908");
 
@@ -42,16 +44,22 @@ public sealed class RoomBackdrop : Panel
     private readonly Image _a;
     private readonly Image _b;
     private readonly TextureFill _grain;
-    private readonly Image _scrim;
-    private readonly Border _glow;
-    private readonly RadialGradientBrush _glowBrush;
+    private readonly Image _scrim;            // scrims + glow, one dithered bitmap
     private bool _aFront = true;
 
     private BackdropSpec _target = BackdropSpec.Room;
     private BackdropSpec? _shown;
     private int _version;
-    private (int W, int H, int Stage)? _scrimKey;
+    private LightKey? _scrimKey;
     private int _scrimVersion;
+    private Color _glowColour;
+    private double _glowStrength;
+
+    /// <summary>What the light bitmap depends on (sizes in DIP, 64-px buckets; glow in 1/1000 of the window).</summary>
+    internal readonly record struct LightKey(int W, int H, int Stage, uint Glow, int GlowStrength, int GlowX, int GlowY, double Scale);
+
+    /// <summary>Renders of the light bitmap so far (tests: a focus move that does not change the light renders nothing).</summary>
+    internal int LightRenders { get; private set; }
 
     /// <summary>Opacity of the grain tile: about ±2 LSB on the dark room, enough to dither the 64×36 backdrop's steps.</summary>
     public const double GrainStrength = 0.06;
@@ -66,18 +74,12 @@ public sealed class RoomBackdrop : Panel
         _grain = new TextureFill { Texture = Texture.Grain, Strength = GrainStrength };
         _scrim = new Image { Stretch = Stretch.Fill };
         RenderOptions.SetBitmapInterpolationMode(_scrim, BitmapInterpolationMode.HighQuality);
-        _glowBrush = new RadialGradientBrush
-        {
-            GradientStops = { new GradientStop(Colors.Transparent, 0), new GradientStop(Colors.Transparent, 1) },
-        };
-        _glow = new Border { Background = _glowBrush };
         Children.Add(_ground);
         Children.Add(_ghost);
         Children.Add(_a);
         Children.Add(_b);
         Children.Add(_grain);
         Children.Add(_scrim);
-        Children.Add(_glow);
         ApplyTransitions();
     }
 
@@ -245,12 +247,11 @@ public sealed class RoomBackdrop : Panel
         _aFront = !_aFront;
     }
 
+    /// <summary>The glow at the source (part of the light bitmap; it is only shown with the scrims, i.e. in TV light).</summary>
     private void SetGlow(Color? colour, double strength)
     {
-        var c = colour ?? Colors.Transparent;
-        _glowBrush.GradientStops[0].Color = ColorUtil.WithAlpha(c, colour == null ? (byte)0 : (byte)Math.Round(255 * strength));
-        _glowBrush.GradientStops[1].Color = ColorUtil.WithAlpha(c, 0);
-        _glow.IsVisible = colour != null;
+        _glowColour = colour ?? Colors.Transparent;
+        _glowStrength = colour == null ? 0 : strength;
     }
 
     private void UpdateGlowGeometry()
@@ -259,14 +260,8 @@ public sealed class RoomBackdrop : Panel
         var h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
         var stage = Math.Max(1, StageBottom);
-        // the glow is part of the stage: it ends at the board
-        _glow.Height = stage;
-        _glow.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
-        var r = 0.55 * w;
-        _glowBrush.Center = new RelativePoint(_target.GlowX * w, _target.GlowY * h, RelativeUnit.Absolute);
-        _glowBrush.GradientOrigin = _glowBrush.Center;
-        _glowBrush.RadiusX = new RelativeScalar(r, RelativeUnit.Absolute);
-        _glowBrush.RadiusY = new RelativeScalar(r, RelativeUnit.Absolute);
+        // the glow moves with the subject: a new light bitmap when colour or position changed
+        if (_scrim.IsVisible) UpdateScrim(immediate: _scrimKey == null);
         // the motif outline stands on the stage board, right, 80 % of the stage height (the detail: 40 %, M4 QA)
         var size = Math.Round(stage * _target.GhostShare);
         _ghost.Alpha = _target.GhostAlpha;
@@ -287,82 +282,160 @@ public sealed class RoomBackdrop : Panel
         }
     }
 
-    // ===== flattened scrims: one bitmap per window-size bucket, rendered 150 ms after the last resize =====
+    // ===== the light bitmap: scrims + glow in float, dithered; rendered 150 ms after the last resize =====
 
     private void UpdateScrim(bool immediate)
     {
         var w = Bounds.Width;
         var h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
-        var key = ((int)Math.Ceiling(w / 64) * 64, (int)Math.Ceiling(h / 64) * 64, (int)Math.Round(StageBottom / 8) * 8);
+        var scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+        var key = new LightKey((int)Math.Ceiling(w / 64) * 64, (int)Math.Ceiling(h / 64) * 64, (int)Math.Round(StageBottom / 8) * 8,
+            _glowStrength > 0 ? _glowColour.ToUInt32() : 0u, (int)Math.Round(_glowStrength * 1000),
+            (int)Math.Round(_target.GlowX * 1000), (int)Math.Round(_target.GlowY * 1000), scale);
         if (_scrimKey == key) return;
+        // a new light (colour, strength, position) renders at once; a resize or a moving board waits until it rests
+        var newLight = _scrimKey is not { } old || old.Glow != key.Glow || old.GlowStrength != key.GlowStrength
+                       || old.GlowX != key.GlowX || old.GlowY != key.GlowY;
+        _scrimKey = key;
         var version = ++_scrimVersion;
-        if (immediate) RenderScrim(key);
+        if (immediate || newLight) StartLightRender(key, version);
         else _ = Task.Delay(150).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
         {
-            if (version == _scrimVersion) RenderScrim(key);
+            if (version == _scrimVersion) StartLightRender(key, version);
         }), TaskScheduler.Default);
     }
 
-    private void RenderScrim((int W, int H, int Stage) key)
+    private void StartLightRender(LightKey key, int version)
     {
-        _scrimKey = key;
-        var scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
-        // gradients upscale invisibly: half the device resolution is plenty
-        var pw = Math.Max(16, (int)(key.W * scale / 2));
-        var ph = Math.Max(16, (int)(key.H * scale / 2));
-        var rtb = new RenderTargetBitmap(new PixelSize(pw, ph), new Vector(96, 96));
-        using (var ctx = rtb.CreateDrawingContext())
+        _ = Task.Run(() => RenderLight(key)).ContinueWith(t => Dispatcher.UIThread.Post(() =>
         {
-            var sx = (double)pw / key.W;
-            var sy = (double)ph / key.H;
-            using (ctx.PushTransform(Matrix.CreateScale(sx, sy)))
-                DrawScrims(ctx, key.W, key.H, Math.Min(key.Stage, key.H));
-        }
-        var old = _scrim.Source as IDisposable;
-        _scrim.Source = rtb;
-        _scrim.Width = key.W;
-        _scrim.Height = key.H;
-        _scrim.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
-        _scrim.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
-        old?.Dispose();
+            if (t.IsFaulted) { Log.Warn("Room light: light bitmap failed", t.Exception); return; }
+            if (version != _scrimVersion) { t.Result.Dispose(); return; }
+            LightRenders++;
+            var previous = _scrim.Source as IDisposable;
+            _scrim.Source = t.Result;
+            _scrim.Width = key.W;
+            _scrim.Height = key.H;
+            _scrim.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+            _scrim.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+            previous?.Dispose();
+        }), TaskScheduler.Default);
     }
 
-    private static IBrush Linear(Color a, Color b, double x0, double y0, double x1, double y1) => new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(x0, y0, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(x1, y1, RelativeUnit.Relative),
-        GradientStops = { new GradientStop(a, 0), new GradientStop(b, 1) },
-    };
+    /// <summary>Widest light bitmap; wider windows get it upscaled (the dither survives a factor below 2).</summary>
+    private const int MaxLightWidth = 2560;
 
-    /// <summary>(a) horizontal room 94 % at the left → 52 % from 60 % of the width on, (b) vertical clear until 60 % of the stage → room at the board,
-    /// room below, (c) vignette in room-deep, (d) head scrim room-deep 70 % → 0 over 160 px.</summary>
-    private static void DrawScrims(DrawingContext ctx, double w, double h, double stage)
+    /// <summary>
+    /// The scrims and the glow, composited per pixel in float (premultiplied source-over, bottom to top):
+    /// (a) horizontal room 94 % at the left → 52 % from 60 % of the width on, (b) vertical clear until 60 % of the stage →
+    /// room at the board, room below, (c) vignette in room-deep (0 at 55 % → 60 % at the ellipse of 75 %), (d) head scrim
+    /// room-deep 70 % → 0 over 160 px, (e) the glow: the picture light at its strength → 0 over 0.55 of the width around
+    /// (GlowX, GlowY), only above the board. The colour is quantised with interleaved gradient noise (±½ LSB), so the
+    /// output never shows contour rings; the alpha is rounded (its steps are below the noise).
+    /// </summary>
+    internal static WriteableBitmap RenderLight(LightKey key) => ToBitmap(LightPixels(key, out var pw, out var ph), pw, ph);
+
+    internal static byte[] LightPixels(LightKey key, out int pw, out int ph)
     {
-        ctx.FillRectangle(new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-            GradientStops =
-            {
-                new GradientStop(ColorUtil.WithAlpha(Room, 0xF0), 0),
-                new GradientStop(ColorUtil.WithAlpha(Room, 0x85), 0.6),
-                new GradientStop(ColorUtil.WithAlpha(Room, 0x85), 1),
-            },
-        }, new Rect(0, 0, w, stage));
+        var w = (double)key.W;
+        var h = (double)key.H;
+        var stage = (double)Math.Clamp(key.Stage, 1, key.H);
+        var width = Math.Max(16, (int)Math.Round(key.W * key.Scale));
+        var height = Math.Max(16, (int)Math.Round(key.H * key.Scale));
+        if (width > MaxLightWidth) { height = (int)Math.Round(height * (double)MaxLightWidth / width); width = MaxLightWidth; }
+        pw = width;
+        ph = height;
+        var sx = w / width;
+        var sy = h / height;
+        var glow = Color.FromUInt32(key.Glow);
+        var glowA = key.GlowStrength / 1000.0;
+        var gx = key.GlowX / 1000.0 * w;
+        var gy = key.GlowY / 1000.0 * h;
+        var gr = 0.55 * w;
+        var vcx = 0.5 * w;
+        var vcy = 0.42 * stage;
+        var vrx = 0.75 * w;
+        var vry = 0.75 * stage;
         var fadeTop = stage * 0.6;
-        ctx.FillRectangle(Linear(ColorUtil.WithAlpha(Room, 0), Room, 0, 0, 0, 1), new Rect(0, fadeTop, w, Math.Max(1, stage - fadeTop)));
-        ctx.FillRectangle(RoomBrush, new Rect(0, stage, w, Math.Max(0, h - stage)));
-        var vignette = new RadialGradientBrush
+        double rR = Room.R, rG = Room.G, rB = Room.B, dR = RoomDeep.R, dG = RoomDeep.G, dB = RoomDeep.B;
+        var stride = width * 4;
+        var pixels = new byte[stride * height];
+        Parallel.For(0, height, py =>
         {
-            Center = new RelativePoint(0.5, 0.42, RelativeUnit.Relative),
-            GradientOrigin = new RelativePoint(0.5, 0.42, RelativeUnit.Relative),
-            RadiusX = new RelativeScalar(0.75, RelativeUnit.Relative),
-            RadiusY = new RelativeScalar(0.75, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(ColorUtil.WithAlpha(RoomDeep, 0), 0.55), new GradientStop(ColorUtil.WithAlpha(RoomDeep, 0x99), 1) },
-        };
-        ctx.FillRectangle(vignette, new Rect(0, 0, w, stage));
-        ctx.FillRectangle(Linear(ColorUtil.WithAlpha(RoomDeep, 0xB3), ColorUtil.WithAlpha(RoomDeep, 0), 0, 0, 0, 1), new Rect(0, 0, w, 160));
+            var v = (py + 0.5) * sy;
+            var row = py * stride;
+            var vFade = v >= stage ? 1.0 : v <= fadeTop ? 0.0 : (v - fadeTop) / Math.Max(1, stage - fadeTop);
+            var head = v < 160 ? 0xB3 / 255.0 * (1 - v / 160) : 0;
+            var above = v < stage;
+            var dyV = (v - vcy) / vry;
+            var dyG = v - gy;
+            for (var px = 0; px < width; px++)
+            {
+                var u = (px + 0.5) * sx;
+                double cR = 0, cG = 0, cB = 0, a = 0;
+                if (above)
+                {
+                    var t = u / w;
+                    var hAlpha = t >= 0.6 ? 0x85 / 255.0 : (0xF0 + (0x85 - 0xF0) * (t / 0.6)) / 255.0;
+                    Over(ref cR, ref cG, ref cB, ref a, rR, rG, rB, hAlpha);
+                    Over(ref cR, ref cG, ref cB, ref a, rR, rG, rB, vFade);
+                    var dx = (u - vcx) / vrx;
+                    var tv = Math.Sqrt(dx * dx + dyV * dyV);
+                    Over(ref cR, ref cG, ref cB, ref a, dR, dG, dB, 0.6 * Math.Clamp((tv - 0.55) / 0.45, 0, 1));
+                    Over(ref cR, ref cG, ref cB, ref a, dR, dG, dB, head);
+                    if (glowA > 0)
+                    {
+                        var ex = u - gx;
+                        var d = Math.Sqrt(ex * ex + dyG * dyG) / gr;
+                        if (d < 1) Over(ref cR, ref cG, ref cB, ref a, glow.R, glow.G, glow.B, glowA * (1 - d));
+                    }
+                }
+                else
+                {
+                    Over(ref cR, ref cG, ref cB, ref a, rR, rG, rB, 1);
+                    Over(ref cR, ref cG, ref cB, ref a, dR, dG, dB, head);
+                }
+                var noise = Ign(px, py) - 0.5;
+                var a8 = (int)Math.Round(a * 255);
+                var o = row + px * 4;
+                pixels[o] = (byte)Math.Clamp((int)Math.Round(cB + noise), 0, a8);
+                pixels[o + 1] = (byte)Math.Clamp((int)Math.Round(cG + noise), 0, a8);
+                pixels[o + 2] = (byte)Math.Clamp((int)Math.Round(cR + noise), 0, a8);
+                pixels[o + 3] = (byte)a8;
+            }
+        });
+        return pixels;
+    }
+
+    /// <summary>Premultiplied source-over of one layer (colour 0–255, alpha 0–1) onto the accumulated pixel.</summary>
+    private static void Over(ref double cR, ref double cG, ref double cB, ref double a, double r, double g, double b, double alpha)
+    {
+        if (alpha <= 0) return;
+        var k = 1 - alpha;
+        cR = r * alpha + cR * k;
+        cG = g * alpha + cG * k;
+        cB = b * alpha + cB * k;
+        a = alpha + a * k;
+    }
+
+    /// <summary>Interleaved gradient noise (Jimenez 2014) in [0, 1): a blue-ish dither pattern without a visible tile.</summary>
+    internal static double Ign(int x, int y)
+    {
+        var f = 0.06711056 * x + 0.00583715 * y;
+        f -= Math.Floor(f);
+        var g = 52.9829189 * f;
+        return g - Math.Floor(g);
+    }
+
+    private static WriteableBitmap ToBitmap(byte[] pixels, int pw, int ph)
+    {
+        var bmp = new WriteableBitmap(new PixelSize(pw, ph), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+        using var fb = bmp.Lock();
+        var stride = pw * 4;
+        for (var y = 0; y < ph; y++)
+            System.Runtime.InteropServices.Marshal.Copy(pixels, y * stride, fb.Address + y * fb.RowBytes, stride);
+        return bmp;
     }
 
     // ===== softened pictures: off-thread, LRU (64), keyed by path + modification time =====
@@ -453,22 +526,45 @@ public sealed class RoomBackdrop : Panel
             var (h, s, l) = ColorUtil.ToHsl(mean);
             var light = ColorUtil.FromHsl(h, Math.Min(s, 0.70), Math.Clamp(l, 0.55, 0.70));
 
-            var bmp = new WriteableBitmap(new PixelSize(OutW, OutH), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
-            using (var fb = bmp.Lock())
-            {
-                var row = new byte[OutW * 4];
-                for (var y = 0; y < OutH; y++)
-                {
-                    for (var x = 0; x < OutW * 4; x++)
-                    {
-                        var v = dst[y * OutW * 4 + x];
-                        row[x] = (x & 3) == 3 ? (byte)255 : ToByte(v);
-                    }
-                    System.Runtime.InteropServices.Marshal.Copy(row, 0, fb.Address + y * fb.RowBytes, row.Length);
-                }
-            }
-            return new Soft(bmp, light);
+            return new Soft(ToBitmap(Upsample(dst), OutW * Up, OutH * Up), light);
         }
+    }
+
+    /// <summary>Stored size factor of the softened picture: 64×36 blurred → 256×144 bilinear, then dithered to 8 bit.</summary>
+    private const int Up = 4;
+
+    /// <summary>
+    /// The blurred 64×36 field (float BGRA) upsampled ×<see cref="Up"/> (bilinear, smooth after the blur) and quantised
+    /// with interleaved gradient noise: the 8-bit steps of the old 64×36 bitmap became 30 px wide bands at 1920.
+    /// </summary>
+    internal static byte[] Upsample(float[] src)
+    {
+        int w = OutW * Up, h = OutH * Up;
+        var px = new byte[w * h * 4];
+        for (var y = 0; y < h; y++)
+        {
+            var fy = Math.Clamp((y + 0.5) / Up - 0.5, 0, OutH - 1);
+            var y0 = (int)fy;
+            var y1 = Math.Min(OutH - 1, y0 + 1);
+            var ty = fy - y0;
+            for (var x = 0; x < w; x++)
+            {
+                var fx = Math.Clamp((x + 0.5) / Up - 0.5, 0, OutW - 1);
+                var x0 = (int)fx;
+                var x1 = Math.Min(OutW - 1, x0 + 1);
+                var tx = fx - x0;
+                var noise = Ign(x, y) - 0.5;
+                var o = (y * w + x) * 4;
+                for (var c = 0; c < 3; c++)
+                {
+                    var top = src[(y0 * OutW + x0) * 4 + c] * (1 - tx) + src[(y0 * OutW + x1) * 4 + c] * tx;
+                    var bottom = src[(y1 * OutW + x0) * 4 + c] * (1 - tx) + src[(y1 * OutW + x1) * 4 + c] * tx;
+                    px[o + c] = ToByte(top * (1 - ty) + bottom * ty + noise);
+                }
+                px[o + 3] = 255;
+            }
+        }
+        return px;
     }
 
     private static byte ToByte(double v) => (byte)Math.Clamp(Math.Round(v), 0, 255);
