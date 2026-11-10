@@ -94,8 +94,8 @@
           <Button Name="FavoriteButton" Theme="{StaticResource RhIconButton}" Width="64" Height="64" IsVisible="{Binding IsGame}"
                   ToolTip.Tip="{l:T home.favorite}" AutomationProperties.Name="{l:T home.favorite}">
             <Panel>
-              <c:RhIcon Data="{StaticResource Icon.Favorite}" Width="28" Height="28" IsVisible="{Binding !Game.IsFavorite}" />
-              <c:RhIcon Data="{StaticResource Icon.Favorite}" Filled="True" Width="28" Height="28" Foreground="{DynamicResource RhFavoriteBrush}"
+              <c:RhIcon Stamp="True" Data="{StaticResource Icon.Favorite}" Width="28" Height="28" IsVisible="{Binding !Game.IsFavorite}" />
+              <c:RhIcon Stamp="True" Data="{StaticResource Icon.Favorite}" Filled="True" Width="28" Height="28" Foreground="{DynamicResource RhFavoriteBrush}"
                         IsVisible="{Binding Game.IsFavorite}" />
             </Panel>
           </Button>

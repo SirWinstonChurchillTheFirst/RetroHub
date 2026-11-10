@@ -98,14 +98,16 @@
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
   <!-- reduced: no lift, no scaling (DESIGN 9.4) -->
-  <Style Selector=".motion-reduced c|GameTile /template/ Panel#PART_CoverArea, .motion-off c|GameTile /template/ Panel#PART_CoverArea">
-    <Setter Property="RenderTransform" Value="scale(1)" />
+  <!-- hover and press of a box: no movement when reduced or off (the ring at 40 % says it alone); the focus lift is code
+       (GameTile) and asks Motion itself -->
+  <Style Selector=".motion-reduced c|GameTile /template/ Panel#PART_Hover, .motion-off c|GameTile /template/ Panel#PART_Hover">
+    <Setter Property="RenderTransform" Value="translate(0px,0px) scale(1,1)" />
   </Style>
-  <Style Selector=".motion-reduced Button:focus-visible, .motion-off Button:focus-visible">
+  <Style Selector=".motion-reduced Button:focus-visible, .motion-off Button:focus-visible, .motion-reduced Button:pressed, .motion-off Button:pressed">
     <Setter Property="RenderTransform" Value="scale(1)" />
   </Style>
   <!-- auto-repeat: the lift jumps (no transition), the ring jumps along (DESIGN 8.4) -->
-  <Style Selector=".nav-repeat c|GameTile /template/ Panel#PART_CoverArea, .nav-repeat Button">
+  <Style Selector=".nav-repeat c|GameTile /template/ Panel#PART_Hover, .nav-repeat Button">
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
 </Styles>

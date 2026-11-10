@@ -184,14 +184,14 @@
             <!-- the slip one step lighter than Regal (Wand hell 60 % over Raum, QA 2), so it reads as paper -->
             <Panel Background="#27231E">
               <c:PaperSlip />
-              <c:Sawtooth Fill="{DynamicResource RhBaseBrush}" VerticalAlignment="Top" />
-              <StackPanel Spacing="0" Margin="20,24,20,16">
+              <c:Sawtooth Name="NoteTear" Fill="{DynamicResource RhBaseBrush}" VerticalAlignment="Top" />
+              <StackPanel Name="NoteBody" Spacing="0" Margin="20,24,20,16">
                 <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
                   <TextBlock Text="{l:T imports.note}" Classes="slip-head" VerticalAlignment="Bottom" />
                   <TextBlock Grid.Column="1" c:Sentence.Text="{Binding ReportTitle}" Classes="meta" VerticalAlignment="Bottom" />
                 </Grid>
                 <c:Groove Margin="0,0,0,8" />
-                <ItemsControl ItemsSource="{Binding Delivery}">
+                <ItemsControl Name="DeliveryLines" ItemsSource="{Binding Delivery}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:DeliveryLine">
                       <Grid ColumnDefinitions="Auto,*,Auto" Height="32">

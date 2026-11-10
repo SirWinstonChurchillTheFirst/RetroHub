@@ -64,6 +64,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     private (string?, double, double, int, double) _textKey;
     private bool _open;
     private double _ringOpacity;
+    private readonly ScaleTransform _scale = new(1, 1);
+    private readonly TranslateTransform _rise = new();
 
     static SystemSpine()
     {
@@ -78,7 +80,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         TextOptions.SetTextRenderingMode(this, TextRenderingMode.Antialias);
         Cursor = new Cursor(StandardCursorType.Hand);
         RenderTransformOrigin = new RelativePoint(0.5, 1, RelativeUnit.Relative);
-        RenderTransform = new ScaleTransform(1, 1);
+        // the lift (focus 1.03, press 0.97 high) and the rise under the mouse (−3 px, press +2) – two parts, one transform
+        RenderTransform = new TransformGroup { Children = { _scale, _rise } };
         Width = SpineWidth;
         FocusAdorner = null; // a local value: the theme's 2 px focus rectangle never shows (the chamfered ring is the focus)
     }
@@ -95,6 +98,9 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     public bool ShowMotif { get => GetValue(ShowMotifProperty); set => SetValue(ShowMotifProperty, value); }
     public bool Opens { get => GetValue(OpensProperty); set => SetValue(OpensProperty, value); }
     public double Pull { get => GetValue(PullProperty); set => SetValue(PullProperty, value); }
+
+    /// <summary>A front folding back into its spine (R2 animation: quicker than the 220 ms opening).</summary>
+    public static readonly TimeSpan CloseDuration = TimeSpan.FromMilliseconds(160);
 
     /// <summary>Free space on each side of an open front (M2 QA): ring (3 + 3) and lift 1.03 never touch the neighbours.</summary>
     public const double FrontGap = 16;
@@ -115,27 +121,29 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     private double SpineDrop => _system == null ? 0 : Craft.Pick(Craft.Seed(_system.Id), 11, 0, 2) * (ShowMotif ? 4 : 2);
 
     /// <summary>Share of the way from spine (0) to front (1), from the current (animating) width.</summary>
-    private double Openness => Math.Clamp((Bounds.Width - SpineWidth) / Math.Max(1, OpenWidth - SpineWidth), 0, 1);
+    private double Openness => OpennessAt(Bounds.Width);
+
+    private double OpennessAt(double width) => Math.Clamp((width - SpineWidth) / Math.Max(1, OpenWidth - SpineWidth), 0, 1);
 
     /// <summary>The drawn object in local coordinates: the spine, or the front standing FrontGap in from both sides.</summary>
-    public Rect ObjectRect
+    public Rect ObjectRect => ObjectRectIn(Bounds.Size);
+
+    /// <summary>The drawn object for a control of <paramref name="size"/> (arrange: the new size, Bounds still has the old).</summary>
+    private Rect ObjectRectIn(Size size)
     {
-        get
+        var r = new Rect(size);
+        if (r.Width <= 0 || r.Height <= 0) return default;
+        if (!Opens && _system != null)
         {
-            var r = new Rect(Bounds.Size);
-            if (r.Width <= 0 || r.Height <= 0) return default;
-            if (!Opens && _system != null)
-            {
-                var sl = Sleeve;
-                var lift = SleeveLift;
-                return new Rect(sl.Front.X, sl.Front.Y - SleeveTop - lift, sl.Front.Width + SleeveSide, r.Height - sl.Front.Y + SleeveTop + lift);
-            }
-            var t = Openness;
-            var spineH = (double.IsNaN(SpineHeight) ? r.Height : Math.Min(SpineHeight, r.Height)) - SpineDrop;
-            var h = Math.Round(spineH + (r.Height - spineH) * t);
-            var pad = Math.Round(FrontGap * t);
-            return new Rect(pad, r.Height - h, Math.Max(1, r.Width - 2 * pad), h);
+            var sl = Sleeve;
+            var lift = SleeveLift;
+            return new Rect(sl.Front.X, sl.Front.Y - SleeveTop - lift, sl.Front.Width + SleeveSide, r.Height - sl.Front.Y + SleeveTop + lift);
         }
+        var t = OpennessAt(size.Width);
+        var spineH = (double.IsNaN(SpineHeight) ? r.Height : Math.Min(SpineHeight, r.Height)) - SpineDrop;
+        var h = Math.Round(spineH + (r.Height - spineH) * t);
+        var pad = Math.Round(FrontGap * t);
+        return new Rect(pad, r.Height - h, Math.Max(1, r.Width - 2 * pad), h);
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -229,12 +237,16 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     protected override Size ArrangeOverride(Size finalSize)
     {
         if (_shelf == null) return finalSize;
-        var area = ObjectRect;
+        // from the size being arranged (Bounds still holds the last one: the shelf lagged a frame behind the opening)
+        var area = ObjectRectIn(finalSize);
         LayoutFront(finalSize.Height);
-        var t = Openness;
-        _shelf.Opacity = Math.Clamp((t - 0.6) / 0.4, 0, 1);
-        _shelf.IsVisible = t > 0.6;
+        var t = OpennessAt(finalSize.Width);
+        _shelf.IsVisible = t > 0.45;
         _shelf.Arrange(area);
+        var moving = t < 1 && Motion.AllowsMovement;
+        // the compartment turns with its front (the same hinge, see Swing)
+        _shelf.RenderTransformOrigin = new RelativePoint(0, 0.5, RelativeUnit.Relative);
+        _shelf.RenderTransform = moving ? new ScaleTransform(Ease.Lerp(0.86, 1, t), 1) : null;
         for (var i = 0; i < _covers.Count && i < _slots.Length; i++)
         {
             var slot = _slots[i];
@@ -242,9 +254,30 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
             Canvas.SetTop(_covers[i], slot.Y - area.Y);
             _covers[i].Width = slot.Width;
             _covers[i].Height = slot.Height;
+            // R2 animation: the boxes in the compartment slide in from its back one after another (+10 px → 0 with their
+            // opacity, ≈ 40 ms apart on the 220 ms swing; at most three) – the explicit exception to "no stagger"
+            var k = BoxIn(t, i);
+            _covers[i].Opacity = k;
+            if (moving || _covers[i].RenderTransform is TranslateTransform { Y: not 0 })
+                _covers[i].RenderTransform = moving ? new TranslateTransform(0, Math.Round(10 * (1 - Ease.CubicOut(k)), 1)) : null;
         }
         return finalSize;
     }
+
+    /// <summary>How far box <paramref name="i"/> of the compartment has come in at openness <paramref name="t"/>.</summary>
+    internal static double BoxIn(double t, int i)
+    {
+        var start = 0.45 + 0.12 * i;
+        return Math.Clamp((t - start) / (1 - start), 0, 1);
+    }
+
+    /// <summary>
+    /// The swing of the front (R2 animation): while the compartment opens, its front turns toward the room like a door
+    /// on its left hinge – ScaleX 0.86 → 1 from the left edge, and a shade (#000 32 % → 0) leaves it as the light reaches
+    /// the turning panel. Derived from the opening itself, so a held direction (the width jumps) never swings.
+    /// </summary>
+    private static Matrix Swing(Rect area, double t) =>
+        Matrix.CreateTranslation(-area.X, 0) * Matrix.CreateScale(Ease.Lerp(0.86, 1, t), 1) * Matrix.CreateTranslation(area.X, 0);
 
     /// <summary>
     /// The big front's layout (front coordinates, origin top left of the front): the inner board at 62 % of the height
@@ -287,7 +320,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
             SetWidth(animate: false);
             _textKey = default;
         }
-        else if (change.Property == IsFocusedProperty || change.Property == IsPointerOverProperty) UpdateState();
+        else if (change.Property == IsFocusedProperty || change.Property == IsPointerOverProperty || change.Property == IsPressedProperty) UpdateState();
     }
 
     protected override void OnGotFocus(FocusChangedEventArgs e)
@@ -329,19 +362,27 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 Transitions = Motion.Current == EffectiveMotion.Full && NavRepeatTracker.Current?.IsActive != true
                     ? [new DoubleTransition { Property = PullProperty, Duration = Motion.StepDuration, Easing = new CubicEaseOut() }]
                     : null;
-                // R2: the mouse resting on a sleeve draws it half out (the ring alone said little)
-                Pull = visible ? 1 : IsPointerOver ? 0.45 : 0;
+                // R2: the mouse resting on a sleeve draws it half out (6 of the 12 px; the ring alone said little)
+                Pull = visible ? 1 : IsPointerOver ? 0.5 : 0;
             }
-            var lift = visible && Opens && Motion.AllowsMovement ? 1.03 : 1.0;
-            if (RenderTransform is ScaleTransform st)
-            {
-                st.Transitions = Motion.Current == EffectiveMotion.Full && NavRepeatTracker.Current?.IsActive != true
-                    ? [new DoubleTransition { Property = ScaleTransform.ScaleXProperty, Duration = Motion.StepDuration, Easing = new CubicEaseOut() },
-                       new DoubleTransition { Property = ScaleTransform.ScaleYProperty, Duration = Motion.StepDuration, Easing = new CubicEaseOut() }]
-                    : null;
-                st.ScaleX = lift;
-                st.ScaleY = lift;
-            }
+            var moves = Motion.AllowsMovement;
+            var pressed = IsPressed && moves;
+            var lift = visible && Opens && moves ? 1.03 : 1.0;
+            // R2 animation: a spine under the mouse rises 3 px out of the row; pressed it gives (2 px down, 3 % lower,
+            // 70 ms linear) and comes back in Step – the focused front keeps its lift
+            var rise = !moves || !Opens ? 0 : pressed ? 2 : IsPointerOver && !visible ? -3 : 0;
+            var scaleY = pressed && Opens ? lift * 0.97 : lift;
+            var animate = Motion.Current == EffectiveMotion.Full && NavRepeatTracker.Current?.IsActive != true;
+            var d = pressed ? TimeSpan.FromMilliseconds(70) : Motion.StepDuration;
+            Easing ease = pressed ? new LinearEasing() : new CubicEaseOut();
+            _scale.Transitions = animate
+                ? [new DoubleTransition { Property = ScaleTransform.ScaleXProperty, Duration = d, Easing = ease },
+                   new DoubleTransition { Property = ScaleTransform.ScaleYProperty, Duration = d, Easing = ease }]
+                : null;
+            _rise.Transitions = animate ? [new DoubleTransition { Property = TranslateTransform.YProperty, Duration = d, Easing = ease }] : null;
+            _scale.ScaleX = lift;
+            _scale.ScaleY = scaleY;
+            _rise.Y = rise;
             InvalidateVisual();
         }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
@@ -350,7 +391,9 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     {
         var target = _open ? OpenWidth : SpineWidth;
         var repeat = NavRepeatTracker.Current?.IsActive == true;
-        var d = !animate || Motion.Current != EffectiveMotion.Full ? TimeSpan.Zero : repeat ? Motion.GlideRepeatDuration : Motion.GlideDuration;
+        // closing goes quicker than opening (160 ms, the front folds back with no stagger)
+        var d = !animate || Motion.Current != EffectiveMotion.Full ? TimeSpan.Zero
+            : repeat ? Motion.GlideRepeatDuration : _open ? Motion.GlideDuration : CloseDuration;
         Transitions = d == TimeSpan.Zero ? null :
             [new DoubleTransition { Property = WidthProperty, Duration = d, Easing = repeat ? new LinearEasing() : new CubicEaseOut() }];
         Width = target;
@@ -452,6 +495,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 var front = new Rect(area.X, 0, FrontWidth, r.Height);
                 var shelf = HasShelf;
                 if (shelf) LayoutFront(r.Height);
+                var swinging = t < 1 && Motion.AllowsMovement;
+                using (ctx.PushTransform(swinging ? Swing(area, t) : Matrix.Identity))
                 using (ctx.PushOpacity(Math.Clamp(t / 0.5, 0, 1)))
                 {
                     SystemWall.Draw(ctx, this, front, look, band: 0, motifShare: shelf ? 0 : 0.72, motifInset: Math.Round(FrontWidth * 0.06));
@@ -473,9 +518,13 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                         MotifCatalog.Draw(ctx, look, _motifBox.Translate(new Vector(front.X, 0)), relief: true);
                     }
                 }
+                using (ctx.PushTransform(swinging ? Swing(area, t) : Matrix.Identity))
                 using (ctx.PushOpacity(Math.Clamp((t - 0.6) / 0.4, 0, 1)))
                 using (ctx.PushTransform(Matrix.CreateTranslation(area.X, 0)))
                     DrawFrontText(ctx, new Rect(0, 0, FrontWidth, r.Height));
+                // the light reaching the turning panel: the shade leaves it as it comes round
+                if (swinging)
+                    ctx.FillRectangle(Craft.Dark(0.32 * (1 - t)), area);
             }
         }
         // the chamfered ring in the system's light: 3 px room-deep gap + 3 px light, chamfer 6; it stands on the board
@@ -700,8 +749,42 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     /// <summary>Depth of a sleeve's side face (right) and top face (above), the oblique view of the shelf.</summary>
     private const double SleeveSide = 5, SleeveTop = 3;
 
-    /// <summary>The lift of a pulled sleeve (8 px at Pull 1; none when motion is reduced or off).</summary>
-    private double SleeveLift => Motion.AllowsMovement ? Math.Round(8 * Pull, 1) : 0;
+    /// <summary>
+    /// The lift of a pulled sleeve (R2 animation: 12 px at Pull 1, slid up out of the row – it was 8; the mouse draws it
+    /// half out; none when motion is reduced or off). <see cref="Exit"/> lifts it a further 24 px on Accept.
+    /// </summary>
+    private double SleeveLift => Motion.AllowsMovement ? Math.Round(SleevePull * Pull + 24 * _exit, 1) : 0;
+
+    /// <summary>How far a focused sleeve slides up out of its row.</summary>
+    public const double SleevePull = 12;
+
+    private double _exit;
+    private Tween? _exitTween;
+
+    /// <summary>
+    /// Accept on an empty sleeve (R2 animation): it lifts a further 24 px and fades (Scene 280, CubicEaseOut), then
+    /// <paramref name="then"/> runs (the empty system page enters). Reduced motion or off: <paramref name="then"/> at once.
+    /// </summary>
+    public void PlayExit(Action then)
+    {
+        if (Opens || !Motion.AllowsMovement || TopLevel.GetTopLevel(this) == null)
+        {
+            then();
+            return;
+        }
+        _exitTween?.Stop();
+        _exitTween = Tween.Run(this, Motion.Scene, p =>
+        {
+            _exit = Ease.CubicOut(p);
+            Opacity = 1 - 0.85 * _exit;
+            InvalidateVisual();
+        }, () =>
+        {
+            then();
+            // back in its row once the page has left (the Konsolen page is kept alive)
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => { _exit = 0; Opacity = 1; InvalidateVisual(); }, Avalonia.Threading.DispatcherPriority.Background);
+        });
+    }
 
     private readonly record struct SleeveShape(Rect Front, uint Seed, double Lean, bool Dent, bool DentLeft, double DentSize);
 
@@ -776,7 +859,9 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         if (Math.Abs(lean) > 0.0001)
             m = Matrix.CreateTranslation(0, -f.Height) * Matrix.CreateRotation(lean) * Matrix.CreateTranslation(f.X, f.Bottom - lift);
         // the shadow on the wall behind it (never rotated: it falls on the wall)
-        Craft.CastShadow(ctx, new Rect(f.X, f.Y - SleeveTop - lift, f.Width + SleeveSide, f.Height + SleeveTop), 10, 0.38);
+        // pulled out, it stands further from the wall: the shadow lengthens 10 → 14 px
+        Craft.CastShadow(ctx, new Rect(f.X, f.Y - SleeveTop - lift, f.Width + SleeveSide, f.Height + SleeveTop),
+            Motion.AllowsMovement ? 10 + 4 * pull : 10, 0.38);
         using (ctx.PushTransform(m))
         {
             var w = f.Width;
@@ -831,7 +916,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         var lh = Math.Min(Math.Ceiling(code.Width) + 22, f.Height - y - 7);
         if (lw < 10 || lh < 20) return;
         var x = Math.Round((f.Width - lw) / 2 + Craft.Range(s.Seed, 8, -1.2, 1.2), 1);
-        var tilt = Craft.Range(s.Seed, 10, -1.5, 1.5) * (1 - 0.6 * pull);
+        // the label's tilt eases to 0° as the sleeve comes out (Step, with the pull)
+        var tilt = Craft.Range(s.Seed, 10, -1.5, 1.5) * (1 - pull);
         var r = new Rect(x, y, lw, lh);
         // a quiet sleeve's label is paper in the shade of the row; the pulled one comes into the light
         var paper = ColorUtil.Mix(ColorUtil.Mix(Craft.LabelPaper, look.WallHi, 0.42), Craft.LabelPaper, pull);

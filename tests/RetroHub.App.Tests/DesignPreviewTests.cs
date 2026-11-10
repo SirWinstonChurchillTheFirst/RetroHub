@@ -67,7 +67,7 @@ public class DesignPreviewTests
     private static string[] OnlyTokens => (Environment.GetEnvironmentVariable("RETROHUB_DESIGN_ONLY") ?? "")
         .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen", "importe", "einschalten", "switch", "maus"];
+    private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen", "importe", "einschalten", "switch", "maus", "animation"];
     private static readonly string[] VariantTokens = ["preview", "nocovers", "demo", "demo1000", "demoall", "empty", "perf"];
 
     /// <summary>Sheets rendered by their own facts ("specimen", "motive"): asked for alone, the page runs are skipped.</summary>
@@ -381,6 +381,8 @@ public class DesignPreviewTests
                 if (!wallOnly && OnlyTokens.Contains("switch")) SwitchStates(window, vm, ctx, prefix);
                 // asked for explicitly only: what the mouse sees (R2) – hover, the Winkel plates, the right-click list
                 if (!wallOnly && OnlyTokens.Contains("maus")) MouseStates(window, vm, prefix);
+                // asked for explicitly only: stills from the middle of the movements (R2 animation, Tween.Hold)
+                if (!wallOnly && OnlyTokens.Contains("animation")) AnimationStates(window, vm, prefix, demo: root == null);
 
                 if (Wants("konsolen", PageTokens)) SystemsStates(window, vm, prefix);
 
@@ -839,6 +841,49 @@ public class DesignPreviewTests
                 var q = settled.OrderBy(x => x).ToList();
                 report.AppendLine();
                 report.AppendLine($"in-view moves, motion {level}: first frame after the move median {o[o.Count / 2]:0.0} ms (max {o[^1]:0.0}); a frame 250 ms later median {q[q.Count / 2]:0.0} ms");
+                if (level == MotionLevel.Full)
+                {
+                    // R2 animation: the work of ONE frame in the middle of the movements (the pick-up at 90 ms, the drop of
+                    // the box left behind, the contact shadow; down moves: the rows gliding to their snap at 90 ms) –
+                    // Tween.Hold stops them there, so the capture measures a frame instead of waiting the movement out
+                    var midInput = new List<double>();
+                    var midFrame = new List<double>();
+                    var downInput = new List<double>();
+                    var downFrame = new List<double>();
+                    for (var i = 0; i < 16; i++)
+                    {
+                        var down = i % 4 == 3;
+                        Controls.Tween.Hold = TimeSpan.FromMilliseconds(90);
+                        try
+                        {
+                            sw.Restart();
+                            window.Execute(down ? Input.NavAction.Down : i % 2 == 0 ? Input.NavAction.Right : Input.NavAction.Left);
+                            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                            window.UpdateLayout();
+                            (down ? downInput : midInput).Add(sw.Elapsed.TotalMilliseconds);
+                            sw.Restart();
+                            window.CaptureRenderedFrame();
+                            (down ? downFrame : midFrame).Add(sw.Elapsed.TotalMilliseconds);
+                        }
+                        finally { Controls.Tween.ReleaseHeld(); }
+                        TestSupport.Settle(250);
+                    }
+                    // for scale: a frame after a bare scroll by a part of a row (what every gliding frame repaints)
+                    var partial = new List<double>();
+                    var g = window.GetVisualDescendants().OfType<Controls.CoverGrid>().First(x => x.Name == "Covers");
+                    for (var i = 0; i < 8; i++)
+                    {
+                        g.ScrollViewer.Offset = g.ScrollViewer.Offset.WithY(g.ScrollViewer.Offset.Y + (i % 2 == 0 ? 37 : -37));
+                        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                        window.UpdateLayout();
+                        sw.Restart();
+                        window.CaptureRenderedFrame();
+                        partial.Add(sw.Elapsed.TotalMilliseconds);
+                    }
+                    static double Median(List<double> v) => v.Count == 0 ? double.NaN : v.OrderBy(x => x).ElementAt(v.Count / 2);
+                    report.AppendLine($"  motion Full, a frame after a bare scroll by 37 px (no focus change): median {Median(partial):0.0} ms");
+                    report.AppendLine($"  motion Full, a frame in the middle of the movements (Tween.Hold 90 ms): in-view move input + layout median {Median(midInput):0.0} ms, frame median {Median(midFrame):0.0} ms (max {midFrame.DefaultIfEmpty().Max():0.0}); down move (rows gliding) input + layout median {Median(downInput):0.0} ms, frame median {Median(downFrame):0.0} ms");
+                }
             }
             finally { window.Close(); }
         }
@@ -1164,6 +1209,191 @@ public class DesignPreviewTests
         vm.Navigator.Navigate(PageKey.GameDetail, item);
         TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel { Game: not null } d && d.Game.Id == item.Id, 8000);
         Save(window, prefix + "-9b-switch-detail.png", 1400);
+    }
+
+    /// <summary>
+    /// Stills from the middle of the movements (R2 animation, DESIGN 9.6): every <see cref="Controls.Tween"/> started while
+    /// <see cref="Controls.Tween.Hold"/> is set stands still that far into its time, so a still shows one moment of the movement
+    /// (the transitions of the theme run on and show their end). Then the held tweens are released (end states).
+    /// </summary>
+    private static void AnimationStates(MainWindow window, MainViewModel vm, string prefix, bool demo)
+    {
+        Control? Focused() => window.FocusManager?.GetFocusedElement() as Control;
+        Avalonia.Point At(Avalonia.Visual v, double fx = 0.5, double fy = 0.5) =>
+            Avalonia.VisualExtensions.TranslatePoint(v, new Avalonia.Point(v.Bounds.Width * fx, v.Bounds.Height * fy), window) ?? default;
+        void Held(double ms, Action act, string file, int settle = 150)
+        {
+            Controls.Tween.Hold = TimeSpan.FromMilliseconds(ms);
+            try
+            {
+                act();
+                Save(window, prefix + file, settle);
+            }
+            finally { Controls.Tween.ReleaseHeld(); }
+            TestSupport.Settle(500);
+        }
+
+        // Start: the TV coming on inside its set (once per session: allowed again here), then a channel change
+        vm.Navigator.Navigate(PageKey.Home);
+        TestSupport.Settle(600);
+        var screen = window.GetVisualDescendants().OfType<Controls.PixelScreen>().FirstOrDefault(s => s.Name == "Screen" && s.IsEffectivelyVisible);
+        if (screen != null && vm.CurrentPage is HomeViewModel { IsLibraryEmpty: false })
+        {
+            Controls.PixelScreen.ResetPowerOn();
+            Held(60, () => screen.PowerOnOnce(), "-10j-anim-einschalten-linie.png", 60);
+            Controls.PixelScreen.ResetPowerOn();
+            Held(190, () => screen.PowerOnOnce(), "-10k-anim-einschalten-oeffnen.png", 60);
+            window.Execute(Input.NavAction.Down);
+            TestSupport.Settle(600);
+            Held(80, () => window.Execute(Input.NavAction.Right), "-10l-anim-kanalwechsel.png", 700);
+            window.Execute(Input.NavAction.Up);
+            TestSupport.Settle(400);
+        }
+
+        // Bibliothek: the pick-up at its peak, a hovered box, the box pulled out half-way to the stage and put back
+        vm.Navigator.Navigate(PageKey.Library);
+        TestSupport.Pump(() => vm.CurrentPage is LibraryViewModel { IsLoaded: true, Items.Count: > 0 }, 8000);
+        if (vm.CurrentPage is LibraryViewModel { IsListView: true } lv) lv.IsListView = false;
+        TestSupport.Settle(500);
+        window.Execute(Input.NavAction.Down);
+        window.Execute(Input.NavAction.Right);
+        TestSupport.Settle(500);
+        Held(108, () => window.Execute(Input.NavAction.Right), "-10a-anim-aufnehmen.png");
+        var hover = window.GetVisualDescendants().OfType<GameTile>().Where(t => t.IsEffectivelyVisible && t.Bounds.Width > 0 && !t.IsKeyboardFocusWithin).Skip(4).FirstOrDefault();
+        if (hover != null)
+        {
+            window.MouseMove(At(hover));
+            Save(window, prefix + "-10b-anim-hover.png", 500);
+            window.MouseMove(new Avalonia.Point(2, 2));
+            TestSupport.Settle(300);
+        }
+        // the right-click list unfolding from the pointer (70 ms: the first rows in, the last still coming)
+        if (window.GetVisualDescendants().OfType<GameTile>().Where(t => t.IsEffectivelyVisible && t.Bounds.Width > 0).Skip(2).FirstOrDefault() is { } menuTile)
+        {
+            var at = At(menuTile, 0.6, 0.4);
+            Held(70, () =>
+            {
+                window.MouseDown(at, Avalonia.Input.MouseButton.Right);
+                window.MouseUp(at, Avalonia.Input.MouseButton.Right);
+            }, "-10m-anim-liste.png", 120);
+            window.Execute(Input.NavAction.Back);
+            window.MouseMove(new Avalonia.Point(2, 2));
+            TestSupport.Settle(300);
+        }
+        // a compartment switch: the boxes of the next system come in from the right (110 ms of 220)
+        if (vm.CurrentPage is LibraryViewModel lib && lib.Chips.Where(c => !c.IsAll).OrderByDescending(c => c.Count).FirstOrDefault() is { } chip)
+        {
+            Held(110, () => lib.SelectChipCommand.Execute(chip), "-10n-anim-fachwechsel.png", 500);
+            lib.SelectChipCommand.Execute(lib.Chips.First(c => c.IsAll));
+            TestSupport.Pump(() => lib.SelectedSystemId == null, 4000);
+            TestSupport.Settle(500);
+            window.Execute(Input.NavAction.Down);
+            window.Execute(Input.NavAction.Right);
+            TestSupport.Settle(400);
+        }
+        if (Focused() is GameTile)
+        {
+            Held(150, () => window.Execute(Input.NavAction.Accept), "-10c-anim-herausziehen.png");
+            TestSupport.Pump(() => vm.CurrentPage is GameDetailViewModel { Game: not null }, 8000);
+            TestSupport.Settle(800);
+            Save(window, prefix + "-10c2-anim-gelandet.png", 200);
+            // the favourite stamp on the detail page (80 ms: at its largest, the fill growing), then back as it was
+            if (vm.CurrentPage is GameDetailViewModel detailVm
+                && window.CurrentPageView?.GetVisualDescendants().OfType<Controls.RhIcon>().FirstOrDefault(i => i.Stamp && i.Filled) is { } filled)
+            {
+                // the filled star is the truth: first make sure it is off, then stamp it on (held at 80 ms of 200)
+                var wasFavorite = filled.IsVisible;
+                if (wasFavorite)
+                {
+                    detailVm.ToggleFavoriteCommand.Execute(null);
+                    TestSupport.Pump(() => !filled.IsVisible, 3000);
+                    TestSupport.Settle(400);
+                }
+                Held(80, () =>
+                {
+                    detailVm.ToggleFavoriteCommand.Execute(null);
+                    TestSupport.Pump(() => filled.IsVisible, 3000);
+                }, "-10o-anim-stempel.png", 100);
+                if (!wasFavorite)
+                {
+                    detailVm.ToggleFavoriteCommand.Execute(null);
+                    TestSupport.Pump(() => !filled.IsVisible, 3000);
+                }
+                TestSupport.Settle(400);
+                Held(80, () => detailVm.ShowMoreCommand.Execute(null), "-10p-anim-mehr.png", 200);
+                window.Execute(Input.NavAction.Back);
+                TestSupport.Settle(300);
+            }
+            if (window.CurrentPageView is Views.Pages.PageBase detailPage) detailPage.FocusDefault();
+            TestSupport.Settle(200);
+            Held(130, () => window.Execute(Input.NavAction.Back), "-10d-anim-zurueckstellen.png");
+            TestSupport.Settle(400);
+        }
+        // a channel change to the right, half-way: Konsolen enter from the right, the library fades, the mark slides
+        Held(120, () => vm.Navigator.Navigate(PageKey.Systems), "-10e-anim-seitenwechsel.png");
+        TestSupport.Pump(() => vm.CurrentPage is SystemsViewModel { IsLoaded: true }, 8000);
+        TestSupport.Pump(() => Focused() is Controls.SystemSpine, 3000);
+        TestSupport.Settle(600);
+        // Konsolen: the front swinging open (frozen at 70 % of its opening), the needle swinging on arrival
+        window.Execute(Input.NavAction.Right);
+        TestSupport.Settle(500);
+        if (Focused() is Controls.SystemSpine { Opens: true } spine)
+        {
+            spine.Transitions = null;
+            spine.Width = spine.SpineWidth + (spine.OpenWidth - spine.SpineWidth) * 0.7;
+            Save(window, prefix + "-10f-anim-fach-schwingt.png", 120);
+            spine.Width = spine.OpenWidth;
+            TestSupport.Settle(300);
+        }
+        if (window.GetVisualDescendants().OfType<Controls.PositionRail>().FirstOrDefault() is { } rail)
+        {
+            rail.FreezeSwing(0.3);
+            Save(window, prefix + "-10g-anim-nadel.png", 60);
+            rail.FreezeSwing(1);
+        }
+        // "Noch leer": a sleeve pulled out of its row, then on its way out (Accept, half-way)
+        if (vm.CurrentPage is SystemsViewModel { HasEmptySystems: true })
+        {
+            window.Execute(Input.NavAction.Down);
+            window.Execute(Input.NavAction.Right);
+            Save(window, prefix + "-10h-anim-schuber.png", 600);
+            Held(140, () => window.Execute(Input.NavAction.Accept), "-10i-anim-schuber-raus.png");
+            TestSupport.Pump(() => vm.CurrentPage is SystemViewModel { IsLoaded: true }, 4000);
+            TestSupport.Settle(400);
+            window.Execute(Input.NavAction.Back);
+            TestSupport.Settle(400);
+        }
+        // Einstellungen: a value step – the arrow key gives toward its side (60 ms), the test card shows static
+        vm.Navigator.Navigate(PageKey.Settings);
+        TestSupport.Settle(600);
+        if (window.GetVisualDescendants().OfType<Controls.ServiceRow>().FirstOrDefault(r => r.IsEffectivelyVisible && r.Setting is { IsChoice: true, IsFixed: false }) is { } row)
+        {
+            row.Focus(Avalonia.Input.NavigationMethod.Directional);
+            TestSupport.Settle(300);
+            Held(60, () => window.Execute(Input.NavAction.Right), "-10q-anim-wert.png", 60);
+            window.Execute(Input.NavAction.Left);
+            TestSupport.Settle(300);
+        }
+        // Importe (the demo only: its scan is real): the delivery note being printed, 200 ms in
+        if (demo)
+        {
+            vm.Navigator.Navigate(PageKey.Imports);
+            TestSupport.Pump(() => vm.CurrentPage is ImportsViewModel, 3000);
+            TestSupport.Settle(400);
+            if (vm.CurrentPage is ImportsViewModel imports)
+            {
+                Controls.Tween.Hold = TimeSpan.FromMilliseconds(200);
+                try
+                {
+                    imports.ScanCommand.Execute(null);
+                    TestSupport.Pump(() => imports.IsScanning, 4000);
+                    TestSupport.Pump(() => !imports.IsScanning && imports.HasReport, 15_000);
+                    Save(window, prefix + "-10r-anim-lieferschein.png", 200);
+                }
+                finally { Controls.Tween.ReleaseHeld(); }
+                TestSupport.Settle(400);
+            }
+        }
     }
 
     private static GameItemViewModel? PickGame(UiContext ctx)

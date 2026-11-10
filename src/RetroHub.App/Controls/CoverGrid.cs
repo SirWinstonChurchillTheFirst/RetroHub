@@ -12,6 +12,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using RetroHub.App.Input;
+using RetroHub.App.Theming;
 
 namespace RetroHub.App.Controls;
 
@@ -415,7 +416,11 @@ public sealed class CoverGrid : UserControl
             // the focused item left the list (e.g. un-favourited while "Favoriten" is on): stay at the same place
             index = Math.Min(oldIndex, _items.Count - 1);
         }
-        if (index < 0) _scroll.Offset = default;
+        if (index < 0)
+        {
+            _scrollTween?.Stop();
+            _scroll.Offset = default;
+        }
         SelectedIndex = index >= 0 ? index : hadFocus && _items.Count > 0 ? 0 : -1;
         Rebuild(keepFocus: hadFocus);
     }
@@ -594,7 +599,8 @@ public sealed class CoverGrid : UserControl
         var top = p.Value.Y + _content.Margin.Top;            // the row's slot top in scroll coordinates
         var bottom = top + tile.Bounds.Height + BottomMargin;  // caption end + margin
         var viewport = _scroll.Viewport.Height;
-        var offset = _scroll.Offset.Y;
+        // while the rows glide to a snap, judge against where they are going
+        var offset = _scrollTween?.IsRunning == true ? _scrollTarget : _scroll.Offset.Y;
         var headroom = row == 0 ? top : SnapHeadroom;
         if (top - headroom >= offset - 0.5 && bottom <= offset + viewport + 0.5) return; // in view as it is
         double target;
@@ -627,8 +633,26 @@ public sealed class CoverGrid : UserControl
                 _scroll.UpdateLayout();
             }
         }
-        _scroll.Offset = _scroll.Offset.WithY(target);
+        // R2 animation: the rows glide to the snapped row (Glide 220 ms CubicEaseOut; a held direction: GlideRepeat 90 ms
+        // linear) instead of jumping – full motion only, never further than a view (a page jump jumps), offset only
+        _scrollTween?.Stop();
+        var from = _scroll.Offset.Y;
+        if (Motion.Current != EffectiveMotion.Full || Math.Abs(target - from) < 1 || Math.Abs(target - from) > _scroll.Viewport.Height || !IsEffectivelyVisible)
+        {
+            _scroll.Offset = _scroll.Offset.WithY(target);
+            return;
+        }
+        var repeat = NavRepeatTracker.Current?.IsActive == true;
+        _scrollTarget = target;
+        _scrollTween = Tween.Run(this, repeat ? Motion.GlideRepeatDuration : Motion.GlideDuration,
+            p => _scroll.Offset = _scroll.Offset.WithY(Math.Round(Ease.Lerp(from, target, repeat ? p : Ease.CubicOut(p)))));
     }
+
+    private Tween? _scrollTween;
+    private double _scrollTarget;
+
+    /// <summary>The rows are gliding to a snapped row (tests).</summary>
+    internal bool IsGliding => _scrollTween?.IsRunning == true;
 
     internal Control? TileAt(int rowIndex, int col)
     {

@@ -132,6 +132,7 @@ public partial class MainWindow : Window
         // toasts lie above the embedded game: the game screen cuts a hole for them into its native host (airspace)
         GameScreen.SetHoleSource(ToastDock);
         ToastHost.ContainerPrepared += (_, e) => SlideInToast(e.Container);
+        ChannelList.SizeChanged += (_, _) => UpdateChannelMark(animate: false);
         ToastDock.SizeChanged += (_, _) => Dispatcher.UIThread.Post(GameScreen.UpdateHoles, DispatcherPriority.Render);
         Closing += (_, _) =>
         {
@@ -581,16 +582,161 @@ public partial class MainWindow : Window
     {
         var focused = FocusManager?.GetFocusedElement();
         if (Pages.Current != null) Pages.RememberFocus(Pages.Current, focused);
+        // going back from a game's detail: the stage box is copied before its page goes (it flies back into its slot)
+        var back = entry.IsBack ? TakeStageBox() : null;
+        var previous = Pages.Current;
         var view = Pages.GetOrCreate(entry.Key, () => CreatePageView(entry.Key, page));
-        Pages.Show(view, entry.IsBack);
+        Pages.Show(view, entry.IsBack, ChannelDirection(previous, view));
+        UpdateChannelMark(animate: true);
         var focusInHeader = focused is Visual fv && IsInside(fv, TopBar);
+        var pulled = entry.Key == PageKey.GameDetail && !entry.IsBack ? _pullSnap : null;
+        _pullSnap = null;
         Dispatcher.UIThread.Post(() =>
         {
             UpdateStage();
             // keep the focus in the header while browsing the channels with the controller; otherwise focus the page
-            if (focusInHeader && !entry.IsBack && Navigator.IsTopLevel(entry.Key)) return;
-            FocusPage(view, entry.IsBack);
+            if (!(focusInHeader && !entry.IsBack && Navigator.IsTopLevel(entry.Key))) FocusPage(view, entry.IsBack);
+            if (pulled != null) FlyToStage(view, pulled);
+            else if (back != null) FlyBack(view, back.Value.Snap, back.Value.GameId);
         }, DispatcherPriority.Loaded);
+    }
+
+    // ================= channel direction and the sliding channel mark (R2 animation) =================
+
+    /// <summary>The header's order (channels, then the tools): a page right of the one left enters from the right.</summary>
+    private static readonly PageKey[] HeaderOrder = [PageKey.Home, PageKey.Library, PageKey.Systems, PageKey.Emulators, PageKey.Imports, PageKey.Settings];
+
+    private int ChannelDirection(Control? from, Control to)
+    {
+        if (from == null || KeyOf(from) is not { } a || KeyOf(to) is not { } b) return 0;
+        int i = Array.IndexOf(HeaderOrder, a), j = Array.IndexOf(HeaderOrder, b);
+        return i < 0 || j < 0 || i == j ? 0 : Math.Sign(j - i);
+    }
+
+    private PageKey? KeyOf(Control view)
+    {
+        foreach (var (key, page) in Pages.Pages)
+            if (page == view && key is PageKey k) return k;
+        return null;
+    }
+
+    private Tween? _markTween;
+    private double _markX = double.NaN;
+
+    /// <summary>
+    /// The 12 × 3 mark under the chosen channel's digit slides there (Glide 220 ms CubicEaseOut, stretching a little on
+    /// the way); reduced motion and off: it jumps. No channel chosen (a tool's page): no mark.
+    /// </summary>
+    private void UpdateChannelMark(bool animate)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var selected = ChannelList.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Classes.Contains("selected") && b.IsEffectivelyVisible);
+            if (selected == null || selected.Bounds.Height <= 0 || selected.TranslatePoint(new Point(8, selected.Bounds.Height - 7), MarkCanvas) is not { } p)
+            {
+                ChannelMark.IsVisible = false;
+                _markX = double.NaN;
+                return;
+            }
+            if (ChannelMark.RenderTransform is not TransformGroup { Children: [ScaleTransform stretch, TranslateTransform shift] }) return;
+            ChannelMark.IsVisible = true;
+            Canvas.SetTop(ChannelMark, Math.Round(p.Y));
+            var from = _markX;
+            var to = Math.Round(p.X);
+            if (Math.Abs(from - to) < 0.5 && _markTween?.IsRunning == true) return;
+            _markX = to;
+            _markTween?.Stop();
+            if (!animate || double.IsNaN(from) || Math.Abs(from - to) < 0.5 || Motion.Glide == TimeSpan.Zero)
+            {
+                shift.X = to;
+                stretch.ScaleX = 1;
+                return;
+            }
+            var start = shift.X;
+            _markTween = Tween.Run(ChannelMark, Motion.Glide, k =>
+            {
+                shift.X = Ease.Lerp(start, to, Ease.CubicOut(k));
+                stretch.ScaleX = 1 + 0.8 * Ease.Bump(k);
+            });
+        }, DispatcherPriority.Loaded);
+    }
+
+    // ================= the box between shelf and stage (R2 animation, DESIGN 9.2) =================
+
+    private PullLayer.Snap? _pullSnap;
+    private long _pulledId;
+
+    /// <summary>A box was chosen (click, Accept): its copy is taken now, it flies once the detail page stands.</summary>
+    internal void PullOut(GameTile tile, GameItemViewModel game)
+    {
+        Pull.Stop();
+        _pullSnap?.Bitmap.Dispose();
+        _pullSnap = null;
+        _pulledId = game.Id;
+        if (!Motion.AllowsMovement || tile.Art is not { } art || _vm.Launch.IsActive) return;
+        // a box on the detail page itself ("Daneben im Regal") flies too; the stage box is not a shelf
+        if (tile.Name == "DetailBox") return;
+        _pullSnap = Pull.Take(art);
+    }
+
+    private void FlyToStage(Control view, PullLayer.Snap snap)
+    {
+        if (view.FindControl<GameTile>("DetailBox") is not { } box || box.DataContext is not GameItemViewModel shown || shown.Id != _pulledId)
+        {
+            snap.Bitmap.Dispose();
+            return;
+        }
+        Pull.Fly(snap, () => box.IsEffectivelyVisible ? Pull.RectOf(box.Art) : null, PullLayer.OutDuration, box);
+        // the text column follows the box onto the stage: 80 ms later, 16 px from the right, with the page's fade
+        if (view.FindControl<Control>("TextColumn") is { } text) EnterFromRight(text, 80, 16);
+    }
+
+    /// <summary>The detail page's stage box as it stands, with its game (null when the current page is no detail).</summary>
+    private (PullLayer.Snap Snap, long GameId)? TakeStageBox()
+    {
+        if (!Motion.AllowsMovement || Pages.Current is not GameDetailPage detail) return null;
+        if (detail.FindControl<GameTile>("DetailBox") is not { Art: { } art, DataContext: GameItemViewModel game }) return null;
+        return Pull.Take(art) is { } snap ? (snap, game.Id) : null;
+    }
+
+    private void FlyBack(Control view, PullLayer.Snap snap, long gameId)
+    {
+        // the box of that game in the page we came back to, on screen (the remembered focus, else any realised one)
+        var tile = (Pages.RecallFocus(view) as GameTile) is { DataContext: GameItemViewModel g } t0 && g.Id == gameId ? t0
+            : view.GetVisualDescendants().OfType<GameTile>().FirstOrDefault(t => t.DataContext is GameItemViewModel x && x.Id == gameId
+                && t.Name != "DetailBox" && t.IsEffectivelyVisible && t.Art != null && IsOnScreen(t));
+        if (tile == null)
+        {
+            snap.Bitmap.Dispose();
+            return;
+        }
+        Pull.Fly(snap, () => tile.DataContext is GameItemViewModel x && x.Id == gameId && tile.IsEffectivelyVisible ? Pull.RectOf(tile.Art) : null,
+            PullLayer.BackDuration, tile, () => PullLayer.Settle(tile.Art!));
+    }
+
+    private bool IsOnScreen(Control c) =>
+        c.TranslatePoint(default, this) is { } p && c.TranslatePoint(new Point(c.Bounds.Width, c.Bounds.Height), this) is { } q
+        && q.Y > 0 && p.Y < Bounds.Height && q.X > 0 && p.X < Bounds.Width;
+
+    /// <summary>
+    /// A part entering after the page (Scene, CubicEaseOut), <paramref name="delayMs"/> later and from <paramref name="dx"/>
+    /// px to the right; only under full motion.
+    /// </summary>
+    private static void EnterFromRight(Control c, double delayMs, double dx)
+    {
+        if (!Motion.AllowsMovement) return;
+        var t = c.RenderTransform as TranslateTransform;
+        if (c.RenderTransform != null && t == null) return;
+        t ??= new TranslateTransform();
+        c.RenderTransform = t;
+        var total = delayMs + Motion.Scene.TotalMilliseconds;
+        Tween.Run(c, TimeSpan.FromMilliseconds(total), p =>
+        {
+            var k = Math.Clamp((p * total - delayMs) / Motion.Scene.TotalMilliseconds, 0, 1);
+            var e = Ease.CubicOut(k);
+            t.X = dx * (1 - e);
+            c.Opacity = e;
+        });
     }
 
     private void FocusPage(Control view, bool preferRemembered)
@@ -692,6 +838,8 @@ public partial class MainWindow : Window
         var x = Math.Clamp(p.X, 8, Math.Max(8, Shell.Bounds.Width - size.Width - 8));
         var y = Math.Clamp(p.Y, 8, Math.Max(8, Shell.Bounds.Height - 56 - size.Height - 8));
         ContextPanel.Margin = new Thickness(Math.Round(x), Math.Round(y), 0, 0);
+        // R2 animation: the list unfolds from the pointer (rows 20 ms apart)
+        Anim.Unfold(ContextPanel, ContextRows.Children.ToList(), fromTop: true);
         var first = Math.Clamp(focusIndex, 0, ContextRows.Children.Count - 1);
         Dispatcher.UIThread.Post(() => (ContextRows.Children.ElementAtOrDefault(first) as Control)?.Focus(NavigationMethod.Directional), DispatcherPriority.Loaded);
     }
@@ -918,6 +1066,8 @@ public partial class MainWindow : Window
             ];
             container.Opacity = 1;
             if (move) container.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("translateY(0px)");
+            // R2 animation: the message's icon ticks once as the slip arrives
+            foreach (var icon in container.GetVisualDescendants().OfType<RhIcon>().Where(i => i.IsVisible)) icon.Pop();
         }, DispatcherPriority.Render);
     }
 

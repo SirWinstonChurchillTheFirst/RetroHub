@@ -42,6 +42,8 @@ public partial class SettingsPage : PageBase
     {
         if (what == "osd") _card.FlashOsd();
         else if (what == "motion") _card.Glide();
+        // R2 animation: a new light colour or motion level is a channel change of the test card – a short burst of static
+        if (what is "accent" or "motion") Tv.Static(TimeSpan.FromMilliseconds(60));
     }
 
     /// <summary>The test card (previews, tests).</summary>

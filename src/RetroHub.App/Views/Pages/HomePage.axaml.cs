@@ -81,11 +81,23 @@ public partial class HomePage : PageBase
         if (_vm == null) return;
         _vm.PropertyChanged += OnVmChanged;
         ShowStage(_vm.Stage, animate: false);
+        PowerOnTv();
     }
 
     private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(HomeViewModel.Stage) && _vm != null) ShowStage(_vm.Stage, animate: true);
+        else if (e.PropertyName == nameof(HomeViewModel.IsLoaded)) PowerOnTv();
+    }
+
+    /// <summary>The first time Start stands with a library, the TV comes on inside its set (once per session, R2 animation).</summary>
+    private void PowerOnTv()
+    {
+        if (_vm is not { IsLoaded: true, IsLibraryEmpty: false }) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (IsEffectivelyVisible && _vm is { IsLibraryEmpty: false }) Screen.PowerOnOnce();
+        }, DispatcherPriority.Loaded);
     }
 
     // ===================== layout (DESIGN 7.1 and its ≈1100 values) =====================
@@ -166,11 +178,11 @@ public partial class HomePage : PageBase
         _pending = null;
         _vm.SetFocus(z);
         var version = ++_dwell;
-        _ = Task.Delay(Motion.Dwell).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        _ = Task.Delay(Motion.Dwell).ContinueWith((_, ui) => ((Dispatcher)ui!).Post(() =>
         {
             if (version != _dwell || _vm == null || !Stage.IsKeyboardFocusWithin) return;
             _vm.ReturnToContinue();
-        }), TaskScheduler.Default);
+        }), Dispatcher.UIThread, TaskScheduler.Default);
     }
 
     private void OnShelfItemFocused(Shelf shelf, Control item, int index, int count)
@@ -203,7 +215,7 @@ public partial class HomePage : PageBase
         var dataCount = count - (shelf.ActionLabel != null ? 1 : 0);
         var version = ++_dwell;
         _pending = null;
-        _ = Task.Delay(Motion.Dwell).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        _ = Task.Delay(Motion.Dwell).ContinueWith((_, ui) => ((Dispatcher)ui!).Post(() =>
         {
             if (version != _dwell || _vm == null || !item.IsPointerOver) return;
             switch (item.DataContext)
@@ -211,11 +223,11 @@ public partial class HomePage : PageBase
                 case GameItemViewModel g: _vm.Present(g, shelf.Header ?? "", index, dataCount); break;
                 case SystemItemViewModel s: _vm.Present(s, shelf.Header ?? "", index, dataCount); break;
             }
-        }), TaskScheduler.Default);
+        }), Dispatcher.UIThread, TaskScheduler.Default);
     }
 
     private void StartDwell(int version) =>
-        _ = Task.Delay(Motion.Dwell).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        _ = Task.Delay(Motion.Dwell).ContinueWith((_, ui) => ((Dispatcher)ui!).Post(() =>
         {
             if (version != _dwell || _pending is not { } p || _vm == null) return;
             if (NavRepeatTracker.Current?.IsActive == true) return;
@@ -225,7 +237,7 @@ public partial class HomePage : PageBase
                 case GameItemViewModel g: _vm.Present(g, p.Shelf.Header ?? "", p.Index, p.Count); break;
                 case SystemItemViewModel s: _vm.Present(s, p.Shelf.Header ?? "", p.Index, p.Count); break;
             }
-        }), TaskScheduler.Default);
+        }), Dispatcher.UIThread, TaskScheduler.Default);
 
     private void OnRepeatChanged(bool active)
     {
@@ -253,7 +265,7 @@ public partial class HomePage : PageBase
         var outTime = TimeSpan.FromMilliseconds(Motion.AllowsMovement ? 120 : 80);
         Fade(TextColumn, 0, outTime);
         Fade(BoxSlot, 0, outTime);
-        _ = Task.Delay(outTime).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        _ = Task.Delay(outTime).ContinueWith((_, ui) => ((Dispatcher)ui!).Post(() =>
         {
             if (version != _swap) return;
             Apply(stage);
@@ -266,7 +278,7 @@ public partial class HomePage : PageBase
             }
             Fade(TextColumn, 1, TimeSpan.FromMilliseconds(180));
             Fade(BoxSlot, 1, TimeSpan.FromMilliseconds(180));
-        }), TaskScheduler.Default);
+        }), Dispatcher.UIThread, TaskScheduler.Default);
     }
 
     /// <summary>Opacity via a transition of the given duration (zero = at once).</summary>

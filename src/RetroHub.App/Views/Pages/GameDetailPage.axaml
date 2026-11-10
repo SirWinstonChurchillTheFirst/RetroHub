@@ -105,8 +105,8 @@
               <Button Name="FavoriteButton" MinHeight="64" Padding="24,0" Command="{Binding ToggleFavoriteCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <Panel>
-                    <c:RhIcon Data="{StaticResource Icon.Favorite}" Width="22" Height="22" IsVisible="{Binding !Game.IsFavorite}" />
-                    <c:RhIcon Data="{StaticResource Icon.Favorite}" Filled="True" Width="22" Height="22" Foreground="{DynamicResource RhFavoriteBrush}" IsVisible="{Binding Game.IsFavorite}" />
+                    <c:RhIcon Stamp="True" Data="{StaticResource Icon.Favorite}" Width="22" Height="22" IsVisible="{Binding !Game.IsFavorite}" />
+                    <c:RhIcon Stamp="True" Data="{StaticResource Icon.Favorite}" Filled="True" Width="22" Height="22" Foreground="{DynamicResource RhFavoriteBrush}" IsVisible="{Binding Game.IsFavorite}" />
                   </Panel>
                   <TextBlock Text="{l:T detail.addFavorite}" VerticalAlignment="Center" />
                 </StackPanel>

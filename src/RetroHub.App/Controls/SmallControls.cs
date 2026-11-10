@@ -99,6 +99,82 @@ public class GameTile : Button
         if (Art != null) Art.ArtRectChanged += OnArtRectChanged;
         Spine = e.NameScope.Find<BoxSpine>("PART_Spine");
         if (Spine != null) Spine.Art = Art;
+        _liftTween?.Stop();
+        _lifted = false;
+        _liftNow = 1;
+        _liftScale = null;
+        if (e.NameScope.Find<Panel>("PART_CoverArea") is { } area)
+        {
+            area.RenderTransformOrigin = new RelativePoint(0.5, 1, RelativeUnit.Relative);
+            area.RenderTransform = _liftScale = new ScaleTransform(1, 1);
+        }
+    }
+
+    // ===== the focus lift (DESIGN 9.2 "Aufnehmen", R2 animation) =====
+    // The box is picked up rather than scaled: 1.00 → 1.075 → 1.06 in 180 ms (CubicEaseOut to 60 %, then SineEaseInOut
+    // settling back), origin bottom centre; the box it leaves drops back 1.06 → 1.00 in Step. Under a held direction the
+    // lift jumps; reduced motion and off: no lift. Hover and press live one panel deeper (PART_Hover, theme styles), so
+    // the two never fight over one transform.
+
+    /// <summary>The settled lift of a focused box (= <see cref="FocusLayer.Lift"/>).</summary>
+    public const double LiftScale = FocusLayer.Lift;
+    /// <summary>Peak of the pick-up before it settles.</summary>
+    public const double LiftPeak = 1.075;
+    public static readonly TimeSpan LiftDuration = TimeSpan.FromMilliseconds(180);
+
+    private ScaleTransform? _liftScale;
+    private Tween? _liftTween;
+    private double _liftNow = 1;
+    private bool _lifted;
+
+    /// <summary>The current scale of the cover area (tests).</summary>
+    public double CurrentLift => _liftNow;
+
+    protected override void OnGotFocus(Avalonia.Input.FocusChangedEventArgs e)
+    {
+        base.OnGotFocus(e);
+        PostLift();
+    }
+
+    protected override void OnLostFocus(Avalonia.Input.FocusChangedEventArgs e)
+    {
+        base.OnLostFocus(e);
+        PostLift();
+    }
+
+    // :focus-visible is set after GotFocus: decide once the input pass is done
+    private void PostLift() => Avalonia.Threading.Dispatcher.UIThread.Post(UpdateLift, Avalonia.Threading.DispatcherPriority.Loaded);
+
+    private void UpdateLift()
+    {
+        if (_liftScale == null) return;
+        var want = IsKeyboardFocusWithin && Classes.Contains(":focus-visible") && Motion.AllowsMovement;
+        if (want == _lifted) return;
+        _lifted = want;
+        _liftTween?.Stop();
+        var target = want ? LiftScale : 1.0;
+        if (NavRepeatTracker.Current?.IsActive == true || !Motion.AllowsMovement || !IsEffectivelyVisible)
+        {
+            SetLift(target);
+            return;
+        }
+        var from = _liftNow;
+        _liftTween = want
+            ? Tween.Run(this, LiftDuration, p => SetLift(Settle(from, p)))
+            : Tween.Run(this, Motion.Step, p => SetLift(Ease.Lerp(from, 1, Ease.CubicOut(p))));
+    }
+
+    /// <summary>The pick-up curve: up past the lift to <see cref="LiftPeak"/> at 60 %, then settling on it.</summary>
+    public static double Settle(double from, double p) => p < 0.6
+        ? Ease.Lerp(from, LiftPeak, Ease.CubicOut(p / 0.6))
+        : Ease.Lerp(LiftPeak, LiftScale, Ease.SineInOut((p - 0.6) / 0.4));
+
+    private void SetLift(double s)
+    {
+        _liftNow = s;
+        if (_liftScale == null) return;
+        _liftScale.ScaleX = s;
+        _liftScale.ScaleY = s;
     }
 
     private void OnArtRectChanged(object? sender, EventArgs e)

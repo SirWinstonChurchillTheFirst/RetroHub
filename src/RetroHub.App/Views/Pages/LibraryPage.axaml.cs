@@ -96,6 +96,19 @@ public partial class LibraryPage : PageBase
         _focusToTransfer = from.IsKeyboardFocusWithin ? Math.Max(0, from.SelectedIndex) : -1;
     }
 
+    private int _slideDir;
+    /// <summary>The compartment shown before a switch (null = "Alle", the first chip).</summary>
+    private string? _shownSystem;
+    private DateTime _slideAt;
+
+    private int ChipIndex(string? systemId)
+    {
+        if (_vm == null) return -1;
+        for (var i = 0; i < _vm.Chips.Count; i++)
+            if (_vm.Chips[i].SystemId == systemId) return i;
+        return -1;
+    }
+
     private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (_vm == null) return;
@@ -106,9 +119,18 @@ public partial class LibraryPage : PageBase
                 return;
             case nameof(LibraryViewModel.SelectedSystemId):
                 Dispatcher.UIThread.Post(BringActiveChipIntoView, DispatcherPriority.Loaded);
+                // R2 animation: the new compartment's boxes come in from the side the shoulder went to
+                var fromChip = ChipIndex(_shownSystem);
+                var toChip = ChipIndex(_vm.SelectedSystemId);
+                _slideDir = fromChip < 0 || toChip < 0 ? 0 : Math.Sign(toChip - fromChip);
+                _slideAt = DateTime.UtcNow;
+                _shownSystem = _vm.SelectedSystemId;
                 return;
             case nameof(LibraryViewModel.Items):
                 Mirror.Items = _vm.Items;
+                if (_slideDir != 0 && DateTime.UtcNow - _slideAt < TimeSpan.FromMilliseconds(800))
+                    Anim.SlideIn(_vm.IsListView ? Rows : Covers, _slideDir);
+                _slideDir = 0;
                 return;
             case nameof(LibraryViewModel.FocusIndex):
                 Mirror.FocusIndex = _vm.FocusIndex;

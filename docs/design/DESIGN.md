@@ -1053,7 +1053,7 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 
 ### 8.3 Maus
 
-- **Schachtel**: Hover hebt sie um 3 % (Step 140 ms, unter Reduziert/Aus keine Skalierung) und zeigt den Ring bei 40 % Deckkraft (`FocusLayer.Hover`, eine Ebene pro Raster), kein Kegel, kein Brettstück. Klick setzt den Fokus und löst die Aktion aus.
+- **Schachtel**: Hover hebt sie 3 px und um 3 % (Step 140 ms, unter Reduziert/Aus keine Bewegung) und zeigt den Ring bei 40 % Deckkraft (`FocusLayer.Hover`, eine Ebene pro Raster) mit einem breiteren Kontaktschatten unter der Brettfront, kein Kegel, kein Brettstück. Ein Druck gibt nach (9.2.1). Klick setzt den Fokus und löst die Aktion aus.
 - **Alles per Maus erreichbar (R2)**, mit echten Zeiger-Tests (`MouseReachabilityTests`, Bewegung Aus):
   - **Zurück**: die Zurück-Taste der Maus (XButton1) wirkt überall wie Zurück (Dialog, Liste, Falte, Verlauf; nicht während ein Spiel in RetroHub läuft). Die Fußleisten-Hinweise sind Mausziele (`RhHintButton`: Glyph leuchtet, 1-px-Linie in Text 3, Druck 0,97; nie fokussierbar), nur „Öffnen/Starten“ nicht. „Zurück“ fällt bei schmalen Fenstern nie heraus. Das Abschnittswort der Ortszeile („Konsolen ›“) führt auf Drill-in-Seiten zurück zum Abschnitt.
   - **Ein Druck verschiebt nichts**: Fokus durch die Maus gleitet keine Reihe an den Anker, scrollt keine Liste und aktiviert kein anderes Brett vor dem Loslassen (sonst trifft das Loslassen nichts mehr). Auf einen geschlossenen Systemrücken dreht der erste Klick die Front nach vorn, der Klick auf die offene Front öffnet das System (Start-Brett „Konsolen“ und Fächerwand gleich).
@@ -1100,15 +1100,37 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 
 ### 9.2 Was sich bewegt
 
-- **Seiteneintritt**: Inhalt Opacity 0 → 1 und TranslateY 16 → 0 (Scene). Rückwärts TranslateY −12 → 0. Kopf- und Fußleiste bewegen sich nie. Es gibt keine Staffelung pro Kachel.
+- **Seiteneintritt**: Inhalt Opacity 0 → 1 und TranslateY 12 → 0 (Scene). Rückwärts TranslateY −10 → 0. **Zwischen den Kanälen und Werkzeugen des Kopfes** (R2) kommt die neue Seite von der Seite, auf der sie im Kopf steht: TranslateX ±24 → 0 mit dem Einblenden (Scene, CubicEaseOut); die verlassene Seite blendet in Blink aus, ohne sich zu bewegen. Der 12 × 3-Kanalstrich ist **ein** Stück, das zum gewählten Kanal gleitet (Glide, unterwegs leicht gestreckt). Kopf- und Fußleiste bewegen sich nie. Es gibt keine Staffelung pro Kachel.
 - **Bühnenwechsel (Start)**: Text 120 ms aus, dann 180 ms ein mit TranslateX 8 → 0. Schachtel und Bildschirm überblenden mit zwei Ebenen (180 ms). Licht 420 ms.
 - **Bretter**: TranslateX der Reihe (Glide bzw. GlideRepeat). Der Ring wandert nicht, er erscheint an der neuen Schachtel.
-- **Konsolen**: Breite des Clip-Containers 128 ↔ 520 (Glide), Inhalt der Front +120 ms (Step), Wand 280 ms.
+- **Konsolen**: Breite des Clip-Containers 128 ↔ 520 (Glide; Schließen 160 ms), Inhalt der Front +120 ms (Step), Wand 280 ms. **Schwung** (R2): Während das Fach aufgeht, dreht sich die Front wie eine Tür an der linken Kante herein (ScaleX 0,86 → 1 samt Innenfach; ein Schatten #000 32 % → 0 verlässt sie), aus der Öffnung selbst abgeleitet – unter gehaltener Richtung springt die Breite, und nichts schwingt. Die Schachteln des Innenfachs kommen von hinten (+10 px → 0 mit Opacity), **gestaffelt** ≈ 40 ms, höchstens drei: die bewusste Ausnahme von „keine Staffelung“ (eine Hand stellt sie nacheinander hinein).
 - **Aufkleber „Neu“**: 250 ms auspacken.
-- **Schuber „Noch leer“** (M7): Fokus zieht ihn heraus – gerade richten und 8 px heben (Step 140 ms, CubicEaseOut); Reduziert/Aus: kein Hub, Zustand sofort.
-- **Senderskala** (M7): die Nadel gleitet zum neuen System (Glide 220 ms); bei gehaltener Richtung, Reduziert und Aus springt sie.
+- **Schuber „Noch leer“** (M7, R2): Fokus zieht ihn 12 px aus der Reihe (Step 140 ms, CubicEaseOut), sein Etikett richtet sich gerade (0°), sein Schatten wird 10 → 14 px lang; die ruhende Maus zieht ihn halb (6 px). Öffnen hebt ihn weitere 24 px und blendet ihn aus (Scene), dann tritt die leere Systemseite ein. Reduziert/Aus: kein Hub, Zustand sofort, die Seite sofort.
+- **Senderskala** (M7, R2): Nadel und Knopf gleiten zum neuen System (Glide 220 ms; gehaltene Richtung GlideRepeat 90 ms linear), das Fähnchen mit dem neuen Code blendet in Blink über, und beim Ankommen schwingt die Nadel um den Knopf nach (0 → 4° → −2° → 0, 200 ms; nie unter gehaltener Richtung). Reduziert: Sprung, das Fähnchen blendet 100 ms; Aus: Sprung.
 - **Tasten** (M7): Spielen-Taste und Pfeiltasten geben beim Drücken nach (Tiefe 3 → 1 px).
 - **Kanalanzeige**: hart, ohne Bewegung.
+
+### 9.2.1 Stand R2 „Animation“ (Owner: „mach mehr Animation rein“)
+
+Alles läuft über **`Controls/Tween.cs`**: eine Zeitfunktion pro Bewegung, vom Render-Takt (`RequestAnimationFrame`) getrieben; sie ändert nur RenderTransform, Opacity oder was ein Steuerelement selbst zeichnet. Dauer 0 (Aus) setzt sofort den Endzustand, ohne Fenster ebenso. `Tween.Hold` friert jede neu gestartete Bewegung an einem Zeitpunkt ein: Die Vorschau rendert so Standbilder aus der Mitte einer Bewegung (Token `animation`, Bilder `10a…10r`). Unter **Aus** startet keine einzige Bewegung (`DesignR2AnimationTests` zählt `Tween.Started`), unter **Reduziert** bewegt sich nichts, nur Blenden bleiben.
+
+| Bewegung | Voll | Reduziert / Aus |
+|---|---|---|
+| **Hover** Schachtel | 3 px hoch und 1,03 (Step), der Ring (40 %) kommt mit, Kontaktschatten unter der Brettfront 1 → 1,08 breit | Ring in Blink / sofort |
+| **Druck** Schachtel, Rücken | 3 % flacher vom Fuß und 2 px tiefer in 70 ms linear, zurück in Step; ein Rücken unter der Maus steigt 3 px | nichts |
+| **Aufnehmen** (Fokus) | 1,00 → 1,075 (60 %) → 1,06 in 180 ms (`GameTile`, Ursprung unten Mitte); die verlassene Schachtel 1,06 → 1 in Step; Fokus-Kontaktschatten 0,9 → 1 breit, 70 → 60 %. Ring und Kegel stehen sofort am Ziel (8.1); im Gipfel berührt die Schachtel kurz den Spalt des Rings | keine Hebung |
+| **Herausziehen / Zurückstellen** (`PullLayer`) | Eine Kopie der Schachtel fliegt in 300 ms CubicInOut auf einem Bogen (Mitte 24 px höher) zur Bühnenschachtel, die bis zur Landung verborgen bleibt; die Textspalte folgt 80 ms später von rechts (16 px). Zurück fliegt die Bühnenschachtel in 260 ms in ihr Fach, das bis dahin eine Lücke bleibt; dann setzt sie 2 px auf. Das Ziel wird jedes Bild neu gesucht; fehlt es, entfällt der Flug | Seitenblende / nichts |
+| **Kanalwechsel** Fernseher (Start, Detail) | 0–50 ms altes Bild 6 px hoch und auf 40 %, Rauschen auf 35 %; 50–110 ms nur Rauschen mit einer hellen Zeile, die durchläuft; 110–200 ms das neue Bild. Drei vorab erzeugte 160 × 90-Rauschbilder | Überblendung 100 ms / hart |
+| **Einschalten im Kleinen** | einmal pro Sitzung beim ersten Start mit Bibliothek: eine Linie im Systemlicht wächst (120 ms) und öffnet sich zum Bild (180 ms), ein 16-ms-Papierblitz 10 % | Bild blendet 150 ms ein / nichts |
+| **Fachwechsel** (Schultern, Ticker) | das Raster kommt von der Seite des neuen Fachs: TranslateX ±32 → 0 mit Opacity (Glide), nur der Container | Blende 100 ms / sofort |
+| **Zeilen gleiten** (Raster) | der Scroll-Versatz gleitet zur eingerasteten Zeile (Glide; gehaltene Richtung 90 ms linear); weiter als eine Ansicht springt er | Sprung |
+| **Listen** (Rechtsklick, Mehr, Auch im Regal) | entfalten sich an ihrem Knopf: ScaleY 0,92 → 1, Opacity, 6 px (Step); die ersten sechs Zeilen 20 ms gestaffelt (zweite Ausnahme: Menüs); der Schleier kommt in Scene | Blende / sofort |
+| **Lieferschein** | wird nach einem Scan gedruckt: von oben freigegeben, jede Zeile fällt 4 px mit ihrer Tinte ein (24 ms Abstand, höchstens 600 ms), zuletzt der Abriss und 4 px Setzen | Blende 100 ms / sofort |
+| **Wert** (Service-Menü) | das Fallblatt dreht, die gedrückte Pfeiltaste gibt 3 px zur Seite und 1 px in die Tiefe nach; das Testbild zeigt bei Lichtfarbe/Bewegung 60 ms Rauschen | der Wert wechselt |
+| **Favorit** | Stempel: 1 → 1,28 → 1 (200 ms), die Füllung wächst aus der Mitte; Entfernen 1 → 0,85 → 1 (140 ms) – nur beim Umschalten desselben Spiels | Farbe in Blink / sofort |
+| **Meldung** | Zettel 24 px hoch (Step, wie bisher), das Symbol tickt 0,8 → 1,1 → 1 | Blende / sofort |
+
+Bewusst nicht umgesetzt: Leerlauf-Ambiente (Bildlaufband, Staub im Kegel) – 8.4 verbietet Dauerbewegung, und ein Dauertakt kostet auf dem Raster Arbeit in jedem Bild; das Kilometerzähler-Rollen der Scan-Zähler; Einrasten des Mausrads (das Rad scrollt weiter frei); der umklappende Winkel an Falten; das Ausblenden einer Liste beim Schließen (sie schließt sofort).
 
 ### 9.3 Starttransition „Einschalten“ (der eine inszenierte Moment)
 
@@ -1127,7 +1149,7 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 
 ### 9.4 Reduzierte Bewegung / Aus
 
-- **`.motion-reduced`**: keine Hebung, keine Translationen, kein Gleiten (Reihen springen). Überblendungen 100 ms, Fernsehlicht 200 ms. Start = Überblendung 150 ms ohne Flug und ohne Überbelichtung. Die Kanalanzeige bleibt (sie bewegt sich nicht).
+- **`.motion-reduced`**: keine Hebung, keine Translationen, kein Gleiten (Reihen springen), kein Flug zur Bühne, kein Rauschen beim Kanalwechsel (Überblendung). Überblendungen 100 ms, Fernsehlicht 200 ms. Start = Überblendung 150 ms ohne Flug und ohne Überbelichtung. Die Kanalanzeige bleibt (sie bewegt sich nicht).
 - **`.motion-off`**: alle Transitions null, das Fernsehlicht schaltet hart. Der Fokus bleibt voll sichtbar (Ring, Kegel, Inversion sind statisch).
 - Muster wie bisher: Zustandswerte in `^:state /template/ PART_x`-Styles, Transitions per Klasse am Root nullbar.
 
@@ -1142,6 +1164,7 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 - **Platzhalter**: `FormattedText` (Titelumbruch, gedrehter Code) wird **pro Kachel bei Änderung** von Titel, Größe oder System erzeugt und gecacht, nie in `Render`.
 - **Messung**: FPS-Overlay bzw. `RendererDiagnostics` im QA-Lauf mit 1000 Demo-Spielen und mit einer Bibliothek ohne Cover.
 - **Stand M3 (gemessen headless, Skia auf der CPU in der Dev-VM, `DesignPreviewTests.Library_1000_perf`, Bericht `perf-library.txt`)**: Bei 1000 Spielen ohne Cover sind 64 Kacheln realisiert. In 118 Bewegungen wurden nur 16 Kacheln gebaut, weil der Zeilen-Presenter selbst der Container ist und an Ort und Stelle recycelt wird. Die Fokusebene ist nur so groß wie Kegel, Ring und Brettstück. Die Brettebene zeichnet nur neu, wenn sich die realisierten Zeilen ändern. Der Regalspiegel wird einmal pro Liste gerastert (unter 5 ms) und bei Bewegungen nie. Messwerte bei 1080p: Bewegung nach unten im eingeschwungenen Zustand Layout Median ≈ 1 ms (erster Besuch einer Zeile p95 ≈ 15–20 ms); Frame nach einer Bewegung ≈ 9–20 ms CPU-Raster; Standbild ≈ 2 ms. **Grenzen der Messung**: Headless wartet `CaptureRenderedFrame` laufende Transitions ab (Hebung 140 ms). Mit Bewegung „voll“ misst es deshalb ≈ 150 ms statt der Arbeit. Gemessen wird daher mit Bewegung „aus“. Die ersten ≈ 60 Bewegungen nach dem Öffnen kosten Median ≈ 25 ms Layout (Aufwärmen). Eine GPU-fps-Messung auf echter Hardware steht aus.
+- **Stand R2 „Animation“** (gleiche Messung, 1000 Spiele, 1080p, VM): Fokusbewegung Eingabe + Layout Median ≈ 25 ms (Bewegung Aus, wie vorher). Mit Bewegung Voll misst `Tween.Hold` ein Bild **mitten** in den Bewegungen: Bewegung in der Ansicht (Aufnehmen, Absetzen, Kontaktschatten) Median ≈ 23 ms gegen ≈ 13 ms für das erste Bild unter Aus; Bewegung nach unten mit gleitenden Zeilen ≈ 29 ms gegen ≈ 19 ms für ein bloßes Scrollen um 37 px. **Der gleitende Versatz wird auf ganze Pixel gerundet**: mit Bruchteil-Versätzen kostete dasselbe Bild ≈ 130 ms (alles im Bild wird neu gerastert). Bilder während einer Bewegung, CPU-Raster, keine GPU; die fps auf echter Hardware bleiben offen.
 
 ---
 

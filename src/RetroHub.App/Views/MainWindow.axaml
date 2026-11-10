@@ -61,7 +61,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:NavItemViewModel">
-                <Button Theme="{StaticResource RhChannel}" Classes="channel navitem" Classes.selected="{Binding IsSelected}"
+                <Button Theme="{StaticResource RhChannel}" Classes="channel navitem slide-mark" Classes.selected="{Binding IsSelected}"
                         Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).NavigateCommand}" CommandParameter="{Binding}"
                         AutomationProperties.Name="{Binding Label}">
                   <StackPanel Orientation="Horizontal" Spacing="6">
@@ -107,6 +107,19 @@
                        MaxWidth="220" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             <TextBlock Name="ClockText" Text="{Binding Clock}" Classes="number" FontSize="18" Foreground="{DynamicResource RhText1Brush}" VerticalAlignment="Center" />
           </StackPanel>
+          <!-- the channel mark (12 × 3 under the digit) is ONE piece that slides to the chosen channel (Glide, R2
+               animation) instead of jumping between the buttons -->
+          <Canvas Name="MarkCanvas" Grid.ColumnSpan="6" IsHitTestVisible="False">
+            <Border Name="ChannelMark" Width="12" Height="3" Background="{DynamicResource RhAccentBrush}" IsVisible="False"
+                    RenderTransformOrigin="50%,50%">
+              <Border.RenderTransform>
+                <TransformGroup>
+                  <ScaleTransform />
+                  <TranslateTransform />
+                </TransformGroup>
+              </Border.RenderTransform>
+            </Border>
+          </Canvas>
         </Grid>
 
         <c:PageHost Name="Pages" Grid.Row="1" />
@@ -282,6 +295,8 @@
 
     <!-- the power-on line, the flying box, the switch-off (unscaled; DESIGN 9.3) – above the toasts: "Willkommen zurück"
          waits for the page anyway, and nothing may stand on the closed dark of the switch-off -->
+    <!-- the box between shelf and detail stage (R2 animation, unscaled): pulled out, put back -->
+    <c:PullLayer Name="Pull" />
     <c:FlightLayer Name="Flight" />
 
     <!-- ============ Dialog overlay (scaled like the shell) ============ -->

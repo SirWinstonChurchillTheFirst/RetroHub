@@ -597,9 +597,14 @@ public partial class GameDetailPage : PageBase
         finally { _closeByPointer = false; }
     }
 
+    private DetailSheet _appliedSheet;
+    private bool _sheetAbove;
+
     private void ApplySheet()
     {
         var sheet = _vm?.Sheet ?? DetailSheet.None;
+        var was = _appliedSheet;
+        _appliedSheet = sheet;
         // Mehr and "Auch im Regal" are lists that hang at their button (M4 QA: a centred 680 px card for four short
         // items read as a stock modal)
         var list = sheet is DetailSheet.More or DetailSheet.Variants;
@@ -617,6 +622,16 @@ public partial class GameDetailPage : PageBase
         MoreRows.IsVisible = sheet == DetailSheet.More;
         VariantRows.IsVisible = sheet == DetailSheet.Variants;
         PlaceSheet(sheet);
+        // R2 animation: a list unfolds from its button (rows 20 ms apart), the dim comes up in Scene
+        if (sheet != was && sheet != DetailSheet.None && !fold)
+        {
+            if (was == DetailSheet.None || was is DetailSheet.Choice or DetailSheet.FileInfo or DetailSheet.Description) Anim.FadeIn(SheetScrim);
+            if (list)
+            {
+                var rows = (sheet == DetailSheet.More ? MoreRows.Children.Where(c => c.IsVisible) : VariantRows.GetVisualDescendants().OfType<Button>()).Cast<Control>().ToList();
+                Anim.Unfold(SheetPanel, rows, fromTop: !_sheetAbove);
+            }
+        }
         CoverView.IsVisible = sheet == DetailSheet.Cover;
         ScreensView.IsVisible = sheet == DetailSheet.Screens;
         // the cover overlay dims the page almost completely (the box is the only thing to look at); the header gets
@@ -728,6 +743,7 @@ public partial class GameDetailPage : PageBase
         var height = rows * 56 + 16 + 2;
         var below = at.Y + anchor.Bounds.Height + 8;
         var y = below + height <= layer.Height - 64 ? below : Math.Max(16, at.Y - 8 - height);
+        _sheetAbove = y < below;
         SheetPanel.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
         SheetPanel.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
         SheetPanel.Margin = new Thickness(x, y, 0, 0);

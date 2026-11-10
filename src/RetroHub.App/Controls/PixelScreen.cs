@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using RetroHub.App.Input;
 using RetroHub.App.Localization;
 using RetroHub.App.Theming;
 using RetroHub.Core.Logging;
@@ -46,6 +47,7 @@ public sealed class PixelScreen : Panel
     private readonly PictureLayer _b;
     private readonly TextureFill _scan;
     private readonly GlassLayer _glass;
+    private readonly TubeLayer _tube;
     private bool _aFront = true;
     private int _version;
     private Picture? _shown;
@@ -59,9 +61,11 @@ public sealed class PixelScreen : Panel
         _b = new PictureLayer { Opacity = 0 };
         _scan = new TextureFill { Texture = Texture.Scan, Strength = ScanOpacity / ScanPngAlpha };
         _glass = new GlassLayer(this);
+        _tube = new TubeLayer();
         Children.Add(_set);
         Children.Add(_a);
         Children.Add(_b);
+        Children.Add(_tube);
         Children.Add(_scan);
         Children.Add(_glass);
         TextOptions.SetTextRenderingMode(this, TextRenderingMode.Antialias);
@@ -181,7 +185,7 @@ public sealed class PixelScreen : Panel
         _card?.Arrange(new Rect(finalSize)); // the card finds the picture itself (PictureRect of its bounds)
         var pic = PictureRect(finalSize);
         var glass = new RectangleGeometry(new Rect(pic.Size)) { RadiusX = TubeRadius, RadiusY = TubeRadius };
-        foreach (var layer in new Control[] { _a, _b, _scan, _glass })
+        foreach (var layer in new Control[] { _a, _b, _tube, _scan, _glass })
         {
             layer.Arrange(pic);
             layer.Clip = glass;
@@ -237,26 +241,133 @@ public sealed class PixelScreen : Panel
         }
         var tv = IsTvSystem;
         var code = Code;
-        _ = Task.Run(() => SnapCache.Load(path)).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+        _ = Task.Run(() => SnapCache.Load(path)).ContinueWith((t, ui) => ((Dispatcher)ui!).Post(() =>
         {
             if (version != _version) return;
             var bmp = t.IsCompletedSuccessfully ? t.Result : null;
             Show(bmp != null ? new Picture(PictureKind.Image, bmp, look, code, tv) : new Picture(PictureKind.NoSignal, null, look, code, tv));
-        }), TaskScheduler.Default);
+        }), Dispatcher.UIThread, TaskScheduler.Default);
     }
 
     private void Show(Picture picture)
     {
         if (_shown != null && _shown.SameAs(picture)) return;
+        var first = _shown == null;
         _shown = picture;
         var front = _aFront ? _a : _b;
         var back = _aFront ? _b : _a;
+        _change?.Stop(complete: true);
         back.Picture = picture;
-        back.Opacity = 1;
-        front.Opacity = 0;
         _aFront = !_aFront;
         _glass.InvalidateVisual();
+        // R2 animation: a TV changes channel rather than cross-fading like a carousel – full motion, not while a direction
+        // is held, not for the first picture
+        if (!first && Motion.AllowsMovement && NavRepeatTracker.Current?.IsActive != true && IsEffectivelyVisible)
+        {
+            ChannelChange(front, back, ChannelDuration);
+            return;
+        }
+        back.Opacity = 1;
+        front.Opacity = 0;
     }
+
+    /// <summary>
+    /// Kanalwechsel (200 ms): 0–50 ms the old picture rolls 6 px up and dims to 40 % while static noise comes up to 35 %;
+    /// 50–110 ms noise alone with one bright 2 px line running down; 110–200 ms the new picture comes up as the noise
+    /// goes. Three pre-generated 160 × 90 noise frames, nearest neighbour, a new one every 16 ms; clipped to the glass.
+    /// </summary>
+    public static readonly TimeSpan ChannelDuration = TimeSpan.FromMilliseconds(200);
+
+    private Tween? _change;
+
+    private void ChannelChange(PictureLayer front, PictureLayer back, TimeSpan duration)
+    {
+        var scale = duration.TotalMilliseconds / ChannelDuration.TotalMilliseconds;
+        double Ms(double p) => p * ChannelDuration.TotalMilliseconds;
+        front.Transitions = back.Transitions = null;
+        var shift = new TranslateTransform();
+        front.RenderTransform = shift;
+        back.Opacity = 0;
+        _change = Tween.Run(this, duration, p =>
+        {
+            var ms = Ms(p);
+            var a = Math.Clamp(ms / 50, 0, 1);
+            shift.Y = -6 * Ease.CubicOut(a);
+            front.Opacity = ms < 50 ? 1 - 0.6 * a : 0;
+            back.Opacity = ms < 110 ? 0 : Ease.CubicOut((ms - 110) / 90);
+            _tube.Noise = ms < 50 ? 0.35 * a : ms < 110 ? 0.35 : 0.35 * (1 - (ms - 110) / 90);
+            _tube.Frame = (int)(ms * scale / 16) % 3;
+            _tube.Sweep = ms is >= 50 and < 110 ? (ms - 50) / 60 : -1;
+            _tube.InvalidateVisual();
+        }, () =>
+        {
+            front.RenderTransform = null;
+            front.Opacity = 0;
+            back.Opacity = 1;
+            _tube.Noise = 0;
+            _tube.Sweep = -1;
+            _tube.InvalidateVisual();
+            ApplyTransitions();
+        });
+    }
+
+    /// <summary>A short burst of static over whatever the set shows (the test card when a setting changes): 60 ms.</summary>
+    public void Static(TimeSpan duration)
+    {
+        if (!Motion.AllowsMovement || !IsEffectivelyVisible) return;
+        _change?.Stop(complete: true);
+        _change = Tween.Run(this, duration, p =>
+        {
+            _tube.Noise = 0.30 * Ease.Bump(p);
+            _tube.Frame = (int)(p * duration.TotalMilliseconds / 16) % 3;
+            _tube.Sweep = p;
+            _tube.InvalidateVisual();
+        }, () =>
+        {
+            _tube.Noise = 0;
+            _tube.Sweep = -1;
+            _tube.InvalidateVisual();
+        });
+    }
+
+    /// <summary>The set was switched on in this session already (the power-on plays once, DESIGN 9.2).</summary>
+    private static bool _poweredOn;
+
+    /// <summary>
+    /// Einschalten im Kleinen (R2 animation): the first time Start shows a picture in a session the tube comes on inside
+    /// the set – a 2 px line in the system's light grows across (0–120 ms), opens to the picture (120–300 ms, CubicEaseOut),
+    /// one 16 ms frame of 10 % paper (full motion only). Reduced: the picture fades in (150 ms); off: it is just there.
+    /// Never again in the session; not for a dark set (empty library).
+    /// </summary>
+    public void PowerOnOnce()
+    {
+        if (_poweredOn || IsOff || !IsEffectivelyVisible) return;
+        _poweredOn = true;
+        if (!Motion.Enabled) return;
+        var light = (string.IsNullOrEmpty(SystemId) ? null : SystemPalette.Get(SystemId, Accent))?.Light ?? ThemeManager.CurrentAccent;
+        _tube.Light = new ImmutableSolidColorBrush(light);
+        if (!Motion.AllowsMovement)
+        {
+            _tube.Open = 0;
+            _tube.Fade = 1;
+            Tween.Run(this, TimeSpan.FromMilliseconds(150), p => { _tube.Fade = 1 - p; _tube.InvalidateVisual(); }, () => { _tube.Fade = 0; _tube.Open = -1; _tube.InvalidateVisual(); });
+            return;
+        }
+        Tween.Run(this, TimeSpan.FromMilliseconds(PowerOnMs), p =>
+        {
+            var ms = p * PowerOnMs;
+            _tube.Line = Ease.CubicOut(Math.Clamp(ms / 120, 0, 1));
+            _tube.Open = ms < 120 ? 0 : Ease.CubicOut((ms - 120) / 180);
+            _tube.Flash = ms is >= 120 and < 136;
+            _tube.InvalidateVisual();
+        }, () => { _tube.Open = -1; _tube.Flash = false; _tube.InvalidateVisual(); });
+    }
+
+    /// <summary>The power-on inside the set, in ms.</summary>
+    public const double PowerOnMs = 300;
+
+    /// <summary>Allows the power-on again (tests, previews).</summary>
+    internal static void ResetPowerOn() => _poweredOn = false;
 
     public enum PictureKind { None, Image, NoSignal, Off }
 
@@ -500,6 +611,102 @@ public sealed class PixelScreen : Panel
                 y += Math.Round(c.Height);
             }
             if (_noSignal is { } t) ctx.DrawText(t, new Point(x, y));
+        }
+    }
+
+    /// <summary>
+    /// Between the picture and the scanlines: what the tube does while it changes (R2 animation) – static noise (three
+    /// pre-generated 160 × 90 frames of grey grain, nearest neighbour), the bright line that runs down the tube, and the
+    /// power-on (a dark tube opening from a line in the light). Draws nothing when idle.
+    /// </summary>
+    private sealed class TubeLayer : Control
+    {
+        public double Noise, Sweep = -1, Open = -1, Line, Fade;
+        public int Frame;
+        public bool Flash;
+        public IBrush? Light;
+
+        private static readonly IImmutableSolidColorBrush SweepBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x8C, 0xF4, 0xEC, 0xDF));
+        private static readonly IImmutableSolidColorBrush FlashBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x1A, 0xF4, 0xEC, 0xDF));
+        private static readonly Bitmap?[] NoiseFrames = new Bitmap?[3];
+        private const int NoiseW = 160, NoiseH = 90;
+
+        static TubeLayer()
+        {
+            IsHitTestVisibleProperty.OverrideDefaultValue<TubeLayer>(false);
+            ClipToBoundsProperty.OverrideDefaultValue<TubeLayer>(true);
+        }
+
+        public TubeLayer() => RenderOptions.SetBitmapInterpolationMode(this, BitmapInterpolationMode.None);
+
+        /// <summary>One frame of grain: grey values with a faint horizontal streak per line (a tube's noise is banded).</summary>
+        internal static Bitmap NoiseFrame(int i)
+        {
+            i = Math.Clamp(i, 0, 2);
+            lock (NoiseFrames)
+            {
+                if (NoiseFrames[i] is { } done) return done;
+                var rnd = new Random(1234 + i * 77);
+                var wb = new WriteableBitmap(new PixelSize(NoiseW, NoiseH), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+                var px = new byte[NoiseW * NoiseH * 4];
+                for (var y = 0; y < NoiseH; y++)
+                {
+                    var streak = rnd.NextDouble() < 0.12 ? 40 : 0;
+                    for (var x = 0; x < NoiseW; x++)
+                    {
+                        var v = (byte)Math.Clamp(rnd.Next(10, 230) + streak, 0, 255);
+                        var o = (y * NoiseW + x) * 4;
+                        px[o] = px[o + 1] = v;
+                        px[o + 2] = (byte)Math.Min(255, v + 4); // a hair warm, like the paper
+                        px[o + 3] = 255;
+                    }
+                }
+                using (var fb = wb.Lock())
+                    for (var y = 0; y < NoiseH; y++)
+                        System.Runtime.InteropServices.Marshal.Copy(px, y * NoiseW * 4, fb.Address + y * fb.RowBytes, NoiseW * 4);
+                NoiseFrames[i] = wb;
+                return wb;
+            }
+        }
+
+        public override void Render(DrawingContext ctx)
+        {
+            var r = new Rect(Bounds.Size);
+            if (r.Width <= 0 || r.Height <= 0) return;
+            if (Open >= 0)
+            {
+                // the power-on: a dark tube, a line in the light growing across, then opening to the picture; its two
+                // edges carry the light and fade
+                const double thick = 2;
+                if (Open <= 0)
+                {
+                    ctx.FillRectangle(DarkTube, r);
+                    var lw = Math.Max(thick, r.Width * Line);
+                    if (Light != null) ctx.FillRectangle(Light, new Rect(Math.Round(r.Center.X - lw / 2), Math.Round(r.Center.Y - 1), lw, thick));
+                }
+                else if (Open < 1)
+                {
+                    var band = Math.Max(thick, Math.Round(r.Height * Open));
+                    var top = Math.Round(r.Center.Y - band / 2);
+                    ctx.FillRectangle(DarkTube, new Rect(0, 0, r.Width, Math.Max(0, top)));
+                    ctx.FillRectangle(DarkTube, new Rect(0, top + band, r.Width, Math.Max(0, r.Height - top - band)));
+                    if (Light != null)
+                        using (ctx.PushOpacity(1 - Open))
+                        {
+                            ctx.FillRectangle(Light, new Rect(0, top, r.Width, thick));
+                            ctx.FillRectangle(Light, new Rect(0, top + band - thick, r.Width, thick));
+                        }
+                }
+                if (Flash) ctx.FillRectangle(FlashBrush, r);
+            }
+            if (Fade > 0)
+                using (ctx.PushOpacity(Math.Clamp(Fade, 0, 1)))
+                    ctx.FillRectangle(DarkTube, r);
+            if (Noise > 0)
+                using (ctx.PushOpacity(Math.Clamp(Noise, 0, 1)))
+                    ctx.DrawImage(NoiseFrame(Frame), new Rect(0, 0, NoiseW, NoiseH), r);
+            if (Sweep >= 0)
+                ctx.FillRectangle(SweepBrush, new Rect(0, Math.Round(r.Height * Math.Clamp(Sweep, 0, 1)), r.Width, 2));
         }
     }
 

@@ -30,8 +30,34 @@ public class ServiceRow : Button
         if (Setting is not { IsChoice: true } s) return false;
         var changed = s.Step(direction);
         if (!changed) Nudge(direction);
-        else _leaf?.Flip(); // R2: the split-flap card turns a leaf
+        else
+        {
+            _leaf?.Flip(); // R2: the split-flap card turns a leaf
+            PushArrow(direction);
+        }
         return changed;
+    }
+
+    /// <summary>
+    /// The arrow key of the pressed side gives (R2 animation): it moves 3 px toward its side and 1 px into its depth in
+    /// Blink and comes back in Step – from the pad, the keyboard and the mouse alike. Full motion only.
+    /// </summary>
+    private void PushArrow(int direction)
+    {
+        if (!Theming.Motion.AllowsMovement || (direction < 0 ? _previous : _next) is not { } arrow) return;
+        var t = arrow.RenderTransform as Avalonia.Media.TranslateTransform;
+        if (arrow.RenderTransform != null && t == null) return;
+        t ??= new Avalonia.Media.TranslateTransform();
+        arrow.RenderTransform = t;
+        var blink = Theming.Motion.BlinkDuration.TotalMilliseconds;
+        var total = blink + Theming.Motion.StepDuration.TotalMilliseconds;
+        Tween.Run(arrow, TimeSpan.FromMilliseconds(total), p =>
+        {
+            var ms = p * total;
+            var k = ms < blink ? ms / blink : 1 - Ease.CubicOut((ms - blink) / (total - blink));
+            t.X = 3 * direction * k;
+            t.Y = 1 * k;
+        });
     }
 
     protected override void OnDataContextChanged(EventArgs e)

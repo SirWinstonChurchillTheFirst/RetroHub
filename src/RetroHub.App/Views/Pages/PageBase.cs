@@ -79,9 +79,16 @@ public abstract class PageBase : UserControl, IPageView
         if (Page is not { } page) return;
         switch (e.Source)
         {
-            case GameTile { DataContext: GameItemViewModel game }:
+            case GameTile { DataContext: GameItemViewModel game } tile:
+                // R2 animation: the box comes off the shelf and flies to the detail stage (FlightLayer.PullOut)
+                if (TopLevel.GetTopLevel(this) is MainWindow window) window.PullOut(tile, game);
                 page.Context.Navigator.Navigate(PageKey.GameDetail, game);
                 e.Handled = true;
+                break;
+            case Controls.SystemSpine { Opens: false, DataContext: SystemItemViewModel empty } sleeve:
+                // an empty sleeve lifts out of its row and fades (Scene), then its (empty) page enters
+                e.Handled = true;
+                sleeve.PlayExit(() => page.Context.Navigator.Navigate(PageKey.System, empty.Id));
                 break;
             case Controls.SystemSpine { DataContext: SystemItemViewModel spine }:
                 page.Context.Navigator.Navigate(PageKey.System, spine.Id);

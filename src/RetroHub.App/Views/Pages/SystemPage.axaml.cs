@@ -85,12 +85,23 @@ public partial class SystemPage : PageBase
         };
     }
 
+    private string? _prevId, _nextId;
+
     private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
             case nameof(SystemViewModel.System):
                 ApplyLight();
+                // R2 animation: a shoulder switch in place – the grid comes in from the side it went to
+                var id = _vm?.System?.Id;
+                var dir = id == null || !IsEffectivelyVisible ? 0 : id == _nextId ? 1 : id == _prevId ? -1 : 0;
+                if (dir != 0) Anim.SlideIn(Covers, dir);
+                Dispatcher.UIThread.Post(() => { _prevId = _vm?.Previous?.Id; _nextId = _vm?.Next?.Id; }, DispatcherPriority.Background);
+                break;
+            case nameof(SystemViewModel.Previous) or nameof(SystemViewModel.Next):
+                _prevId = _vm?.Previous?.Id;
+                _nextId = _vm?.Next?.Id;
                 break;
             case nameof(SystemViewModel.SlotAspect):
                 // the spine placeholders take the slot format of the system's covers (DESIGN 11.4)

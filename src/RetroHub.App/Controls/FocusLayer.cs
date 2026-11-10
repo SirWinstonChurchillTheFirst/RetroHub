@@ -102,21 +102,52 @@ public sealed class FocusLayer
     {
         if (tile != null && (tile.Art == null || !tile.IsEffectivelyVisible)) tile = null;
         if (tile == null && _hoverTile == null) return;
+        var changed = tile != _hoverTile;
         _hoverTile = tile;
         var rect = tile == null ? default : HoverRect(tile);
-        if (rect == _hoverRect) return;
+        if (rect == _hoverRect && !changed) return;
         _hoverRect = rect;
         if (rect.Width > 0)
         {
+            // the ring around the box, and the contact shadow under the board front (1.08 × the box)
             var region = rect.Inflate(RingGap + RingWidth + 2);
+            var side = Math.Ceiling(rect.Width * (HoverShadowWidth - 1) / 2) + 2;
+            region = new Rect(Math.Min(region.X, rect.X - side), region.Y, Math.Max(region.Width, rect.Width + 2 * side),
+                region.Height + BoardFront + HoverShadowHeight + HoverRise);
             Hover.Width = Math.Ceiling(region.Width);
             Hover.Height = Math.Ceiling(region.Height);
             Hover.RenderTransform = new TranslateTransform(Math.Floor(region.X), Math.Floor(region.Y));
         }
+        if (changed && tile != null)
+        {
+            // the hover comes up with the box (Step; reduced: the ring fades in Blink; off: at once)
+            _hoverTween?.Stop();
+            var d = Motion.AllowsMovement ? Motion.Step : Motion.Blink;
+            _hoverT = d == TimeSpan.Zero ? 1 : 0;
+            if (d > TimeSpan.Zero && NavRepeatTracker.Current?.IsActive != true)
+                _hoverTween = Tween.Run(Hover, d, p =>
+                {
+                    _hoverT = Motion.AllowsMovement ? Ease.CubicOut(p) : p;
+                    Hover.InvalidateVisual();
+                });
+            else _hoverT = 1;
+        }
         Hover.InvalidateVisual();
     }
 
-    /// <summary>The hovered box in host coordinates, with the 1.03 hover scale (from the bottom centre) when motion is full.</summary>
+    private Tween? _hoverTween;
+    private double _hoverT = 1;
+
+    /// <summary>The hover: the box rises 3 px (and 3 % forward, Step) – reduced/off: it stays.</summary>
+    public const double HoverRise = 3;
+    /// <summary>The contact shadow under a hovered box: 1.08 × its width, 10 px under the board front.</summary>
+    public const double HoverShadowWidth = 1.08, HoverShadowHeight = 10;
+
+    private static readonly IBrush HoverContact = new ImmutableLinearGradientBrush(
+        [new ImmutableGradientStop(0, Color.FromArgb(0x73, 0, 0, 0)), new ImmutableGradientStop(1, Color.FromArgb(0, 0, 0, 0))],
+        startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
+
+    /// <summary>The hovered box in host coordinates, risen 3 px and scaled 1.03 (from the bottom centre) when motion is full.</summary>
     private Rect HoverRect(GameTile tile)
     {
         var art = tile.Art!;
@@ -126,7 +157,7 @@ public sealed class FocusLayer
         if (tile.Spine is { IsVisible: true } spine && spine.SpineRect is { Width: > 0 } sr)
             rect = new Rect(rect.X - sr.Width, rect.Y, rect.Width + sr.Width, rect.Height);
         if (Motion.Current == EffectiveMotion.Full)
-            rect = new Rect(rect.Center.X - rect.Width * HoverLift / 2, rect.Bottom - rect.Height * HoverLift, rect.Width * HoverLift, rect.Height * HoverLift);
+            rect = new Rect(rect.Center.X - rect.Width * HoverLift / 2, rect.Bottom - rect.Height * HoverLift - HoverRise, rect.Width * HoverLift, rect.Height * HoverLift);
         return new Rect(Math.Round(rect.X), Math.Round(rect.Y), Math.Round(rect.Width), Math.Round(rect.Height));
     }
 
@@ -140,8 +171,18 @@ public sealed class FocusLayer
         if (tile == null || _hoverRect.Width <= 0 || (tile.IsKeyboardFocusWithin && IsVisibleFocus(tile)) || !tile.IsPointerOver) return;
         if (Hover.RenderTransform is not TranslateTransform tt) return;
         using var toHost = ctx.PushTransform(Matrix.CreateTranslation(-tt.X, -tt.Y));
-        using var fade = ctx.PushOpacity(0.4);
-        Chamfer.DrawStandingRing(ctx, _hoverRect, new ImmutableSolidColorBrush(RingColor(Light)), RingGap, RingWidth);
+        var t = Math.Clamp(_hoverT, 0, 1);
+        var moves = Motion.Current == EffectiveMotion.Full;
+        // the box rises: its shadow on the shelf below the board front widens (1 → 1.08) as it comes up
+        var r = _hoverRect;
+        var foot = r.Bottom + (moves ? HoverRise : 0) + BoardFront;
+        var sw = r.Width * Ease.Lerp(1, moves ? HoverShadowWidth : 1, t);
+        using (ctx.PushOpacity(t))
+            ctx.FillRectangle(HoverContact, new Rect(r.Center.X - sw / 2, foot, sw, HoverShadowHeight));
+        // the ring follows the rising box (it is placed for the end of the rise)
+        var ring = moves ? r.Translate(new Vector(0, HoverRise * (1 - t))) : r;
+        using var fade = ctx.PushOpacity(0.4 * t);
+        Chamfer.DrawStandingRing(ctx, ring, new ImmutableSolidColorBrush(RingColor(Light)), RingGap, RingWidth);
     }
 
     /// <summary>Height of the board front under the boxes (10 = shelf edge in the grid, 24 = stage board).</summary>
@@ -272,14 +313,31 @@ public sealed class FocusLayer
         var bottom = Math.Round(lifted.Bottom);
         lifted = new Rect(left, Math.Round(lifted.Y), right - left, bottom - Math.Round(lifted.Y));
         if (_visible && lifted == _target) return;
+        var moved = !_visible || _contactTile != tile;
         _target = lifted;
         _visible = true;
         PlaceRegion(lifted);
+        if (moved)
+        {
+            // the box is picked up: its contact shadow widens 0.9 → 1 and lightens 70 → 60 % with the lift (180 ms)
+            _contactTile = tile;
+            _contactTween?.Stop();
+            if (Motion.AllowsMovement && NavRepeatTracker.Current?.IsActive != true)
+                _contactTween = Tween.Run(Front, GameTile.LiftDuration, p =>
+                {
+                    _contactT = Ease.CubicOut(p);
+                    Front.InvalidateVisual();
+                });
+            else _contactT = 1;
+        }
         Back.InvalidateVisual();
         Front.InvalidateVisual();
     }
 
     private Rect _region;
+    private GameTile? _contactTile;
+    private Tween? _contactTween;
+    private double _contactT = 1;
 
     /// <summary>
     /// The two layers are only as large as the focus visuals around <paramref name="t"/> (cone above, ring, lit board
@@ -439,7 +497,10 @@ public sealed class FocusLayer
             ctx.FillRectangle(new ImmutableSolidColorBrush(Mix(ShelfBoard.FrontBrush.Color, light, 0.16)), piece.WithHeight(BoardFront - 1));
         else
             ctx.FillRectangle(new ImmutableSolidColorBrush(ColorUtil.WithAlpha(light, 0x29)), piece);
-        ctx.FillRectangle(FocusContact, new Rect(t.X, t.Bottom + BoardFront, t.Width, 16));
+        var k = Math.Clamp(_contactT, 0, 1);
+        var cw = t.Width * Ease.Lerp(0.9, 1, k);
+        using (ctx.PushOpacity(Ease.Lerp(1, 0.6 / 0.7, k)))
+            ctx.FillRectangle(FocusContact, new Rect(t.Center.X - cw / 2, t.Bottom + BoardFront, cw, 16));
         ctx.FillRectangle(brush, new Rect(piece.X, t.Bottom, piece.Width, 2));
         Chamfer.DrawStandingRing(ctx, t, brush, RingGap, RingWidth);
     }

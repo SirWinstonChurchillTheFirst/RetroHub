@@ -94,11 +94,67 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
             if (ReferenceEquals(systems[i], Current)) { index = i; break; }
         if (index < 0) return;
         var x = TickX(index, systems.Count);
-        var glide = animate && !double.IsNaN(Needle) && Motion.Current == EffectiveMotion.Full && NavRepeatTracker.Current?.IsActive != true;
-        Transitions = glide
-            ? [new DoubleTransition { Property = NeedleProperty, Duration = Motion.GlideDuration, Easing = new CubicEaseOut() }]
-            : null;
-        Needle = x;
+        _glide?.Stop();
+        _swing?.Stop();
+        _swingAngle = 0;
+        if (!animate || double.IsNaN(Needle) || Math.Abs(Needle - x) < 0.5 || !Motion.Enabled)
+        {
+            Needle = x;
+            _flagT = 1;
+            InvalidateVisual();
+            return;
+        }
+        if (Motion.Current == EffectiveMotion.Reduced)
+        {
+            // reduced: the needle jumps, the flag with the new code fades in (100 ms)
+            Needle = x;
+            _glide = Tween.Run(this, Motion.Scene, p => { _flagT = p; InvalidateVisual(); });
+            return;
+        }
+        // full: the needle and knob slide (Glide; a held direction: GlideRepeat, linear), the flag fades over in Blink, and
+        // the needle swings out on arrival (only when no direction is held)
+        var repeat = NavRepeatTracker.Current?.IsActive == true;
+        var from = Needle;
+        var d = repeat ? Motion.GlideRepeatDuration : Motion.GlideDuration;
+        var dir = Math.Sign(x - from);
+        _flagT = 0;
+        _glide = Tween.Run(this, d, p =>
+        {
+            Needle = Ease.Lerp(from, x, repeat ? p : Ease.CubicOut(p));
+            _flagT = Math.Min(1, p * d.TotalMilliseconds / Motion.BlinkDuration.TotalMilliseconds);
+        }, () =>
+        {
+            if (repeat || NavRepeatTracker.Current?.IsActive == true) return;
+            _swing = Tween.Run(this, SwingDuration, p =>
+            {
+                _swingAngle = dir * SwingAngle(p);
+                InvalidateVisual();
+            }, () => { _swingAngle = 0; InvalidateVisual(); });
+        });
+    }
+
+    private Tween? _glide, _swing;
+    private double _swingAngle, _flagT = 1;
+
+    /// <summary>The needle's swing on arrival: 0 → 4° → −2° → 0 over 200 ms about the knob's centre.</summary>
+    public static readonly TimeSpan SwingDuration = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>The swing's angle in degrees at <paramref name="p"/> (0 … 1).</summary>
+    public static double SwingAngle(double p) => p < 0.3
+        ? 4 * Ease.SineInOut(p / 0.3)
+        : p < 0.65 ? Ease.Lerp(4, -2, Ease.SineInOut((p - 0.3) / 0.35)) : Ease.Lerp(-2, 0, Ease.SineInOut((p - 0.65) / 0.35));
+
+    /// <summary>The needle's swing angle shown now (tests).</summary>
+    public double CurrentSwing => _swingAngle;
+
+    /// <summary>Shows the arrival swing at <paramref name="p"/> (design previews: a still of the movement).</summary>
+    internal void FreezeSwing(double p)
+    {
+        _glide?.Stop();
+        _swing?.Stop();
+        _flagT = 1;
+        _swingAngle = SwingAngle(p);
+        InvalidateVisual();
     }
 
     /// <summary>Centre x of tick <paramref name="i"/> of <paramref name="n"/> (evenly over the width, ends inset).</summary>
@@ -165,8 +221,15 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
         var fw = Math.Ceiling(_code.Width) + 14;
         var fh = Math.Ceiling(_code.Height) + 1;
         var flag = new Rect(Math.Clamp(Math.Round(nx - fw / 2), 0, Math.Max(0, w - fw)), Math.Round(strip.Y - 7 - fh), fw, fh);
-        ctx.FillRectangle(Craft.Dark(0.5), new Rect(nx + 1, flag.Bottom, 1, strip.Bottom - flag.Bottom));
-        ctx.FillRectangle(c.Look.LightBrush, new Rect(nx - 1, flag.Bottom - 1, 2, strip.Bottom - flag.Bottom + 1));
+        // the needle swings about the knob's centre when it arrives (R2 animation; flag and needle together)
+        var swing = Math.Abs(_swingAngle) > 0.01
+            ? Matrix.CreateTranslation(-nx, -groove) * Matrix.CreateRotation(_swingAngle * Math.PI / 180) * Matrix.CreateTranslation(nx, groove)
+            : Matrix.Identity;
+        using (ctx.PushTransform(swing))
+        {
+            ctx.FillRectangle(Craft.Dark(0.5), new Rect(nx + 1, flag.Bottom, 1, strip.Bottom - flag.Bottom));
+            ctx.FillRectangle(c.Look.LightBrush, new Rect(nx - 1, flag.Bottom - 1, 2, strip.Bottom - flag.Bottom + 1));
+        }
         // the knob riding in the groove: chamfered, lit on top, darker at its foot, two grip lines, its shadow to the right
         var knob = new Rect(nx - 10, groove - 7, 20, 13);
         Craft.CastShadow(ctx, knob, 4, 0.5);
@@ -182,11 +245,16 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
         ctx.FillRectangle(c.Look.LightBrush, new Rect(nx - 1, knob.Y + 1, 2, knob.Height - 2));
         var seed0 = Craft.Seed(c.Id);
         var tilt = Craft.Range(seed0, 22, -1.2, 1.2);
-        Craft.DrawPaper(ctx, this, flag, seed0, Craft.LabelPaper, tilt, shadow: 0.45, fibres: 0.6);
-        using (Craft.PushLabel(ctx, flag, tilt))
+        // the flag with the new code comes up over the old place (Blink; reduced 100 ms)
+        using (ctx.PushTransform(swing))
+        using (ctx.PushOpacity(Math.Clamp(_flagT, 0, 1)))
         {
-            ctx.FillRectangle(c.Look.ColorBrush, new Rect(2, 2, 3, fh - 3));
-            Craft.Print(ctx, _code, new Point(9, Math.Round((fh - _code.Height) / 2)));
+            Craft.DrawPaper(ctx, this, flag, seed0, Craft.LabelPaper, tilt, shadow: 0.45, fibres: 0.6);
+            using (Craft.PushLabel(ctx, flag, tilt))
+            {
+                ctx.FillRectangle(c.Look.ColorBrush, new Rect(2, 2, 3, fh - 3));
+                Craft.Print(ctx, _code, new Point(9, Math.Round((fh - _code.Height) / 2)));
+            }
         }
     }
 

@@ -108,7 +108,7 @@ public sealed class FlightLayer : Canvas
         _copy.Source = null;
         _snapshot?.Dispose();
         _snapshot = null;
-        if (source != null && motion == EffectiveMotion.Full && Snapshot(source) is { } snap)
+        if (source != null && motion == EffectiveMotion.Full && Snapshot(source, this) is { } snap)
         {
             _from = snap.Rect;
             _snapshot = snap.Bitmap;
@@ -442,15 +442,15 @@ public sealed class FlightLayer : Canvas
     }
 
     /// <summary>The box as it looks on screen: its art rectangle in this layer's coordinates and a bitmap of it.</summary>
-    private (Rect Rect, RenderTargetBitmap Bitmap)? Snapshot(CoverArt art)
+    internal static (Rect Rect, RenderTargetBitmap Bitmap)? Snapshot(CoverArt art, Visual layer)
     {
         try
         {
             var local = art.ArtRect;
             if (local.Width < 4 || local.Height < 4 || !art.IsEffectivelyVisible) return null;
-            if (art.TranslatePoint(local.TopLeft, this) is not { } tl || art.TranslatePoint(local.BottomRight, this) is not { } br) return null;
+            if (art.TranslatePoint(local.TopLeft, layer) is not { } tl || art.TranslatePoint(local.BottomRight, layer) is not { } br) return null;
             var onScreen = new Rect(tl, br);
-            var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+            var scaling = TopLevel.GetTopLevel(layer)?.RenderScaling ?? 1;
             var k = Math.Max(0.25, onScreen.Width / local.Width) * scaling;
             var size = new PixelSize(Math.Max(1, (int)Math.Ceiling(art.Bounds.Width * k)), Math.Max(1, (int)Math.Ceiling(art.Bounds.Height * k)));
             var full = new RenderTargetBitmap(size, new Vector(96 * k, 96 * k));
