@@ -87,7 +87,8 @@ public sealed class MiniSpine : Control
         if (string.IsNullOrEmpty(Code)) return null;
         // Rücken 17; a code longer than the spine steps down to 13 (never below)
         var max = r.Height - Band - Gap - Inset;
-        for (var size = CodeSize; size >= 13; size -= 1)
+        // (a code asked for below 13 – the Lieferschein's 12 – is tried at its own size at least once)
+        for (var size = CodeSize; size >= Math.Min(13, CodeSize); size -= 1)
         {
             _code = new FormattedText(Code, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, size, look.LightBrush);
             if (_code.Width <= max) return _code;

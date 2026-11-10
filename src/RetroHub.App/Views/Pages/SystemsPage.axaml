@@ -30,14 +30,16 @@
       <Setter Property="SpineWidth" Value="96" />
       <Setter Property="FrontWidth" Value="380" />
     </Style>
-    <!-- "Noch leer": 48 × 148 (≈1100: 48 × 116), the code in 16 Text 2 – readable from the couch, quiet through the band -->
+    <!-- "Noch leer": sleeves around 56 × 168 (≈1100: 48 × 116), each seeded wider or narrower (−14 … +10), packed 2 px
+         apart (R3 QA: the row filled two thirds of the board as a comb of equal swatches) -->
     <Style Selector="c|SystemSpine.unused">
-      <Setter Property="Height" Value="148" />
-      <Setter Property="SpineWidth" Value="48" />
+      <Setter Property="Height" Value="168" />
+      <Setter Property="SpineWidth" Value="56" />
       <Setter Property="Opens" Value="False" />
     </Style>
     <Style Selector="Panel.compact c|SystemSpine.unused">
       <Setter Property="Height" Value="116" />
+      <Setter Property="SpineWidth" Value="48" />
     </Style>
     <Style Selector="c|Shelf#Wall">
       <Setter Property="ItemHeight" Value="600" />
@@ -89,11 +91,12 @@
       </Panel>
 
       <!-- the position rail: one tick per system on the wall (a click turns that front forward), the current one with its
-           code; right the position in a fixed column, never touching the rail -->
-      <Grid Name="TickerRow" ColumnDefinitions="*,180" Margin="{DynamicResource RhPageInsetX}" Height="44" IsVisible="{Binding HasSystems}">
+           code; right the position in a fixed column, never touching the rail ("Noch leer · 3 von 20" on the low edge) -->
+      <Grid Name="TickerRow" ColumnDefinitions="*,220" Margin="{DynamicResource RhPageInsetX}" Height="44" IsVisible="{Binding HasSystems}">
         <c:PositionRail Name="Rail" Systems="{Binding Systems}" Current="{Binding Current}" Margin="0,0,48,0" />
         <!-- the position in a small window set into the bench, like the dial's counter (M7 "gezeichnet") -->
         <Border Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,1" Background="#38332B" Padding="3,3,3,3"
+                IsVisible="{Binding PositionText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                 BorderBrush="#4A443A" BorderThickness="0,1,0,0">
           <Panel>
             <Border Background="{DynamicResource RhRoomDeepBrush}" />
@@ -105,10 +108,10 @@
 
       <!-- the systems without games: thin, quiet spines on a low edge, the label hangs at its front -->
       <Panel Name="UnusedShelf" IsVisible="{Binding HasEmptySystems}" Margin="0,32,0,0">
-        <c:Shelf Name="Unused" WheelScrollsRow="True" Bookend="True" ItemsSource="{Binding EmptySystems}" ItemTemplate="{StaticResource UnusedSpine}" ItemSpacing="8" TopGap="0"
+        <c:Shelf Name="Unused" WheelScrollsRow="True" Bookend="True" ItemsSource="{Binding EmptySystems}" ItemTemplate="{StaticResource UnusedSpine}" ItemSpacing="2" TopGap="0"
                  ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}" Header="{l:T systems.unused}"
                  BoardLook="{Binding Current.Look, FallbackValue={x:Null}}"
-                 ItemHeight="148" AnchorX="640" />
+                 ItemHeight="168" AnchorX="640" />
       </Panel>
     </StackPanel>
   </Panel>

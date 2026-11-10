@@ -73,7 +73,7 @@ public partial class SystemsPage : PageBase
         EmptyPlaces.Height = wallHeight;
         foreach (var slot in EmptyPlaces.Children) slot.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom;
         EmptyText.Width = compact ? 380 : 520;
-        Unused.ItemHeight = compact ? 116 : 148;
+        Unused.ItemHeight = compact ? 116 : 168;
         // the rail and the "Noch leer" spines read as two bands, not one (M5 QA)
         UnusedShelf.Margin = new Thickness(0, compact ? 20 : 32, 0, 0);
         TickerRow.Height = compact ? 40 : 44;

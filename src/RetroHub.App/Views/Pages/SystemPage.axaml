@@ -25,6 +25,36 @@
     </DataTemplate>
   </p:PageBase.Resources>
   <p:PageBase.Styles>
+    <!-- R3 QA: the neighbours are two paper tags taped to the upper wall (ink on paper, the shoulder glyph beside each);
+         hover brightens the paper, focus is the chamfered ring around the tag -->
+    <Style Selector="Button.wall-tag">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Panel Background="Transparent">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Padding="{TemplateBinding Padding}" />
+            <c:FocusRing Name="PART_Ring" Brush="{DynamicResource RhPaperBrush}" Opacity="0" Margin="-2" />
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="Button.wall-tag:focus-visible /template/ c|FocusRing#PART_Ring">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.wall-tag c|PaperNote">
+      <Setter Property="Paper" Value="#D9CFBC" />
+    </Style>
+    <Style Selector="Button.wall-tag:pointerover c|PaperNote, Button.wall-tag:focus-visible c|PaperNote">
+      <Setter Property="Paper" Value="#EFE6D3" />
+    </Style>
+    <Style Selector="Button.wall-tag:pointerover c|ButtonGlyph">
+      <Setter Property="Hot" Value="True" />
+    </Style>
     <!-- the banner's text buttons: quiet on the wall (Text 2, ui 16), focus = inversion like every small element -->
     <Style Selector="Button.wall-text">
       <Setter Property="MinHeight" Value="40" />
@@ -43,21 +73,31 @@
       <c:CoverGrid.Header>
         <Panel Name="Banner" Height="392" ClipToBounds="True">
           <c:SystemWall Name="BannerWall" Margin="0,0,0,24" SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#948A7A}"
-                        MotifShare="0" TextureOpacity="0.08" SplitHeight="88" />
+                        MotifShare="0" TextureOpacity="0.08" SplitHeight="88" Rail="True" />
           <c:ShelfBoard Name="BannerBoard" Height="24" VerticalAlignment="Bottom" WallLook="{Binding System.Look, FallbackValue={x:Null}}" />
           <Panel Name="BannerContent" Margin="{DynamicResource RhPageInsetX}">
             <!-- the neighbours: text buttons with the shoulder glyphs (the shoulders do the same) -->
-            <StackPanel Name="Neighbours" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="-10,28,0,0"
+            <StackPanel Name="Neighbours" Orientation="Horizontal" Spacing="20" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="0,30,0,0"
                         IsVisible="{Binding HasNeighbours}">
-              <Button Name="PrevSystem" Theme="{StaticResource RhGhostButton}" Classes="wall-text" Command="{Binding PreviousSystemCommand}">
+              <Button Name="PrevSystem" Classes="wall-tag" Command="{Binding PreviousSystemCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <c:ButtonGlyph Action="PageLeft" Quiet="True" VerticalAlignment="Center" />
-                  <TextBlock Text="{Binding Previous.Name, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+                  <c:PaperNote SeedText="nachbar-links" Padding="10,4,12,5" VerticalAlignment="Center" RenderTransformOrigin="50%,0%">
+                    <c:PaperNote.RenderTransform>
+                      <RotateTransform Angle="-1.4" />
+                    </c:PaperNote.RenderTransform>
+                    <TextBlock Classes="ui" FontSize="16" Foreground="#1A1714" Text="{Binding Previous.Name, FallbackValue={x:Null}}" />
+                  </c:PaperNote>
                 </StackPanel>
               </Button>
-              <Button Name="NextSystem" Theme="{StaticResource RhGhostButton}" Classes="wall-text" Command="{Binding NextSystemCommand}">
+              <Button Name="NextSystem" Classes="wall-tag" Command="{Binding NextSystemCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="10">
-                  <TextBlock Text="{Binding Next.Name, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+                  <c:PaperNote SeedText="nachbar-rechts" Padding="12,4,10,5" VerticalAlignment="Center" RenderTransformOrigin="50%,0%">
+                    <c:PaperNote.RenderTransform>
+                      <RotateTransform Angle="1.1" />
+                    </c:PaperNote.RenderTransform>
+                    <TextBlock Classes="ui" FontSize="16" Foreground="#1A1714" Text="{Binding Next.Name, FallbackValue={x:Null}}" />
+                  </c:PaperNote>
                   <c:ButtonGlyph Action="PageRight" Quiet="True" VerticalAlignment="Center" />
                 </StackPanel>
               </Button>

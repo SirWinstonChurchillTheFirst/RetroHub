@@ -131,16 +131,38 @@ public sealed class Lamp : Control
 /// </summary>
 public sealed class PaperSlip : Control
 {
+    /// <summary>Light paper (R3: the Lieferschein is #E9E1CF printed in ink): darker fibres, a warm age tone at the edges.</summary>
+    public static readonly StyledProperty<bool> LightProperty = AvaloniaProperty.Register<PaperSlip, bool>(nameof(Light));
+
+    public bool Light { get => GetValue(LightProperty); set => SetValue(LightProperty, value); }
+
     static PaperSlip()
     {
+        AffectsRender<PaperSlip>(LightProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<PaperSlip>(false);
         ClipToBoundsProperty.OverrideDefaultValue<PaperSlip>(false);
     }
+
+    private static readonly Color Age = Color.Parse("#8A6A3C");
 
     public override void Render(DrawingContext ctx)
     {
         var r = new Rect(Bounds.Size);
         if (r.Width <= 0 || r.Height <= 0) return;
+        if (Light)
+        {
+            TextureFill.Draw(ctx, this, r, Texture.Card, 0.9);
+            // thermal paper yellows at its edges; a few printer marks; the curl at the right lifts it off the bench
+            ctx.FillRectangle(Craft.Fade(Age, 0.16, 0, Craft.Toward.Right), new Rect(r.X, r.Y, 14, r.Height));
+            ctx.FillRectangle(Craft.Fade(Age, 0, 0.12, Craft.Toward.Right), new Rect(r.Right - 30, r.Y, 18, r.Height));
+            ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.30, Craft.Toward.Right), new Rect(r.Right - 12, r.Y, 12, r.Height));
+            ctx.FillRectangle(Craft.Fade(Age, 0.10, 0, Craft.Toward.Down), new Rect(r.X, r.Y, r.Width, 18));
+            var seed = Craft.Seed("lieferschein");
+            for (var i = 0; i < 3; i++)
+                ctx.FillRectangle(Craft.Dark(0.035), new Rect(r.X, Math.Round(r.Y + r.Height * Craft.Range(seed, i, 0.15, 0.9)), r.Width, 1));
+            ctx.FillRectangle(Craft.Fade(Colors.Black, 0.30, 0, Craft.Toward.Down), new Rect(r.X + 6, r.Bottom, r.Width - 4, 10));
+            return;
+        }
         TextureFill.Draw(ctx, this, r, Texture.Card, 0.35);
         ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.20, Craft.Toward.Right), new Rect(r.Right - 12, r.Y, 12, r.Height));
         ctx.FillRectangle(Craft.Hi(0.05), new Rect(r.X, r.Y, 1, r.Height));
@@ -329,9 +351,11 @@ public sealed class FlapLeaf : Control
                 ctx.FillRectangle(Craft.Dark(0.5), new Rect(leaf.X, leaf.Bottom - 1, leaf.Width, 1));
             }
         }
-        // the gap between the leaves, across the figures: dark, with the lower leaf's lit lip under it
-        ctx.FillRectangle(Craft.Solid(Craft.Deep), new Rect(card.X, split - 1, card.Width, 1));
-        ctx.FillRectangle(Craft.Hi(0.06), new Rect(card.X, split, card.Width, 1));
+        // the gap between the leaves, across the figures (R3 QA: a solid black hair read as strikethrough): a soft dark
+        // line at 55 % one px lower – between cap height and x-height –, the lower leaf's lit lip under it at 8 %, and
+        // 2 px short of the card's edges where the hinge pins hold the leaves
+        ctx.FillRectangle(Craft.Dark(0.55), new Rect(card.X + 2, split, card.Width - 4, 1));
+        ctx.FillRectangle(Craft.Hi(0.08), new Rect(card.X + 2, split + 1, card.Width - 4, 1));
     }
 }
 

@@ -264,19 +264,18 @@ public static class MotifCatalog
             B("M4,92 H116 V120 H4 Z"),
             X("M44,103 H76 V108 H44 Z"),
         ],
-        // a remote (R2, replaces the slot loader – a flat white block with a sliver of disc was the weakest motif): a
-        // slim upright stick with a cross pad, one big key, two small keys and four lamps, its wrist strap curling at
-        // the foot and two motion arcs beside the head – "eine Fernbedienung, geschwenkt", a category, no product
+        // R3 QA (outsider test: a pointing remote with motion waves was too close to one product): a slim upright
+        // slab standing on a short foot, a disc-slot line near its top, a lit strip in colour at its foot and one wave
+        // arc beside it – "ein Gerät, das funkt", no key layout
         Motif.Remote =>
         [
-            B("M44,26 Q44,14 60,14 Q76,14 76,26 V112 Q76,120 68,120 H52 Q44,120 44,112 Z"),
-            X(Cross(60, 36, 10, 5)),
-            new(Dot(60, 58, 7), Paint.Color),
-            new(Group(Dot(60, 82, 3.5), Dot(60, 93, 3.5)), Paint.Cut),
-            C("M50,106 H53 V109 H50 Z M55,106 H58 V109 H55 Z M62,106 H65 V109 H62 Z M67,106 H70 V109 H67 Z"),
-            new(P("M45,116 C34,119 26,112 25,102 C24,94 32,90 36,98"), Paint.Color, 2),
-            new(P("M86,22 Q94,34 86,46"), Paint.Color, 3),
-            new(P("M96,12 Q108,34 96,56"), Paint.Color, 3),
+            B("M42,14 H72 Q76,14 76,18 V112 H38 V18 Q38,14 42,14 Z"),
+            B("M30,112 H84 V120 H30 Z"),
+            X("M44,30 H70 V33 H44 Z"),
+            X("M44,40 H50 V42 H44 Z"),
+            C("M44,98 H70 V103 H44 Z"),
+            new(P("M88,40 Q98,56 88,72"), Paint.Color, 3),
+            new(P("M97,32 Q111,56 97,80"), Paint.Color, 3),
         ],
         // a second screen: a tablet with keys standing in front of a large screen drawn as an outline (no monitor
         // stand: on its own stand it read as a monitor)
@@ -288,16 +287,18 @@ public static class MotifCatalog
             X(Cross(29, 84, 5, 3)),
             new(Group(Dot(91, 80, 3), Dot(91, 92, 3)), Paint.Cut),
         ],
-        // hybrid: a one-piece handheld lifted a little out of the slot of a low base (no dock walls hiding the
-        // screen, no detachable side parts, no colour pair)
+        // hybrid (R3 QA: a handheld on a coloured base was too close to one product): a blank screen in the light
+        // colour between two separate side blocks with a gap on each side – a cross on the left, two keys on the right –
+        // and no base, no colour pair
         Motif.Dock =>
         [
-            B("M12,34 H108 V90 H12 Z"),
-            X("M32,40 H88 V84 H32 Z"),
-            X(Cross(22, 54, 5, 3)),
-            new(Group(Dot(98, 50, 3), Dot(98, 62, 3)), Paint.Cut),
-            new(P("M6,98 H114 V120 H6 Z"), Paint.Lift), // red on anthracite was 2.9 : 1
-            X("M18,98 H102 V102 H18 Z"),
+            B("M8,60 Q8,54 14,54 H24 V120 H14 Q8,120 8,114 Z"),
+            B("M96,54 H106 Q112,54 112,60 V114 Q112,120 106,120 H96 Z"),
+            B("M28,54 H92 V120 H28 Z"),
+            new(P("M34,60 H86 V114 H34 Z"), Paint.Lift),
+            X("M38,64 H82 V110 H38 Z"),
+            X(Cross(16, 74, 5, 3)),
+            new(Group(Dot(104, 70, 3), Dot(104, 82, 3)), Paint.Cut),
         ],
 
         // ---- other devices ----

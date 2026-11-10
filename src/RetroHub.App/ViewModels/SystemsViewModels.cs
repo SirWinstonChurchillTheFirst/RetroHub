@@ -30,7 +30,7 @@ public sealed partial class SystemsViewModel : PageViewModel
     [ObservableProperty] public partial string SummaryText { get; private set; } = "";
     /// <summary>The system in focus (spine on the wall or on the "Noch leer" edge); null before the first focus.</summary>
     [ObservableProperty] public partial SystemItemViewModel? Current { get; private set; }
-    /// <summary>"Fach 3 von 13" (numbers as Archivo runs in the view); empty while a system without games is focused.</summary>
+    /// <summary>"Fach 3 von 13" (numbers as Archivo runs in the view); on the "Noch leer" edge "Noch leer · 3 von 20".</summary>
     [ObservableProperty] public partial string PositionText { get; private set; } = "";
     [ObservableProperty] public partial bool IsLoaded { get; private set; }
     public bool HasEmptySystems => EmptySystems.Count > 0;
@@ -64,9 +64,18 @@ public sealed partial class SystemsViewModel : PageViewModel
         system.IsCurrent = true;
         Backdrop = new BackdropSpec(BackdropKind.Wall, SystemId: system.Id, Accent: system.Accent, WallShade: WallShade);
         var index = IndexOf(Systems, system);
-        PositionText = index >= 0 ? Loc.T("systems.position", index + 1, Systems.Count) : "";
+        // a sleeve of the "Noch leer" edge keeps the counter window working: its place in that row
+        PositionText = Position(index, Systems.Count, index < 0 ? IndexOf(EmptySystems, system) : -1, EmptySystems.Count);
         Location = index >= 0 ? system.Name : Loc.T("systems.location.unused", system.Name);
     }
+
+    /// <summary>
+    /// The counter window's text: "Fach 3 von 13" on the wall, "Noch leer · 3 von 20" on the low edge (R3 QA: the window
+    /// stood empty there), "" for neither.
+    /// </summary>
+    internal static string Position(int wallIndex, int wallCount, int unusedIndex, int unusedCount) =>
+        wallIndex >= 0 ? Loc.T("systems.position", wallIndex + 1, wallCount)
+        : unusedIndex >= 0 ? Loc.T("systems.position.unused", unusedIndex + 1, unusedCount) : "";
 
     /// <summary>Boxes on the inner shelf of an open front (≈1100: the front shows two of them).</summary>
     public const int FeaturedCount = 3;

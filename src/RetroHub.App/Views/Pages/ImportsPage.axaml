@@ -62,6 +62,25 @@
       <Setter Property="FontSize" Value="15" />
       <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
     </Style>
+    <!-- R3 QA: the delivery note is LIGHT paper (#E9E1CF) printed in ink (#2A251E) – the dark slip read as one more panel -->
+    <Style Selector="StackPanel#DeliveryNote TextBlock">
+      <Setter Property="Foreground" Value="#2A251E" />
+    </Style>
+    <Style Selector="StackPanel#DeliveryNote TextBlock.meta, StackPanel#DeliveryNote TextBlock.slip-head, StackPanel#DeliveryNote TextBlock.label">
+      <Setter Property="Foreground" Value="#5C5347" />
+    </Style>
+    <Style Selector="StackPanel#DeliveryNote TextBlock.zero">
+      <Setter Property="Foreground" Value="#8C8272" />
+    </Style>
+    <Style Selector="StackPanel#DeliveryNote TextBlock.mono">
+      <Setter Property="Foreground" Value="#2A251E" />
+    </Style>
+    <Style Selector="StackPanel#DeliveryNote c|RhIcon.row-chevron">
+      <Setter Property="Foreground" Value="#5C5347" />
+    </Style>
+    <Style Selector="StackPanel#DeliveryNote Border.row-chip">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
   </p:PageBase.Styles>
   <c:WorkbenchFrame Name="Frame" SideInScroll="True">
     <StackPanel c:WorkbenchFrame.Role="Head" Spacing="8">
@@ -182,10 +201,16 @@
           <!-- the delivery note of the last scan: a paper slip torn off at the top, lines with dotted leaders to the numbers -->
           <StackPanel Name="DeliveryNote" Margin="0,28,0,0" IsVisible="{Binding HasReport}">
             <!-- the slip one step lighter than Regal (Wand hell 60 % over Raum, QA 2), so it reads as paper -->
-            <Panel Background="#27231E">
-              <c:PaperSlip />
+            <Panel Background="#E9E1CF">
+              <c:PaperSlip Light="True" />
               <c:Sawtooth Name="NoteTear" Fill="{DynamicResource RhBaseBrush}" VerticalAlignment="Top" />
-              <StackPanel Name="NoteBody" Spacing="0" Margin="20,24,20,16">
+              <!-- torn off at the foot too: the slip came off a roll -->
+              <c:Sawtooth Name="NoteTearFoot" Fill="{DynamicResource RhBaseBrush}" VerticalAlignment="Bottom" RenderTransformOrigin="50%,50%">
+                <c:Sawtooth.RenderTransform>
+                  <ScaleTransform ScaleY="-1" ScaleX="-1" />
+                </c:Sawtooth.RenderTransform>
+              </c:Sawtooth>
+              <StackPanel Name="NoteBody" Spacing="0" Margin="20,24,20,24">
                 <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
                   <TextBlock Text="{l:T imports.note}" Classes="slip-head" VerticalAlignment="Bottom" />
                   <TextBlock Grid.Column="1" c:Sentence.Text="{Binding ReportTitle}" Classes="meta" VerticalAlignment="Bottom" />
@@ -212,9 +237,11 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:GameItemViewModel">
                       <!-- a click opens the game (R2): the spine is pulled 4 px up under the pointer -->
+                      <!-- R3 QA: 34 px spines with the system code in 12 (the title in 8 px was cut to "The Legend of…");
+                           the title is the tooltip and the accessible name -->
                       <Button Theme="{StaticResource RhTickerItem}" Classes="game-link" Height="96" Focusable="False" ToolTip.Tip="{Binding Title}"
                               AutomationProperties.Name="{Binding Title}">
-                        <c:MiniSpine Width="24" Height="96" SystemId="{Binding SystemId}" Code="{Binding Title}" CodeSize="14" ShowMotif="False" />
+                        <c:MiniSpine Width="34" Height="96" SystemId="{Binding SystemId}" Code="{Binding SystemShort}" CodeSize="12" ShowMotif="False" />
                       </Button>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
@@ -227,7 +254,7 @@
                       <TextBlock Classes="note-text" Text="{Binding IssuesText}" />
                     </Border>
                     <c:DotLeader Grid.Column="1" VerticalAlignment="Center" Margin="12,8,12,0" />
-                    <TextBlock Grid.Column="2" Classes="note-count" Text="{Binding IssueCount}" VerticalAlignment="Center" Foreground="{DynamicResource RhWarningBrush}" />
+                    <TextBlock Grid.Column="2" Classes="note-count" Text="{Binding IssueCount}" VerticalAlignment="Center" Foreground="#A4561C" />
                     <Panel Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center">
                       <c:RhIcon Classes="row-chevron" Data="{StaticResource Icon.Expand}" Width="16" Height="16" StrokeThickness="2.6"
                                 Foreground="{DynamicResource RhText3Brush}" IsVisible="{Binding !IssuesOpen}" />

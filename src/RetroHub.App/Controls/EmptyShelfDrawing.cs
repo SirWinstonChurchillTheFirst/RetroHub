@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using RetroHub.App.Theming;
 
 namespace RetroHub.App.Controls;
@@ -142,10 +143,7 @@ public sealed class EmptySlot : Control
         var r = Aspect > 0 ? CoverArt.Compute(outer, null, false, Aspect) : outer;
         if (Recessed)
         {
-            // an empty compartment cut into the wall: darker ground, 3 px shadow at its top and left, light at its foot
-            ctx.FillRectangle(RecessFill, r);
-            Craft.Recess(ctx, r, 4, 0.55, 0.06);
-            ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.25, Craft.Toward.Right), new Rect(r.Right - 3, r.Y, 3, r.Height));
+            DrawGhost(ctx, r);
             return;
         }
         if (r.Width <= 4 || r.Height <= 4) return;
@@ -159,5 +157,36 @@ public sealed class EmptySlot : Control
         ctx.FillRectangle(Craft.Hi(0.06), new Rect(r.X, r.Y, r.Width, 1));
         ctx.FillRectangle(Craft.Hi(0.05), new Rect(r.X, r.Y + 1, 1, r.Height - 1));
         ctx.FillRectangle(Craft.Hi(0.05), new Rect(r.Right - 1, r.Y + 1, 1, r.Height - 1));
+    }
+
+    /// <summary>
+    /// A place on an empty board (R3 QA: the recessed places were flat dark rectangles of one width – "generated"): what
+    /// is left where something stood – its footprint on the board edge, clean between two drifts of dust, and on about
+    /// one place in three the wall kept cleaner where it stood, with the soft shadow of its rims. Seeded per place (its
+    /// position in the row), so the places differ in width and height and none is a filled box.
+    /// </summary>
+    private void DrawGhost(DrawingContext ctx, Rect r)
+    {
+        var x = Bounds.X + (this.GetVisualParent() is Visual p ? p.Bounds.X : 0);
+        var seed = Craft.Mix(Craft.Seed("leerer-platz"), (int)Math.Round(x));
+        var fw = Math.Round(r.Width * Craft.Range(seed, 1, 0.45, 0.92));
+        var fh = Math.Round(r.Height * Craft.Range(seed, 2, 0.62, 0.98));
+        var fx = r.X + Math.Round((r.Width - fw) * Craft.Rand(seed, 3));
+        var f = new Rect(fx, r.Bottom - fh, fw, fh);
+        if (Craft.Rand(seed, 4) < 0.4)
+        {
+            // the wall stayed cleaner behind it; its rims left a soft shadow line
+            ctx.FillRectangle(Craft.Hi(0.025), f);
+            ctx.FillRectangle(Craft.Fade(Colors.Black, 0.20, 0, Craft.Toward.Right), new Rect(f.X, f.Y, 6, f.Height));
+            ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.14, Craft.Toward.Right), new Rect(f.Right - 6, f.Y, 6, f.Height));
+            ctx.FillRectangle(Craft.Fade(Colors.Black, 0.22, 0, Craft.Toward.Down), new Rect(f.X, f.Y, f.Width, 6));
+            TextureFill.Draw(ctx, this, new Rect(f.X, f.Y - 4, f.Width, 4), Texture.Dust, 0.35);
+        }
+        // the footprint: dust drifts at the foot of the wall to both sides of it, a clean, slightly lighter strip where it stood
+        TextureFill.Draw(ctx, this, new Rect(r.X, r.Bottom - 6, Math.Max(0, f.X - r.X), 6), Texture.Dust, 0.6);
+        TextureFill.Draw(ctx, this, new Rect(f.Right, r.Bottom - 6, Math.Max(0, r.Right - f.Right), 6), Texture.Dust, 0.6);
+        ctx.FillRectangle(Craft.Hi(0.035), new Rect(f.X + 1, r.Bottom - 3, f.Width - 2, 3));
+        ctx.FillRectangle(Craft.Dark(0.25), new Rect(f.X, r.Bottom - 3, 1, 3));
+        ctx.FillRectangle(Craft.Dark(0.25), new Rect(f.Right - 1, r.Bottom - 3, 1, 3));
     }
 }

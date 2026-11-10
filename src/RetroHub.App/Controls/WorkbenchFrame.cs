@@ -47,6 +47,18 @@ public sealed class WorkbenchFrame : Panel
     /// <summary>The pinned side object is shown (wide enough).</summary>
     public bool SideShown { get; private set; }
 
+    /// <summary>
+    /// The side column's width of the last layout: 420, growing with the free room beside a full list up to
+    /// <see cref="SideMax"/> (R3 QA: ≈ 250 px stood empty right of the column at 1920).
+    /// </summary>
+    public double SideColumnWidth { get; private set; } = SideWidth;
+
+    /// <summary>The widest the side column grows.</summary>
+    public const double SideMax = 560;
+
+    /// <summary>Raised when <see cref="SideColumnWidth"/> changed (a page with the side in its scrolling grid follows).</summary>
+    public event Action<double>? SideColumnWidthChanged;
+
     static WorkbenchFrame()
     {
         AffectsMeasure<WorkbenchFrame>(SideInScrollProperty, SideMinWidthProperty);
@@ -54,24 +66,30 @@ public sealed class WorkbenchFrame : Panel
 
     private double Inset() => this.TryFindResource("RhPageInsetX", out var r) && r is Thickness t ? t.Left : 96;
 
-    private (double Inset, double List, double Scroll, bool Side) Columns(double width)
+    private (double Inset, double List, double Scroll, bool Side, double SideW) Columns(double width)
     {
         var inset = Inset();
         var hasSide = Children.Any(c => GetRole(c) == WorkbenchRole.Side);
         var side = !SideInScroll && hasSide && width >= SideMinWidth;
-        var sideRoom = SideInScroll || side ? Gutter + SideWidth : 0;
+        var sideW = Math.Clamp(width - 2 * inset - Gutter - ListMax - BarGap, SideWidth, SideMax);
+        var sideRoom = SideInScroll || side ? Gutter + sideW : 0;
         var list = Math.Clamp(width - 2 * inset - sideRoom, 240, ListMax);
         var scroll = list + (SideInScroll ? sideRoom : 0) + BarGap;
-        return (inset, list, scroll, side);
+        return (inset, list, scroll, side, sideW);
     }
 
     protected override Size MeasureOverride(Size availableSize)
     {
         var w = double.IsFinite(availableSize.Width) ? availableSize.Width : 1920;
         var h = double.IsFinite(availableSize.Height) ? availableSize.Height : 1080;
-        var (_, list, scroll, side) = Columns(w);
+        var (_, list, scroll, side, sideW) = Columns(w);
         ListWidth = list;
         SideShown = side;
+        if (Math.Abs(SideColumnWidth - sideW) > 0.5)
+        {
+            SideColumnWidth = sideW;
+            SideColumnWidthChanged?.Invoke(sideW);
+        }
         var body = Math.Max(0, h - HeadHeight);
         foreach (var c in Children)
         {
@@ -82,7 +100,7 @@ public sealed class WorkbenchFrame : Panel
                 case WorkbenchRole.Fade: c.Measure(new Size(scroll, FadeHeight)); break;
                 case WorkbenchRole.Side:
                     if (c.IsVisible != side) c.IsVisible = side;
-                    c.Measure(new Size(SideWidth, Math.Max(0, body - ListTop)));
+                    c.Measure(new Size(sideW, Math.Max(0, body - ListTop)));
                     break;
                 default: c.Measure(availableSize); break;
             }
@@ -92,7 +110,7 @@ public sealed class WorkbenchFrame : Panel
 
     protected override Size ArrangeOverride(Size finalSize)
     {
-        var (inset, list, scroll, side) = Columns(finalSize.Width);
+        var (inset, list, scroll, side, sideW) = Columns(finalSize.Width);
         var body = Math.Max(0, finalSize.Height - HeadHeight);
         foreach (var c in Children)
         {
@@ -102,7 +120,7 @@ public sealed class WorkbenchFrame : Panel
                 case WorkbenchRole.Scroll: c.Arrange(new Rect(inset, HeadHeight, scroll, body)); break;
                 case WorkbenchRole.Fade: c.Arrange(new Rect(inset, HeadHeight, scroll - BarGap, FadeHeight)); break;
                 case WorkbenchRole.Side:
-                    c.Arrange(side ? new Rect(inset + list + Gutter, HeadHeight + ListTop, SideWidth, c.DesiredSize.Height) : default);
+                    c.Arrange(side ? new Rect(inset + list + Gutter, HeadHeight + ListTop, sideW, c.DesiredSize.Height) : default);
                     break;
                 default: c.Arrange(new Rect(finalSize)); break;
             }

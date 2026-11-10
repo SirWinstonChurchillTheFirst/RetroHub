@@ -97,6 +97,7 @@
   "systems.location.empty": "Noch keine Spiele",
   "systems.location.unused": "{0}, noch leer",
   "systems.position": "Fach {0} von {1}",
+  "systems.position.unused": "Noch leer · {0} von {1}",
   "systems.unused": "Noch leer",
   "systems.emptyTitle": "Die Fächerwand ist noch leer",
   "systems.emptyText": "Sobald ein Scan Spiele findet, steht jedes System hier als Rücken im Regal.",

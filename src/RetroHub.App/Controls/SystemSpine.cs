@@ -46,7 +46,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
 
     private static readonly IImmutableSolidColorBrush Paper = new ImmutableSolidColorBrush(SystemPalette.Paper);
     private static readonly IImmutableSolidColorBrush Text2 = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
-    private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
+    private static readonly IImmutableSolidColorBrush SleeveRing = new ImmutableSolidColorBrush(Color.Parse("#D9FFF3E0"));
+    private static readonly IImmutableSolidColorBrush SleeveKeyline = new ImmutableSolidColorBrush(Color.Parse("#B3000000"));
 
     /// <summary>Where the code hangs: 16 px under the 8 px band (one anchor on Start and Konsolen, M5 QA).</summary>
     public const double CodeTop = 8 + 16;
@@ -69,7 +70,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
 
     static SystemSpine()
     {
-        AffectsRender<SystemSpine>(BoundsProperty, ShowMotifProperty, SpineHeightProperty, PullProperty);
+        AffectsRender<SystemSpine>(BoundsProperty, ShowMotifProperty, SpineHeightProperty, PullProperty, RowShadeProperty);
         AffectsMeasure<SystemSpine>(SpineWidthProperty, FrontWidthProperty);
         FocusAdornerProperty.OverrideDefaultValue<SystemSpine>(null);
         ClipToBoundsProperty.OverrideDefaultValue<SystemSpine>(false);
@@ -137,7 +138,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         {
             var sl = Sleeve;
             var lift = SleeveLift;
-            return new Rect(sl.Front.X, sl.Front.Y - SleeveTop - lift, sl.Front.Width + SleeveSide, r.Height - sl.Front.Y + SleeveTop + lift);
+            var up = sl.Flat ? SleeveTop + 2 : SleeveTop;
+            return new Rect(sl.Front.X, sl.Front.Y - up - lift, sl.Front.Width + SleeveSide, r.Height - sl.Front.Y + up + lift);
         }
         var t = OpennessAt(size.Width);
         var spineH = (double.IsNaN(SpineHeight) ? r.Height : Math.Min(SpineHeight, r.Height)) - SpineDrop;
@@ -154,6 +156,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         if (_system != null) _system.PropertyChanged += OnSystemChanged;
         _textKey = default;
         UpdateCovers();
+        if (!Opens) SetWidth(animate: false); // a sleeve's width is seeded by its system
         InvalidateVisual();
     }
 
@@ -356,18 +359,22 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
             var z = _ringOpacity > 0 ? 1 : 0;
             ZIndex = z;
             if (Avalonia.VisualTree.VisualExtensions.GetVisualParent(this) is Avalonia.Controls.Presenters.ContentPresenter container) container.ZIndex = z;
+            var moves = Motion.AllowsMovement;
             if (!Opens)
             {
-                // an empty sleeve is pulled out of its row instead of growing (straightened, lifted, label lit)
+                // an empty sleeve is pulled out of its row instead of growing (straightened, label lit, toward the viewer)
                 Transitions = Motion.Current == EffectiveMotion.Full && NavRepeatTracker.Current?.IsActive != true
-                    ? [new DoubleTransition { Property = PullProperty, Duration = Motion.StepDuration, Easing = new CubicEaseOut() }]
+                    ? [new DoubleTransition { Property = PullProperty, Duration = Motion.StepDuration, Easing = new CubicEaseOut() },
+                       new DoubleTransition { Property = RowShadeProperty, Duration = Motion.StepDuration, Easing = new CubicEaseOut() }]
                     : null;
-                // R2: the mouse resting on a sleeve draws it half out (6 of the 12 px; the ring alone said little)
+                // R2: the mouse resting on a sleeve draws it half out (the ring alone said little)
                 Pull = visible ? 1 : IsPointerOver ? 0.5 : 0;
+                RefreshRowShade();
             }
-            var moves = Motion.AllowsMovement;
             var pressed = IsPressed && moves;
-            var lift = visible && Opens && moves ? 1.03 : 1.0;
+            // R3 QA: a pulled sleeve comes FORWARD (1.06 from its foot; the mouse half: 1.03) – it no longer rises off the board
+            var lift = !moves ? 1.0 : Opens ? (visible ? 1.03 : 1.0)
+                : visible ? SleevePullScale : IsPointerOver ? 1 + (SleevePullScale - 1) / 2 : 1.0;
             // R2 animation: a spine under the mouse rises 3 px out of the row; pressed it gives (2 px down, 3 % lower,
             // 70 ms linear) and comes back in Step – the focused front keeps its lift
             var rise = !moves || !Opens ? 0 : pressed ? 2 : IsPointerOver && !visible ? -3 : 0;
@@ -387,9 +394,26 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
+    /// <summary>
+    /// While a sleeve of this row is pulled out (focus), the others step back: <see cref="RowShade"/> 0.15 on each of
+    /// them, 0 when none is (posted, so the sleeve losing the focus and the one gaining it have both updated).
+    /// </summary>
+    private void RefreshRowShade()
+    {
+        if (Avalonia.VisualTree.VisualExtensions.GetVisualParent(this) is not Control container) return;
+        if (Avalonia.VisualTree.VisualExtensions.GetVisualParent(container) is not Panel row) return;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            var sleeves = row.Children.Select(c => c is SystemSpine s ? s : (c as Avalonia.Controls.Presenters.ContentPresenter)?.Child as SystemSpine)
+                .OfType<SystemSpine>().Where(s => !s.Opens).ToList();
+            var pulled = sleeves.FirstOrDefault(s => s.IsFocused && s.Classes.Contains(":focus-visible"));
+            foreach (var s in sleeves) s.RowShade = pulled != null && s != pulled ? 0.15 : 0;
+        }, Avalonia.Threading.DispatcherPriority.Loaded);
+    }
+
     private void SetWidth(bool animate)
     {
-        var target = _open ? OpenWidth : SpineWidth;
+        var target = _open ? OpenWidth : ClosedWidth;
         var repeat = NavRepeatTracker.Current?.IsActive == true;
         // closing goes quicker than opening (160 ms, the front folds back with no stagger)
         var d = !animate || Motion.Current != EffectiveMotion.Full ? TimeSpan.Zero
@@ -401,23 +425,39 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
 
     private void EnsureText()
     {
-        var key = (_system?.Id, FrontWidth, SpineWidth, _system?.GameCount ?? -1, Opens ? 0 : Math.Round(Bounds.Height));
+        var key = (_system?.Id, FrontWidth, SpineWidth, _system?.GameCount ?? -1, Math.Round(Bounds.Height));
         if (_textKey == key && _code != null) return;
         _textKey = key;
         if (_system is not { } s) return;
+        var countSize = SpineWidth >= 96 ? Math.Min(28, Math.Round(SpineWidth * 0.22)) : 15;
+        _count = new FormattedText(s.GameCount.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+            FontRoles.NumberFace, countSize, SpineWidth >= 96 ? Paper : Text2);
         // the quiet "Noch leer" spines: 16 in Text 2 (M5 QA: ≈ 11 px in Text 3 was unreadable from the couch)
         var spineSize = Opens ? Math.Clamp(Math.Round(SpineWidth * 0.30), 15, 28) : 16;
         _code = new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, Opens ? Paper : Text2);
+        // a long code on a Start spine steps down (to 16; ≈1100: 15) until the motif finds its room under it (R2 QA)
+        if (Opens && !ShowMotif && Bounds.Height > 0)
+        {
+            var spineH = (double.IsNaN(SpineHeight) ? Bounds.Height : Math.Min(SpineHeight, Bounds.Height)) - SpineDrop;
+            var min = SpineWidth >= 64 ? 16 : 15;
+            while (spineSize > min && SpineParts(SpineWidth, spineH).Motif.Width < 26)
+            {
+                spineSize--;
+                _code = new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, Paper);
+            }
+        }
         _codeShadow = Opens ? new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize,
             Craft.Dark(0.55)) : null;
         _codeLit = Opens ? null : new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, spineSize, Paper);
         // the sleeve's label is printed in ink (a compact sleeve: 15)
         _codeInk = null;
+        _codeFlat = null;
         if (!Opens)
         {
-            // a long code on a short (compact) sleeve steps down to 13 so the label holds it whole
-            var size = Bounds.Height < 130 ? 15.0 : spineSize;
-            var room = Bounds.Height - SleeveTop - 8 - 14 - 22;
+            // a long code on a short sleeve steps down (never under 13) so the label holds it whole
+            var sleeve = Sleeve;
+            var size = SleeveRowHeight < 130 ? 15.0 : spineSize;
+            var room = (sleeve.Flat ? sleeve.Front.Width - 40 : sleeve.Front.Height - 36);
             while (true)
             {
                 _codeInk = new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, size,
@@ -425,10 +465,8 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 if (_codeInk.Width <= room || size <= 13) break;
                 size--;
             }
+            if (sleeve.Flat) (_codeFlat, _codeInk) = (_codeInk, null);
         }
-        var countSize = SpineWidth >= 96 ? Math.Min(28, Math.Round(SpineWidth * 0.22)) : 15;
-        _count = new FormattedText(s.GameCount.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-            FontRoles.NumberFace, countSize, SpineWidth >= 96 ? Paper : Text2);
         // the front: the name in the poster role, measured (largest size whose words all fit, at most 3 lines; else the
         // code), the count bottom left beside the motif. A big front (Konsolen) adds maker and year under the name.
         var inset = FrontInset;
@@ -476,10 +514,17 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         var look = s.Look;
         if (!Opens)
         {
-            DrawSleeve(ctx, look);
+            // the neighbours of a pulled sleeve step back into the shade of the row (R3 QA)
+            using (ctx.PushOpacity(1 - Math.Clamp(RowShade, 0, 0.5)))
+                DrawSleeve(ctx, look);
+            // R3 QA: the system's light was dim on the dark housings – the sleeve's ring is lamp light (85 %) on a 1 px
+            // dark keyline, so it shows on every card colour
             if (_ringOpacity > 0)
                 using (ctx.PushOpacity(_ringOpacity))
-                    Chamfer.DrawStandingRing(ctx, ObjectRect, look.LightBrush);
+                {
+                    Chamfer.DrawStandingRing(ctx, ObjectRect, SleeveKeyline, gap: 2, ring: 5);
+                    Chamfer.DrawStandingRing(ctx, ObjectRect, SleeveRing);
+                }
             return;
         }
         var t = Openness; // 0 = spine, 1 = front
@@ -667,6 +712,86 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         return g;
     }
 
+    /// <summary>Gap between the parts of a closed spine (count plate, motif, code), by spine width.</summary>
+    private static double SpineGap(double w) => w >= 96 ? 16 : w >= 64 ? 12 : 10;
+
+    /// <summary>The smallest motif a Start spine still shows (below that it is left out rather than squeezed).</summary>
+    public const double MinSpineMotif = 22;
+
+    /// <summary>
+    /// The parts of a closed spine from the foot up (spine coordinates): the count plate (empty when no games), the motif
+    /// box (empty when none), and where the code's room ends. Konsolen: the motif fills the width; Start: up to 40 px,
+    /// shrunk to the room the code leaves – decided on the UNDROPPED height (R2 QA: the seeded drop hid it on 8 of 12).
+    /// </summary>
+    internal (Rect Plate, Rect Motif, double CodeFoot) SpineParts(double w, double h)
+    {
+        var bandInset = w >= 96 ? 7 : 5;
+        var bandHeight = w >= 96 ? 10 : 8;
+        var codeTop = bandInset + bandHeight + (w >= 96 ? 14 : 12);
+        var codeEnd = _code != null ? codeTop + _code.Width : codeTop;
+        var gap = SpineGap(w);
+        var foot = h - gap;
+        var plate = default(Rect);
+        if (_count is { } count && _system?.GameCount > 0)
+        {
+            var pw = Math.Round(Math.Max(count.Width + (w >= 96 ? 22 : 14), w >= 96 ? 44 : 34));
+            var ph = Math.Round(count.Height + (w >= 96 ? 6 : 4));
+            plate = new Rect(Math.Round((w - pw) / 2), Math.Round(foot - ph + (w >= 96 ? 3 : 2)), pw, ph);
+            foot = plate.Y - gap + (w >= 96 ? 4 : 2);
+        }
+        double motif;
+        if (ShowMotif) motif = Math.Round(w - 2 * Math.Max(12, Math.Round(w * 0.14)));
+        else
+        {
+            // the code keeps its whole length: the motif takes only what is left under it (with the gap and 4 px)
+            var room = Math.Floor(foot - (codeEnd + gap + 4));
+            motif = h + SpineDrop >= 120 && room >= MinSpineMotif ? Math.Min(Math.Min(40, w - 16), room) : 0;
+        }
+        var box = motif > 0 ? new Rect(Math.Round((w - motif) / 2), Math.Round(foot - motif), motif, motif) : default;
+        if (motif > 0) foot -= motif + gap + 4;
+        return (plate, box, foot);
+    }
+
+    /// <summary>The motif size a closed spine draws at its current height (tests).</summary>
+    internal double ClosedMotifSize
+    {
+        get
+        {
+            _textKey = default;
+            EnsureText();
+            var spineH = (double.IsNaN(SpineHeight) ? Bounds.Height : Math.Min(SpineHeight, Bounds.Height)) - SpineDrop;
+            return spineH > 0 ? SpineParts(SpineWidth, spineH).Motif.Width : 0;
+        }
+    }
+
+    private readonly Dictionary<(int, int, uint), StreamGeometry> _splitGeo = new();
+
+    /// <summary>
+    /// The lit upper part of a Konsolen spine (Wand hell): its lower edge is not ruled – it sits ±6 % off 38 % per system
+    /// and wanders by up to 2 px, like a print that ran (R2 QA: one straight line repeated over twelve spines).
+    /// </summary>
+    private StreamGeometry SplitShape(double w, double split, uint seed)
+    {
+        var key = ((int)w, (int)split, seed);
+        if (_splitGeo.TryGetValue(key, out var g)) return g;
+        g = new StreamGeometry();
+        using (var c = g.Open())
+        {
+            c.BeginFigure(new Point(0, 0), true);
+            c.LineTo(new Point(w, 0));
+            var phase = Craft.Range(seed, 15, 0, Math.PI * 2);
+            var amp = Craft.Range(seed, 16, 0.8, 1.5);
+            for (var x = w; x > -6; x -= 6)
+            {
+                var px = Math.Max(0, x);
+                c.LineTo(new Point(px, split + amp * Math.Sin(phase + px / 17.0) + 0.5 * Math.Sin(phase * 2 + px / 5.0)));
+            }
+            c.EndFigure(true);
+        }
+        _splitGeo[key] = g;
+        return g;
+    }
+
     private void DrawSpine(DrawingContext ctx, Rect area, SystemLook look, double opacity)
     {
         using (ctx.PushOpacity(opacity))
@@ -677,13 +802,22 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
             var seed = Craft.Seed(_system?.Id);
             using (ctx.PushGeometryClip(SpineOutline(r.Width, r.Height, seed)))
             {
-                // the Konsolen spine is a narrow slice of its wall (38 % Wand hell over 62 % Wand, the light edge between);
-                // the small spines of Start stay one tone
-                var split = ShowMotif ? Math.Round(r.Height * 0.38) : r.Height;
-                ctx.FillRectangle(look.WallHiBrush, new Rect(0, 0, r.Width, split));
-                if (split < r.Height) ctx.FillRectangle(look.WallBrush, new Rect(0, split, r.Width, r.Height - split));
-                SystemWall.DrawTextures(ctx, this, r, look);
-                if (split < r.Height) ctx.FillRectangle(LightEdge, new Rect(0, split, r.Width, 1));
+                // the Konsolen spine is a narrow slice of its wall (Wand hell over Wand, seeded 32–44 %, a soft uneven
+                // edge between, R2 QA); the small spines of Start stay one tone
+                if (ShowMotif)
+                {
+                    var split = Math.Round(r.Height * (0.38 + Craft.Range(seed, 12, -0.06, 0.06)));
+                    ctx.FillRectangle(look.WallBrush, r);
+                    ctx.DrawGeometry(look.WallHiBrush, null, SplitShape(r.Width, split, seed));
+                    SystemWall.DrawTextures(ctx, this, r, look);
+                    // the light runs off softly under the lit part instead of stopping at a ruled line
+                    ctx.FillRectangle(Craft.Fade(Craft.Light, 0.06, 0, Craft.Toward.Down), new Rect(0, split, r.Width, 6));
+                }
+                else
+                {
+                    ctx.FillRectangle(look.WallHiBrush, r);
+                    SystemWall.DrawTextures(ctx, this, r, look);
+                }
                 // a printed box spine wraps round its edges: light at the left, dark at the right
                 ctx.FillRectangle(Craft.Curvature, r);
                 // the colour band is printed on the spine (inset, with its print edge), not a flush top border
@@ -695,13 +829,10 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 // count on its stamped plate and the motif standing above it
                 var code = _code;
                 var codeEnd = code != null ? codeTop + code.Width : codeTop;
-                var gap = w >= 96 ? 16 : 12;
-                var foot = r.Height - gap;
-                if (_count is { } count && _system?.GameCount > 0)
+                var (plate, motifBox, foot) = SpineParts(w, r.Height);
+                if (_count is { } count && plate.Width > 0)
                 {
-                    var pw = Math.Round(Math.Max(count.Width + (w >= 96 ? 22 : 14), w >= 96 ? 44 : 34));
-                    var ph = Math.Round(count.Height + (w >= 96 ? 6 : 4));
-                    var plate = new Rect(Math.Round((w - pw) / 2), Math.Round(foot - ph + (w >= 96 ? 3 : 2)), pw, ph);
+                    var ph = plate.Height;
                     // a small stamped plate fixed to the spine: raised, lit on top, its shadow under it
                     using (ctx.PushTransform(Matrix.CreateTranslation(1, 2)))
                         ctx.DrawGeometry(Craft.Dark(0.40), null, Chamfer.Octagon(plate, 3));
@@ -714,17 +845,10 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                         ctx.FillRectangle(Craft.Dark(0.6), new Rect(plate.Right - 5, plate.Y + Math.Round(ph / 2) - 1, 2, 2));
                     }
                     ctx.DrawText(count, new Point(Math.Round((w - count.Width) / 2), Math.Round(plate.Y + (ph - count.Height) / 2)));
-                    foot = plate.Y - gap + (w >= 96 ? 4 : 2);
                 }
-                var motif = ShowMotif ? Math.Round(w - 2 * Math.Max(12, Math.Round(w * 0.14)))
-                    // a Start spine of ≥ 200 shows the motif at 40 px – the same object at a smaller scale – where the code leaves room
-                    : r.Height >= 200 && foot - 40 >= codeEnd + 8 ? 40 : 0;
-                if (motif > 0)
-                {
-                    MotifCatalog.Draw(ctx, look, new Rect(Math.Round((w - motif) / 2), Math.Round(foot - motif), motif, motif), cutout: look.WallBrush,
-                        relief: ShowMotif);
-                    foot -= motif + gap + 4;
-                }
+                // a Start spine shows the motif at up to 40 px – the same object at a smaller scale – where the code leaves room
+                if (motifBox.Width > 0)
+                    MotifCatalog.Draw(ctx, look, motifBox, cutout: look.WallBrush, relief: ShowMotif);
                 if (code != null)
                 {
                     var x = Math.Round((w - code.Height) / 2);
@@ -750,19 +874,27 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     private const double SleeveSide = 5, SleeveTop = 3;
 
     /// <summary>
-    /// The lift of a pulled sleeve (R2 animation: 12 px at Pull 1, slid up out of the row – it was 8; the mouse draws it
-    /// half out; none when motion is reduced or off). <see cref="Exit"/> lifts it a further 24 px on Accept.
+    /// How far a sleeve rises on Accept (<see cref="PlayExit"/>; R3: focus no longer lifts it off the board – it is pulled
+    /// FORWARD, scale 1.06 from its foot, so it never levitates).
     /// </summary>
-    private double SleeveLift => Motion.AllowsMovement ? Math.Round(SleevePull * Pull + 24 * _exit, 1) : 0;
+    private double SleeveLift => Motion.AllowsMovement ? Math.Round(24 * _exit, 1) : 0;
 
-    /// <summary>How far a focused sleeve slides up out of its row.</summary>
-    public const double SleevePull = 12;
+    /// <summary>The scale of a sleeve pulled toward the viewer (focus; the mouse draws it half out).</summary>
+    public const double SleevePullScale = 1.06;
+
+    /// <summary>
+    /// The shade over a sleeve while another sleeve of its row is pulled out (R3: the neighbours step back, 15 %).
+    /// Animated in Step with the pull; none when motion is off (set at once).
+    /// </summary>
+    public static readonly StyledProperty<double> RowShadeProperty = AvaloniaProperty.Register<SystemSpine, double>(nameof(RowShade));
+
+    public double RowShade { get => GetValue(RowShadeProperty); set => SetValue(RowShadeProperty, value); }
 
     private double _exit;
     private Tween? _exitTween;
 
     /// <summary>
-    /// Accept on an empty sleeve (R2 animation): it lifts a further 24 px and fades (Scene 280, CubicEaseOut), then
+    /// Accept on an empty sleeve (R2 animation): it lifts 24 px out of its row and fades (Scene 280, CubicEaseOut), then
     /// <paramref name="then"/> runs (the empty system page enters). Reduced motion or off: <paramref name="then"/> at once.
     /// </summary>
     public void PlayExit(Action then)
@@ -786,32 +918,85 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
         });
     }
 
-    private readonly record struct SleeveShape(Rect Front, uint Seed, double Lean, bool Dent, bool DentLeft, double DentSize);
+    /// <summary>
+    /// A sleeve's drawn shape. <see cref="Front"/> is in control coordinates; <see cref="Lean"/> turns it about its foot's
+    /// left corner (radians, negative = the top rests on the left neighbour); a <see cref="Flat"/> sleeve lies on the board
+    /// with its spine toward the room (the last of a long row, before the bookend).
+    /// </summary>
+    private readonly record struct SleeveShape(Rect Front, uint Seed, double Lean, bool Dent, bool DentLeft, double DentSize, bool Flat);
+
+    /// <summary>The sleeve's row height: its styled Height (known before layout), else its bounds.</summary>
+    private double SleeveRowHeight => !double.IsNaN(Height) ? Height : Bounds.Height;
 
     /// <summary>
-    /// The sleeve of this system, seeded by its id: front 40–46 wide (of 48), 0–8 px shorter than the row, one in
-    /// about five leaning on its left neighbour (never the first), every second with a dented top corner.
+    /// The sleeve of this system, seeded by its id (R3 QA: the row was still a comb – widths 40–46 of 48, drops 0–8,
+    /// leans under 3°): the front SpineWidth −14 … +10 wide, 0–13 % shorter than the row, one in four leaning 4–7° on its
+    /// left neighbour (the control keeps the room the lean needs at its left), every second with a dented top corner; the
+    /// last of a row of six or more lies flat before the bookend.
     /// </summary>
     private SleeveShape Sleeve
     {
         get
         {
             var seed = Craft.Seed(_system?.Id);
-            var H = Bounds.Height;
-            var fw = Math.Max(16, SpineWidth - 8 + Craft.Pick(seed, 1, 0, 6));
-            var h = Math.Max(24, H - SleeveTop - Craft.Pick(seed, 2, 0, 8));
-            var lean = 0.0;
-            if (Craft.Rand(seed, 3) < 0.24 && IndexInRow() > 0)
-                lean = -Math.Asin(Math.Min(0.2, 7 / h)); // the top corner comes to rest on the neighbour
+            var H = SleeveRowHeight;
+            var index = IndexInRow(out var count);
+            var fw = Math.Max(20, SpineWidth + Craft.Pick(seed, 1, -14, 10));
+            var h = Math.Max(24, H - SleeveTop - Craft.Pick(seed, 2, 0, (int)Math.Round(H * 0.13)));
             var dent = Craft.Rand(seed, 4) < 0.5;
-            return new SleeveShape(new Rect(0, H - h, fw, h), seed, lean, dent, Craft.Rand(seed, 5) < 0.5, Craft.Pick(seed, 6, 2, 4));
+            var dentLeft = Craft.Rand(seed, 5) < 0.5;
+            var dentSize = Craft.Pick(seed, 6, 2, 4);
+            if (count >= 6 && index == count - 1)
+            {
+                // lying flat: its spine (the front) runs along the board, as long as the sleeve is tall
+                var thick = Math.Min(fw, Math.Round(H * 0.30));
+                return new SleeveShape(new Rect(2, H - thick, Math.Round(h * 0.94), thick), seed, 0, dent, dentLeft, dentSize, true);
+            }
+            var lean = 0.0;
+            var room = 0.0;
+            if (index > 0 && Craft.Rand(seed, 3) < 0.25)
+            {
+                // the top corner travels 12–18 px left and comes to rest on the neighbour's side face
+                var shift = Craft.Range(seed, 14, 12, 18);
+                lean = -Math.Asin(Math.Min(0.3, shift / h));
+                room = Math.Round(Math.Max(0, shift - 3));
+            }
+            return new SleeveShape(new Rect(room, H - h, fw, h), seed, lean, dent, dentLeft, dentSize, false);
         }
     }
 
-    private int IndexInRow()
+    /// <summary>The sleeve's lean in radians (0 = upright; tests).</summary>
+    internal double SleeveLean => Sleeve.Lean;
+
+    /// <summary>The sleeve lies flat (the last of a long row; tests).</summary>
+    internal bool SleeveFlat => Sleeve.Flat;
+
+    /// <summary>The width a closed item takes in its row: the spine, or the sleeve with its side face and lean room.</summary>
+    public double ClosedWidth
     {
+        get
+        {
+            if (Opens || _system == null) return SpineWidth;
+            var s = Sleeve;
+            return Math.Ceiling(s.Front.Right + SleeveSide + 1);
+        }
+    }
+
+    private int IndexInRow(out int count)
+    {
+        count = 0;
         if (Avalonia.VisualTree.VisualExtensions.GetVisualParent(this) is not Control container) return 0;
-        return Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<ItemsControl>(container) is { } items ? items.IndexFromContainer(container) : 0;
+        if (Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<ItemsControl>(container) is not { } items) return 0;
+        count = items.ItemCount;
+        return Math.Max(0, items.IndexFromContainer(container));
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        // the sleeve's width depends on its place in the row (lean, the flat one): set once the container stands
+        if (!Opens)
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => SetWidth(animate: false), Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     private static readonly Color CardBrown = Color.Parse("#6B5E4C");
@@ -841,27 +1026,41 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
     }
 
     /// <summary>
-    /// An empty cardboard sleeve standing on the "Noch leer" edge (M7 "gezeichnet", replaces the flat 48 × 148 swatch):
-    /// card-brown front in the system's housing with fibres, a side face and a top face with the open mouth, lit left and
-    /// dark right edges, grime at the foot, scuffs and a dented corner; on it a hand-applied paper label with a stripe in
-    /// the system colour and the code printed in ink. It casts its shadow on the wall behind. Focus pulls it out of the
-    /// row (straightened, 8 px up, label in full colour).
+    /// The card of a sleeve in the system's colour (R3 QA: one grey-brown for all twenty lost the system): card brown with
+    /// 30 % of the system colour, in the shade of the low edge.
+    /// </summary>
+    private static Color SleeveBody(SystemLook look) => ColorUtil.Mix(ColorUtil.Mix(CardBrown, look.Color, 0.30), look.Wall, 0.25);
+
+    /// <summary>
+    /// An empty cardboard sleeve standing on the "Noch leer" edge (M7 "gezeichnet", R3 rhythm): card in the system's
+    /// colour with fibres, a side face and a top face with the open mouth, lit left and dark right edges, grime at the
+    /// foot, scuffs and a dented corner; on it a hand-applied paper label with a stripe in the system colour and the
+    /// code printed in ink. It casts its shadow on the wall behind. Focus pulls it toward the viewer (straightened, 1.06
+    /// from the foot, a darker contact shadow, label in full colour); the neighbours step back (<see cref="RowShade"/>).
     /// </summary>
     private void DrawSleeve(DrawingContext ctx, SystemLook look)
     {
         var s = Sleeve;
+        if (s.Flat)
+        {
+            DrawFlatSleeve(ctx, look, s);
+            return;
+        }
         var f = s.Front;
         var pull = Math.Clamp(Pull, 0, 1);
         var lift = SleeveLift;
         var lean = s.Lean * (1 - pull);
-        var body = ColorUtil.Mix(look.WallHi, CardBrown, 0.30);
+        var body = SleeveBody(look);
         var m = Matrix.CreateTranslation(f.X, f.Y - lift);
         if (Math.Abs(lean) > 0.0001)
             m = Matrix.CreateTranslation(0, -f.Height) * Matrix.CreateRotation(lean) * Matrix.CreateTranslation(f.X, f.Bottom - lift);
-        // the shadow on the wall behind it (never rotated: it falls on the wall)
-        // pulled out, it stands further from the wall: the shadow lengthens 10 → 14 px
+        // the shadow on the wall behind it (never rotated: it falls on the wall); pulled forward it stands further from
+        // the wall: the shadow lengthens 10 → 14 px
         Craft.CastShadow(ctx, new Rect(f.X, f.Y - SleeveTop - lift, f.Width + SleeveSide, f.Height + SleeveTop),
             Motion.AllowsMovement ? 10 + 4 * pull : 10, 0.38);
+        // the contact shadow of the pulled sleeve's foot on the board (it stays standing: no gap under it)
+        if (pull > 0)
+            Craft.Contact(ctx, f.X - f.Width * 0.05, SleeveRowHeight - 1, f.Width * 1.1 + SleeveSide, 6, 0.45 * pull);
         using (ctx.PushTransform(m))
         {
             var w = f.Width;
@@ -876,7 +1075,7 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 c.LineTo(new Point(w, h));
                 c.EndFigure(true);
             }
-            ctx.DrawGeometry(Craft.Solid(ColorUtil.Mix(body, Colors.Black, 0.40)), null, side);
+            ctx.DrawGeometry(Craft.Solid(ColorUtil.Mix(body, Colors.Black, 0.42)), null, side);
             var dl = s.Dent && s.DentLeft ? s.DentSize : 0;
             var dr = s.Dent && !s.DentLeft ? s.DentSize : 0;
             var top = new StreamGeometry();
@@ -888,10 +1087,10 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 c.LineTo(new Point(w - dr, 0));
                 c.EndFigure(true);
             }
-            ctx.DrawGeometry(Craft.Solid(ColorUtil.Mix(body, Craft.Light, 0.14)), null, top);
+            ctx.DrawGeometry(Craft.Solid(ColorUtil.Mix(body, Craft.Light, 0.16)), null, top);
             // the open mouth of the empty sleeve: a dark slot inside the top face
             ctx.FillRectangle(Craft.Solid(Craft.Deep), new Rect(dl + 3, -2, Math.Max(0, w - dl - dr - 3), 1.5));
-            // the front: card, fibres, edges, grime, scuffs
+            // the front: card, fibres, edges, grime, scuffs, a crease across one in three
             var outline = SleeveFront(f, s);
             ctx.DrawGeometry(Craft.Solid(body), null, outline);
             using (ctx.PushGeometryClip(outline))
@@ -900,36 +1099,115 @@ public sealed class SystemSpine : Button, Avalonia.Rendering.ICustomHitTest
                 TextureFill.Draw(ctx, this, fr, Texture.Card, 0.6);
                 SystemWall.DrawTextures(ctx, this, fr, look, look.TextureOpacity * 0.5);
                 ctx.FillRectangle(Craft.Curvature, fr);
-                Craft.Edges(ctx, fr, lit: 0.10, dark: 0.35, grime: 0.24, grimeHeight: 8);
+                if (Craft.Rand(s.Seed, 17) < 0.34)
+                {
+                    var cy = Math.Round(h * Craft.Range(s.Seed, 18, 0.55, 0.8));
+                    ctx.FillRectangle(Craft.Dark(0.22), new Rect(0, cy, w, 1));
+                    ctx.FillRectangle(Craft.Hi(0.06), new Rect(0, cy + 1, w, 1));
+                }
+                Craft.Edges(ctx, fr, lit: 0.12, dark: 0.35, grime: 0.24, grimeHeight: 8);
                 Craft.Scuffs(ctx, fr, s.Seed, Craft.Pick(s.Seed, 7, 1, 2));
             }
             DrawSleeveLabel(ctx, look, s, pull);
         }
     }
 
+    /// <summary>
+    /// The sleeve lying flat at the end of the row: its spine runs along the board (the label reads across), its long
+    /// flat side seen from above as a thin face, its open end to the right.
+    /// </summary>
+    private void DrawFlatSleeve(DrawingContext ctx, SystemLook look, SleeveShape s)
+    {
+        var f = s.Front;
+        var pull = Math.Clamp(Pull, 0, 1);
+        var body = SleeveBody(look);
+        var lift = SleeveLift;
+        var up = SleeveTop + 2; // the flat side seen from above
+        Craft.CastShadow(ctx, new Rect(f.X, f.Y - up - lift, f.Width + SleeveSide, f.Height + up), 8, 0.38);
+        if (pull > 0) Craft.Contact(ctx, f.X - 4, SleeveRowHeight - 1, f.Width + SleeveSide + 8, 6, 0.45 * pull);
+        using (ctx.PushTransform(Matrix.CreateTranslation(f.X, f.Y - lift)))
+        {
+            var w = f.Width;
+            var h = f.Height;
+            var top = new StreamGeometry();
+            using (var c = top.Open())
+            {
+                c.BeginFigure(new Point(0, 0), true);
+                c.LineTo(new Point(SleeveSide, -up));
+                c.LineTo(new Point(w + SleeveSide, -up));
+                c.LineTo(new Point(w, 0));
+                c.EndFigure(true);
+            }
+            ctx.DrawGeometry(Craft.Solid(ColorUtil.Mix(body, Craft.Light, 0.12)), null, top);
+            // a hair of grain along the flat side
+            ctx.FillRectangle(Craft.Dark(0.18), new Rect(SleeveSide + 6, -up + 2, w - 16, 1));
+            var end = new StreamGeometry();
+            using (var c = end.Open())
+            {
+                c.BeginFigure(new Point(w, 0), true);
+                c.LineTo(new Point(w + SleeveSide, -up));
+                c.LineTo(new Point(w + SleeveSide, h - up));
+                c.LineTo(new Point(w, h));
+                c.EndFigure(true);
+            }
+            // the open end: dark inside, its card lip lit
+            ctx.DrawGeometry(Craft.Solid(Craft.Deep), null, end);
+            ctx.FillRectangle(Craft.Hi(0.10), new Rect(w, 0, 1, h));
+            var fr = new Rect(0, 0, w, h);
+            ctx.FillRectangle(Craft.Solid(body), fr);
+            using (ctx.PushClip(fr))
+            {
+                TextureFill.Draw(ctx, this, fr, Texture.Card, 0.6);
+                SystemWall.DrawTextures(ctx, this, fr, look, look.TextureOpacity * 0.5);
+                ctx.FillRectangle(Craft.Fade(Craft.Light, 0.08, 0, Craft.Toward.Down), new Rect(0, 0, w, Math.Round(h * 0.4)));
+                Craft.Edges(ctx, fr, lit: 0.12, dark: 0.35, grime: 0.24, grimeHeight: 5);
+                Craft.Scuffs(ctx, fr, s.Seed, 2);
+            }
+            // the label across the spine: stripe at its left, the code reading left to right
+            if (_codeFlat is { } code)
+            {
+                var lh = Math.Min(h - 8, Math.Ceiling(code.Height) + 8);
+                var lw = Math.Min(w - 12, Math.Ceiling(code.Width) + 26);
+                var r = new Rect(Math.Round(10 + Craft.Range(s.Seed, 8, 0, 6)), Math.Round((h - lh) / 2), lw, lh);
+                var tilt = Craft.Range(s.Seed, 10, -1.2, 1.2) * (1 - pull);
+                var paper = ColorUtil.Mix(ColorUtil.Mix(Craft.LabelPaper, look.WallHi, 0.36), Craft.LabelPaper, pull);
+                Craft.DrawPaper(ctx, this, r, s.Seed, paper, tilt, shadow: 0.35, fibres: 0.6);
+                using (Craft.PushLabel(ctx, r, tilt))
+                {
+                    using (ctx.PushOpacity(0.65 + 0.35 * pull))
+                        ctx.FillRectangle(look.ColorBrush, new Rect(2, 2.5, 8, lh - 4.5));
+                    using (ctx.PushOpacity(0.82 + 0.18 * pull))
+                        Craft.Print(ctx, code, new Point(16, Math.Round((lh - code.Height) / 2)));
+                }
+            }
+        }
+    }
+
+    private FormattedText? _codeFlat;
+
     private void DrawSleeveLabel(DrawingContext ctx, SystemLook look, SleeveShape s, double pull)
     {
         if (_codeInk is not { } code) return;
         var f = s.Front;
         var lw = Math.Min(f.Width - 8, Math.Ceiling(code.Height) + 10);
-        var y = 7 + Craft.Pick(s.Seed, 9, 0, 5);
-        var lh = Math.Min(Math.Ceiling(code.Width) + 22, f.Height - y - 7);
+        var y = 6 + Craft.Pick(s.Seed, 9, 0, 5);
+        var lh = Math.Min(Math.Ceiling(code.Width) + 26, f.Height - y - 6);
         if (lw < 10 || lh < 20) return;
         var x = Math.Round((f.Width - lw) / 2 + Craft.Range(s.Seed, 8, -1.2, 1.2), 1);
         // the label's tilt eases to 0° as the sleeve comes out (Step, with the pull)
         var tilt = Craft.Range(s.Seed, 10, -1.5, 1.5) * (1 - pull);
         var r = new Rect(x, y, lw, lh);
         // a quiet sleeve's label is paper in the shade of the row; the pulled one comes into the light
-        var paper = ColorUtil.Mix(ColorUtil.Mix(Craft.LabelPaper, look.WallHi, 0.42), Craft.LabelPaper, pull);
+        var paper = ColorUtil.Mix(ColorUtil.Mix(Craft.LabelPaper, look.WallHi, 0.36), Craft.LabelPaper, pull);
         Craft.DrawPaper(ctx, this, r, s.Seed, paper, tilt, shadow: 0.35, fibres: 0.6);
         using (Craft.PushLabel(ctx, r, tilt))
         {
-            // the stripe in the system colour, printed a hair off register
-            using (ctx.PushOpacity(0.55 + 0.45 * pull))
-                ctx.FillRectangle(look.ColorBrush, new Rect(2.5, 2, lw - 4.5, 4));
-            using (ctx.PushClip(new Rect(0, 8, lw, lh - 10)))
-            using (ctx.PushOpacity(0.78 + 0.22 * pull))
-            using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(Math.Round((lw - code.Height) / 2), Math.Round(8 + 6 + code.Width))))
+            // the stripe in the system colour (8 px, R3 QA), printed a hair off register
+            using (ctx.PushOpacity(0.65 + 0.35 * pull))
+                ctx.FillRectangle(look.ColorBrush, new Rect(2.5, 2, lw - 4.5, 8));
+            using (ctx.PushClip(new Rect(0, 12, lw, lh - 14)))
+            using (ctx.PushOpacity(0.82 + 0.18 * pull))
+            using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(Math.Round((lw - code.Height) / 2), Math.Round(12 + 5 + code.Width))))
                 Craft.Print(ctx, code, new Point(0, 0));
         }
     }

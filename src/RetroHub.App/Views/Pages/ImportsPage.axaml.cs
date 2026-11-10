@@ -25,6 +25,8 @@ public partial class ImportsPage : PageBase
     public ImportsPage()
     {
         InitializeComponent();
+        // the scan column grows with the free room beside the list (R3 QA: its right third stood empty at 1920)
+        Frame.SideColumnWidthChanged += w => Columns.ColumnDefinitions[2].Width = new GridLength(w);
         DataContextChanged += (_, _) =>
         {
             if (_vm != null) _vm.PropertyChanged -= OnVmChanged;

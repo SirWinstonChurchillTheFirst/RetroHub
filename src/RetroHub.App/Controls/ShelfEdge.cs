@@ -8,24 +8,28 @@ using RetroHub.App.Theming;
 namespace RetroHub.App.Controls;
 
 /// <summary>
-/// A "Winkel" (R2): a small chamfered metal plate screwed to the board front at the right end of a shelf, one pointing
-/// back, one on. Mouse only (never focusable): a click glides the row one view on, so the boxes beyond the window edge
-/// and the "Alle anzeigen" spine are always reachable. Drawn like the board: a plate a shade lighter than the front, a
-/// 1 px light edge on top and a dark one below, two screw dots, the chevron cut in. Hover lights the chevron (paper);
-/// a press pushes the plate 1 px in. A plate without boxes beyond it stays, quieter (no hover, no hand).
+/// A "Winkel" (R2, R3 QA: 30 × 20 at 1.6:1 was nearly invisible and a small target): a chamfered metal plate 44 × 30
+/// screwed to the board front at the right end of a shelf, one pointing back, one on. Mouse only (never focusable): a
+/// click glides the row one view on, so the boxes beyond the window edge and the "Alle anzeigen" spine are always
+/// reachable. Drawn like the board: a plate lit 10 % above the front, a light edge on top and a dark one below, two screw
+/// heads, the chevron cut in and embossed (lamp light at 75 % over a 1 px dark shadow). Hover lifts the plate 2 px with
+/// the 40 % ring of the boxes; a press pushes it 1 px in. A plate without boxes beyond it stays, quieter.
 /// </summary>
 public sealed class ShelfEdge : Control
 {
     public static readonly StyledProperty<int> DirectionProperty = AvaloniaProperty.Register<ShelfEdge, int>(nameof(Direction), 1);
 
-    private static readonly IImmutableSolidColorBrush Plate = new ImmutableSolidColorBrush(Color.Parse("#3A342B"));
-    private static readonly IImmutableSolidColorBrush PlateHot = new ImmutableSolidColorBrush(Color.Parse("#474036"));
-    private static readonly IImmutableSolidColorBrush TopEdge = new ImmutableSolidColorBrush(Color.Parse("#2EFFF3E0"));
-    private static readonly IImmutableSolidColorBrush BottomEdge = new ImmutableSolidColorBrush(Color.Parse("#80000000"));
+    private static readonly IImmutableSolidColorBrush Plate = new ImmutableSolidColorBrush(ColorUtil.Mix(Color.Parse("#2A2620"), Craft.Light, 0.10));
+    private static readonly IImmutableSolidColorBrush PlateHot = new ImmutableSolidColorBrush(ColorUtil.Mix(Color.Parse("#2A2620"), Craft.Light, 0.16));
+    private static readonly IImmutableSolidColorBrush TopEdge = new ImmutableSolidColorBrush(Color.Parse("#40FFF3E0"));
+    private static readonly IImmutableSolidColorBrush BottomEdge = new ImmutableSolidColorBrush(Color.Parse("#99000000"));
     private static readonly IImmutableSolidColorBrush Screw = new ImmutableSolidColorBrush(Color.Parse("#1F1C17"));
-    private static readonly IImmutableSolidColorBrush Text3 = new ImmutableSolidColorBrush(Color.Parse("#8F8678"));
-    private static readonly IImmutableSolidColorBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#5A5246"));
+    private static readonly IImmutableSolidColorBrush ScrewLit = new ImmutableSolidColorBrush(Color.Parse("#33FFF3E0"));
+    private static readonly IImmutableSolidColorBrush Chevron = new ImmutableSolidColorBrush(Craft.A(Craft.Light, 0.75));
+    private static readonly IImmutableSolidColorBrush ChevronShadow = new ImmutableSolidColorBrush(Color.Parse("#B3000000"));
+    private static readonly IImmutableSolidColorBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#6A6154"));
     private static readonly IImmutableSolidColorBrush PaperBrush = new ImmutableSolidColorBrush(SystemPalette.Paper);
+    private static readonly IImmutableSolidColorBrush Ring = new ImmutableSolidColorBrush(SystemPalette.Paper);
 
     private bool _live = true, _pressed;
 
@@ -33,12 +37,13 @@ public sealed class ShelfEdge : Control
     {
         AffectsRender<ShelfEdge>(DirectionProperty, IsPointerOverProperty);
         FocusableProperty.OverrideDefaultValue<ShelfEdge>(false);
+        ClipToBoundsProperty.OverrideDefaultValue<ShelfEdge>(false);
     }
 
     public ShelfEdge()
     {
-        Width = 30;
-        Height = 20;
+        Width = 44;
+        Height = 30;
         Opacity = 0;
         IsHitTestVisible = false;
         Cursor = new Cursor(StandardCursorType.Hand);
@@ -108,28 +113,44 @@ public sealed class ShelfEdge : Control
         var h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
         var hot = _live && IsPointerOver;
-        var dy = _pressed ? 1 : 0;
+        // hover lifts the plate 2 px off the board (its shadow shows under it); a press pushes it 1 px in
+        var dy = _pressed ? 1 : hot && Motion.AllowsMovement ? -2 : 0;
         var r = new Rect(0, dy, w, h - 1);
-        ctx.DrawGeometry(hot ? PlateHot : Plate, null, Chamfer.Octagon(r, 3));
+        if (dy < 0) ctx.DrawGeometry(Craft.Dark(0.45), null, Chamfer.Octagon(new Rect(1, 1, w - 1, h - 1), 4));
+        ctx.DrawGeometry(hot ? PlateHot : Plate, null, Chamfer.Octagon(r, 4));
+        using (ctx.PushGeometryClip(Chamfer.Octagon(r, 4)))
+        {
+            ctx.FillRectangle(Craft.Curvature, r);
+            ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.28, Craft.Toward.Down), new Rect(0, r.Bottom - 8, w, 8));
+            Craft.Scuffs(ctx, r, Craft.Seed(Direction > 0 ? "winkel+" : "winkel-"), 1, 0.08);
+        }
         // light from above: a lit top edge, a dark lower edge (the plate stands 1 px off the board)
-        ctx.FillRectangle(TopEdge, new Rect(3, dy, w - 6, 1));
-        if (!_pressed) ctx.FillRectangle(BottomEdge, new Rect(3, h - 1, w - 6, 1));
-        // two screws
-        ctx.FillRectangle(Screw, new Rect(3, dy + h / 2 - 1.5, 2, 2));
-        ctx.FillRectangle(Screw, new Rect(w - 5, dy + h / 2 - 1.5, 2, 2));
-        // the chevron, cut in: 6 × 10, 2 px stroke
-        var cx = w / 2 + (Direction > 0 ? 1 : -1);
+        ctx.FillRectangle(TopEdge, new Rect(4, dy, w - 8, 1));
+        if (!_pressed) ctx.FillRectangle(BottomEdge, new Rect(4, dy + h - 1, w - 8, 1));
+        // two screw heads, lit on their upper rim
+        foreach (var sx in new[] { 5.0, w - 8 })
+        {
+            ctx.FillRectangle(Screw, new Rect(sx, dy + h / 2 - 1.5, 3, 3));
+            ctx.FillRectangle(ScrewLit, new Rect(sx, dy + h / 2 - 2.5, 3, 1));
+        }
+        // the chevron, cut in and embossed: 8 × 14, 2.5 px stroke, its dark copy 1 px down
+        var cx = w / 2 + (Direction > 0 ? 1.5 : -1.5);
         var cy = dy + (h - 1) / 2;
-        var pen = new Pen(!_live ? Dim : hot ? PaperBrush : Text3, 2, lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter);
-        var sx = Direction > 0 ? -3 : 3;
+        var sxv = Direction > 0 ? -4 : 4;
         var geo = new StreamGeometry();
         using (var g = geo.Open())
         {
-            g.BeginFigure(new Point(cx + sx, cy - 5), false);
-            g.LineTo(new Point(cx - sx, cy));
-            g.LineTo(new Point(cx + sx, cy + 5));
+            g.BeginFigure(new Point(cx + sxv, cy - 7), false);
+            g.LineTo(new Point(cx - sxv, cy));
+            g.LineTo(new Point(cx + sxv, cy + 7));
             g.EndFigure(false);
         }
-        ctx.DrawGeometry(null, pen, geo);
+        using (ctx.PushTransform(Matrix.CreateTranslation(0, 1)))
+            ctx.DrawGeometry(null, new Pen(ChevronShadow, 2.5, lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter), geo);
+        ctx.DrawGeometry(null, new Pen(!_live ? Dim : hot ? PaperBrush : Chevron, 2.5, lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter), geo);
+        // the 40 % ring of a hovered box
+        if (hot)
+            using (ctx.PushOpacity(0.4))
+                Chamfer.DrawRing(ctx, r, Ring, gap: 2, ring: 2, chamfer: 6);
     }
 }

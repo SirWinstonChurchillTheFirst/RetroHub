@@ -166,11 +166,11 @@ Neu in v1.1: Die Wand wird **aus dem Gehäusematerial** abgeleitet und nicht meh
 | gbc | beere | Handheld hoch (doppelt) | #8E3BD0 | #2FB8A6 | #BD8CE3 | 5,8 | Papier 4,9 |
 | gba | violett | Handheld quer | #5A46D9 | #A9A2E8 | #A499EA | 6,0 | Papier 5,4 |
 | gamecube | violett | MiniDisc | #6450CC | #F29A3B | #A498E1 | 5,9 | Papier 5,0 |
-| wii | weiß | Remote (Fernbedienung, geschwenkt; R2) | #3FC0EE | #E6EEF2 | #7CD4F3 | 6,3 | Tinte 8,9 |
+| wii | weiß | Remote (schmaler Block, der funkt; R3) | #3FC0EE | #E6EEF2 | #7CD4F3 | 6,3 | Tinte 8,9 |
 | wiiu | weiß | Tablet (zweiter Bildschirm) | #12A0CC | #F0F0F0 | #7CD7F3 | 6,5 | Tinte 6,2 |
 | nds | kühlgrau | Klappe | #8FA3B8 | #3C4654 | #A6B7C9 | 6,4 | Tinte 7,2 |
 | 3ds | anthrazit | ClamshellWide (Klappe mit Tiefen-Treppe) | #C21D26 | #2B2B30 | #EC8389 | 5,6 | Papier 5,1 |
-| switch | anthrazit | Dock (Handgerät über Sockel) | #C41F2A | #2E2E33 | #EB848B | 5,6 | Papier 5,0 |
+| switch | anthrazit | Dock (Bildschirm zwischen zwei Seitenblöcken; R3) | #C41F2A | #2E2E33 | #EB848B | 5,6 | Papier 5,0 |
 | virtualboy | schwarz | TwinLens (Stereobrille) | #C8121C | #1A0505 | #F37C83 | 6,8 | Papier 5,0 |
 | arcade | schwarz | Bedienfeld | #FF2E88 | #22E4FF | #F47BAF | 7,0 | Tinte 5,3 |
 | pc | beige | Diskette | #C7B48A | #3FBF6A | #D1C19E | 6,8 | Tinte 9,2 |
@@ -472,9 +472,9 @@ DiscBands     saturn     Disc mit zwei harten konzentrischen Bändern (Zweitfarb
 DiscHalftone  dreamcast  Disc mit Halbtonpunkten, nach rechts zunehmend
 MiniDisc      gamecube   kleine Disc (60,82) r 38, Loch r 13, 6-px-Ring in Zweitfarbe
 Tray          segacd     große Disc (60,58) r 46 hinter einer breiten, flachen Schubladenfront M4,92 H116 V120 mit Griffmulde
-Remote        wii        R2 (ersetzt SlotDisc, das schwächste Motiv): eine Fernbedienung, geschwenkt – schlanker Stab (32 × 106, runde Enden) in Zweitfarbe mit Kreuz, einer großen Taste in Farbe, zwei kleinen Tasten und vier Lämpchen, die Handschlaufe kringelt sich am Fuß, zwei Bewegungsbögen neben dem Kopf
+Remote        wii        R3 (Außenseiter-Test: die geschwenkte Fernbedienung mit Wellen war zu nah an einem Produkt): ein schmaler, aufrechter Block (38 × 98) auf kurzem Fuß, oben eine Schlitzlinie, unten ein Leuchtstreifen in Farbe, daneben zwei Funkbögen – kein Tastenbild
 Tablet        wiiu       zweiter Bildschirm: ein Tablett mit Kreuz und Tasten steht VOR einem großen Bildschirm-Umriss (2 px); kein Monitorfuß
-Dock          switch     Hybrid: ein einteiliges Handgerät, 8 px über dem Schlitz eines flachen Sockels angehoben; keine Dock-Wände über dem Bildschirm, keine Seitenteile, kein Farbpaar
+Dock          switch     R3: ein leerer Bildschirm (Rahmen in der Hebefarbe, Glas dunkel) zwischen zwei getrennten Seitenblöcken mit je 4 px Fuge – links ein Kreuz, rechts zwei Tasten –, kein Sockel, kein Farbpaar
 Andere Geräte
 TwinLens      virtualboy  Stereobrille: Visier mit Nasenkerbe, zwei Linsen, Riemenansätze, nur Linien in Licht; KEIN Standfuß
 ControlPanel  arcade      Bedienfeld mit Stick und 2×3 Knöpfen
@@ -554,9 +554,9 @@ Die Motiv- und Gehäusezuordnung steht in der Systemtabelle 2.4 (Motivnamen dort
 | DiscHalftone (dreamcast) | „eine CD“ | Punktraster, **keine Spirale** |
 | MiniDisc (gamecube) | „eine kleine Disc“ | das Medium, nicht der Würfel; kein Griff, kein Würfel-im-Würfel |
 | Tray (segacd) | „ein CD-Laufwerk mit Schublade“ | Allerweltslaufwerk |
-| Remote (wii) | „eine Fernbedienung, geschwenkt“ | **R2 geändert**: die flache Disc im Schlitzblock war das schwächste Motiv (weißer Block mit Sichel). Eine Fernbedienung mit Kreuz und Tasten ist eine Kategorie (jede TV-Fernbedienung), die Bewegungsbögen sagen „bewegungsgesteuert“; kein Gerätegehäuse |
+| Remote (wii) | „ein Gerät, das funkt“ | **R3 geändert**: die Fernbedienung mit Kreuz, Tasten und Bewegungsbögen bestand den Außenseiter-Test nicht mehr. Jetzt ein schlanker Block mit Schlitzlinie und zwei Funkbögen, ohne Tastenbild |
 | Tablet (wiiu) | „ein Tablet vor einem Fernseher“ | **geändert in M5**: das Tablett auf einem Monitorfuß las sich als Monitor. Jetzt „zweiter Bildschirm“: Tablett vor einem Bildschirm-Umriss, keine Sticks an Produktpositionen |
-| Dock (switch) | „ein Handgerät über seiner Ladeschale“ | **geändert in M5**: der Bildschirm halb im Block entsprach dem Dock des Produkts. Jetzt ein einteiliges Handgerät über einem flachen Sockel mit Schlitz; keine abnehmbaren Seitenteile, kein Rot/Blau |
+| Dock (switch) | „ein Bildschirm zwischen zwei Griffen“ | **R3 geändert**: das Handgerät über dem roten Sockel war zu nah am Produkt. Jetzt ein leerer Bildschirm zwischen zwei getrennten, gleichfarbigen Seitenblöcken; kein Sockel, kein Rot/Blau |
 | TwinLens (virtualboy) | „eine VR-Brille“ | **geändert in M5**: Rahmen auf Zweibein war das Gerät; mit Bügel oben las es sich als Radio. Jetzt Visier mit Nasenkerbe und Riemen, ohne Fuß |
 | ControlPanel (arcade) | „ein Spielhallen-Bedienfeld“ | generische 2×3-Knopfreihe |
 | Stick (atari2600) | „ein Joystick“ | Kategorie schlechthin, kein Gehäuse eines Modells |
@@ -894,7 +894,7 @@ Ein horizontales Bühnenbrett voller **Systemrücken** (`Shelf` mit `SystemSpine
 
 #### 7.4.3 Stand M7 „gezeichnet“ (Owner: „besonders unten, wo die Konsolen aufgelistet sind“)
 
-- **„Noch leer“ = Pappschuber** statt 48 × 148 Farbfelder: Front 40–46 px breit (geseedet), 0–8 px niedriger als die Reihe, Pappton (Wand hell 30 % zu #6B5E4C) mit Fasern, Seitenfläche 5 px, Oberfläche 3 px mit dem **offenen Mund** (dunkler Schlitz), Kanten, Schmutz am Fuß, 1–2 Kratzer, jede zweite mit eingedrückter Ecke. Etwa jeder vierte lehnt (nie der erste) am linken Nachbarn, so weit, dass seine Oberkante aufliegt (asin(7/h)). Darauf ein **Papieretikett** mit Streifen in der Systemfarbe und dem Code in Tinte (Rücken 16; kurze Schuber bis 13, damit lange Codes ganz stehen), im Schatten der Reihe abgetönt.
+- **„Noch leer“ = Pappschuber** statt 48 × 148 Farbfelder (Maße, Lehnen und Fokus seit R3 siehe 7.9): Front geseedet breit, niedriger als die Reihe, Pappton mit Fasern, Seitenfläche 5 px, Oberfläche 3 px mit dem **offenen Mund** (dunkler Schlitz), Kanten, Schmutz am Fuß, 1–2 Kratzer, jede zweite mit eingedrückter Ecke. Etwa jeder vierte lehnt (nie der erste) am linken Nachbarn, so weit, dass seine Oberkante aufliegt (asin(7/h)). Darauf ein **Papieretikett** mit Streifen in der Systemfarbe und dem Code in Tinte (Rücken 16; kurze Schuber bis 13, damit lange Codes ganz stehen), im Schatten der Reihe abgetönt.
 - **Fokus zieht den Schuber heraus**: gerade gerichtet, 8 px hoch, Etikett in vollem Papier (Step 140 ms; Reduziert/Aus: ohne Hub, sofort). Kein Lift 1,03 für Schuber.
 - Die Reihe endet an einer **Buchstütze** (`Bookend`, Blech-L mit Stanzschlitz, eigener Schatten; `Shelf.Bookend`), nicht abgeschnitten. Die Breite zählt beim Scrollen mit.
 - **Rücken der Fächerwand und von Start**: Seiten- und Oberfläche, Wölbung, **gedrucktes Farbband** (eingerückt 7/5 px, 10/8 px hoch, Druckkante) statt bündiger Oberkante, Code mit 1-px-Prägung, Spielzahl auf einer **aufgesetzten Plakette** (gefast, zwei Nieten), Motiv mit Relief, Höhe 0/4/8 px niedriger (Start 0/2/4), jede dritte mit abgestoßener Ecke. Die „Alle“-Spine von Start ist dasselbe Objekt (`BoxFace`).
@@ -1019,6 +1019,24 @@ Gesamtbefund: Start, Bibliothek, Detail, Konsolen und Systemseite lesen sich als
 - **Mehr Bewegung** (alle mit 9.4): Fallblatt, Schaukasten, Karteikarte, Meldungsstreifen; ein Schuber unter der ruhenden Maus wird halb herausgezogen (Pull 0,45).
 - **Funktion**: Dolphin-Version aus der Datei (`Dolphin 2609b`, ohne Start, gecacht); Vorschaubild-Cache räumt beim Start entfernte und geänderte Cover auf (Namen mit Pfad- und Stand-Hash).
 
+### 7.9 Stand R3 (Owner: „manches fühlt sich hingecodet an, besonders unten, wo die Konsolen aufgelistet sind“)
+
+- **„Noch leer“ als gepackte Reihe**: Schuber 56 × 168 (≈ 1100: 48 × 116), Front geseedet SpineWidth −14 … +10 breit, 0–13 % niedriger, **2 px** Abstand (vorher 8: ein Kamm aus gleichen Feldern). Jeder vierte (nie der erste) **lehnt 4–7°** (Oberkante 12–18 px nach links); das Element hält links den Platz dafür frei, die Ecke liegt an der Seitenfläche des Nachbarn. Ab sechs Schubern **liegt der letzte flach** vor der Buchstütze (Rücken nach vorn, Etikett quer, offenes Ende rechts). Der Pappton trägt **30 % Systemfarbe** (Pappe #6B5E4C, im Schatten der Reihe 25 % Wand), der Etikettstreifen ist 8 px, jeder dritte Schuber hat eine Knickfalte. `Shelf` rechnet mit der eigenen Breite jedes Schubers (`SystemSpine.ClosedWidth`). Die Reihe füllt bei 1920 rund drei Viertel des Bretts.
+- **Fokus zieht nach vorn**, nicht hoch: 1,06 vom Fuß aus (Maus: 1,03), dunklerer Kontaktschatten unter dem Fuß (0,45), die Nachbarn treten zurück (`RowShade` 15 %, Step). Der Ring ist Lampenlicht 85 % auf 1 px dunkler Kontur (das Systemlicht war auf dunklen Gehäusen zu schwach). Accept hebt ihn weiterhin 24 px heraus.
+- **Buchstütze der Reihe**: 16 px Blech (vorher 9), bis 140 hoch, heller (#5C564C), beleuchtete Oberkante, abgegriffene Stelle.
+- **Zählerfenster auf „Noch leer“**: „Noch leer · 3 von 20“ statt eines leeren Rahmens; ohne Text ist das Fenster unsichtbar.
+- **Start-Rücken**: Das Motiv wird an der **ungesenkten** Höhe entschieden und auf den Platz unter dem Code verkleinert (22–40 px); lange Codes treten bis 16 px zurück (≈ 1100: 15), damit es bei 1920 ≥ 26 px bleibt. Der Code bleibt immer ganz; wo er den Platz braucht (GameCube bei ≈ 1100), entfällt das Motiv.
+- **Fächerwand-Rücken**: Die Tonkante sitzt geseedet bei 32–44 %, läuft leicht unruhig (± 1,5 px) und hat statt der 1-px-Lichtkante einen weichen Übergang (6 px, 6 %).
+- **Winkel** (8.3): 44 × 30, Platte 10 % heller als die Brettfront, Chevron Lampenlicht 75 % mit 1 px Prägung, Hover hebt die Platte 2 px mit dem 40-%-Ring.
+- **Systemseite, Kopf**: Die Wand hat eine **Bilderleiste** an der Tonkante (4 px beleuchtete Oberseite, 7 px Front mit Maserung, Schatten auf der Wand), die Tonkante ist unruhig, das Farbband 8 px **eingedruckt** 24 px vom Rand mit abgeriebenen Stellen, die Wand dunkelt zum Brett hin. Die Nachbarn sind **zwei Papierzettel** mit Klebeband (Tinte, leicht schräg), daneben die Schulter-Glyphen; Fokus = Ring um den Zettel, Hover hellt das Papier.
+- **Leere Plätze** (Start, Fächerwand, Bibliothek, Systemseite): keine dunklen Flächen mehr, sondern **Spuren**: ein geseedeter Fußabdruck (45–92 % der Breite, 62–98 % der Höhe) zwischen zwei Staubwehen, auf etwa jedem dritten Platz die sauberere Wand mit dem weichen Schatten der Kanten.
+- **Lieferschein** auf **hellem Papier** (#E9E1CF, Tinte #2A251E, vergilbte Ränder, Wölbung rechts 0,30), oben und unten abgerissen. Die neuen Rücken sind 34 px breit mit dem Systemcode in 12; der Titel steht im Tooltip und als Name.
+- **Werkbank-Seitenspalte**: wächst mit dem freien Platz neben der vollen Liste von 420 bis 560 (1920: 548); Importe zieht seine Scan-Spalte mit.
+- **Fallblatt**: Der Spalt ist eine weiche Linie (55 %) einen Pixel tiefer mit der Lichtlippe (8 %) darunter, 2 px vor den Kartenkanten (Stifte).
+- **Detail, Bildschirme groß**: Die Beschriftung steht wie auf der Seite als Papierstreifen am Kinn (bis 20 px); das flache Band unter dem Brett entfällt.
+- **Favoriten-Stempel** (`InkStamp`): ein 64-px-Gummistempel in roter Tinte (85 %) unten rechts auf der Schachtel – Stern im Doppelring, der äußere Ring abgenutzt, −9°. Wird dasselbe Spiel Favorit, landet er (1,3 → 1,0, 2° Nachdrehen, 220 ms; Reduziert: Einblenden; Aus: sofort); beim Wechsel des Spiels steht er einfach da.
+- **Noch offen**: Die Etikettgrößen der Platzhalter auf schmalen Hochformat-Hüllen (Switch, Wii U) springen in einer Reihe gegen breite Hüllen – unverändert, weil die Fit-Regeln viele Tests tragen.
+
 ## 8. Fokus- und Auswahl-Sprache (Controller)
 
 Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wand, Primärbutton) besteht er aus Hebung, Lichtkegel von oben, beleuchtetem Brett und gefastem Ring. Bei kleinen Elementen ist er eine Inversion. Bei Zeilen ist er eine helle Zeile mit Balken und Papier-Chip. Andere Elemente ändern sich nicht. Gedimmt wird nur als Status.
@@ -1057,7 +1075,7 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 - **Alles per Maus erreichbar (R2)**, mit echten Zeiger-Tests (`MouseReachabilityTests`, Bewegung Aus):
   - **Zurück**: die Zurück-Taste der Maus (XButton1) wirkt überall wie Zurück (Dialog, Liste, Falte, Verlauf; nicht während ein Spiel in RetroHub läuft). Die Fußleisten-Hinweise sind Mausziele (`RhHintButton`: Glyph leuchtet, 1-px-Linie in Text 3, Druck 0,97; nie fokussierbar), nur „Öffnen/Starten“ nicht. „Zurück“ fällt bei schmalen Fenstern nie heraus. Das Abschnittswort der Ortszeile („Konsolen ›“) führt auf Drill-in-Seiten zurück zum Abschnitt.
   - **Ein Druck verschiebt nichts**: Fokus durch die Maus gleitet keine Reihe an den Anker, scrollt keine Liste und aktiviert kein anderes Brett vor dem Loslassen (sonst trifft das Loslassen nichts mehr). Auf einen geschlossenen Systemrücken dreht der erste Klick die Front nach vorn, der Klick auf die offene Front öffnet das System (Start-Brett „Konsolen“ und Fächerwand gleich).
-  - **Reihen**: Shift+Rad bzw. das horizontale Rad schiebt ein Brett seitlich, auf „Noch leer“ auch das normale Rad. Am rechten Brettende stehen zwei **Winkel** (`ShelfEdge`, gefaste Metallplättchen 30 × 20 mit zwei Schrauben, eingeschnittenem Winkel, Lichtkante oben), nur solange der Zeiger über einem überlaufenden Brett steht; ein Klick schiebt eine Ansicht weiter, ein Plättchen ohne Ziel bleibt matt. Auf der Fächerwand und der Schiene schaltet das Rad das nächste System nach vorn; die Schiene zeigt beim Hover den Strich groß mit Code in Text 2 und den Namen als Tooltip und lässt sich ziehen. Das Rad über Ticker und Regalspiegel scrollt.
+  - **Reihen**: Shift+Rad bzw. das horizontale Rad schiebt ein Brett seitlich, auf „Noch leer“ auch das normale Rad. Am rechten Brettende stehen zwei **Winkel** (`ShelfEdge`, gefaste Metallplättchen 44 × 30 mit zwei Schrauben, eingeschnittenem Winkel, Lichtkante oben; R3), nur solange der Zeiger über einem überlaufenden Brett steht; ein Klick schiebt eine Ansicht weiter, ein Plättchen ohne Ziel bleibt matt. Auf der Fächerwand und der Schiene schaltet das Rad das nächste System nach vorn; die Schiene zeigt beim Hover den Strich groß mit Code in Text 2 und den Namen als Tooltip und lässt sich ziehen. Das Rad über Ticker und Regalspiegel scrollt.
   - **Rechtsklick** auf Schachtel oder Systemrücken: eine Liste im Stil von „Mehr“ (Regal, 1-px-Kante, Lichtkante, 56-px-Zeilen) am Zeiger: Spielen, Details, Favorit, Ordner öffnen bzw. Öffnen, In der Bibliothek zeigen. Esc, Zurück oder ein Klick daneben schließen sie. Die Sortierung nutzt dieselbe Liste (das letzte Fluent-Menü ist weg).
   - **Listenansicht**: der erste Klick wählt die Zeile (die Vorschau füllt sich), der zweite öffnet.
   - **Falten und Listen** (Auswahl, Dateiinfo, Weiterlesen, Importe „Mehr“) schließen auf ihre eigene Zeile und auf einen Klick daneben, der Klick erreicht trotzdem sein Ziel. Der Schleier um einen Dialog bricht ab. Während das Bild ausgeht (Rückkehr), schluckt die Übergangsebene Klicks.

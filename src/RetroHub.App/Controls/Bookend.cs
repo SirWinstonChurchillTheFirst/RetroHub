@@ -12,30 +12,37 @@ namespace RetroHub.App.Controls;
 /// </summary>
 public sealed class Bookend : Control
 {
-    /// <summary>The width the bookend takes in its row.</summary>
+    /// <summary>The width a small bookend takes (inside a front's compartment).</summary>
     public const double SlotWidth = 34;
 
+    /// <summary>The width the heavy bookend at the end of a row takes (R3 QA: the 9 px stick read as a faint line).</summary>
+    public const double RowSlotWidth = 44;
+
     private static readonly Color Metal = Color.Parse("#4A453D");
+    private static readonly Color MetalHeavy = Color.Parse("#5C564C");
 
     static Bookend()
     {
         IsHitTestVisibleProperty.OverrideDefaultValue<Bookend>(false);
         FocusableProperty.OverrideDefaultValue<Bookend>(false);
         ClipToBoundsProperty.OverrideDefaultValue<Bookend>(false);
-        WidthProperty.OverrideDefaultValue<Bookend>(SlotWidth);
+        WidthProperty.OverrideDefaultValue<Bookend>(RowSlotWidth);
     }
 
-    public override void Render(DrawingContext ctx) => Draw(ctx, new Rect(Bounds.Size));
+    public override void Render(DrawingContext ctx) => Draw(ctx, new Rect(Bounds.Size), 140, 16);
 
     /// <summary>The bookend standing on the bottom edge of <paramref name="area"/> (also inside a front's compartment).</summary>
-    public static void Draw(DrawingContext ctx, Rect area, double maxUpright = 118)
+    public static void Draw(DrawingContext ctx, Rect area, double maxUpright = 118, double thickness = 9)
     {
+        var heavy = thickness >= 12;
+        var metal = heavy ? MetalHeavy : Metal;
         var H = area.Height;
         if (H <= 0) return;
         using var _ = ctx.PushTransform(Matrix.CreateTranslation(area.X, area.Y));
         var up = Math.Min(maxUpright, Math.Round(H * 0.8));
-        var upright = new Rect(2, H - up, 9, up);
-        const double footH = 3, footW = 30;
+        var upright = new Rect(2, H - up, thickness, up);
+        var footH = heavy ? 4.0 : 3.0;
+        var footW = heavy ? 40.0 : 30.0;
         Craft.CastShadow(ctx, upright, 12, 0.42);
         // the upright: a rounded top corner (outer), lit left edge, dark right edge, a punched slot
         var g = new StreamGeometry();
@@ -49,19 +56,25 @@ public sealed class Bookend : Control
             c.LineTo(new Point(upright.Right, upright.Bottom));
             c.EndFigure(true);
         }
-        ctx.DrawGeometry(Craft.Solid(Metal), null, g);
+        ctx.DrawGeometry(Craft.Solid(metal), null, g);
         using (ctx.PushGeometryClip(g))
         {
             ctx.FillRectangle(Craft.Curvature, upright);
-            Craft.Edges(ctx, upright, lit: 0.18, dark: 0.45, grime: 0.30, grimeHeight: 10, topLit: 0.14, softRight: 3);
+            Craft.Edges(ctx, upright, lit: 0.18, dark: 0.45, grime: 0.30, grimeHeight: 10, topLit: heavy ? 0.12 : 0.14, softRight: 3);
+            // the heavy one: a lit top face (the plate's cut edge catches the lamp) and a worn patch where hands push it
+            if (heavy)
+            {
+                ctx.FillRectangle(Craft.Hi(0.22), new Rect(upright.X + 2, upright.Y, upright.Width - 5, 2));
+                ctx.FillRectangle(Craft.Hi(0.06), new Rect(upright.X + 3, upright.Y + Math.Round(up * 0.55), upright.Width - 7, Math.Round(up * 0.18)));
+            }
             Craft.Scuffs(ctx, upright, Craft.Seed("bookend"), 1, 0.10);
         }
-        var slot = new Rect(upright.X + 3, upright.Y + Math.Round(up * 0.22), 3, Math.Round(up * 0.26));
+        var slot = new Rect(upright.X + Math.Round(thickness / 3), upright.Y + Math.Round(up * 0.22), heavy ? 4 : 3, Math.Round(up * 0.26));
         ctx.FillRectangle(Craft.Solid(Craft.Deep), slot);
         Craft.Recess(ctx, slot, 2, 0.6, 0.12);
         // the foot: a 3 px plate along the board top, its bend lit, its front edge dark
         var foot = new Rect(upright.X, H - footH, footW, footH);
-        ctx.FillRectangle(Craft.Solid(ColorUtil.Mix(Metal, Colors.Black, 0.18)), foot);
+        ctx.FillRectangle(Craft.Solid(ColorUtil.Mix(metal, Colors.Black, 0.18)), foot);
         ctx.FillRectangle(Craft.Hi(0.16), new Rect(foot.X + 1, foot.Y, foot.Width - 2, 1));
         ctx.FillRectangle(Craft.Hi(0.22), new Rect(upright.Right - 1, H - footH - 2, 3, 2));
         ctx.FillRectangle(Craft.Dark(0.45), new Rect(foot.Right - 1, foot.Y, 1, footH));

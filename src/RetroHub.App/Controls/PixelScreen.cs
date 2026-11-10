@@ -459,7 +459,7 @@ public sealed class PixelScreen : Panel
         {
             var text = owner.Caption;
             if (string.IsNullOrEmpty(text) || chin < 18) return;
-            var size = Math.Clamp(Math.Round(chin * 0.55), 12, 16);
+            var size = Math.Clamp(Math.Round(chin * 0.55), 12, 20);
             if (_caption == null || _captionKey != (text, size))
             {
                 _captionKey = (text, size);

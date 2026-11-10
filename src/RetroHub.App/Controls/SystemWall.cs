@@ -36,12 +36,21 @@ public sealed class SystemWall : Control
     public static readonly StyledProperty<double> SplitHeightProperty =
         AvaloniaProperty.Register<SystemWall, double>(nameof(SplitHeight), double.NaN);
 
+    /// <summary>
+    /// A banner wall (Systemseite, R3 QA: a flat grey bar over a flat band with a hairline read as "coded"): the two tones
+    /// meet at a wooden picture rail (lit top face, front with grain, its shadow on the wall below), the tone edge runs
+    /// uneven, the colour band is printed 24 px in from the left with seeded wear, and the wall darkens toward the board.
+    /// </summary>
+    public static readonly StyledProperty<bool> RailProperty =
+        AvaloniaProperty.Register<SystemWall, bool>(nameof(Rail));
+
     private static readonly IImmutableSolidColorBrush LightEdge = new ImmutableSolidColorBrush(Color.Parse("#17FFF3E0"));
+    private static readonly Color RailWood = Color.Parse("#3A332A");
 
     static SystemWall()
     {
         AffectsRender<SystemWall>(SystemIdProperty, AccentProperty, MotifShareProperty, MotifInsetProperty, BandHeightProperty, TextureOpacityProperty,
-            SplitHeightProperty);
+            SplitHeightProperty, RailProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<SystemWall>(false);
         ClipToBoundsProperty.OverrideDefaultValue<SystemWall>(true);
     }
@@ -53,13 +62,79 @@ public sealed class SystemWall : Control
     public double BandHeight { get => GetValue(BandHeightProperty); set => SetValue(BandHeightProperty, value); }
     public double TextureOpacity { get => GetValue(TextureOpacityProperty); set => SetValue(TextureOpacityProperty, value); }
     public double SplitHeight { get => GetValue(SplitHeightProperty); set => SetValue(SplitHeightProperty, value); }
+    public bool Rail { get => GetValue(RailProperty); set => SetValue(RailProperty, value); }
 
     public override void Render(DrawingContext context)
     {
         var r = new Rect(Bounds.Size);
         if (r.Width <= 0 || r.Height <= 0) return;
         var look = SystemPalette.Get(SystemId, Accent);
-        Draw(context, this, r, look, BandHeight, MotifShare, MotifInset, TextureOpacity, SplitHeight);
+        if (Rail) DrawRailWall(context, r, look);
+        else Draw(context, this, r, look, BandHeight, MotifShare, MotifInset, TextureOpacity, SplitHeight);
+    }
+
+    private StreamGeometry? _upper;
+    private (double, double, uint) _upperKey;
+
+    /// <summary>The banner wall with its picture rail (see <see cref="RailProperty"/>).</summary>
+    private void DrawRailWall(DrawingContext ctx, Rect r, SystemLook look)
+    {
+        var seed = Craft.Seed(SystemId);
+        var split = double.IsNaN(SplitHeight) ? Math.Round(r.Height * 0.38) : Math.Clamp(Math.Round(SplitHeight), 0, r.Height);
+        ctx.FillRectangle(look.WallBrush, r);
+        // the upper tone with an uneven lower edge (hidden by the rail, but it shows in the 2 px above it)
+        if (_upper == null || _upperKey != (r.Width, split, seed))
+        {
+            _upperKey = (r.Width, split, seed);
+            _upper = new StreamGeometry();
+            using var c = _upper.Open();
+            c.BeginFigure(new Point(0, 0), true);
+            c.LineTo(new Point(r.Width, 0));
+            var phase = Craft.Range(seed, 31, 0, Math.PI * 2);
+            for (var x = r.Width; x > -8; x -= 8)
+            {
+                var px = Math.Max(0, x);
+                c.LineTo(new Point(px, split + 1.2 * Math.Sin(phase + px / 41.0) + 0.6 * Math.Sin(phase * 3 + px / 9.0)));
+            }
+            c.EndFigure(true);
+        }
+        ctx.DrawGeometry(look.WallHiBrush, null, _upper);
+        DrawTextures(ctx, this, r, look, TextureOpacity);
+        // the lamp above the banner: the wall is lit near the rail and falls off toward the board (no flat panel)
+        ctx.FillRectangle(Craft.Fade(Craft.Light, 0.05, 0, Craft.Toward.Down), new Rect(0, split + 6, r.Width, Math.Round((r.Height - split) * 0.45)));
+        ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.30, Craft.Toward.Down), new Rect(0, r.Bottom - Math.Round((r.Height - split) * 0.5), r.Width, Math.Round((r.Height - split) * 0.5)));
+        // the picture rail: 4 px lit top face, 7 px front with grain, a dark lower edge, its shadow on the wall
+        var railTop = split - 4;
+        var wood = ColorUtil.Mix(RailWood, look.Wall, 0.35);
+        ctx.FillRectangle(Craft.Fade(Colors.Black, 0.40, 0, Craft.Toward.Down), new Rect(0, railTop + 11, r.Width, 12));
+        ctx.FillRectangle(Craft.Solid(ColorUtil.Mix(wood, Craft.Light, 0.16)), new Rect(0, railTop, r.Width, 4));
+        ctx.FillRectangle(Craft.Hi(0.18), new Rect(0, railTop, r.Width, 1));
+        var front = new Rect(0, railTop + 4, r.Width, 7);
+        ctx.FillRectangle(Craft.Solid(wood), front);
+        TextureFill.Draw(ctx, this, front, Texture.BoardGrain, 0.5);
+        ctx.FillRectangle(Craft.Fade(Craft.Light, 0.08, 0, Craft.Toward.Down), new Rect(0, front.Y, r.Width, 3));
+        ctx.FillRectangle(Craft.Dark(0.55), new Rect(0, front.Bottom - 1, r.Width, 1));
+        Craft.Nicks(ctx, front, seed, 5);
+        // the colour band: printed 24 px in from the left, 8 px, with its print edge and seeded wear
+        if (BandHeight > 0)
+        {
+            var band = new Rect(24, 10, Math.Max(0, r.Width - 48), BandHeight);
+            ctx.FillRectangle(look.ColorBrush, band);
+            ctx.FillRectangle(Craft.Solid(ColorUtil.Mix(look.Color, Colors.Black, 0.32)), new Rect(band.X, band.Bottom, band.Width, 1));
+            ctx.FillRectangle(Craft.Hi(0.14), new Rect(band.X, band.Y, band.Width, 1));
+            // worn print: a few long patches where the ink rubbed thin (soft, the band's full height)
+            var wear = Craft.Pick(seed, 33, 2, 4);
+            for (var i = 0; i < wear; i++)
+            {
+                var ww = Math.Round(Craft.Range(seed, 60 + i, 40, 140));
+                var wx = band.X + Math.Round(Craft.Range(seed, 40 + i, 0, Math.Max(0, band.Width - ww)));
+                ctx.FillRectangle(Craft.Fade(Craft.Light, 0, 0.10, Craft.Toward.Right), new Rect(wx, band.Y, Math.Round(ww / 2), BandHeight));
+                ctx.FillRectangle(Craft.Fade(Craft.Light, 0.10, 0, Craft.Toward.Right), new Rect(wx + Math.Round(ww / 2), band.Y, ww - Math.Round(ww / 2), BandHeight));
+            }
+            // the band's ends are torn a little, not cut
+            ctx.FillRectangle(look.WallHiBrush, new Rect(band.X, band.Y, 2, Math.Round(BandHeight * 0.5)));
+            ctx.FillRectangle(look.WallHiBrush, new Rect(band.Right - 2, band.Y + Math.Round(BandHeight * 0.4), 2, BandHeight));
+        }
     }
 
     /// <summary>

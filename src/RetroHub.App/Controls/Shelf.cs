@@ -75,7 +75,7 @@ public class Shelf : TemplatedControl
     public bool Bookend { get => GetValue(BookendProperty); set => SetValue(BookendProperty, value); }
 
     /// <summary>Width the row needs after its last item (the bookend and its spacing).</summary>
-    private double EndExtra => Bookend ? ItemSpacing + Controls.Bookend.SlotWidth : 0;
+    private double EndExtra => Bookend ? ItemSpacing + Controls.Bookend.RowSlotWidth : 0;
 
     /// <summary>The focus visuals of this shelf (null until the template is applied).</summary>
     public FocusLayer? FocusVisuals { get; private set; }
@@ -302,7 +302,7 @@ public class Shelf : TemplatedControl
 
     private static double TargetWidth(Control item, bool focused) => item switch
     {
-        SystemSpine s => focused ? s.OpenWidth : s.SpineWidth,
+        SystemSpine s => focused && s.Opens ? s.OpenWidth : s.ClosedWidth,
         _ => item.Bounds.Width > 0 ? item.Bounds.Width : item.DesiredSize.Width,
     };
 

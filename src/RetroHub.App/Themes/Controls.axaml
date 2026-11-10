@@ -522,6 +522,8 @@
                         Year="{Binding YearText}" />
             <c:BoxSpine Name="PART_Spine" Title="{Binding Title}" Code="{Binding SystemShort}" Year="{Binding YearText}"
                         SystemId="{Binding SystemId}" Accent="{Binding Accent}" />
+            <!-- the favourite stamp on the box (R3): lands when the game becomes a favourite -->
+            <c:InkStamp Name="PART_Stamp" Margin="{TemplateBinding Padding}" On="{Binding IsFavorite}" />
           </Panel>
         </Panel>
       </ControlTemplate>
