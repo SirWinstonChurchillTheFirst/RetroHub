@@ -111,9 +111,11 @@ public partial class HomePage : PageBase
         Shelves.Margin = new Thickness(0, shelvesTop, 0, 0);
         Shelves.AnchorY = anchor;
         ShelfList.Spacing = spacing;
-        // the next shelf peeks in with the top of its boxes only (≈ a quarter): band, code, the top of a cover
-        var peek = Math.Round(item * (compact ? 0.24 : 0.27));
-        ShelfFade.Margin = new Thickness(0, shelvesTop + anchor + item + Shelf.BoardHeight + Shelf.BelowBoard + spacing + peek, 0, 0);
+        // QA 2: the next shelf no longer peeks in – between the footer's own fade and this one only a strip of 2 px colour
+        // dashes was left (it read as a rendering glitch). The fade now ends 8 px above the next shelf's boxes.
+        var topGap = compact ? 32.0 : 40.0; // Shelf.TopGap of the Start shelves (HomePage.axaml)
+        var nextBoxes = shelvesTop + anchor + item + Shelf.BoardHeight + Shelf.BelowBoard + spacing + topGap;
+        ShelfFade.Margin = new Thickness(0, Math.Max(0, nextBoxes - 8 - 24), 0, 0);
     }
 
     public override bool FocusDefault() => FocusVisible(PlayButton);

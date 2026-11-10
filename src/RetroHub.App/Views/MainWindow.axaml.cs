@@ -97,6 +97,9 @@ public partial class MainWindow : Window
         };
         vm.Launch.PropertyChanged += (_, e) => OnLaunchChanged(e.PropertyName);
         vm.Launch.Returned += OnGameReturned;
+        // after a session: the TV's OSD top right in the system's light, no notification card (QA 2)
+        vm.Launch.SessionReturned += notice =>
+            Osd.ShowNotice(notice.Total, notice.Session, SystemPalette.Get(notice.Game.SystemId, notice.Game.Accent).Light);
         GameScreen.FullscreenRequested += () => SetFullscreen(WindowState != WindowState.FullScreen);
         // the power-on (DESIGN 9.3): the flight dims the launch overlay and opens its start surface
         Flight.Scrim = LaunchScrim;
@@ -105,8 +108,8 @@ public partial class MainWindow : Window
         Flight.LandingImage = StartBoxImage;
         Flight.LandingArt = StartBoxArt;
         // toasts lie above the embedded game: the game screen cuts a hole for them into its native host (airspace)
-        GameScreen.SetHoleSource(ToastHost);
-        ToastHost.SizeChanged += (_, _) => Dispatcher.UIThread.Post(GameScreen.UpdateHoles, DispatcherPriority.Render);
+        GameScreen.SetHoleSource(ToastDock);
+        ToastDock.SizeChanged += (_, _) => Dispatcher.UIThread.Post(GameScreen.UpdateHoles, DispatcherPriority.Render);
         Closing += (_, _) =>
         {
             // a game inside RetroHub would go down with the window: it goes back to its own window and runs on
@@ -464,7 +467,10 @@ public partial class MainWindow : Window
         Flight.Scale = s;
         DialogScaleHost.LayoutTransform = new ScaleTransform(s, s);
         Osd.Scale = s;
+        ToastDock.LayoutTransform = new ScaleTransform(s, s);
         var logical = client.Width / s;
+        // the footer message covers the location sentence's half of the footer, never the hints on the right
+        ToastHost.Width = Math.Max(480, Math.Round(logical * 0.5));
         _vm.LogicalWidth = logical;
         var margin = logical >= 1600 ? 96 : 56;
         Osd.PageMargin = margin;

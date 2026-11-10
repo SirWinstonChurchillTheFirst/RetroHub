@@ -35,7 +35,48 @@ public sealed class OsdLayer : Panel
             IsVisible = false,
         };
         Children.Add(_box);
+        _total = new TextBlock { FontFamily = FontRoles.Number, FontWeight = FontWeight.Bold, HorizontalAlignment = HorizontalAlignment.Right };
+        _total.FontFeatures = [new FontFeature { Tag = "tnum" }];
+        _session = new TextBlock { FontFamily = FontRoles.Ui, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Right };
+        _notice = new StackPanel
+        {
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Children = { _total, _session },
+            IsVisible = false,
+        };
+        Children.Add(_notice);
         Scale = 1;
+    }
+
+    private readonly StackPanel _notice;
+    private readonly TextBlock _total, _session;
+    private int _noticeVersion;
+
+    /// <summary>How long the session feedback stands (QA 2): hard on, 2400 ms, hard off.</summary>
+    public static readonly TimeSpan NoticeDuration = TimeSpan.FromMilliseconds(2400);
+
+    public bool IsShowingNotice => _notice.IsVisible;
+
+    /// <summary>
+    /// The feedback after a session (QA 2, replaces the "Willkommen zurück" card): at the channel display's place, the
+    /// game's total in Zahl 28 and one line about this session in Etikett 15 below, both in the system's light. Hard on,
+    /// <see cref="NoticeDuration"/>, hard off; independent of the "Kanalanzeige" switch (it is not a channel display).
+    /// </summary>
+    public void ShowNotice(string total, string session, Color light)
+    {
+        var brush = new ImmutableSolidColorBrush(light);
+        _total.Text = total;
+        _total.Foreground = brush;
+        _session.Text = session;
+        _session.Foreground = brush;
+        _box.IsVisible = false;
+        _notice.IsVisible = true;
+        var version = ++_noticeVersion;
+        _ = Task.Delay(NoticeDuration).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
+        {
+            if (version == _noticeVersion) _notice.IsVisible = false;
+        }), TaskScheduler.Default);
     }
 
     private double _scale = 1;
@@ -52,6 +93,16 @@ public sealed class OsdLayer : Panel
             _name.FontSize = _nameSize * value;
             _box.Spacing = 12 * value;
             _box.Margin = new Thickness(0, 104 * value, PageMargin * value, 0);
+            if (_notice != null)
+            {
+                _total.FontSize = 28 * value;
+                _total.LineHeight = 32 * value;
+                _session.FontSize = 15 * value;
+                _session.LineHeight = 20 * value;
+                _session.LetterSpacing = 0.45 * value;
+                _notice.Spacing = 4 * value;
+                _notice.Margin = new Thickness(0, 104 * value, PageMargin * value, 0);
+            }
         }
     }
 
@@ -74,6 +125,7 @@ public sealed class OsdLayer : Panel
         _name.Text = name;
         _name.Foreground = brush;
         Scale = _scale;
+        HideNoticeNow(); // one display at a time
         _box.IsVisible = true;
         var version = ++_version;
         _ = Task.Delay(duration ?? Motion.Osd).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
@@ -86,5 +138,11 @@ public sealed class OsdLayer : Panel
     {
         _version++;
         _box.IsVisible = false;
+    }
+
+    public void HideNoticeNow()
+    {
+        _noticeVersion++;
+        _notice.IsVisible = false;
     }
 }

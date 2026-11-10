@@ -19,15 +19,20 @@ public sealed partial class ToastViewModel : ObservableObject
     public bool IsWarning => Kind == ToastKind.Warning;
     public bool IsError => Kind == ToastKind.Error;
     public bool HasDetail => !string.IsNullOrEmpty(Detail);
+    /// <summary>The detail as the second run of the one footer line (Text 2 behind the message).</summary>
+    public string DetailRun => HasDetail ? "   " + Detail : "";
 }
 
-/// <summary>Transient notifications (top right). Thread-safe: may be called from any thread.</summary>
+/// <summary>
+/// Transient notifications, docked left in the footer in place of the location sentence (QA 2: no floating cards).
+/// Thread-safe: may be called from any thread.
+/// </summary>
 public sealed partial class ToastService : ObservableObject
 {
     public const int MaxVisible = 4;
     public ObservableCollection<ToastViewModel> Items { get; } = [];
 
-    public void Show(string text, ToastKind kind = ToastKind.Info, string? detail = null, double seconds = 4.5)
+    public void Show(string text, ToastKind kind = ToastKind.Info, string? detail = null, double seconds = 4)
     {
         void Add()
         {

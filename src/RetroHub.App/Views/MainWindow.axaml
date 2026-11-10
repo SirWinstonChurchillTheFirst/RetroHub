@@ -218,36 +218,35 @@
 
 
     <!-- ============ Toasts ============ -->
-    <ItemsControl Name="ToastHost" ItemsSource="{Binding Toasts.Items}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,32,80" Width="420">
-      <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate>
-          <StackPanel Spacing="10" />
-        </ItemsPanelTemplate>
-      </ItemsControl.ItemsPanel>
-      <ItemsControl.ItemTemplate>
-        <DataTemplate x:DataType="vm:ToastViewModel">
-          <Border CornerRadius="{DynamicResource RhRadiusPanel}" Background="{DynamicResource RhSurfaceBrush}" BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" Padding="14,12"
-                  BoxShadow="{DynamicResource RhPanelShadow}">
-            <Grid ColumnDefinitions="Auto,*,Auto">
-              <Panel VerticalAlignment="Top" Margin="0,1,0,0">
-                <c:RhIcon Data="{StaticResource Icon.Info}" Width="20" Height="20" Foreground="{DynamicResource RhText2Brush}" IsVisible="{Binding IsInfo}" />
-                <c:RhIcon Data="{StaticResource Icon.Ok}" Width="20" Height="20" Foreground="{DynamicResource RhSuccessBrush}" IsVisible="{Binding IsSuccess}" />
-                <c:RhIcon Data="{StaticResource Icon.Warning}" Width="20" Height="20" Foreground="{DynamicResource RhWarningBrush}" IsVisible="{Binding IsWarning}" />
-                <c:RhIcon Data="{StaticResource Icon.Error}" Width="20" Height="20" Foreground="{DynamicResource RhDangerBrush}" IsVisible="{Binding IsError}" />
-              </Panel>
-              <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="{Binding Text}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding Detail}" IsVisible="{Binding HasDetail}" Classes="meta" TextWrapping="Wrap" />
-              </StackPanel>
-              <Button Grid.Column="2" Theme="{StaticResource RhGhostButton}" Width="28" Height="28" MinHeight="0" Padding="0" Focusable="False" VerticalAlignment="Top"
-                      Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).Toasts.DismissCommand}" CommandParameter="{Binding}">
-                <c:RhIcon Data="{StaticResource Icon.Close}" Width="14" Height="14" />
-              </Button>
-            </Grid>
-          </Border>
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <!-- QA 2: no floating notification cards. A message docks LEFT IN THE FOOTER and takes the place of the location
+         sentence for its 4 s (icon + one sentence, the detail in Text 2 behind it) – never over content. The newest lies on
+         top (overlapping panel). Scaled like the shell in code; the dock is also the hole the game screen cuts for it. -->
+    <LayoutTransformControl Name="ToastDock" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+      <ItemsControl Name="ToastHost" ItemsSource="{Binding Toasts.Items}" Width="900">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <Panel />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ToastViewModel">
+            <Border Height="56" Background="{DynamicResource RhBaseBrush}" Padding="48,0,24,0">
+              <Grid ColumnDefinitions="Auto,12,*" VerticalAlignment="Center">
+                <Panel VerticalAlignment="Center">
+                  <c:RhIcon Data="{StaticResource Icon.Info}" Width="18" Height="18" Foreground="{DynamicResource RhText2Brush}" IsVisible="{Binding IsInfo}" />
+                  <c:RhIcon Data="{StaticResource Icon.Ok}" Width="18" Height="18" Foreground="{DynamicResource RhSuccessBrush}" IsVisible="{Binding IsSuccess}" />
+                  <c:RhIcon Data="{StaticResource Icon.Warning}" Width="18" Height="18" Foreground="{DynamicResource RhWarningBrush}" IsVisible="{Binding IsWarning}" />
+                  <c:RhIcon Data="{StaticResource Icon.Error}" Width="18" Height="18" Foreground="{DynamicResource RhDangerBrush}" IsVisible="{Binding IsError}" />
+                </Panel>
+                <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="16" TextTrimming="CharacterEllipsis" MaxLines="1">
+                  <Run Text="{Binding Text}" FontWeight="SemiBold" Foreground="{DynamicResource RhText1Brush}" /><Run Text="{Binding DetailRun}" Foreground="{DynamicResource RhText2Brush}" />
+                </TextBlock>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </LayoutTransformControl>
 
     <!-- the power-on line, the flying box, the switch-off (unscaled; DESIGN 9.3) – above the toasts: "Willkommen zurück"
          waits for the page anyway, and nothing may stand on the closed dark of the switch-off -->

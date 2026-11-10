@@ -172,6 +172,21 @@ public sealed partial class GameDetailViewModel : PageViewModel
 
     public const int NeighbourCount = 4;
 
+    /// <summary>
+    /// "Chinesisch, Deutsch, Englisch und 4 weitere" – the row counts instead of clipping ("Italienisch,…" read
+    /// unfinished, QA 2): up to three names, then the rest as a number.
+    /// </summary>
+    public static string JoinCounted(IReadOnlyList<string> labels, int shown = 3)
+    {
+        if (labels.Count <= shown) return labels.Count switch
+        {
+            0 => "",
+            1 => labels[0],
+            _ => Loc.T("detail.variants.and", string.Join(", ", labels.Take(labels.Count - 1)), labels[^1]),
+        };
+        return Loc.T("detail.variants.more", string.Join(", ", labels.Take(shown)), labels.Count - shown);
+    }
+
     // ===================== overlays =====================
 
     [ObservableProperty] public partial DetailSheet Sheet { get; private set; }
@@ -189,17 +204,18 @@ public sealed partial class GameDetailViewModel : PageViewModel
         // the dim reaches under the header too (no seam at its lower edge; the header's content stays above it)
         HeaderDim = value switch
         {
-            // the choice list folds open in the Start rows themselves: nothing dims (M6 QA)
-            DetailSheet.None or DetailSheet.Choice => default,
+            // the choice list, the file info and the opened description fold open in the page itself: nothing dims
+            // (M6 QA, QA 2)
+            DetailSheet.None or DetailSheet.Choice or DetailSheet.FileInfo or DetailSheet.Description => default,
             DetailSheet.Cover or DetailSheet.Screens => SheetDimDeep,
             _ => SheetDim,
         };
         RaiseHintsChanged();
     }
 
-    /// <summary>Raum-Tief 72 % (menus and text overlays) and 94 % (the cover and the screens large).</summary>
+    /// <summary>Raum-Tief 72 % (the lists) and 96 % (the cover and the screens large: QA 2, nothing of the page reads through).</summary>
     public static readonly Avalonia.Media.Color SheetDim = Avalonia.Media.Color.FromArgb(0xB8, 0x0A, 0x09, 0x08),
-        SheetDimDeep = Avalonia.Media.Color.FromArgb(0xF0, 0x0A, 0x09, 0x08);
+        SheetDimDeep = Avalonia.Media.Color.FromArgb(0xF5, 0x0A, 0x09, 0x08);
 
     /// <summary>Shoulder left/right: the view jumps to the previous/next section (Bühne, Über das Spiel, Start).</summary>
     public event Action<int>? SectionRequested;
@@ -219,9 +235,13 @@ public sealed partial class GameDetailViewModel : PageViewModel
         get
         {
             if (IsSheetOpen)
-                return Sheet is DetailSheet.More or DetailSheet.FileInfo or DetailSheet.Variants or DetailSheet.Choice
-                    ? [new(NavAction.Accept, Loc.T("hint.select")), new(NavAction.Back, Loc.T("hint.close"))]
-                    : [new(NavAction.Back, Loc.T("hint.close"))];
+                return Sheet switch
+                {
+                    DetailSheet.More or DetailSheet.Variants or DetailSheet.Choice => [new(NavAction.Accept, Loc.T("hint.select")), new(NavAction.Back, Loc.T("hint.close"))],
+                    DetailSheet.FileInfo => [new(NavAction.Accept, Loc.T("detail.openFolder")), new(NavAction.Back, Loc.T("hint.close"))],
+                    DetailSheet.Description => [new(NavAction.Accept, Loc.T("detail.readLess")), new(NavAction.Back, Loc.T("hint.close"))],
+                    _ => [new(NavAction.Back, Loc.T("hint.close"))],
+                };
             var accept = _focus switch
             {
                 DetailFocus.Play => Loc.T("detail.play"),
@@ -373,6 +393,12 @@ public sealed partial class GameDetailViewModel : PageViewModel
             Facts = facts;
             MetaSentence = BuildMetaSentence(g, null); // the system label above the title already names the system
             PlaySentence = BuildPlaySentence(g);
+            // only the region known ("Japan."): no orphan line above the play sentence – one line (QA 2)
+            if (MetaSentence.Length > 0 && string.IsNullOrEmpty(g.Genre) && string.IsNullOrEmpty(g.Developer) && g.Year == null && g.Players == null)
+            {
+                PlaySentence = MetaSentence + " " + PlaySentence;
+                MetaSentence = "";
+            }
             PlayTime = Fmt.PlayTime(g.PlaySeconds);
             LastPlayed = Fmt.LastPlayed(g.LastPlayedUtc);
             PlayCount = g.PlayCount == 0 ? Loc.T("detail.neverStarted") : g.PlayCount == 1 ? Loc.T("detail.startedOnce") : Loc.T("detail.startedTimes", g.PlayCount);
@@ -381,7 +407,8 @@ public sealed partial class GameDetailViewModel : PageViewModel
             HasCover = !string.IsNullOrEmpty(g.CoverPath);
             FileName = Path.GetFileName(g.Path);
             FileInfo = Fmt.Size(g.Size); // name and size only; path and CRC belong in the file info overlay
-            FileLines = BuildFileLines(g, SafeAbsolute(g.Path));
+            // the file info folds open right under the "Datei" row, which names the file already (QA 2)
+            FileLines = BuildFileLines(g, SafeAbsolute(g.Path)).Skip(1).ToList();
             HasOverrides = g.EmulatorOverride != null || g.LaunchModeOverride != null;
             BuildCard(g, data.Sessions, DateTime.UtcNow);
             NeighboursBefore = data.Before.Select(Ctx.Items.Get).ToList();
@@ -389,7 +416,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
             HasNeighbours = NeighboursBefore.Count + NeighboursAfter.Count > 0;
             Variants = data.Variants.Select(v => new VariantOption(Ctx.Items.Get(v), VariantLabel(v))).OrderBy(v => v.Label, StringComparer.Create(Loc.Culture, true)).ToList();
             HasVariants = Variants.Count > 0;
-            VariantsText = string.Join(", ", Variants.Select(v => v.Label));
+            VariantsText = JoinCounted(Variants.Select(v => v.Label).ToList());
             if (_screensFor != g.Id) SetScreens(null, null);
             HasAbout = HasDescription || HasScreens;
             LoadScreens(g);
@@ -448,7 +475,7 @@ public sealed partial class GameDetailViewModel : PageViewModel
         var firstBlocking = plan.Problems.FirstOrDefault(p => p.Blocking);
         // a sentence, no "A · B" chain: "Startet mit RetroArch (snes9x) im Vollbild."
         PlanSummary = plan.Emulator != null
-            ? Loc.T("detail.planSummary", plan.Emulator.Def.Name + (plan.Core != null ? $" ({plan.Core})" : ""), Fmt.ModePhrase(plan.Mode))
+            ? Loc.T("detail.planSummary", Controls.Sentence.Name(plan.Emulator.Def.Name + (plan.Core != null ? $" ({plan.Core})" : "")), Fmt.ModePhrase(plan.Mode))
             : Loc.T("detail.planNoEmulator");
         ShowSolution = !CanPlay && Game != null;
         // the way out names the FIRST thing in the way: a missing file before a missing emulator
@@ -566,8 +593,10 @@ public sealed partial class GameDetailViewModel : PageViewModel
         Sheet = DetailSheet.None;
         Ctx.Navigator.Navigate(PageKey.GameDetail, variant.Game);
     }
-    [RelayCommand] private void ShowFileInfo() => Sheet = DetailSheet.FileInfo;
-    [RelayCommand] private void ShowDescription() { if (HasDescription) Sheet = DetailSheet.Description; }
+    /// <summary>The file info folds open under the "Datei" row; confirm on the row again folds it shut.</summary>
+    [RelayCommand] private void ShowFileInfo() => Sheet = Sheet == DetailSheet.FileInfo ? DetailSheet.None : DetailSheet.FileInfo;
+    /// <summary>"Weiterlesen" opens the text in place, "Weniger anzeigen" closes it.</summary>
+    [RelayCommand] private void ShowDescription() { if (HasDescription) Sheet = Sheet == DetailSheet.Description ? DetailSheet.None : DetailSheet.Description; }
     [RelayCommand] private void ShowCover() { if (Game != null) Sheet = DetailSheet.Cover; }
     [RelayCommand] private void ShowScreens() { if (HasScreens) Sheet = DetailSheet.Screens; }
     [RelayCommand] private void CloseSheet() => Sheet = DetailSheet.None;

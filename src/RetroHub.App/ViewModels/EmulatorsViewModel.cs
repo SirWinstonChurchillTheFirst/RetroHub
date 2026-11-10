@@ -265,6 +265,10 @@ public sealed partial class EmulatorsViewModel : PageViewModel
         FilterText = system1 != null ? Loc.T("emulators.filtered", system1.Name) : "";
         Location = system1?.Name;
         var ready = rows.Count(r => r.Ready);
+        // the "Gerätefach" of the side column (QA 2): one segment per system in its colour, lit when it can start
+        Segments = rows.Select(r => new ReadySegment(r.Code, r.Ready ? r.Look!.ColorBrush : r.Look!.WallHiBrush, r.Ready)).ToList();
+        ReadyText = Loc.T("emulators.readyCount", ready, rows.Count);
+        NoneInstalled = ready == 0 && rows.Count > 0;
         Quiet = bare >= QuietFrom;
         SummaryText = rows.Count == 0 ? Loc.T("emulators.summary.none")
             : ready == rows.Count ? Loc.T("emulators.summary.allReady", rows.Count)
@@ -281,6 +285,16 @@ public sealed partial class EmulatorsViewModel : PageViewModel
 
     /// <summary>The rows are quiet (see <see cref="QuietFrom"/>).</summary>
     [ObservableProperty] public partial bool Quiet { get; private set; }
+
+    /// <summary>One segment per system of the library (all of them, also when the page is filtered).</summary>
+    [ObservableProperty] public partial IReadOnlyList<ReadySegment> Segments { get; private set; } = [];
+    /// <summary>"10 von 13" – systems that can start of all systems with games.</summary>
+    [ObservableProperty] public partial string ReadyText { get; private set; } = "";
+    /// <summary>
+    /// No system can start: the head already says where RetroHub looks, so the label's meta only keeps the promise
+    /// ("RetroHub lädt nie etwas ohne deine Zustimmung herunter.") instead of repeating the folder (QA 2).
+    /// </summary>
+    [ObservableProperty] public partial bool NoneInstalled { get; private set; }
 
     /// <summary>"Benötigt: a oder b – installiert: a." for the cores a system's RetroArch choices name; "" without cores.</summary>
     private static string CoresFor(IReadOnlyList<(EmulatorRef Ref, EmulatorInstall? Install)> choices)
@@ -360,3 +374,6 @@ public sealed partial class EmulatorsViewModel : PageViewModel
             Ctx.Toasts.Show(Loc.T("common.folderMissing", Ctx.Services.Paths.Emulators), ToastKind.Warning);
     }
 }
+
+/// <summary>A segment of the Gerätefach: a system's colour when it can start, its Wand hell when it cannot.</summary>
+public sealed record ReadySegment(string Code, Avalonia.Media.IBrush Brush, bool Ready);

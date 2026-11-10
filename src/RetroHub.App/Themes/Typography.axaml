@@ -148,6 +148,38 @@
     <Setter Property="FontSize" Value="15" />
     <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
   </Style>
+  <!-- one mono rule (QA 2, DESIGN 3.1): paths, extensions and checksums in Cascadia Mono Regular 15, Text 2 – everywhere -->
+  <Style Selector="Run.mono">
+    <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+  </Style>
+  <!-- the key/value grid of an opened row (Emulatoren, Dateiinfo, Systeminfo): keys Etikett 15 Text 3, values read Text 2 -->
+  <Style Selector="TextBlock.kv-key">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="LineHeight" Value="18" />
+    <Setter Property="LetterSpacing" Value="0.45" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="Margin" Value="0,8,0,0" />
+  </Style>
+  <Style Selector="TextBlock.kv-value">
+    <Setter Property="FontFamily" Value="{DynamicResource RhFontRead}" />
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="LineHeight" Value="32" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+  </Style>
+  <Style Selector="TextBlock.kv-mono">
+    <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="LineHeight" Value="24" />
+    <Setter Property="Margin" Value="0,4,0,4" />
+    <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+  </Style>
   <Style Selector="TextBlock.accent">
     <Setter Property="Foreground" Value="{DynamicResource RhAccentTextBrush}" />
   </Style>

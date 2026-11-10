@@ -30,11 +30,30 @@ public static partial class Sentence
     [GeneratedRegex(@"\d+(?:[.,:]\d+)*")]
     private static partial Regex Number();
 
+    /// <summary>Marks a program name in a sentence: <c>"Startet mit " + Sentence.Name("mGBA") + " …"</c>.</summary>
+    public const string NameMark = "⁠⁠";
+
+    /// <summary>A program name inside a sentence: read SemiBold Papier (QA 2, DESIGN 3.1), never the number face.</summary>
+    public static string Name(string name) => NameMark + name + NameMark;
+
+    private static readonly IBrush Paper = new Avalonia.Media.Immutable.ImmutableSolidColorBrush(Color.Parse("#F4ECDF"));
+
     private static void Apply(TextBlock tb, string? text)
     {
         var inlines = tb.Inlines ??= new InlineCollection();
         inlines.Clear();
         if (string.IsNullOrEmpty(text)) return;
+        var parts = text.Split(NameMark);
+        for (var i = 0; i < parts.Length; i++)
+        {
+            if (parts[i].Length == 0) continue;
+            if (i % 2 == 1) inlines.Add(new Run(parts[i]) { FontWeight = FontWeight.SemiBold, Foreground = Paper });
+            else AddWithNumbers(inlines, parts[i]);
+        }
+    }
+
+    private static void AddWithNumbers(InlineCollection inlines, string text)
+    {
         var at = 0;
         foreach (Match m in Number().Matches(text))
         {

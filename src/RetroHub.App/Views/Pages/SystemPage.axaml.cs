@@ -200,7 +200,12 @@ public partial class SystemPage : PageBase
         if (_vm?.IsInfoOpen == true)
         {
             _infoOpener = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
-            Dispatcher.UIThread.Post(() => InfoCloseButton.Focus(NavigationMethod.Directional), DispatcherPriority.Loaded);
+            PlaceInfo();
+            Dispatcher.UIThread.Post(() =>
+            {
+                PlaceInfo();
+                InfoCloseButton.Focus(NavigationMethod.Directional);
+            }, DispatcherPriority.Loaded);
             return;
         }
         var back = _infoOpener;
@@ -210,6 +215,22 @@ public partial class SystemPage : PageBase
             if (back is { IsEffectivelyVisible: true }) FocusVisible(back);
             else if (IsEffectivelyVisible) FocusDefault();
         }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
+    /// The info hangs under the banner's action row (QA 2): left on the banner text (page margin), 12 px under the row;
+    /// above it when the page has no room below.
+    /// </summary>
+    private void PlaceInfo()
+    {
+        if (StatusRow.TranslatePoint(new Point(0, 0), Root) is not { } at) return;
+        var layer = Root.Bounds.Size;
+        // Bounds, not DesiredSize: the desired size includes the margin this method sets
+        var height = InfoPanel.Bounds.Height > 0 ? InfoPanel.Bounds.Height : 300;
+        var x = Math.Clamp(at.X, 16, Math.Max(16, layer.Width - InfoPanel.Width - 16));
+        var below = at.Y + StatusRow.Bounds.Height + 12;
+        var y = below + height <= layer.Height - 24 ? below : Math.Max(16, at.Y - 12 - height);
+        InfoPanel.Margin = new Thickness(x, y, 0, 0);
     }
 
     private bool InBanner(Control c) => IsInside(c, Banner);

@@ -127,17 +127,31 @@
 
         <!-- ===== "Rückseite" ===== -->
         <Border Name="BackGround" Background="{DynamicResource RhBaseBrush}" Padding="{DynamicResource RhPageInset}">
-        <Grid Name="Back" ColumnDefinitions="904*,80,744*">
+        <!-- 160 px under the back (48 inset + 112): the last section never ends in the footer's fade (QA 2) -->
+        <Grid Name="Back" ColumnDefinitions="904*,80,744*" Margin="0,0,0,112">
           <!-- two stacks; the sections move between them (code-behind, ApplyBackLayout) -->
           <StackPanel Name="LeftStack" Spacing="0">
           <!-- Über das Spiel: description (68 characters, 8 lines, then "Weiterlesen"), the two screens on a shelf edge -->
           <StackPanel Name="AboutSection" Spacing="0" Margin="0,16,0,0" IsVisible="{Binding HasAbout}">
             <c:ShelfLabel Text="{l:T detail.section.about}" />
-            <TextBlock Name="DescriptionText" Text="{Binding Description}" Classes="read-l" MaxWidth="760" HorizontalAlignment="Left" TextWrapping="Wrap"
-                       MaxLines="8" TextTrimming="WordEllipsis" Margin="0,16,0,0" IsVisible="{Binding HasDescription}" />
+            <!-- "Weiterlesen" opens the text in place (QA 2, no sheet): up to 12 lines, longer text scrolls inside them with
+                 a 12 px fade at the cut; the button only appears when the 8 lines clip the text -->
+            <Panel Name="DescriptionHost" Margin="0,16,0,0" HorizontalAlignment="Left" MaxWidth="760" IsVisible="{Binding HasDescription}">
+              <ScrollViewer Name="DescriptionScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+                <TextBlock Name="DescriptionText" Text="{Binding Description}" Classes="read-l" TextWrapping="Wrap" MaxLines="8" TextTrimming="WordEllipsis" />
+              </ScrollViewer>
+              <Border Name="DescriptionFade" Height="12" VerticalAlignment="Bottom" IsHitTestVisible="False" IsVisible="False">
+                <Border.Background>
+                  <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="#0014120F" />
+                    <GradientStop Offset="1" Color="#FF14120F" />
+                  </LinearGradientBrush>
+                </Border.Background>
+              </Border>
+            </Panel>
             <Button Name="ReadMoreButton" Theme="{StaticResource RhGhostButton}" Command="{Binding ShowDescriptionCommand}" HorizontalAlignment="Left"
                     Margin="-12,6,0,0" IsVisible="False">
-              <TextBlock Text="{l:T detail.readMore}" />
+              <TextBlock Name="ReadMoreText" Text="{l:T detail.readMore}" />
             </Button>
             <!-- the screens stand on a shelf edge, a caption under each like the library's boxes -->
             <Panel Name="ScreensShelf" Margin="0,32,0,0" IsVisible="{Binding HasScreens}" HorizontalAlignment="Left">
@@ -254,6 +268,29 @@
                 <TextBlock c:Sentence.Text="{Binding FileInfo}" Classes="meta" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
+            <!-- Dateiinfo folds open under its row (QA 2, no sheet): keys in Etikett 15 Text 3 at the row's label (168 wide),
+                 values at the row's value column (row + 216) in read Text 2, paths and the checksum in Cascadia Mono Regular 15 -->
+            <c:FoldPanel Name="FileFold" IsOpen="False">
+              <StackPanel Margin="16,6,0,16" Spacing="0">
+                <ItemsControl Name="FileLines" ItemsSource="{Binding FileLines}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:InfoLine">
+                      <Grid ColumnDefinitions="168,32,*" MinHeight="32">
+                        <TextBlock Classes="kv-key" Text="{Binding Label}" />
+                        <TextBlock Grid.Column="2" Classes="kv-value" c:Sentence.Text="{Binding Value}" TextWrapping="Wrap" IsVisible="{Binding !Mono}" />
+                        <TextBlock Grid.Column="2" Classes="kv-mono" Text="{Binding Value}" TextWrapping="Wrap" IsVisible="{Binding Mono}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Name="FileFolderButton" Command="{Binding OpenGameFolderCommand}" MinHeight="44" Margin="200,12,0,0" HorizontalAlignment="Left">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <c:RhIcon Data="{StaticResource Icon.Folder}" Width="18" Height="18" />
+                    <TextBlock Text="{l:T detail.openFolder}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </c:FoldPanel>
             <!-- the other versions of this game on the shelf (folded out of "Daneben im Regal") -->
             <Button Name="VariantsRow" Theme="{StaticResource RhInfoRow}" Tag="{l:T detail.variants}" Command="{Binding ShowVariantsCommand}"
                     IsVisible="{Binding HasVariants}">
@@ -322,14 +359,13 @@
     <!-- ===== overlays: the page dims (room-deep, no blur); header and footer stay ===== -->
     <Panel Name="SheetLayer" IsVisible="False" Focusable="True" Background="Transparent">
       <Border Name="SheetScrim" Background="#B80A0908" />
-      <!-- Mehr, Dateiinfo, Weiterlesen: one panel -->
-      <Border Name="SheetPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Width="680" Background="{DynamicResource RhSurfaceBrush}"
-              BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="{DynamicResource RhRadiusPanel}" Padding="0,28,0,24"
+      <!-- Mehr and "Auch im Regal": a list that hangs at its button (Dateiinfo and Weiterlesen fold open in the page) -->
+      <Border Name="SheetPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Width="420" Background="{DynamicResource RhSurfaceBrush}"
+              BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="{DynamicResource RhRadiusPanel}" Padding="0,8,0,8"
               BoxShadow="{DynamicResource RhPanelShadow}" ClipToBounds="False">
         <Panel>
-          <Border Name="SheetEdge" Height="1" VerticalAlignment="Top" Margin="0,-28,0,0" Background="{DynamicResource RhLightEdgeBrush}" />
+          <Border Name="SheetEdge" Height="1" VerticalAlignment="Top" Margin="0,-8,0,0" Background="{DynamicResource RhLightEdgeBrush}" />
           <StackPanel Spacing="0">
-            <TextBlock Name="SheetTitle" Classes="h2" Margin="36,0,36,16" TextWrapping="Wrap" />
             <!-- Mehr -->
             <StackPanel Name="MoreRows" Spacing="0">
               <Button Name="ChooseCoverItem" Theme="{StaticResource RhSheetRow}" Command="{Binding ChooseCoverCommand}" IsVisible="{Binding CanEditCover}">
@@ -377,32 +413,6 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <!-- Dateiinfo: label / value lines, labels in Text 3, values in Papier, path and CRC in Cascadia Mono -->
-            <ItemsControl Name="FileLines" ItemsSource="{Binding FileLines}" Margin="36,0,36,8">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:InfoLine">
-                  <Grid ColumnDefinitions="160,*" Margin="0,0,0,12">
-                    <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource RhFontUi}" FontWeight="Medium" FontSize="18" LineHeight="24"
-                               Foreground="{DynamicResource RhText3Brush}" />
-                    <TextBlock Grid.Column="1" Text="{Binding Value}" Classes="ui" TextWrapping="Wrap" IsVisible="{Binding !Mono}" />
-                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontFamily="Cascadia Mono, Consolas, monospace" FontSize="15" LineHeight="24"
-                               Foreground="{DynamicResource RhText1Brush}" TextWrapping="Wrap" IsVisible="{Binding Mono}" />
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <!-- Weiterlesen: the whole description -->
-            <ScrollViewer Name="DescriptionScroll" MaxHeight="520" Margin="36,0,36,8" HorizontalScrollBarVisibility="Disabled">
-              <TextBlock Text="{Binding Description}" Classes="read-l" TextWrapping="Wrap" />
-            </ScrollViewer>
-            <StackPanel Name="SheetButtons" Orientation="Horizontal" Spacing="12" Margin="36,12,36,0" HorizontalAlignment="Right">
-              <Button Name="SheetFolderButton" Command="{Binding OpenGameFolderCommand}" MinHeight="48">
-                <TextBlock Text="{l:T detail.openFolder}" />
-              </Button>
-              <Button Name="SheetCloseButton" Command="{Binding CloseSheetCommand}" MinHeight="48">
-                <TextBlock Text="{l:T detail.close}" />
-              </Button>
-            </StackPanel>
           </StackPanel>
         </Panel>
       </Border>
@@ -423,11 +433,14 @@
                          Code="{Binding Game.SystemShort}" IsTvSystem="{Binding IsTvSystem}" IsVisible="{Binding HasSnapScreen}" />
         </StackPanel>
         <c:ShelfBoard Name="ScreensLargeBoard" Grid.Row="1" Height="24" />
-        <!-- the captions under the board, as on the back -->
-        <StackPanel Name="LargeCaptions" Grid.Row="2" Orientation="Horizontal" Spacing="48" HorizontalAlignment="Center" Margin="0,12,0,0">
-          <TextBlock Name="TitleLargeCaption" Classes="caption" Text="{l:T detail.screen.title}" IsVisible="{Binding HasTitleScreen}" />
-          <TextBlock Name="SnapLargeCaption" Classes="caption" Text="{l:T detail.screen.snap}" IsVisible="{Binding HasSnapScreen}" />
-        </StackPanel>
+        <!-- the captions on a solid 48 px band under the board (QA 2: on the scrim they shared a baseline with the
+             page's text shining through) -->
+        <Border Grid.Row="2" Height="48" Background="{DynamicResource RhSurfaceBrush}">
+          <StackPanel Name="LargeCaptions" Orientation="Horizontal" Spacing="48" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Name="TitleLargeCaption" Classes="caption" Text="{l:T detail.screen.title}" IsVisible="{Binding HasTitleScreen}" />
+            <TextBlock Name="SnapLargeCaption" Classes="caption" Text="{l:T detail.screen.snap}" IsVisible="{Binding HasSnapScreen}" />
+          </StackPanel>
+        </Border>
         <Panel Grid.Row="3" Height="40" />
       </Grid>
     </Panel>

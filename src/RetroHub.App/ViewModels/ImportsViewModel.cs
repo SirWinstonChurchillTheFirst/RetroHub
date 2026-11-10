@@ -368,6 +368,9 @@ public sealed partial class ImportsViewModel : PageViewModel
     [RelayCommand(CanExecute = nameof(IsScanning))]
     private void CancelScan() => _scanCts?.Cancel();
 
+    /// <summary>Entries the opened "Hinweise" show in all (QA 2).</summary>
+    public const int MaxIssueLines = 3;
+
     private void ShowReport(ScanReport r)
     {
         Report = r;
@@ -376,9 +379,20 @@ public sealed partial class ImportsViewModel : PageViewModel
         var groups = new List<IssueGroup>();
         // "1 doppelte Datei", "2 nicht zugeordnet", "1 Fehler" – the number leads, no "A · 1" chain (DESIGN 3.2)
         string Head(string key, int n) => Loc.T(n == 1 ? key + ".one" : key, n);
-        if (r.Duplicates.Count > 0) groups.Add(new IssueGroup(Head("imports.issues.duplicates", r.Duplicates.Count), r.Duplicates.Take(50).ToList(), r.Duplicates.Count, false));
-        if (r.Unknown.Count > 0) groups.Add(new IssueGroup(Head("imports.issues.unknown", r.Unknown.Count), r.Unknown.Take(50).ToList(), r.Unknown.Count, false));
-        if (r.Errors.Count > 0) groups.Add(new IssueGroup(Head("imports.issues.errors", r.Errors.Count), r.Errors.Take(50).ToList(), r.Errors.Count, true));
+        // QA 2: the opened notes show at most three entries in all (errors first), each group closing with "+ n weitere",
+        // so the slip never pushes the cover section under the footer
+        var budget = MaxIssueLines;
+        IssueGroup Group(string key, IEnumerable<ScanIssue> items, bool error)
+        {
+            var all = items.ToList();
+            var shown = all.Take(budget).ToList();
+            budget -= shown.Count;
+            return new IssueGroup(Head(key, all.Count), shown, all.Count, error);
+        }
+        var errors = r.Errors.Count > 0 ? Group("imports.issues.errors", r.Errors, true) : null;
+        if (r.Duplicates.Count > 0) groups.Add(Group("imports.issues.duplicates", r.Duplicates, false));
+        if (r.Unknown.Count > 0) groups.Add(Group("imports.issues.unknown", r.Unknown, false));
+        if (errors != null) groups.Add(errors);
         Issues = groups;
         ReportClean = groups.Count == 0;
         var files = r.Added + r.Updated + r.Unchanged + r.Duplicates.Count + r.Unknown.Count + r.Errors.Count;

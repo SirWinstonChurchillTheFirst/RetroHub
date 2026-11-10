@@ -52,8 +52,44 @@ public class ServiceRow : Button
         _previous = e.NameScope.Find<Control>("PART_Previous");
         _next = e.NameScope.Find<Control>("PART_Next");
         _value = e.NameScope.Find<Control>("PART_Value");
+        _columns = e.NameScope.Find<Grid>("PART_Columns");
+        _hint = e.NameScope.Find<TextBlock>("PART_Hint");
         if (_previous != null) _previous.PointerPressed += OnPreviousPressed;
         if (_next != null) _next.PointerPressed += OnNextPressed;
+        _narrow = null;
+        ApplyWidth(Bounds.Width);
+    }
+
+    private Grid? _columns;
+    private TextBlock? _hint;
+    private bool? _narrow;
+
+    /// <summary>
+    /// Below this row width (Importe at ≈ 1100: a 787 px list beside the scan column) the value column narrows to 292
+    /// (window 220) and the description wraps onto a second line (the row grows to ≈ 88) instead of being cut after
+    /// ≈ 270 px (QA 2).
+    /// </summary>
+    public const double NarrowBelow = 900;
+
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+        if (e.WidthChanged) ApplyWidth(e.NewSize.Width);
+    }
+
+    private void ApplyWidth(double width)
+    {
+        if (width <= 0 || _columns == null) return;
+        var narrow = width < NarrowBelow;
+        if (_narrow == narrow) return;
+        _narrow = narrow;
+        if (_columns.ColumnDefinitions.Count > 2) _columns.ColumnDefinitions[2].Width = new GridLength(narrow ? 292 : 392);
+        if (_value is Grid g && g.ColumnDefinitions.Count > 1) g.ColumnDefinitions[1].Width = new GridLength(narrow ? 220 : 320);
+        if (_hint != null)
+        {
+            _hint.TextWrapping = narrow ? Avalonia.Media.TextWrapping.Wrap : Avalonia.Media.TextWrapping.NoWrap;
+            _hint.MaxLines = narrow ? 2 : 1;
+        }
     }
 
     private void OnPreviousPressed(object? sender, PointerPressedEventArgs e) => OnArrow(e, -1);

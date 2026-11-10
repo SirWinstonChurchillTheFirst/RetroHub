@@ -23,7 +23,7 @@ namespace RetroHub.App.Controls;
 /// <item>Scrims flattened into ONE cached bitmap per window-size bucket (64 px grid).</item>
 /// <item>Glow at the source: a radial gradient in the picture light, recoloured on change only.</item>
 /// <item>Board light: the shared <see cref="ThemeManager.BoardLight"/> gets the picture light at 35 % (wall: light 22 %).</item>
-/// <item>Grain (korn-128 at 2.5 %) only here, against banding.</item>
+/// <item>Grain (korn-128 at 6 %, QA 2: at 2.5 % it stayed under one LSB and the blurred backdrop banded into contour rings) only here, against banding.</item>
 /// <item>Crossfade between two image layers (Light 420 ms), started only after <see cref="Motion.Dwell"/> of rest and
 /// never during auto-repeat; when a repeat ends only the dwell restarts, and only if the target differs.</item>
 /// </list>
@@ -53,6 +53,9 @@ public sealed class RoomBackdrop : Panel
     private (int W, int H, int Stage)? _scrimKey;
     private int _scrimVersion;
 
+    /// <summary>Opacity of the grain tile: about ±2 LSB on the dark room, enough to dither the 64×36 backdrop's steps.</summary>
+    public const double GrainStrength = 0.06;
+
     public RoomBackdrop()
     {
         IsHitTestVisible = false;
@@ -60,7 +63,7 @@ public sealed class RoomBackdrop : Panel
         _ghost = new MotifGhost { IsVisible = false };
         _a = MakeImage();
         _b = MakeImage();
-        _grain = new TextureFill { Texture = Texture.Grain, Strength = 0.025 };
+        _grain = new TextureFill { Texture = Texture.Grain, Strength = GrainStrength };
         _scrim = new Image { Stretch = Stretch.Fill };
         RenderOptions.SetBitmapInterpolationMode(_scrim, BitmapInterpolationMode.HighQuality);
         _glowBrush = new RadialGradientBrush

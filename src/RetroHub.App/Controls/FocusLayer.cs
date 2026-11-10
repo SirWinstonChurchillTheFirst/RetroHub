@@ -358,7 +358,10 @@ public sealed class FocusLayer
         using var toHost = ctx.PushTransform(Matrix.CreateTranslation(-_region.X, -_region.Y));
         var t = _target;
         var light = LightColor;
-        var brush = new ImmutableSolidColorBrush(light);
+        // QA 2: in a system's context the ring is the system light mixed halfway toward Papier – the plain light (a
+        // lavender, a dark blue) read weaker than the amber ring and competed with the spines' colour bands beside it;
+        // cone and board piece keep the system's own light
+        var brush = new ImmutableSolidColorBrush(Light is { } sys ? Mix(sys, RingPaper, RingPaperShare) : light);
         // the lit board piece (M3 QA): the front under the box (as wide as the ring) tinted with 16 % light, 2 px light
         // on the board top; the stronger contact shadow falls only BELOW the front (on the front it cancelled the tint).
         // The ring stands on the board top – its legs end there and the light bar closes it: the box stands on the shelf.
@@ -375,6 +378,13 @@ public sealed class FocusLayer
     }
 
     private const double RingGap = 3, RingWidth = 3;
+
+    /// <summary>Share of Papier in a system-context ring (QA 2).</summary>
+    public const double RingPaperShare = 0.5;
+    private static readonly Color RingPaper = Color.Parse("#F4ECDF");
+
+    /// <summary>The ring colour for a context light (null = the user's light colour, unmixed).</summary>
+    public static Color RingColor(Color? systemLight) => systemLight is { } s ? Mix(s, RingPaper, RingPaperShare) : ThemeManager.CurrentAccent;
 
     private static Color Mix(Color a, Color b, double t) => Color.FromRgb(
         (byte)Math.Round(a.R + (b.R - a.R) * t), (byte)Math.Round(a.G + (b.G - a.G) * t), (byte)Math.Round(a.B + (b.B - a.B) * t));

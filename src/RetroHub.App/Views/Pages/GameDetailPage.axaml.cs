@@ -40,7 +40,7 @@ public partial class GameDetailPage : PageBase
         DetailBox.TemplateApplied += (_, _) =>
         {
             StageBoard.Casters = Casters();
-            if (DetailBox.Art != null) DetailBox.Art.ArtRectChanged += (_, _) => { ApplyBoxFrame(); StageBoard.InvalidateVisual(); UpdateGap(); };
+            if (DetailBox.Art != null) DetailBox.Art.ArtRectChanged += (_, _) => { ApplyBoxFrame(); ApplyStageHeight(); StageBoard.InvalidateVisual(); UpdateGap(); };
             ApplySpine();
         };
         Stage.LayoutUpdated += (_, _) => StageBoard.InvalidateVisual();
@@ -54,6 +54,7 @@ public partial class GameDetailPage : PageBase
         ScreensLargeBoard.Casters = [TitleLarge, SnapLarge];
         LargeSets.LayoutUpdated += (_, _) => ScreensLargeBoard.InvalidateVisual();
         DescriptionText.SizeChanged += (_, _) => UpdateReadMore();
+        DescriptionScroll.ScrollChanged += (_, _) => UpdateDescriptionFade();
         // "Daneben im Regal": its boxes take the object focus like a shelf in the library
         _shelfFocus = new FocusLayer(NeighbourHost, NeighbourRow);
         NeighbourHost.Children.Insert(0, _shelfFocus.Back);
@@ -215,10 +216,15 @@ public partial class GameDetailPage : PageBase
     {
         var full = _compact ? 398.0 : 588.0;
         var h = full;
-        if (DetailBox.Art?.ImageAspect is > 1.05)
+        // QA 2: not only a landscape cover – any box clearly lower than its frame (a square placeholder, a squat cover)
+        // lets the stage follow it; the placeholder state had ≈ 220 px of empty backdrop above the box
+        var frameHeight = _compact ? 336.0 : 504.0;
+        var art = DetailBox.Art is { ArtRect.Height: > 0 } a ? a.ArtRect.Height : BoxSlot.Height;
+        var wide = DetailBox.Art?.ImageAspect is > 1.05;
+        if (wide || art < frameHeight * 0.9)
         {
             var text = TextColumn.DesiredSize.Height; // includes its bottom margin above the board
-            var content = Math.Max(BoxSlot.Height, text);
+            var content = Math.Max(wide ? BoxSlot.Height : art, text);
             h = Math.Clamp(Math.Ceiling(StageHeadroom + content), _compact ? 348 : 488, full);
         }
         if (Stage.Height == h) return;
@@ -380,7 +386,8 @@ public partial class GameDetailPage : PageBase
         var face = new Typeface(DescriptionText.FontFamily, DescriptionText.FontStyle, DescriptionText.FontWeight);
         using var layout = new TextLayout(vm.Description, face, DescriptionText.FontSize, null, TextAlignment.Left, TextWrapping.Wrap,
             maxWidth: DescriptionText.Bounds.Width, lineHeight: DescriptionText.LineHeight);
-        ReadMoreButton.IsVisible = layout.TextLines.Count > DescriptionText.MaxLines;
+        ReadMoreButton.IsVisible = layout.TextLines.Count > ClosedLines;
+        UpdateDescriptionFade();
     }
 
     // ===================== focus: footer, scrolling, sections =====================
@@ -399,7 +406,7 @@ public partial class GameDetailPage : PageBase
                 _ when x == MoreButton => DetailFocus.More,
                 _ when x == DetailBox => DetailFocus.Box,
                 _ when x == SystemButton => DetailFocus.System,
-                _ when x == EmulatorFold || x == ModeFold => DetailFocus.Sheet,
+                _ when x == EmulatorFold || x == ModeFold || x == FileFold => DetailFocus.Sheet,
                 _ when x == EmulatorBox || x == ModeBox => DetailFocus.Row,
                 _ when x == FileRow => DetailFocus.File,
                 _ when x == VariantsRow => DetailFocus.Variants,
@@ -501,9 +508,11 @@ public partial class GameDetailPage : PageBase
     /// <summary>Reading the back: the header on Raum (no lighter TV-light band above the plain back) and the top fade.</summary>
     private void UpdateHeaderGround()
     {
-        var inBack = Scroll.Offset.Y >= BoardStop - 0.5 && Scroll.Offset.Y > 0;
-        TopFade.IsVisible = inBack;
-        if (_vm != null) _vm.HeaderGround = inBack ? RoomColor : default;
+        // QA 2: as soon as the page has scrolled, the box and the buttons fade out under the header like the Werkbank
+        // lists (12 px Raum) instead of being cut hard at its edge
+        var scrolled = Scroll.Offset.Y > 0.5;
+        TopFade.IsVisible = scrolled;
+        if (_vm != null) _vm.HeaderGround = scrolled ? RoomColor : default;
     }
 
     private static readonly Color RoomColor = Color.Parse("#14120F");
@@ -541,35 +550,22 @@ public partial class GameDetailPage : PageBase
     private void ApplySheet()
     {
         var sheet = _vm?.Sheet ?? DetailSheet.None;
-        var panel = sheet is DetailSheet.More or DetailSheet.FileInfo or DetailSheet.Description or DetailSheet.Variants or DetailSheet.Choice;
         // Mehr and "Auch im Regal" are lists that hang at their button (M4 QA: a centred 680 px card for four short
-        // items read as a stock modal); file info and the description stay a centred sheet
+        // items read as a stock modal)
         var list = sheet is DetailSheet.More or DetailSheet.Variants;
-        // the choice list is no overlay: it folds open under its row (M6 QA – a popup covered the "Start" sentence and
-        // did not line up with the row); everything else lies on the dimmed layer
+        // the choice list, the file info and the long description are no overlays: they fold open in the page (M6 QA,
+        // QA 2 – three centred sheets with three typographies read as a default dialog kit); only the lists and the
+        // large views lie on the dimmed layer
         var choice = sheet == DetailSheet.Choice;
-        SheetLayer.IsVisible = sheet != DetailSheet.None && !choice;
+        var fold = choice || sheet is DetailSheet.FileInfo or DetailSheet.Description;
+        SheetLayer.IsVisible = sheet != DetailSheet.None && !fold;
         EmulatorFold.IsOpen = choice && _vm?.Choice == DetailChoice.Emulator;
         ModeFold.IsOpen = choice && _vm?.Choice == DetailChoice.Mode;
-        panel &= !choice;
-        SheetPanel.IsVisible = panel;
+        FileFold.IsOpen = sheet == DetailSheet.FileInfo;
+        ApplyDescription(sheet == DetailSheet.Description);
+        SheetPanel.IsVisible = list;
         MoreRows.IsVisible = sheet == DetailSheet.More;
         VariantRows.IsVisible = sheet == DetailSheet.Variants;
-        FileLines.IsVisible = sheet == DetailSheet.FileInfo;
-        DescriptionScroll.IsVisible = sheet == DetailSheet.Description;
-        SheetFolderButton.IsVisible = sheet == DetailSheet.FileInfo;
-        SheetButtons.IsVisible = !list;
-        SheetTitle.IsVisible = !list;
-        SheetTitle.Text = sheet switch
-        {
-            DetailSheet.FileInfo => Loc.T("detail.fileInfo"),
-            DetailSheet.Description => _vm?.Game?.Title ?? "",
-            _ => "",
-        };
-        var pad = list ? 8.0 : 28.0;
-        SheetPanel.Padding = new Thickness(0, pad, 0, list ? 8 : 24);
-        SheetEdge.Margin = new Thickness(0, -pad, 0, 0);
-        SheetPanel.Width = list ? 420 : sheet == DetailSheet.FileInfo ? 760 : 680;
         PlaceSheet(sheet);
         CoverView.IsVisible = sheet == DetailSheet.Cover;
         ScreensView.IsVisible = sheet == DetailSheet.Screens;
@@ -592,12 +588,32 @@ public partial class GameDetailPage : PageBase
             // the row and its list come into view before it opens (260 px below the row)
             row.BringIntoView(new Rect(0, -48, row.Bounds.Width, row.Bounds.Height + 48 + 260));
         }
+        else if (sheet == DetailSheet.FileInfo)
+            FileRow.BringIntoView(new Rect(0, -48, FileRow.Bounds.Width, FileRow.Bounds.Height + 48 + 300));
         Dispatcher.UIThread.Post(FocusSheet, DispatcherPriority.Loaded);
     }
 
     private Control ChoiceAnchor() => _vm?.Choice == DetailChoice.Mode ? ModeBox : EmulatorBox;
     private ItemsControl ChoiceList() => _vm?.Choice == DetailChoice.Mode ? ModeChoices : EmulatorChoices;
-    private bool IsInChoice(Visual v) => IsInside(v, EmulatorFold) || IsInside(v, ModeFold);
+    private bool IsInChoice(Visual v) => IsInside(v, EmulatorFold) || IsInside(v, ModeFold) || IsInside(v, FileFold);
+
+    /// <summary>Lines of the description before "Weiterlesen"; opened it shows up to <see cref="OpenLines"/> and scrolls inside them.</summary>
+    private const int ClosedLines = 8, OpenLines = 12;
+
+    /// <summary>"Weiterlesen" opens the text in place (QA 2): up to 12 lines, the rest scrolls inside with a 12 px fade.</summary>
+    private void ApplyDescription(bool open)
+    {
+        DescriptionText.MaxLines = open ? 0 : ClosedLines;
+        DescriptionText.TextTrimming = open ? TextTrimming.None : TextTrimming.WordEllipsis;
+        DescriptionScroll.MaxHeight = open ? OpenLines * DescriptionText.LineHeight : double.PositiveInfinity;
+        if (!open) DescriptionScroll.Offset = default;
+        ReadMoreText.Text = Loc.T(open ? "detail.readLess" : "detail.readMore");
+        Dispatcher.UIThread.Post(UpdateDescriptionFade, DispatcherPriority.Loaded);
+        if (open) AboutSection.BringIntoView(new Rect(0, -48, AboutSection.Bounds.Width, Math.Min(AboutSection.Bounds.Height, 600) + 48));
+    }
+
+    private void UpdateDescriptionFade() =>
+        DescriptionFade.IsVisible = DescriptionScroll.Extent.Height > DescriptionScroll.Viewport.Height + DescriptionScroll.Offset.Y + 1;
 
     private void FocusSheet()
     {
@@ -609,7 +625,8 @@ public partial class GameDetailPage : PageBase
             // the list opens on the current choice
             DetailSheet.Choice => ChoiceList().GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible && b.Classes.Contains("current"))
                                   ?? ChoiceList().GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible),
-            DetailSheet.FileInfo or DetailSheet.Description => SheetCloseButton,
+            DetailSheet.FileInfo => FileFolderButton,
+            DetailSheet.Description => ReadMoreButton,
             _ => null,
         };
         if (target != null) target.Focus(NavigationMethod.Directional);
@@ -661,7 +678,7 @@ public partial class GameDetailPage : PageBase
         var count = (_vm?.HasTitleScreen == true ? 1 : 0) + (_vm?.HasSnapScreen == true ? 1 : 0);
         if (count == 0) return;
         // board 24, captions 12 + 21, 40 below, 24 above: at most 720 wide each (M4 QA: 840 px slabs read as monitor frames)
-        var maxH = size.Height - 40 - 24 - 33 - 40 - 24;
+        var maxH = size.Height - 40 - 24 - 48 - 40 - 24;
         var w = Math.Min(MaxLargeScreen, Math.Floor((size.Width - 2 * 96 - (count - 1) * 48) / count));
         while (w > 200 && PixelScreen.SetHeightFor(w) > maxH) w -= 8;
         foreach (var s in new[] { TitleLarge, SnapLarge })
@@ -681,10 +698,22 @@ public partial class GameDetailPage : PageBase
         if (_vm?.IsSheetOpen == true)
         {
             // an overlay is modal: the focus stays inside; the long description scrolls with up/down
-            if (_vm.Sheet == DetailSheet.Description && action is NavAction.Up or NavAction.Down)
+            if (_vm.Sheet == DetailSheet.Description)
             {
-                var y = DescriptionScroll.Offset.Y + (action == NavAction.Down ? 120 : -120);
-                DescriptionScroll.Offset = new Vector(0, Math.Clamp(y, 0, Math.Max(0, DescriptionScroll.Extent.Height - DescriptionScroll.Viewport.Height)));
+                // the opened text: up/down scroll it inside its 12 lines, the focus stays on "Weniger anzeigen"
+                if (action is NavAction.Up or NavAction.Down)
+                {
+                    var y = DescriptionScroll.Offset.Y + (action == NavAction.Down ? 120 : -120);
+                    DescriptionScroll.Offset = new Vector(0, Math.Clamp(y, 0, Math.Max(0, DescriptionScroll.Extent.Height - DescriptionScroll.Viewport.Height)));
+                    UpdateDescriptionFade();
+                }
+                if (focused != ReadMoreButton) FocusSheet();
+                return true;
+            }
+            if (_vm.Sheet == DetailSheet.FileInfo)
+            {
+                // the folded-open file info has one button; the focus stays on it until Back or confirm on the row
+                if (focused != FileFolderButton) FocusSheet();
                 return true;
             }
             if (_vm.Sheet == DetailSheet.Choice)

@@ -189,6 +189,7 @@ public class ReviewRegressionTests
         Assert.Contains("Zugriff verweigert", vm.Dialogs.Current.Message);
         Assert.Equal(LaunchPhase.Idle, vm.Launch.Phase);
         Assert.DoesNotContain(vm.Toasts.Items, t => t.Text == Loc.T("launch.ended"));
+        Assert.Null(vm.Launch.LastReturnNotice);
         vm.Dialogs.Current.Cancel();
         TestSupport.Pump(() => vm.Dialogs.Current == null);
         window.Close();
@@ -204,6 +205,7 @@ public class ReviewRegressionTests
         Assert.True(TestSupport.Pump(() => vm.Toasts.Items.Count > 0 && vm.Launch.Phase == LaunchPhase.Idle, 3000));
         Assert.Contains(vm.Toasts.Items, t => t.Text == Loc.T("launch.detached", game.Title));
         Assert.DoesNotContain(vm.Toasts.Items, t => t.Text == Loc.T("launch.ended"));
+        Assert.Null(vm.Launch.LastReturnNotice);
         Assert.Null(vm.Dialogs.Current);
         window.Close();
     });

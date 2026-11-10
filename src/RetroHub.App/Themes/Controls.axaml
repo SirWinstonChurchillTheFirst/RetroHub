@@ -574,7 +574,7 @@
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
           <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource RhLineBrush}" />
           <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
-          <Grid ColumnDefinitions="Auto,*,392" Margin="24,0,8,0">
+          <Grid Name="PART_Columns" ColumnDefinitions="Auto,*,392" Margin="24,0,8,0">
             <!-- the service-menu number "01" … (Rücken 17, Text 3); the label follows 48 px further on -->
             <TextBlock Name="PART_Number" Text="{Binding Number}" IsVisible="{Binding HasNumber}" Width="44" VerticalAlignment="Center"
                        FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="17" LineHeight="20" LetterSpacing="0.7"
@@ -587,21 +587,23 @@
               <TextBlock Name="PART_Hint" Text="{Binding Hint}" IsVisible="{Binding HasHint}" FontFamily="{DynamicResource RhFontRead}" FontSize="15" LineHeight="20"
                          Foreground="{DynamicResource RhText3Brush}" TextTrimming="CharacterEllipsis" />
             </StackPanel>
-            <!-- ◀ [display window] ▶ : filled triangles 12 × 20, 12 px outside a 320 × 40 room-deep window with an edge line;
-                 the value inside in Zahl 20 (+tnum, Papier); on focus the window's top edge lights in the light colour -->
+            <!-- ◀ value ▶ : filled triangles 12 × 20, 12 px outside a 320-wide value column (QA 2: the "display window"
+                 only for the focused row – unfocused rows carry no fill and no border, the value in Zahl 20 Papier 85 %,
+                 the arrows Text 3 at 40 %; focused: Raum-Tief, 1 px Kante, 2 px top edge in the light colour, arrows
+                 Papier – the one lit display of the list, as on a TV's OSD). A fixed value ("Immer aktiv") is plain Text 2. -->
             <Grid Name="PART_Value" Grid.Column="2" ColumnDefinitions="36,320,36" IsVisible="{Binding IsChoice}" VerticalAlignment="Stretch" HorizontalAlignment="Center">
               <Border Name="PART_Previous" Background="Transparent" Cursor="Hand" IsVisible="{Binding !IsFixed}">
                 <Path Name="PART_PrevIcon" Data="M12,0 L12,20 L0,10 Z" Width="12" Height="20" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"
                       Fill="{DynamicResource RhText3Brush}" Classes.end="{Binding !CanPrevious}" />
               </Border>
-              <Border Name="PART_Window" Grid.Column="1" Height="40" VerticalAlignment="Center" Background="{DynamicResource RhRoomDeepBrush}"
-                      BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="0">
+              <Border Name="PART_Window" Grid.Column="1" Height="40" VerticalAlignment="Center" Background="Transparent"
+                      BorderBrush="Transparent" BorderThickness="1" CornerRadius="0" Classes.fixed="{Binding IsFixed}">
                 <Panel>
-                  <Border Name="PART_WindowEdge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
+                  <Border Name="PART_WindowEdge" Height="2" VerticalAlignment="Top" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
                   <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Border Width="16" Height="16" Background="{Binding Swatch}" IsVisible="{Binding HasSwatch}" VerticalAlignment="Center" />
-                    <TextBlock Name="PART_ValueText" Text="{Binding ValueText}" Classes="number" FontSize="20" LineHeight="24"
-                               Foreground="{DynamicResource RhText1Brush}" VerticalAlignment="Center" />
+                    <TextBlock Name="PART_ValueText" Text="{Binding ValueText}" Classes="number" Classes.fixed="{Binding IsFixed}" FontSize="20" LineHeight="24"
+                               Foreground="{DynamicResource RhText1Brush}" Opacity="0.85" VerticalAlignment="Center" />
                   </StackPanel>
                 </Panel>
               </Border>
@@ -622,8 +624,34 @@
         </Panel>
       </ControlTemplate>
     </Setter>
+    <!-- unfocused: the arrows recede (Text 3 at 40 %); the end of an ordered row even further -->
+    <Style Selector="^ /template/ Path">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
     <Style Selector="^ /template/ Path.end">
+      <Setter Property="Opacity" Value="0.15" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Path, ^.open /template/ Path">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Path.end, ^.open /template/ Path.end">
       <Setter Property="Opacity" Value="0.3" />
+    </Style>
+    <!-- the focused row's display window (not for a fixed value) -->
+    <Style Selector="^:focus-visible /template/ Border#PART_Window, ^.open /template/ Border#PART_Window">
+      <Setter Property="Background" Value="{DynamicResource RhRoomDeepBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource RhLineBrush}" />
+    </Style>
+    <Style Selector="^ /template/ Border#PART_Window.fixed">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ TextBlock#PART_ValueText, ^.open /template/ TextBlock#PART_ValueText">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^ /template/ TextBlock#PART_ValueText.fixed">
+      <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+      <Setter Property="Opacity" Value="1" />
     </Style>
     <Style Selector="^:pointerover /template/ Border#PART_Bg">
       <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
@@ -636,6 +664,9 @@
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_WindowEdge, ^.open /template/ Border#PART_WindowEdge">
       <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^ /template/ Border#PART_Window.fixed Border#PART_WindowEdge">
+      <Setter Property="Opacity" Value="0" />
     </Style>
     <!-- a row whose list is folded open under it (Importe "Mehr") keeps its focus look while the focus is in the list -->
     <Style Selector="^.open /template/ Border#PART_Bg">

@@ -894,7 +894,9 @@ public class DesignPreviewTests
         Sheet(detail, detail.ShowFileInfoCommand, "-3f-detail-datei.png");
         Sheet(detail, detail.ShowCoverCommand, "-3g-detail-cover.png");
         if (detail.HasScreens) Sheet(detail, detail.ShowScreensCommand, "-3h-detail-bildschirme.png");
-        if (detail.HasDescription) Sheet(detail, detail.ShowDescriptionCommand, "-3i-detail-text.png");
+        // "Weiterlesen" opens the text in place – only offered (and shot) when the 8 lines clip it (QA 2)
+        if (detail.HasDescription && window.CurrentPageView is Views.Pages.GameDetailPage { } dp && dp.FindControl<Button>("ReadMoreButton") is { IsVisible: true })
+            Sheet(detail, detail.ShowDescriptionCommand, "-3i-detail-text.png");
 
         // a plain game: never played, nothing known but the file; without a cover where the library has one
         var all = ctx.Services.Games.Query(new GameQuery());
@@ -1047,6 +1049,9 @@ public class DesignPreviewTests
                 Save(window, prefix + $"-9{name}.png", 60);
             }
             flight.Clear();
+            // a message after the session (QA 2): docked left in the footer in place of the location sentence
+            vm.Toasts.Show(Localization.Loc.T("artwork.removed"), ToastKind.Success, Localization.Loc.T("artwork.removedDetail"));
+            Save(window, prefix + "-9i-meldung.png", 300);
         }
         finally
         {

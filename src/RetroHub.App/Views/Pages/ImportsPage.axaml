@@ -96,7 +96,11 @@
                       <Button Theme="{StaticResource RhSheetRow}" Command="{Binding $parent[p:PageBase].((vm:ImportsViewModel)DataContext).ToggleFolderCommand}" CommandParameter="{Binding}"
                               IsVisible="{Binding CanRemove}">
                         <StackPanel Orientation="Horizontal" Spacing="14">
-                          <c:RhIcon Data="{StaticResource Icon.Refresh}" Width="22" Height="22" />
+                          <!-- pause = two filled bars, resume = the play triangle of "Spielen" (not the refresh arrows) -->
+                          <Panel Width="22" Height="22">
+                            <c:RhIcon Data="{StaticResource Icon.Pause}" Filled="True" Width="22" Height="22" IsVisible="{Binding IsEnabled}" />
+                            <c:RhIcon Data="{StaticResource Icon.Play}" Filled="True" Width="22" Height="22" IsVisible="{Binding !IsEnabled}" />
+                          </Panel>
                           <TextBlock Text="{Binding ToggleText}" VerticalAlignment="Center" />
                         </StackPanel>
                       </Button>
@@ -124,6 +128,30 @@
             </Button>
             <TextBlock Text="{l:T imports.neverChanged}" Classes="meta" VerticalAlignment="Center" />
           </StackPanel>
+
+          <!-- covers (artwork module) – in the folder column since QA 2: the scan column ended under the footer with the
+               delivery note open, while the left half stood empty below the folders -->
+          <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,48,0,12">
+            <c:ShelfLabel Text="{l:T artwork.title}" VerticalAlignment="Center" />
+          </StackPanel>
+          <Border Height="1" Background="{DynamicResource RhLineBrush}" Margin="0,0,0,16" />
+          <TextBlock Text="{Binding CoverOnlineText}" Classes="read" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,16,0,0">
+            <Button Name="CoversButton" Command="{Binding FindCoversCommand}" MinHeight="48">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <c:RhIcon Data="{StaticResource Icon.Search}" Width="18" Height="18" />
+                <TextBlock Text="{l:T artwork.find}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Command="{Binding CancelCoversCommand}" IsVisible="{Binding IsFindingCovers}" Content="{l:T common.cancel}" MinHeight="48" />
+          </StackPanel>
+          <StackPanel Spacing="10" Margin="0,20,0,0" IsVisible="{Binding IsFindingCovers}">
+            <TextBlock Classes="percent" IsVisible="{Binding !CoverIndeterminate}" Text="{Binding CoverProgress, StringFormat={}{0:0} %}" />
+            <c:SegmentBar Value="{Binding CoverProgress}" IsIndeterminate="{Binding CoverIndeterminate}" HorizontalAlignment="Left" />
+            <TextBlock c:Sentence.Text="{Binding CoverProgressText}" Classes="ui" Foreground="{DynamicResource RhText2Brush}" />
+            <TextBlock Text="{Binding CoverCurrent}" Classes="meta" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+          <TextBlock c:Sentence.Text="{Binding CoverResultText}" IsVisible="{Binding HasCoverResult}" Classes="meta" TextWrapping="Wrap" Margin="0,14,0,0" />
         </StackPanel>
 
         <!-- ===== scan column (the side column of the Werkbank grid) ===== -->
@@ -153,9 +181,10 @@
 
           <!-- the delivery note of the last scan: a paper slip torn off at the top, lines with dotted leaders to the numbers -->
           <StackPanel Name="DeliveryNote" Margin="0,28,0,0" IsVisible="{Binding HasReport}">
-            <Panel Background="{DynamicResource RhSurfaceBrush}">
+            <!-- the slip one step lighter than Regal (Wand hell 60 % over Raum, QA 2), so it reads as paper -->
+            <Panel Background="#27231E">
               <c:Sawtooth Fill="{DynamicResource RhBaseBrush}" VerticalAlignment="Top" />
-              <StackPanel Spacing="0" Margin="20,22,20,16">
+              <StackPanel Spacing="0" Margin="20,24,20,16">
                 <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
                   <TextBlock Text="{l:T imports.note}" Classes="slip-head" VerticalAlignment="Bottom" />
                   <TextBlock Grid.Column="1" c:Sentence.Text="{Binding ReportTitle}" Classes="meta" VerticalAlignment="Bottom" />
@@ -239,28 +268,7 @@
             </Panel>
           </StackPanel>
 
-          <!-- covers (artwork module) -->
-          <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,48,0,12">
-            <c:ShelfLabel Text="{l:T artwork.title}" VerticalAlignment="Center" />
-          </StackPanel>
-          <Border Height="1" Background="{DynamicResource RhLineBrush}" Margin="0,0,0,16" />
-          <TextBlock Text="{Binding CoverOnlineText}" Classes="read" TextWrapping="Wrap" />
-          <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,16,0,0">
-            <Button Name="CoversButton" Command="{Binding FindCoversCommand}" MinHeight="48">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <c:RhIcon Data="{StaticResource Icon.Search}" Width="18" Height="18" />
-                <TextBlock Text="{l:T artwork.find}" VerticalAlignment="Center" />
-              </StackPanel>
-            </Button>
-            <Button Command="{Binding CancelCoversCommand}" IsVisible="{Binding IsFindingCovers}" Content="{l:T common.cancel}" MinHeight="48" />
-          </StackPanel>
-          <StackPanel Spacing="10" Margin="0,20,0,0" IsVisible="{Binding IsFindingCovers}">
-            <TextBlock Classes="percent" IsVisible="{Binding !CoverIndeterminate}" Text="{Binding CoverProgress, StringFormat={}{0:0} %}" />
-            <c:SegmentBar Value="{Binding CoverProgress}" IsIndeterminate="{Binding CoverIndeterminate}" HorizontalAlignment="Left" />
-            <TextBlock c:Sentence.Text="{Binding CoverProgressText}" Classes="ui" Foreground="{DynamicResource RhText2Brush}" />
-            <TextBlock Text="{Binding CoverCurrent}" Classes="meta" TextTrimming="CharacterEllipsis" />
-          </StackPanel>
-          <TextBlock c:Sentence.Text="{Binding CoverResultText}" IsVisible="{Binding HasCoverResult}" Classes="meta" TextWrapping="Wrap" Margin="0,14,0,0" />
+
         </StackPanel>
       </Grid>
     </ScrollViewer>

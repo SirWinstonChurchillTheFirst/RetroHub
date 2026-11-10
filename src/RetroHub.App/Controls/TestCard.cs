@@ -24,7 +24,8 @@ public sealed class TestCard : Control
     public static readonly StyledProperty<IBrush?> LightProperty = AvaloniaProperty.Register<TestCard, IBrush?>(nameof(Light));
 
     private static readonly IImmutableSolidColorBrush Tube = new ImmutableSolidColorBrush(Color.Parse("#16140F"));
-    private static readonly IImmutableSolidColorBrush Raster = new ImmutableSolidColorBrush(Color.FromArgb(0x60, 0x3A, 0x34, 0x2B));
+    // QA 2: Kante at 37 % on the tube was ≈ 1.05 : 1 – the raster is Text 3 at 20 % now, a visible hairline grid
+    private static readonly IImmutableSolidColorBrush Raster = new ImmutableSolidColorBrush(Color.FromArgb(0x33, 0x94, 0x8A, 0x7A));
     private static readonly IImmutableSolidColorBrush Gap = new ImmutableSolidColorBrush(Color.Parse("#0A0908"));
     private static readonly IImmutableSolidColorBrush Front = new ImmutableSolidColorBrush(Color.Parse("#2A2620"));
     private static readonly IImmutableSolidColorBrush Lip = new ImmutableSolidColorBrush(Color.Parse("#3A352D"));
@@ -34,6 +35,15 @@ public sealed class TestCard : Control
     private static readonly IImmutableSolidColorBrush[] Ramp =
         new[] { "#0A0908", "#14120F", "#1E1B17", "#2A2620", "#3A342B", "#948A7A", "#C9BFAF", "#F4ECDF" }
             .Select(h => (IImmutableSolidColorBrush)new ImmutableSolidColorBrush(Color.Parse(h))).ToArray();
+
+    private static readonly Dictionary<Color, IImmutableSolidColorBrush> Faces = [];
+
+    private static IImmutableSolidColorBrush BoxFace(Color wallHi)
+    {
+        if (Faces.TryGetValue(wallHi, out var b)) return b;
+        static byte M(byte a, byte p) => (byte)Math.Round(a + (p - a) * 0.14);
+        return Faces[wallHi] = new ImmutableSolidColorBrush(Color.FromRgb(M(wallHi.R, 0xF4), M(wallHi.G, 0xEC), M(wallHi.B, 0xDF)));
+    }
 
     /// <summary>Three boxes of the mini shelf: their systems (wall + band from the palette, no names).</summary>
     private static readonly string[] Boxes = ["nes", "gba", "n64", "snes", "megadrive"];
@@ -112,7 +122,8 @@ public sealed class TestCard : Control
         for (var y = pic.Y + rampH + step; y < pic.Bottom; y += step) ctx.FillRectangle(Raster, new Rect(pic.X, Math.Round(y), pic.Width, 1));
 
         // the mini shelf: board front 10, lip 2, the board light on top
-        var boardY = Math.Round(pic.Y + pic.Height * 0.80);
+        // QA 2: 24 px higher than before (the lower third stood empty)
+        var boardY = Math.Round(pic.Y + pic.Height * 0.80 - 24 * k);
         var boardH = Math.Round(10 * k);
         ctx.FillRectangle(Front, new Rect(pic.X, boardY, pic.Width, boardH));
         ctx.FillRectangle(Lip, new Rect(pic.X, boardY + 1, pic.Width, Math.Max(1, Math.Round(2 * k))));
@@ -132,9 +143,10 @@ public sealed class TestCard : Control
             var w = focused ? Math.Round(boxW * 1.06) : boxW;
             var r = new Rect(Math.Round(x - (w - boxW) / 2), boardY - h, w, h);
             var look = SystemPalette.Get(Boxes[i]);
-            var split = Math.Round(h * 0.38);
-            ctx.FillRectangle(look.WallHiBrush, new Rect(r.X, r.Y, r.Width, split));
-            ctx.FillRectangle(look.WallBrush, new Rect(r.X, r.Y + split, r.Width, r.Height - split));
+            // QA 2: Wand/Wand hell on the dark tube was ≈ 1.2 : 1 – the boxes are Wand hell lifted by 14 % Papier with
+            // a 6 px colour band on top and their spine band, so the mini shelf reads at a glance
+            ctx.FillRectangle(BoxFace(look.WallHi), r);
+            ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, r.Width, Math.Max(3, Math.Round(6 * k))));
             ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, Math.Max(4, Math.Round(r.Width * 0.16)), r.Height));
             if (focused && Light is { } light && shift < 1)
             {

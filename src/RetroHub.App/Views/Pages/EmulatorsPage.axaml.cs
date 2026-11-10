@@ -12,6 +12,12 @@ public partial class EmulatorsPage : PageBase
     {
         InitializeComponent();
         AddHandler(GotFocusEvent, (_, e) => KeepClear(e.Source as Control), RoutingStrategies.Bubble);
+        // the actions stand once: in the Gerätefach when the side column is shown, else in the head (QA 2)
+        Frame.LayoutUpdated += (_, _) =>
+        {
+            var head = !Frame.SideShown;
+            if (HeadButtons.IsVisible != head) HeadButtons.IsVisible = head;
+        };
     }
 
     /// <summary>
@@ -27,5 +33,5 @@ public partial class EmulatorsPage : PageBase
     /// <summary>The first system row (the opened one when the page was filtered from a game), else "Neu suchen".</summary>
     public override bool FocusDefault() =>
         FocusVisible(List.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Classes.Contains("sysrow") && b.IsEffectivelyVisible))
-        || FocusVisible(RefreshButton);
+        || FocusVisible(RefreshButton) || FocusVisible(BayRefreshButton);
 }

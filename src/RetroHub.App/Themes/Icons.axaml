@@ -27,6 +27,8 @@
 
   <!-- ===== Actions ===== -->
   <StreamGeometry x:Key="Icon.Play">M7,4 L20,12 L7,20 Z</StreamGeometry>
+  <!-- two filled bars 4 × 14 with a 4 px gap (QA 2: "Pausieren" carried the refresh arrows) -->
+  <StreamGeometry x:Key="Icon.Pause">M6,5 H10 V19 H6 Z M14,5 H18 V19 H14 Z</StreamGeometry>
   <StreamGeometry x:Key="Icon.Star">M12,3 L14.6,8.6 L20.6,9.2 L16,13.2 L17.4,19.2 L12,16 L6.6,19.2 L8,13.2 L3.4,9.2 L9.4,8.6 Z</StreamGeometry>
   <StreamGeometry x:Key="Icon.Favorite">M12,3 L14.6,8.6 L20.6,9.2 L16,13.2 L17.4,19.2 L12,16 L6.6,19.2 L8,13.2 L3.4,9.2 L9.4,8.6 Z</StreamGeometry>
   <StreamGeometry x:Key="Icon.Random">M6,4 H18 L20,6 V18 L18,20 H6 L4,18 V6 Z M8,8 H10 V10 H8 Z M11,11 H13 V13 H11 Z M14,14 H16 V16 H14 Z</StreamGeometry>

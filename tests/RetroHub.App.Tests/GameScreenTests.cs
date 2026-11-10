@@ -468,7 +468,11 @@ public class LaunchFlowTests
         Assert.True(window.IsVisible);
         Assert.Equal(1, returned);
         Assert.Equal([true, false], input.Suspends);
-        Assert.Contains(vm.Toasts.Items, t => t.Text == Loc.T("launch.ended"));
+        // the session's feedback is the OSD now (QA 2: no "Willkommen zurück" card)
+        Assert.True(TestSupport.Pump(() => vm.Launch.LastReturnNotice != null, 2000));
+        Assert.Equal("Golden Sun", vm.Launch.LastReturnNotice!.Game.Title);
+        Assert.True(window.FindControl<OsdLayer>("Osd")!.IsShowingNotice);
+        Assert.DoesNotContain(vm.Toasts.Items, t => t.Text == Loc.T("launch.ended"));
         Assert.True(vm.CurrentPage is GameDetailViewModel { Game.Title: "Golden Sun" });
         window.Close();
     });

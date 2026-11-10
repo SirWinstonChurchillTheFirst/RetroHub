@@ -413,19 +413,34 @@ public sealed partial class LaunchCoordinator : ObservableObject
                 _ctx.Toasts.Show(Loc.T("launch.endedWithError", item.Title), ToastKind.Error, session.Error);
             else
             {
-                // "Willkommen zurück" once the page is back (after the switch-off and its fade, DESIGN 9.3 step 7); a
-                // session under a minute says so instead of a dash
+                // the session's feedback once the page is back (after the switch-off and its fade, DESIGN 9.3 step 7):
+                // no notification card but the TV's own OSD top right (QA 2) – the game's total in Zahl 28, the session
+                // below; a session under a minute says so instead of a dash
                 var seconds = Math.Max(1, (long)session.Elapsed.TotalSeconds);
-                var detail = Loc.T("launch.sessionTime", Fmt.PlayTime(seconds));
                 var delay = handoff ? TimeSpan.Zero : ReturnToastDelay;
-                if (delay <= TimeSpan.Zero) _ctx.Toasts.Show(Loc.T("launch.ended"), ToastKind.Success, detail);
-                else DispatcherTimer.RunOnce(() => _ctx.Toasts.Show(Loc.T("launch.ended"), ToastKind.Success, detail), delay);
+                void Notify()
+                {
+                    long total = 0;
+                    try { total = _ctx.Services.Games.Get(item.Id)?.PlaySeconds ?? 0; }
+                    catch (Exception ex) { Log.Warn("Reading the play time failed", ex); }
+                    var notice = new ReturnNotice(item, Fmt.PlayTime(Math.Max(total, seconds)), Loc.T("launch.returnLine", Fmt.PlayTime(seconds)));
+                    LastReturnNotice = notice;
+                    SessionReturned?.Invoke(notice);
+                }
+                if (delay <= TimeSpan.Zero) Notify();
+                else DispatcherTimer.RunOnce(Notify, delay);
             }
             if (!(_ctx.Navigator.Current == PageKey.GameDetail && Equals(_ctx.Navigator.CurrentArgument, item)))
                 _ctx.Navigator.Navigate(PageKey.GameDetail, item);
         }
         try { Returned?.Invoke(item, session); } catch (Exception ex) { Log.Error("Returned handler failed", ex); }
     });
+
+    /// <summary>The OSD after a session (QA 2: replaces the "Willkommen zurück" toast); the window shows it.</summary>
+    public event Action<ReturnNotice>? SessionReturned;
+
+    /// <summary>The last session feedback (tests, diagnostics).</summary>
+    public ReturnNotice? LastReturnNotice { get; private set; }
 
     /// <summary>
     /// How long "Willkommen zurück" waits: until the switch-off (240 ms) and the page's fade (280 ms) are over; at once
@@ -534,3 +549,6 @@ public sealed partial class LaunchCoordinator : ObservableObject
         }
     }
 }
+
+/// <summary>The feedback after a session (QA 2): the game's total play time and one line about this session.</summary>
+public sealed record ReturnNotice(GameItemViewModel Game, string Total, string Session);

@@ -11,7 +11,8 @@ namespace RetroHub.App.Controls;
 public sealed class Sawtooth : Control
 {
     public static readonly StyledProperty<IBrush?> FillProperty = AvaloniaProperty.Register<Sawtooth, IBrush?>(nameof(Fill));
-    public const double ToothHeight = 6;
+    /// <summary>8 px (QA 2: 6 px teeth on Regal against Raum were barely visible, the slip read as a grey panel).</summary>
+    public const double ToothHeight = 8;
 
     private StreamGeometry? _geometry;
     private double _width = -1;

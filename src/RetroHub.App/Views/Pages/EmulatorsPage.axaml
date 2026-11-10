@@ -21,9 +21,10 @@
       <Setter Property="LetterSpacing" Value="0.6" />
       <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     </Style>
+    <!-- program names in read SemiBold Papier (QA 2, one rule with the detail's "Startet mit …"); the version in Zahl -->
     <Style Selector="Run.prog">
-      <Setter Property="FontFamily" Value="{DynamicResource RhFontNumber}" />
-      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="FontFamily" Value="{DynamicResource RhFontRead}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     </Style>
     <Style Selector="TextBlock.choice">
@@ -79,7 +80,8 @@
         <TextBlock Text="{l:T nav.emulators}" Classes="poster" />
         <TextBlock c:Sentence.Text="{Binding SummaryText}" Classes="meta" />
       </StackPanel>
-      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top" Margin="0,58,0,0">
+      <!-- narrow pages only: with the side column shown the two buttons stand in the Gerätefach -->
+      <StackPanel Name="HeadButtons" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top" Margin="0,58,0,0">
         <Button Name="FolderButton" Theme="{StaticResource RhGhostButton}" Command="{Binding OpenEmulatorsFolderCommand}" MinHeight="44">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <c:RhIcon Data="{StaticResource Icon.Folder}" Width="18" Height="18" />
@@ -101,8 +103,23 @@
       <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,12" Height="24">
         <c:ShelfLabel Text="{Binding FilterText}" IsVisible="{Binding IsFiltered}" VerticalAlignment="Center" />
         <c:ShelfLabel Text="{l:T emulators.systems}" IsVisible="{Binding !IsFiltered}" VerticalAlignment="Center" />
-        <TextBlock Classes="meta" VerticalAlignment="Center" IsVisible="{Binding !IsFiltered}">
+        <TextBlock Classes="meta" VerticalAlignment="Center">
+          <TextBlock.IsVisible>
+            <MultiBinding Converter="{x:Static BoolConverters.And}">
+              <Binding Path="!IsFiltered" />
+              <Binding Path="!NoneInstalled" />
+            </MultiBinding>
+          </TextBlock.IsVisible>
           <Run Text="{l:T emulators.where.before}" /><Run Classes="mono" Text="emulators/&lt;name&gt;/" /><Run Text="{l:T emulators.where.after}" />
+        </TextBlock>
+        <!-- nothing installed: the head already names the folder – the label keeps only the promise (QA 2) -->
+        <TextBlock Classes="meta" VerticalAlignment="Center" Text="{l:T emulators.promise}">
+          <TextBlock.IsVisible>
+            <MultiBinding Converter="{x:Static BoolConverters.And}">
+              <Binding Path="!IsFiltered" />
+              <Binding Path="NoneInstalled" />
+            </MultiBinding>
+          </TextBlock.IsVisible>
         </TextBlock>
         <Button Theme="{StaticResource RhGhostButton}" Command="{Binding ShowAllCommand}" Content="{l:T emulators.showAll}" IsVisible="{Binding IsFiltered}" MinHeight="36" />
       </StackPanel>
@@ -152,7 +169,7 @@
                   <Grid ColumnDefinitions="168,16,*" MinHeight="32">
                     <TextBlock Classes="kv-key" Text="{l:T emulators.key.program}" />
                     <TextBlock Grid.Column="2" Classes="kv-value" TextTrimming="CharacterEllipsis">
-                      <Run Text="{Binding Emulator.NameVersion}" /><Run Text=" " /><Run Text="{Binding Emulator.PathInline}" /><Run Text=" " /><Run Classes="mono" Text="{Binding Emulator.PathOnly}" />
+                      <Run Classes="prog" Text="{Binding Emulator.Name}" /><Run Text=" " /><Run Classes="ver" Text="{Binding Emulator.Version}" /><Run Text=" " /><Run Text="{Binding Emulator.PathInline}" /><Run Text=" " /><Run Classes="mono" Text="{Binding Emulator.PathOnly}" />
                     </TextBlock>
                   </Grid>
                   <Grid ColumnDefinitions="168,16,*" MinHeight="32" IsVisible="{Binding ShowModes}">
@@ -262,5 +279,42 @@
     </StackPanel>
     </ScrollViewer>
     <Border c:WorkbenchFrame.Role="Fade" IsHitTestVisible="False" Background="{x:Static c:WorkbenchFrame.FadeBrush}" />
+
+    <!-- the side column (QA 2: it stood empty beside the list): a "Gerätefach" – label "Bereit", "10 von 13" in Zahl 28,
+         one 24 × 10 segment per system in its colour (lit = it can start, Wand hell = it cannot), then the page's two
+         actions -->
+    <StackPanel Name="DeviceBay" c:WorkbenchFrame.Role="Side" Spacing="0">
+      <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,12" Height="24">
+        <c:ShelfLabel Text="{l:T emulators.readyLabel}" VerticalAlignment="Center" />
+      </StackPanel>
+      <Border Height="1" Background="{DynamicResource RhLineBrush}" Margin="0,0,0,20" />
+      <TextBlock Name="ReadyCount" Classes="number" FontSize="28" LineHeight="32" Text="{Binding ReadyText}" Foreground="{DynamicResource RhText1Brush}" />
+      <ItemsControl Name="ReadySegments" ItemsSource="{Binding Segments}" Margin="0,14,0,0">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="6" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ReadySegment">
+            <Border Width="24" Height="10" Background="{Binding Brush}" ToolTip.Tip="{Binding Code}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <StackPanel Spacing="4" Margin="-12,32,0,0">
+        <Button Name="BayFolderButton" Theme="{StaticResource RhGhostButton}" Command="{Binding OpenEmulatorsFolderCommand}" MinHeight="44" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:RhIcon Data="{StaticResource Icon.Folder}" Width="18" Height="18" />
+            <TextBlock Text="{l:T emulators.openFolder}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Name="BayRefreshButton" Theme="{StaticResource RhGhostButton}" Command="{Binding RefreshCommand}" MinHeight="44" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:RhIcon Data="{StaticResource Icon.Refresh}" Width="18" Height="18" />
+            <TextBlock Text="{l:T emulators.refresh}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </StackPanel>
   </c:WorkbenchFrame>
 </p:PageBase>
