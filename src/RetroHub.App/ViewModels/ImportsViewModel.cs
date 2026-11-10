@@ -252,7 +252,7 @@ public sealed partial class ImportsViewModel : PageViewModel
             ProgressText = p.FilesTotal > 0 ? Loc.T(p.Phase switch { "hashes" => "imports.progress.hashes", "database" => "imports.progress.database", _ => "imports.progress.files" }, p.FilesSeen, p.FilesTotal) : PhaseText(p.Phase) + ".";
             CurrentFile = p.CurrentFile ?? "";
         });
-        var options = new ScanOptions { ComputeHashes = Ctx.Services.Settings.Current.ComputeHashes };
+        var options = new ScanOptions { ComputeHashes = Ctx.Services.Settings.Current.ComputeHashes, Startup = quiet };
         var scanner = Ctx.Services.Scanner;
         var ct = _scanCts.Token;
         var scanned = false;

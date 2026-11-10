@@ -319,6 +319,9 @@
           </StackPanel>
         </Button>
       </StackPanel>
+      <!-- R2: a display niche cut into the bench – the focused system on its wall, its motif on a small board (the column
+           stood empty under the Gerätefach at 1920) -->
+      <c:SystemNiche Name="BayNiche" Height="300" Margin="0,36,0,0" />
     </StackPanel>
   </c:WorkbenchFrame>
 </p:PageBase>

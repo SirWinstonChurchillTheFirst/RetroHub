@@ -25,7 +25,8 @@ public sealed class TestCard : Control
 
     private static readonly IImmutableSolidColorBrush Tube = new ImmutableSolidColorBrush(Color.Parse("#16140F"));
     // QA 2: Kante at 37 % on the tube was ≈ 1.05 : 1 – the raster is Text 3 at 20 % now, a visible hairline grid
-    private static readonly IImmutableSolidColorBrush Raster = new ImmutableSolidColorBrush(Color.FromArgb(0x33, 0x94, 0x8A, 0x7A));
+    // R2: 30 % – at 20 % the raster still vanished under the scanlines at ≈ 1100
+    private static readonly IImmutableSolidColorBrush Raster = new ImmutableSolidColorBrush(Color.FromArgb(0x4D, 0x94, 0x8A, 0x7A));
     private static readonly IImmutableSolidColorBrush Gap = new ImmutableSolidColorBrush(Color.Parse("#0A0908"));
     private static readonly IImmutableSolidColorBrush Front = new ImmutableSolidColorBrush(Color.Parse("#2A2620"));
     private static readonly IImmutableSolidColorBrush Lip = new ImmutableSolidColorBrush(Color.Parse("#3A352D"));
@@ -130,9 +131,10 @@ public sealed class TestCard : Control
         ctx.FillRectangle(BoardLight, new Rect(pic.X, boardY, pic.Width, 1));
 
         // the boxes: 5 slots, the middle one focused; the row glides by one slot when Bewegung changes
-        var boxW = Math.Round(56 * k);
+        // R2: boxes a third larger (they read as specks at 1100); the outer two run off the card like a longer shelf
+        var boxW = Math.Round(70 * k);
         var boxH = Math.Round(boxW * 1.36);
-        var pitch = boxW + Math.Round(20 * k);
+        var pitch = boxW + Math.Round(18 * k);
         var centre = pic.Center.X;
         var shift = GlideOffset() * pitch;
         for (var i = 0; i < Boxes.Length; i++)
@@ -148,6 +150,11 @@ public sealed class TestCard : Control
             ctx.FillRectangle(BoxFace(look.WallHi), r);
             ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, r.Width, Math.Max(3, Math.Round(6 * k))));
             ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, Math.Max(4, Math.Round(r.Width * 0.16)), r.Height));
+            // a hand-cut label on the front and the case's edges: the same empty cases as on the shelves
+            var band = Math.Max(4, Math.Round(r.Width * 0.16));
+            var label = new Rect(r.X + band + Math.Round(5 * k), r.Bottom - Math.Round(r.Height * 0.30), r.Width - band - Math.Round(11 * k), Math.Round(r.Height * 0.20));
+            Craft.DrawPaperShared(ctx, label, Craft.Seed(Boxes[i]), Craft.LabelPaper, Craft.Range(Craft.Seed(Boxes[i]), 7, -2, 2), 0.35);
+            Craft.Edges(ctx, r, lit: 0.10, dark: 0.35, grime: 0, topLit: 0.10, softRight: 0);
             if (focused && Light is { } light && shift < 1)
             {
                 // the lit board piece under the ring and the standing ring (DESIGN 8.1), in the current light

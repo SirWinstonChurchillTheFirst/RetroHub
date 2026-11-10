@@ -26,6 +26,8 @@ public sealed record ScanOptions
     public bool ComputeHashes { get; init; } = true;
     /// <summary>Re-check files even when size+mtime are unchanged.</summary>
     public bool Full { get; init; }
+    /// <summary>The quiet scan RetroHub starts itself at launch ("Beim Start scannen"), not one the user asked for.</summary>
+    public bool Startup { get; init; }
 }
 
 public sealed record ScanProgress(string Phase, int FilesSeen, int FilesTotal, string? CurrentFile);

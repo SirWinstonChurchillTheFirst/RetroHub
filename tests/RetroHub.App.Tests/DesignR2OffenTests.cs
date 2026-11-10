@@ -143,6 +143,31 @@ public class DesignR2OffenTests
     });
 
     [Fact]
+    public Task A_value_step_flips_the_split_flap_card_and_comes_to_rest() => UiTest.Run(() =>
+    {
+        // DESIGN 7.6 (R2): the focused value is a split-flap card; a step turns one leaf (full motion) and the card is
+        // at rest again after the flip – driven by animation frames, never left half-way
+        var ctx = TestSupport.CreateContext(s => s.Motion = MotionLevel.Full);
+        var vm = new MainViewModel(ctx);
+        var window = new MainWindow(vm) { Width = 1920, Height = 1080 };
+        window.Show();
+        TestSupport.Pump(() => vm.CurrentPage is HomeViewModel { IsLoaded: true });
+        vm.Navigator.Navigate(PageKey.Settings);
+        Assert.True(TestSupport.Pump(() => Focused(window) is ServiceRow, 3000));
+        var row = (ServiceRow)Focused(window)!;
+        var leaf = row.GetVisualDescendants().OfType<FlapLeaf>().Single();
+        Assert.Single(row.GetVisualDescendants().OfType<FlapPlate>());
+        var before = row.Setting!.ValueText;
+        window.Execute(NavAction.Right);
+        Assert.NotEqual(before, row.Setting!.ValueText);
+        Assert.True(leaf.IsFlipping);
+        Assert.True(TestSupport.Pump(() => !leaf.IsFlipping, 2000), "the flip must come to rest");
+        window.Execute(NavAction.Left);
+        TestSupport.Settle(300);
+        window.Close();
+    });
+
+    [Fact]
     public void Wide_windows_get_a_capped_light_bitmap()
     {
         var key = new RoomBackdrop.LightKey(3840, 2176, 1300, 0, 0, 500, 400, 1.0);

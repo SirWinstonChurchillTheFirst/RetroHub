@@ -13,6 +13,15 @@ public partial class EmulatorsPage : PageBase
         InitializeComponent();
         // not for a mouse press: scrolling then would move the row away under the pointer and the click would be lost
         AddHandler(GotFocusEvent, (_, e) => { if (e.NavigationMethod != NavigationMethod.Pointer) KeepClear(e.Source as Control); }, RoutingStrategies.Bubble);
+        // the niche shows the system of the focused row (and of the first row before anything is focused)
+        AddHandler(GotFocusEvent, (_, e) =>
+        {
+            if (e.Source is Control { DataContext: ViewModels.EmulatorRowViewModel { Look: { } look } }) BayNiche.Look = look;
+        }, RoutingStrategies.Bubble);
+        Frame.LayoutUpdated += (_, _) =>
+        {
+            if (BayNiche.Look == null && DataContext is ViewModels.EmulatorsViewModel { Rows: [{ Look: { } first }, ..] }) BayNiche.Look = first;
+        };
         // a segment of the Gerätefach clicked: its row (opened by the model) comes into view and takes the focus
         DataContextChanged += (_, _) =>
         {

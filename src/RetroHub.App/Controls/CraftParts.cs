@@ -197,3 +197,189 @@ public sealed class PaperNote : Decorator
         }
     }
 }
+
+/// <summary>
+/// The value plate of the focused service row (R2, replaces the black 320 × 40 display box that read as a stock spin
+/// box): a split-flap card set into the bench – an upper and a lower leaf in warm grey (the upper one lit), the gap
+/// between them, a hinge pin at each side in the light colour, a recessed frame and the card's shadow on the bench.
+/// The text lies on it; <see cref="FlapLeaf"/> above the text draws the split across the figures and the flip.
+/// </summary>
+public sealed class FlapPlate : Control
+{
+    public static readonly StyledProperty<IBrush?> PinProperty = AvaloniaProperty.Register<FlapPlate, IBrush?>(nameof(Pin));
+
+    internal static readonly Color Upper = Color.Parse("#302B25");
+    internal static readonly Color Lower = Color.Parse("#28241E");
+
+    static FlapPlate()
+    {
+        AffectsRender<FlapPlate>(PinProperty);
+        IsHitTestVisibleProperty.OverrideDefaultValue<FlapPlate>(false);
+    }
+
+    public IBrush? Pin { get => GetValue(PinProperty); set => SetValue(PinProperty, value); }
+
+    public override void Render(DrawingContext ctx)
+    {
+        var r = new Rect(Bounds.Size);
+        if (r.Width < 20 || r.Height < 12) return;
+        // the slot in the bench the card stands in: a dark recess 2 px around it
+        Craft.Recess(ctx, r, 3, 0.55, 0.06);
+        var card = r.Deflate(new Thickness(3, 2, 3, 2));
+        var split = Math.Round(card.Y + card.Height / 2);
+        var outline = new RoundedRect(card, 3);
+        using (ctx.PushClip(outline))
+        {
+            ctx.FillRectangle(Craft.Solid(Upper), new Rect(card.X, card.Y, card.Width, split - card.Y));
+            ctx.FillRectangle(Craft.Solid(Lower), new Rect(card.X, split, card.Width, card.Bottom - split));
+            // light from above on the upper leaf, the lower one a shade under it
+            ctx.FillRectangle(Craft.Fade(Craft.Light, 0.07, 0, Craft.Toward.Down), new Rect(card.X, card.Y, card.Width, split - card.Y));
+            ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.22, Craft.Toward.Down), new Rect(card.X, split, card.Width, card.Bottom - split));
+            ctx.FillRectangle(Craft.Hi(0.12), new Rect(card.X, card.Y, card.Width, 1));
+        }
+        // hinge pins in the light colour, half in the gap
+        var pin = Pin ?? Craft.Hi(0.3);
+        ctx.FillRectangle(pin, new Rect(card.X - 2, split - 2, 4, 4));
+        ctx.FillRectangle(pin, new Rect(card.Right - 2, split - 2, 4, 4));
+    }
+}
+
+/// <summary>
+/// Above the value text of a <see cref="FlapPlate"/>: the gap between the two leaves running across the figures (as on a
+/// real split-flap card), and on <see cref="Flip"/> one leaf falling – the upper half folds down to the hinge, then the
+/// lower half lands (180 ms, shaded as it turns). Only when motion is full; otherwise the value just changes.
+/// </summary>
+public sealed class FlapLeaf : Control
+{
+    private DateTime _started;
+    private double _t = 1;
+
+    /// <summary>Duration of one flip.</summary>
+    public static readonly TimeSpan FlipDuration = TimeSpan.FromMilliseconds(180);
+
+    static FlapLeaf()
+    {
+        IsHitTestVisibleProperty.OverrideDefaultValue<FlapLeaf>(false);
+    }
+
+    /// <summary>True while a flip is drawn (tests).</summary>
+    public bool IsFlipping => _t < 1;
+
+    public void Flip()
+    {
+        if (!Theming.Motion.AllowsMovement || !IsEffectivelyVisible || TopLevel.GetTopLevel(this) is not { } top) return;
+        var running = _t < 1;
+        _started = DateTime.UtcNow;
+        _t = 0;
+        InvalidateVisual();
+        if (!running) top.RequestAnimationFrame(Frame);
+    }
+
+    /// <summary>Driven by the render loop (frames, not a timer): the flip never hangs half-way when frames stop.</summary>
+    private void Frame(TimeSpan _)
+    {
+        _t = Math.Min(1, (DateTime.UtcNow - _started).TotalMilliseconds / FlipDuration.TotalMilliseconds);
+        InvalidateVisual();
+        if (_t < 1 && TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(Frame);
+        else _t = 1;
+    }
+
+    public override void Render(DrawingContext ctx)
+    {
+        var r = new Rect(Bounds.Size);
+        if (r.Width < 20 || r.Height < 12) return;
+        var card = r.Deflate(new Thickness(3, 2, 3, 2));
+        var split = Math.Round(card.Y + card.Height / 2);
+        if (_t < 1)
+        {
+            var half = split - card.Y;
+            if (_t < 0.5)
+            {
+                // the upper leaf folds toward the viewer and down: its projection shrinks to the hinge, darkening
+                var k = _t / 0.5;
+                var h = Math.Max(1, Math.Round(half * (1 - k)));
+                var leaf = new Rect(card.X, split - h, card.Width, h);
+                ctx.FillRectangle(Craft.Solid(FlapPlate.Upper), leaf);
+                ctx.FillRectangle(Craft.Dark(0.10 + 0.35 * k), leaf);
+                ctx.FillRectangle(Craft.Hi(0.10), new Rect(leaf.X, leaf.Y, leaf.Width, 1));
+            }
+            else
+            {
+                // and lands below it, lighting up as it lies flat again
+                var k = (_t - 0.5) / 0.5;
+                var h = Math.Max(1, Math.Round((card.Bottom - split) * k));
+                var leaf = new Rect(card.X, split, card.Width, h);
+                ctx.FillRectangle(Craft.Solid(FlapPlate.Lower), leaf);
+                ctx.FillRectangle(Craft.Dark(0.45 * (1 - k)), leaf);
+                ctx.FillRectangle(Craft.Dark(0.5), new Rect(leaf.X, leaf.Bottom - 1, leaf.Width, 1));
+            }
+        }
+        // the gap between the leaves, across the figures: dark, with the lower leaf's lit lip under it
+        ctx.FillRectangle(Craft.Solid(Craft.Deep), new Rect(card.X, split - 1, card.Width, 1));
+        ctx.FillRectangle(Craft.Hi(0.06), new Rect(card.X, split, card.Width, 1));
+    }
+}
+
+/// <summary>
+/// A display niche in the bench (R2, Emulatoren's side column stood empty under the Gerätefach): a compartment cut into
+/// the bench showing the focused system – its wall with the colour band and era texture, its motif standing on a small
+/// board, the compartment's inner shadow and lip. A new system slides its motif up 14 px and fades it in (Glide; no
+/// movement when motion is reduced, nothing animated when it is off).
+/// </summary>
+public sealed class SystemNiche : Control
+{
+    public static readonly StyledProperty<SystemLook?> LookProperty = AvaloniaProperty.Register<SystemNiche, SystemLook?>(nameof(Look));
+
+    private DateTime _changed = DateTime.MinValue;
+    private double _t = 1;
+
+    static SystemNiche()
+    {
+        AffectsRender<SystemNiche>(LookProperty);
+        IsHitTestVisibleProperty.OverrideDefaultValue<SystemNiche>(false);
+    }
+
+    public SystemLook? Look { get => GetValue(LookProperty); set => SetValue(LookProperty, value); }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property != LookProperty || change.OldValue == null || ReferenceEquals(change.OldValue, change.NewValue)) return;
+        if (Theming.Motion.Glide == TimeSpan.Zero || TopLevel.GetTopLevel(this) is not { } top) { _t = 1; return; }
+        var running = _t < 1;
+        _changed = DateTime.UtcNow;
+        _t = 0;
+        if (!running) top.RequestAnimationFrame(Frame);
+    }
+
+    private void Frame(TimeSpan _)
+    {
+        _t = Math.Min(1, (DateTime.UtcNow - _changed).TotalMilliseconds / Theming.Motion.GlideDuration.TotalMilliseconds);
+        InvalidateVisual();
+        if (_t < 1 && TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(Frame);
+        else _t = 1;
+    }
+
+    public override void Render(DrawingContext ctx)
+    {
+        var r = new Rect(Bounds.Size);
+        if (r.Width < 40 || r.Height < 40 || Look is not { } look) return;
+        // the lip of the compartment, then the wall set back into it
+        ctx.FillRectangle(Craft.Solid(Color.Parse("#1B1814")), r);
+        var inner = r.Deflate(6);
+        SystemWall.Draw(ctx, this, inner, look, band: 6, motifShare: 0, motifInset: 0);
+        var boardY = Math.Round(inner.Bottom - 26);
+        ShelfBoard.DrawOnWall(ctx, new Rect(inner.X, boardY, inner.Width, 12), look, this);
+        var size = Math.Round(Math.Min(boardY - inner.Y - 30, inner.Width * 0.55));
+        var ease = 1 - Math.Pow(1 - _t, 3);
+        var box = new Rect(inner.X + (inner.Width - size) / 2, boardY - size + Math.Round(14 * (1 - ease)), size, size);
+        using (ctx.PushOpacity(ease))
+            MotifCatalog.Draw(ctx, look, box, relief: true);
+        // the compartment's depth: shadow under the lip at the top and left, light on the bottom lip
+        ctx.FillRectangle(Craft.Fade(Colors.Black, 0.55, 0, Craft.Toward.Down), new Rect(inner.X, inner.Y, inner.Width, 10));
+        ctx.FillRectangle(Craft.Fade(Colors.Black, 0.40, 0, Craft.Toward.Right), new Rect(inner.X, inner.Y, 6, inner.Height));
+        ctx.FillRectangle(Craft.Fade(Colors.Black, 0, 0.30, Craft.Toward.Right), new Rect(inner.Right - 5, inner.Y, 5, inner.Height));
+        Craft.Edges(ctx, r, lit: 0.10, dark: 0.40, grime: 0.20, grimeHeight: 6, topLit: 0.12, softRight: 0);
+        ctx.FillRectangle(Craft.Hi(0.09), new Rect(inner.X, inner.Bottom, inner.Width, 1));
+    }
+}

@@ -18,6 +18,7 @@ namespace RetroHub.App.Controls;
 public class ServiceRow : Button
 {
     private Control? _previous, _next, _value;
+    private FlapLeaf? _leaf;
 
     protected override Type StyleKeyOverride => typeof(ServiceRow);
 
@@ -29,6 +30,7 @@ public class ServiceRow : Button
         if (Setting is not { IsChoice: true } s) return false;
         var changed = s.Step(direction);
         if (!changed) Nudge(direction);
+        else _leaf?.Flip(); // R2: the split-flap card turns a leaf
         return changed;
     }
 
@@ -52,6 +54,7 @@ public class ServiceRow : Button
         _previous = e.NameScope.Find<Control>("PART_Previous");
         _next = e.NameScope.Find<Control>("PART_Next");
         _value = e.NameScope.Find<Control>("PART_Value");
+        _leaf = e.NameScope.Find<FlapLeaf>("PART_Leaf");
         _columns = e.NameScope.Find<Grid>("PART_Columns");
         _hint = e.NameScope.Find<TextBlock>("PART_Hint");
         if (_previous != null) _previous.PointerPressed += OnPreviousPressed;

@@ -5,9 +5,47 @@ using RetroHub.Core.Logging;
 
 namespace RetroHub.App.Services.Demo;
 
-/// <summary>Simulated scan: walks a fake file list with progress; reports a realistic result. Touches no files.</summary>
+/// <summary>
+/// Simulated scan: walks a fake file list with progress; reports a realistic result. Touches no files. The first scan
+/// the user starts in a demo session finds three new games (R2: so the delivery note's new-game spines can be seen and
+/// checked in the demo); the quiet start-up scan and later scans find nothing new.
+/// </summary>
 public sealed class DemoLibraryScanner(DemoGameRepository repository) : ILibraryScanner
 {
+    /// <summary>What the first demo scan "finds" (system, title, year, developer, genre, file extension).</summary>
+    internal static readonly (string System, string Title, int Year, string Developer, string Genre, string Ext)[] Delivery =
+    [
+        ("snes", "Super Mario Kart", 1992, "Nintendo", "Rennspiel", ".sfc"),
+        ("gba", "The Legend of Zelda: The Minish Cap", 2004, "Capcom", "Action-Adventure", ".gba"),
+        ("n64", "Paper Mario", 2000, "Intelligent Systems", "Rollenspiel", ".z64"),
+    ];
+
+    private List<Game> Deliver()
+    {
+        var added = new List<Game>();
+        foreach (var d in Delivery)
+        {
+            var path = $"games/{d.System}/{d.Title.Replace(":", " -")}{d.Ext}";
+            if (repository.GetByPath(path) != null) continue;
+            added.Add(new Game
+            {
+                SystemId = d.System,
+                Path = path,
+                Title = d.Title,
+                Year = d.Year,
+                Developer = d.Developer,
+                Genre = d.Genre,
+                Players = 1,
+                Size = 8L * 1024 * 1024,
+                AddedUtc = DateTime.UtcNow,
+                FileTimeUtc = DateTime.UtcNow.AddDays(-3),
+                Status = GameStatus.Ok,
+                FolderId = 1,
+            });
+        }
+        if (added.Count > 0) repository.UpsertMany(added);
+        return added;
+    }
     private int _scanning;
     public bool IsScanning => Volatile.Read(ref _scanning) == 1;
 
@@ -34,9 +72,10 @@ public sealed class DemoLibraryScanner(DemoGameRepository repository) : ILibrary
                 f.LastScanUtc = DateTime.UtcNow;
                 repository.UpsertFolder(f);
             }
+            var added = options.Startup ? new List<Game>() : Deliver();
             return new ScanReport
             {
-                Added = 0,
+                Added = added.Count,
                 Updated = 2,
                 Unchanged = games.Count - 3,
                 Missing = games.Count(g => g.Status == GameStatus.Missing),
