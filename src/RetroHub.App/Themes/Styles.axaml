@@ -77,6 +77,9 @@
   <Style Selector="Button.fold-row:focus-visible Border.row-band">
     <Setter Property="Margin" Value="0" />
   </Style>
+  <Style Selector="Border.row-chip > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+  </Style>
   <Style Selector="Button.fold-row:focus-visible Border.row-chip">
     <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
   </Style>

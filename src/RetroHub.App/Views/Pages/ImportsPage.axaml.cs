@@ -38,6 +38,7 @@ public partial class ImportsPage : PageBase
             _vm?.CloseMenuCommand.Execute(null);
         };
         MenuLayer.SizeChanged += (_, _) => PlaceMenu();
+        AddHandler(GotFocusEvent, (_, e) => { if (_vm?.IsMenuOpen != true) EmulatorsPage.KeepClear(e.Source as Control); }, RoutingStrategies.Bubble);
     }
 
     private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

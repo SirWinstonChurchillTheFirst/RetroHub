@@ -1,6 +1,6 @@
 # RetroHub Designsprache „Fernsehlicht“
 
-Version 1.1 · Art Direction · Stand 2026-11-10 (umgesetzt bis M5)
+Version 1.1 · Art Direction · Stand 2026-11-10 (umgesetzt bis M6)
 Ersetzt v1.0 (`docs/design/DESIGN-SPEC-v1.0.md`, bleibt als Historie). Grundlage für v1.1 ist die Kritik an v1.0 (Wertung 7/10). Jeder Kritikpunkt ist in Abschnitt 13 entschieden.
 Gilt für RetroHub.App (Avalonia 12.1.5, .NET 10). Nur Dark Mode. Alle Maße beziehen sich auf eine Referenzfläche von 1920×1080 logischen Pixeln und werden über `UiScale` skaliert (siehe 7.0).
 
@@ -225,7 +225,7 @@ Neu in v1.1: Die Wand wird **aus dem Gehäusematerial** abgeleitet und nicht meh
 
 ### 3.1 Familien, Dateien, Rollen (verifiziert)
 
-Archivo ist das System: vier Breiten aus *einer* Familie tragen Plakat, Zahl, Bedienung und Rücken. Atkinson Hyperlegible Next ist die Leseschrift, gebaut für Lesbarkeit aus der Distanz. Poppins entfällt. Die Dateien bleiben bis M6 als Fallback liegen und werden dann gelöscht.
+Archivo ist das System: vier Breiten aus *einer* Familie tragen Plakat, Zahl, Bedienung und Rücken. Atkinson Hyperlegible Next ist die Leseschrift, gebaut für Lesbarkeit aus der Distanz. Poppins entfällt; die Dateien und ihre Lizenz sind seit M6 gelöscht (Test `The_old_theme_and_the_stock_controls_are_gone`).
 
 | Rolle | Familie / Schnitt | Datei (`src/RetroHub.App/Assets/Fonts/…`) | FontFamily in XAML | FontWeight |
 |---|---|---|---|---|
@@ -354,7 +354,7 @@ Texturen werden programmatisch erzeugt: `tools/TextureGen` (C#, SkiaSharp, feste
 
 ### 4.6 Transluzenz (selten)
 
-Erlaubt nur: (1) Scrims in `RoomBackdrop`, (2) Fußleiste: Raum-Verlauf 0 → 96 % über 40 px oberhalb, (3) Dialog-Hintergrund Raum-Tief 72 % ohne Blur, (4) Overlay „Läuft“ Raum-Tief 94 %. Die Glas-Keys (`RhGlassBrush` usw.) zeigen auf opake Werte und werden in M6 gelöscht.
+Erlaubt nur: (1) Scrims in `RoomBackdrop`, (2) Fußleiste: Raum-Verlauf 0 → 96 % über 40 px oberhalb, (3) Dialog-Hintergrund Raum-Tief 72 % ohne Blur, (4) Overlay „Läuft“ Raum-Tief 94 %. Die Glas-, Gradient-, Glow- und Ambient-Keys aus v0 sind seit M6 gelöscht, ebenso `StatTile`, `Border.glass/.card`, die Chip-Pillen und die Stile für ComboBox, ToggleSwitch, Slider und ProgressBar (keiner davon kommt in RetroHub noch vor).
 
 ---
 
@@ -823,7 +823,7 @@ MainWindow
 - **Navigation**: Runter von der Bühne führt nach „Über das Spiel“ (wenn fokussierbar), sonst auf die erste Startzeile; Hoch von dort zurück zu „Spielen“. Schulter: Bühne → Über das Spiel → Start → Daneben im Regal. Die Fußleiste nennt die Aktion des fokussierten Elements („Spielen“, „Importe öffnen“, „Cover ansehen“, „Ändern“, „Dateiinfo“, „Ansehen“, „Öffnen“) plus Favorit, Bereich, Zurück; im Overlay nur Auswählen/Schließen.
 - **Scrollen schneidet nie durch den Titel** (M4-QA: nur drei Halte über der Bühne): oben (0), die ganze Aktionsreihe 24 px unter der Kopfleiste („Spielen“ bleibt sichtbar), das Bühnenbrett bündig unter der Kopfleiste; darunter scrollt die Rückseite frei. Freies Scrollen, das dazwischen zur Ruhe kommt, rastet nach 180 ms auf den nächsten Halt ein; unter der Rückseite entsteht dafür bei Bedarf Platz. In der Rückseite bekommt die Kopfleiste Raum als Grund (`PageViewModel.HeaderGround`, kein hellerer Fernsehlicht-Streifen über der Rückseite) und die 12-px-Blende (8.4) liegt unter ihr. Unter dem Bühnenbrett ist die Seite Raum (opak), damit das ortsfeste Fernsehlicht beim Scrollen nicht hinter die Rückseite wandert.
 - **Lösungs-Button** nennt das *erste* Hindernis: fehlt die Datei, „Importe öffnen“, sonst „Emulator einrichten“.
-- Die Auswahl in den Startzeilen ist weiterhin das Popup der `ComboBox` (`RhChoiceRow`), noch kein eigenes Auswahl-Overlay. Der Winkel rechts ist der gefaste Chevron (`Icon.ChevronRight`, 16 px, Text 3, im Fokus Papier, 16 px Einzug), kein gefülltes Medien-Dreieck (M4-QA).
+- Die Auswahl in den Startzeilen ist seit M6 eine **eigene Auswahlliste** (`DetailSheet.Choice`): sie hängt wie „Mehr“ an ihrer Zeile (unter der Wert-Spalte, ohne Platz darunter darüber), die aktuelle Wahl trägt ein Häkchen und bekommt den Fokus, Bestätigen übernimmt sofort, Zurück schließt ohne Änderung. Das `ComboBox`-Popup (`RhChoiceRow`) ist entfernt. Der Winkel rechts ist der gefaste Chevron (`Icon.ChevronRight`, 16 px, Text 3, im Fokus Papier, 16 px Einzug), kein gefülltes Medien-Dreieck (M4-QA).
 
 ---
 
@@ -923,6 +923,14 @@ Kanalanzeige                                       ◀  An  ▶
 - **Lieferschein** nach einem Scan (statt Toasts): ein Kasten mit 1 px Kante, R 0, darin Zeilen in Etikett 18 mit Zahlen in Zahl: „**412** Dateien geprüft“, „**12** neu“, „**3** Hinweise ›“. Er bleibt stehen, bis der nächste Scan beginnt. Toasts bleiben nur für einzelne Ereignisse außerhalb des Scans (z. B. „Cover gespeichert“).
 - „Spieldateien werden nie verändert.“ steht als `meta` unter der Ordnerliste.
 
+#### 7.6.1 Stand M6 (umgesetzt, Entscheidungen beim Bau)
+
+- **Service-Menü** (`ServiceRow` + `ServiceSetting`, Theme in `Controls.axaml`): eine Liste, Abschnitte als Etikett mit 1-px-Linie darunter. Zeile 72 px: Label `ui-l` Papier, eine Zeile `meta` Text 3; der Wert steht in einer **festen 320-px-Spalte** zentriert zwischen den gefüllten Pfeilen (`Icon.ArrowLeft/Right`, 20 px), damit alle Werte eines Abschnitts auf einer Achse stehen wie im Service-Menü eines Fernsehers. Lichtfarben mit 16×16-Muster. Fokus wie 8.2, die Pfeile werden Papier; am Ende einer geordneten Reihe bleibt der Pfeil bei 30 % und die Zeile stößt kurz an (Grenz-Feedback 8.4). **Wahlwerte laufen um, geordnete Werte („Zurück zu RetroHub“: Aus, 0,5 … 3,0 s) halten an ihren Enden; Bestätigen schaltet immer weiter** (auch rundum). Aktionen sind Zeilen mit „Öffnen ›“. Inhaltsbreite: eine Spalte `1000*` mit `MaxWidth 1100` neben einer `*`-Spalte, also höchstens 1100 und linksbündig, schmaler bei 1100 px Fensterbreite.
+- **Abschnitte**: Darstellung (Lichtfarbe, Bewegung, Kanalanzeige, Controller-Hinweise, Im Vollbild starten), Steuerung (Mit Controller bedienen, Zurück zu RetroHub; Gerätezustand als `meta` neben dem Etikett), Bibliothek (4 Schalter), Sprache, Ordner (10 Aktionszeilen, Pfad als Beschreibung). Ein eigener Abschnitt „Bewegung“ entfiel, weil Abschnitt und Zeile denselben Namen trugen. **Kanalanzeige An/Aus** ist neu (`UiPreferences.ShowOsd`, schaltet `OsdLayer` für Kanalwechsel und Start-Code). „Hintergrund folgt Auswahl“ und „Größe der Oberfläche“ aus der Skizze oben gibt es nicht: dafür existiert keine Funktion, eine Attrappe wäre unehrlich. Ein Abschnitt „Über RetroHub“ entfällt aus demselben Grund (noch keine Versions-/Lizenzseite).
+- **Emulatoren nach Systemen**: eine Zeile je System **mit Spielen und mit Kandidaten** (PC/Native fallen weg). Farbband 8 px (im Fokus volle Zeilenhöhe, ersetzt den Bernstein-Balken: `RhFoldRow.own-bar`), Code in Rücken 22 (Spalte 124, „GameCube“ passt), Name `ui-l` mit „12 Spiele“ in `meta`, darunter der Satz „spielt mit **mGBA** 0.10.5“ (Programm und Version in der Zahl-Rolle – Atkinsons Null mit Schrägstrich las sich als „Ø“). Was spielt, folgt der Reihenfolge des Planers: `settings.SystemEmulator`, sonst der erste installierte Kandidat (RetroArch nur mit Core). Lücken als **ein Satz**: „Kein Emulator gefunden.“ bzw. „RetroArch ist da, der Core fehlt.“ plus „Einrichten ›“. Aufgeklappt (`FoldPanel`, 180 ms, bei reduzierter Bewegung sofort): Pfad, Startmodi, Cores, **„Reihenfolge, in der RetroHub sucht“** mit Zustand je Kandidat (immer, wenn das System nicht starten kann), [Ordner öffnen] [Website]. Gefiltert von „Emulator einrichten“: nur dieses System, aufgeklappt, „Alle Systeme“ daneben. Die Falte heißt **„Weitere Programme“** (nicht „erkannte“), weil sie auch nicht installierte unterstützte Programme mit ihrer Website enthält.
+- **Importe**: links die Ordner als Service-Zeilen („◀ Aktiv ▶“ / „◀ Pausiert ▶“, games/ fest „Immer aktiv“ ohne Pfeile); die Beschreibung beginnt mit der Zeit („Durchsucht heute, mit Unterordnern, …“), damit eine schmale Zeile das Unwichtige abschneidet. **Bestätigen öffnet die Mehr-Liste** des Ordners (Im Explorer öffnen, Pausieren/Wieder aktivieren, Ordner entfernen), links/rechts schaltet den Zustand ohne Neuaufbau der Liste (der Fokus bleibt). Rechts die Scan-Spalte (420): Satz „Zuletzt gescannt heute.“, „Jetzt scannen“ (während des Scans ersetzt durch „Abbrechen“), Prozent in Zahl 28 über dem Segmentbalken (`SegmentBar`, 14 × 24×10, Lauflicht 80 ms), Phase und Datei. **Lieferschein**: Kasten 1 px Kante, R 0, Kopf „Lieferschein“ + Zeitpunkt, Zeilen mit rechtsbündiger Zahlenachse (Zahl 18) und Text in Etikett 18 (Nullen in Text 3), „3 Hinweise“ als aufklappbare Zeile, Fuß „Dauer 2,8 s.“. Der Abschluss-Toast entfällt, wenn Importe offen ist; außerhalb (Start-Scan) bleibt er, sonst erführe man nichts. Abweichung von 2.2: **„Ordner hinzufügen“ ist ein Sekundärbutton**, „Jetzt scannen“ die eine Bernstein-Platte der Seite – zwei Bernstein-Platten nebeneinander konkurrierten.
+- Fokus bleibt frei von der Fußleiste: Emulatoren und Importe holen das fokussierte Element mit 48 px Luft oben und 96 px unten in Sicht.
+
 ---
 
 ## 8. Fokus- und Auswahl-Sprache (Controller)
@@ -1015,6 +1023,8 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 6. Die Mindestdauer des Overlays beträgt 900 ms. Die alte GameScreen-Startdarstellung wird vollständig ersetzt (behebt das Doppel-Overlay).
 7. **Rückkehr („Ausschalten“)**: Das Overlay kollabiert vertikal auf eine Linie in Licht (160 ms), die Linie auf einen Punkt (80 ms). Dann blendet die Seite ein (Scene), und die Original-Kachel bekommt Opacity 1.
 8. Die Transition liegt **nie** über dem eingebetteten Emulatorfenster. Sie endet, bevor das HWND sichtbar wird.
+
+**Stand M6 (umgesetzt, `Controls/FlightLayer.cs`)**: Die Zeitleiste ist eine Funktion der Zeit (`Apply(ms)`), angetrieben von einem 15-ms-Takt nur während der 520 ms; Vorschau und Tests frieren einzelne Bilder ein (`Freeze`). Die Kopie ist ein `RenderTargetBitmap` der Schachtel (genau so, wie sie gerade aussieht), die **ganze Kachel** samt Rücken geht auf Opacity 0 und kommt beim Abbruch bzw. nach dem Ausschalten zurück. Die Startfläche ist das Start-Panel des Launch-Overlays (UiScale-skaliert): Schachtel 240×336 auf einer Regalkante, Titel `poster-s`, „mGBA startet …“ in `read-l`, `SegmentBar` als Lauflicht (die Fortschrittspille entfällt). Die beiden Kanten der sich öffnenden Fläche tragen das Licht und verblassen bis 520 ms. Das eingebettete Spielbild (maskiert, noch ladend) ist während „Starting“ unsichtbar (Opacity 0), damit es nicht durch Flug und Linie scheint. Die Kanalanzeige zeigt den Systemcode bei 220 ms für 300 ms in Rücken 40. Ausschalten nur nach einer gezeigten Sitzung (nicht nach einem fehlgeschlagenen Start); nach einem Vollbild-Handoff ohne Animation. Die Statushinweise im Lauf-Overlay sind Icon + Satz statt Pillen, „Läuft gerade“ steht in Text 3 (Bernstein-Liste 2.2).
 
 ### 9.4 Reduzierte Bewegung / Aus
 
@@ -1147,7 +1157,7 @@ Texte für Leerzustände benennen, was fehlt, und die Lösung, z. B. „Kein Emu
 | **M3 Bibliothek** | Ticker, `ShelfMirror`, Grid mit Regalkante und FocusLayer, Banner, Systemgrund, Aufkleber, Listen-Ansicht. Core: Cover-Maße | 1000-Spiele-Demo bei 60 fps; Bibliothek ohne Cover lesbar |
 | **M4 Detail** | Schachtel mit `BoxSpine`, Meta-Satz mit Zahl-Runs, Aktionen, Lösungs-Button, Rückseite (Text, Bildschirme, Startzeilen), Ausleihkarte, „Daneben im Regal“, Overlays (Stand: 7.3.1) | Detail ohne Beschreibung, Genre und Bild sieht vollständig aus |
 | **M5 Konsolen & System** | Motive final + Außenseiter-Test, Texturen komplett, Konsolen, Systemseite | Jedes System ist ohne Text unterscheidbar; kein Motiv wird als Produkt benannt. **Stand:** umgesetzt (6.2–6.5, 7.4.1–7.4.2, 7.5.1–7.5.2); Außenseiter-Test bisher nur als Selbstprüfung an den textfreien Bögen |
-| **M6 Werkbank & Start** | Service-Menü, Emulatoren nach Systemen, Importe mit Lieferschein, Starttransition mit `FlightLayer`, Aufräumen (Poppins, StatTile, Glas-Keys) | Alle Seiten im QA grün |
+| **M6 Werkbank & Start** | Service-Menü, Emulatoren nach Systemen, Importe mit Lieferschein, Starttransition mit `FlightLayer`, Aufräumen (Poppins, StatTile, Glas-Keys) | Alle Seiten im QA grün. **Stand:** umgesetzt (7.6.1, 9.3 Stand M6, 7.3.1 Auswahlliste); die Starttransition ist nur als eingefrorene Einzelbilder headless geprüft, nicht als Bildschirmaufnahme in Echtzeit |
 
 ### 11.4 Fachformat (Slot-Aspekt) ohne Neuberechnung beim Browsen
 
