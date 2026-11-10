@@ -544,7 +544,10 @@ def catchers(y_wall, floor=True, wall=True, z_floor=0.0, wall_from=-50, wall_to=
 
 # ------------------------------------------------------------------------------------------------------------------ jobs
 
-SPINE_DIMS = {"l": (1.28, 4.60, 1.60), "s": (0.96, 3.60, 1.30), "m": (0.72, 2.00, 1.00), "xs": (0.56, 1.60, 0.85)}
+# R3 QA 2: the Konsolen spines are taller (520 / 400 px: no dead band above the row) and are lever-arch binders – a long
+# label pocket that carries the printed code and motif, a metal-rimmed finger hole instead of the debossed motif square
+SPINE_DIMS = {"l": (1.28, 5.20, 1.60), "s": (0.96, 4.00, 1.30), "m": (0.72, 2.00, 1.00), "xs": (0.56, 1.60, 0.85)}
+HOLE = {"l": (1.06, 0.29), "s": (0.84, 0.22)}   # finger hole: centre height, radius (BU)
 TAG_Z = {"l": 0.27, "s": 0.23, "m": 0.175, "xs": 0.15}
 
 
@@ -562,31 +565,60 @@ def spine(size, variant):
     # label holder (recess 2 px) with a paper insert
     m = round(W * (0.22 if small else 0.25), 2)
     lt = H - {"l": 0.32, "s": 0.28, "m": 0.21, "xs": 0.19}[size]
-    lb = lt - round(H * (0.42 if small else 0.36), 2)
+    lb = lt - round(H * (0.42 if small else 0.50), 2)
     cutter = box("c_label", m, -0.1, lb, W - m, 0.04, lt)
     cut(ob, cutter)
-    s = round(W - 2 * max(0.12, round(W * 0.14, 2)), 2)
-    mb = {"l": 0.52, "s": 0.44, "m": 0.36, "xs": 0.31}[size]
-    cm = box("c_motif", (W - s) / 2, -0.1, mb, (W + s) / 2, 0.03, mb + s)
-    cut(ob, cm)
+    extra = []
+    if small:
+        s = round(W - 2 * max(0.12, round(W * 0.14, 2)), 2)
+        mb = {"m": 0.36, "xs": 0.31}[size]
+        cut(ob, box("c_motif", (W - s) / 2, -0.1, mb, (W + s) / 2, 0.03, mb + s))
+    else:
+        # the finger hole: a round cut through the front into the dark inside, a pressed steel grommet around it
+        hz, hr = HOLE[size]
+        bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=hr, depth=0.9, location=(W / 2, 0.30, hz), rotation=(math.pi / 2, 0, 0))
+        hc = bpy.context.active_object
+        hc.name = "c_hole"
+        cut(ob, hc)
+        steel = mat_brushed(f"grommet-{size}{variant}", rnd, level=0.62, rough=0.32)
+        bpy.ops.mesh.primitive_torus_add(major_segments=96, minor_segments=16, major_radius=hr + 0.012,
+                                         minor_radius=0.034 if size == "l" else 0.027, location=(W / 2, -0.004, hz), rotation=(math.pi / 2, 0, 0))
+        ring = bpy.context.active_object
+        ring.name = "grommet"
+        ring.scale = (1, 1, 0.55)   # pressed flat against the board
+        ring.data.materials.append(steel)
+        smooth(ring)
+        # the inside of the binder behind the hole: dark board, a hint of the rings' lever
+        inside = box("inside", W / 2 - hr - 0.1, 0.25, hz - hr - 0.1, W / 2 + hr + 0.1, 0.30, hz + hr + 0.1, mat_flat("inside", (0.035, 0.037, 0.04)))
+        extra = [ring, inside]
     add_bevel(ob, 0.04 if size == "l" else 0.03 if size == "s" else 0.02, 4)
     # slight per-item variation: a hair of lean and a dented corner
     ob.rotation_euler = (0, math.radians(rnd.uniform(-0.25, 0.25)), 0)
     paper = mat_paper(f"label-{size}{variant}", rnd, 0.60)
     lab = box("label", m + 0.015, 0.03, lb + 0.015, W - m - 0.015, 0.05, lt - 0.015, paper, bevel=0.004, segs=2)
     lab.parent = ob
+    for e in extra:
+        e.parent = ob
+        e.matrix_parent_inverse = ob.matrix_world.inverted()
     smooth(ob)
-    objs = [ob, lab]
+    objs = [ob, lab] + extra
     meta = {"kind": "spine", "size": size, "variant": variant}
     cat = catchers(D + 0.35)
-    return objs, cat, meta, lambda fr: {
-        "front": rect_px(fr, ob, 0, 0, W, H),
-        "band": rect_px(fr, ob, 0, band[0], W, band[1]),
-        "label": rect_px(fr, ob, m + 0.015, lb + 0.015, W - m - 0.015, lt - 0.015, y=0.03),
-        "motif": rect_px(fr, ob, (W - s) / 2, mb, (W + s) / 2, mb + s, y=0.03),
-        "tagCenterY": round(to_px(fr, ob.matrix_world @ Vector((W / 2, 0, TAG_Z[size])))[1], 1),
-        "tagCenterX": round(to_px(fr, ob.matrix_world @ Vector((W / 2, 0, 0.27)))[0], 1),
-    }
+
+    def rects(fr):
+        r = {
+            "front": rect_px(fr, ob, 0, 0, W, H),
+            "band": rect_px(fr, ob, 0, band[0], W, band[1]),
+            "label": rect_px(fr, ob, m + 0.015, lb + 0.015, W - m - 0.015, lt - 0.015, y=0.03),
+            "tagCenterY": round(to_px(fr, ob.matrix_world @ Vector((W / 2, 0, TAG_Z[size])))[1], 1),
+            "tagCenterX": round(to_px(fr, ob.matrix_world @ Vector((W / 2, 0, 0.27)))[0], 1),
+        }
+        if small:
+            r["motif"] = rect_px(fr, ob, (W - s) / 2, mb, (W + s) / 2, mb + s, y=0.03)
+        else:
+            r["hole"] = rect_px(fr, ob, W / 2 - hr, hz - hr, W / 2 + hr, hz + hr)
+        return r
+    return objs, cat, meta, rects
 
 
 # the open front's compartment, in 1x px from the front's top-left: (inset, top, inner board top, inner board height)
@@ -704,7 +736,8 @@ def bookend():
     """An L of bent sheet steel (powder-coated black) at the end of a row, turned 12 deg toward the room (R3 QA: at 28 deg
     with a punched slot its face read as a door; now mostly its folded edge shows, the back corner cut on a slope)."""
     rnd = random.Random(7300)
-    mat = mat_powder("bookend", rnd, level=0.9)
+    # R3 QA 2: black powder coat vanished on the black room (a dark bar) – brushed steel, so the fold and its turn read
+    mat = mat_brushed("bookend", rnd, level=0.50, rough=0.40)
     t = 0.04
     up = box("upright", 0, 0, 0, t, 1.0, 1.30, mat)
     corner = box("c_corner", -0.1, 0.55, 0.95, 0.2, 1.4, 1.7)
@@ -716,7 +749,7 @@ def bookend():
     link(pivot)
     up.parent = pivot
     foot.parent = pivot
-    pivot.rotation_euler = (0, 0, math.radians(-12))
+    pivot.rotation_euler = (0, 0, math.radians(-20))
     cat = catchers(1.6)
     return [up, foot], cat, {"kind": "bookend"}, lambda fr: {
         "foot": [round(v, 1) for v in to_px(fr, Vector((0, 0, 0)))]}
@@ -747,7 +780,7 @@ def rail():
     """The position rail as a physical part: a brushed steel bar with an engraved groove, screwed to the wall."""
     rnd = random.Random(7500)
     L, H, D = 6.0, 0.18, 0.12
-    bar = box("bar", 0, 0, 0, L, D, H, mat_brushed("rail", rnd, level=0.30, rough=0.42))
+    bar = box("bar", 0, 0, 0, L, D, H, mat_brushed("rail", rnd, level=0.48, rough=0.40))   # R3 QA 2: lighter steel, it read as a line
     g = box("c_groove", 0.10, -0.1, H / 2 - 0.022, L - 0.10, 0.03, H / 2 + 0.022)
     cut(bar, g)
     add_bevel(bar, 0.02, 3)

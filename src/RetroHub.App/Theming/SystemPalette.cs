@@ -18,7 +18,9 @@ public enum Motif
 /// <summary>Era texture of a wall (DESIGN 4.5); file name = <see cref="Textures.FileName"/>.</summary>
 public enum Texture { None, Grain, Scan, Lcd, Bayer, Dither16, Grooves, Poly, Halftone, ShadowMask, Perforated, Wood, Grid,
     /// <summary>Material textures of the drawn objects (DESIGN 4.6), never a wall's era texture: card fibres, board grain, dust.</summary>
-    Card, BoardGrain, Dust }
+    Card, BoardGrain, Dust,
+    /// <summary>The Konsolen wall's felt (R3 QA 2): a generated material scan as a ± light/dark overlay (no tone shift).</summary>
+    WallFelt }
 
 /// <summary>The resolved look of one system: wall tones, colour band, light, text on colour, motif, texture.</summary>
 public sealed class SystemLook
@@ -149,7 +151,8 @@ public static class SystemPalette
         // 6.3 lists scan-4x3, but scanlines are reserved for the screen object (QA 11.5) → bayer-8
         ["virtualboy"] = new(Housing.Black, Motif.TwinLens, Texture.Bayer, 0.07, "#C8121C", "#1A0505"),
         ["arcade"] = new(Housing.Black, Motif.ControlPanel, Texture.ShadowMask, 0.10, "#FF2E88", "#22E4FF"),
-        ["pc"] = new(Housing.Beige, Motif.Floppy, Texture.Perforated, 0.06, "#C7B48A", "#3FBF6A"),
+        // R3 QA: the beige PC housing (#C7B48A) was the last large warm area – a cool light grey now, the floppy keeps its green
+        ["pc"] = new(Housing.Beige, Motif.Floppy, Texture.Perforated, 0.06, "#8C939C", "#3FBF6A"),
         ["atari2600"] = new(Housing.Wood, Motif.Stick, Texture.Wood, 0.10, "#C0702A", "#2A1A10"),
         ["atari7800"] = new(Housing.Black, Motif.StickGrip, Texture.Bayer, 0.07, "#C8243A", "#C0C0C0"),
         ["lynx"] = new(Housing.Black, Motif.HandheldLong, Texture.Lcd, 0.08, "#F2A21A", "#2B2B2B"),
@@ -193,6 +196,21 @@ public static class SystemPalette
         ["ndsi"] = "nds", ["n3ds"] = "3ds", ["gg"] = "gamegear", ["32x"] = "sega32x", ["mcd"] = "segacd",
         ["vb"] = "virtualboy", ["ws"] = "wonderswan", ["dc"] = "dreamcast",
     };
+
+    /// <summary>
+    /// A short code (≤ 4 letters) for a long system code on a narrow label (R3 QA: "Mega Drive", "WonderSwan" set at 7–8 px
+    /// on the ≈1100 sleeves): the shortest alias of the system ("MD", "GG", "DC", "WS", "PCE"), else null.
+    /// </summary>
+    public static string? CompactCode(string? id)
+    {
+        var n = Normalize(id);
+        if (n == null) return null;
+        string? best = null;
+        foreach (var (alias, canonical) in Aliases)
+            if (string.Equals(canonical, n, StringComparison.OrdinalIgnoreCase) && alias.Length <= 4 && (best == null || alias.Length < best.Length))
+                best = alias;
+        return best?.ToUpperInvariant();
+    }
 
     /// <summary>The catalog id for <paramref name="id"/> (aliases resolved); null stays null.</summary>
     public static string? Normalize(string? id) => id == null ? null : Aliases.TryGetValue(id, out var canonical) ? canonical : id;
@@ -295,6 +313,7 @@ public static class Textures
         Texture.Card => "pappe-64.png",
         Texture.BoardGrain => "brett-512x24.png",
         Texture.Dust => "staub-64.png",
+        Texture.WallFelt => "wand-filz-512.png",
         _ => null,
     };
 }

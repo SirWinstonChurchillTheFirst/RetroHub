@@ -346,6 +346,7 @@ public partial class GameDetailPage : PageBase
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom,
                 };
                 tile.Classes.Add("no-code");
+                tile.Classes.Add("deep-caption");
                 if (!game.HasLabelDetail) tile.Classes.Add("bare");
                 tile.TemplateApplied += (_, _) =>
                 {
@@ -358,7 +359,13 @@ public partial class GameDetailPage : PageBase
             }
             else
             {
-                _gap = new EmptySlot { Width = slot, Height = height, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+                // the place this box was pulled from (R3 QA: without a word it read as a broken, empty neighbour): the
+                // footprint on the board and under it, where the neighbours have their titles, "Hier stand es"
+                _gap = new EmptySlot
+                {
+                    Width = slot, Height = height, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                    Caption = Loc.T("detail.shelfGap"), CaptionTop = 32,
+                };
                 NeighbourRow.Children.Add(_gap);
                 UpdateGap();
             }
@@ -376,8 +383,8 @@ public partial class GameDetailPage : PageBase
         _gap.Aspect = DetailBox.Art?.ImageAspect ?? 1 / Math.Clamp(SystemPalette.BoxAspect(_vm?.Game?.SystemId), 0.6, 1.8);
     }
 
-    /// <summary>The caption under a box (GameTile: 24 = board 12 + gap 12, then the 66 px title and label block).</summary>
-    private const double CaptionBlock = 90;
+    /// <summary>The caption under a box (GameTile .deep-caption: 32 = board 12 + 20 under its dark underside, then the 66 px title and label block).</summary>
+    private const double CaptionBlock = 98;
 
     /// <summary>"Weiterlesen" only when the description is longer than its 8 lines.</summary>
     private void UpdateReadMore()

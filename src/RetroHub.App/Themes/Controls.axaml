@@ -284,6 +284,8 @@
           <!-- channel mark (12 × 3) under the digit, below the baseline -->
           <Border Name="PART_Mark" Width="12" Height="3" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8,0,0,4"
                   Background="{DynamicResource RhAccentBrush}" Opacity="0" IsHitTestVisible="False" />
+          <!-- mouse hover (R3 QA: hover must stay weaker than the selection): a 2 px white underline at 40 % -->
+          <Border Name="PART_HoverLine" Height="2" VerticalAlignment="Bottom" Margin="8,0,8,0" Background="#FFFFFF" Opacity="0" IsHitTestVisible="False" />
         </Panel>
       </ControlTemplate>
     </Setter>
@@ -294,6 +296,9 @@
     </Style>
     <Style Selector="^:pointerover">
       <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^:pointerover:not(:focus-visible) /template/ Border#PART_HoverLine">
+      <Setter Property="Opacity" Value="0.4" />
     </Style>
     <Style Selector="^.selected">
       <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
@@ -372,7 +377,7 @@
                included, has its title and its label line on the same lines (M3 QA: one baseline grid per row). On the
                system page the code and the bar drop out (.in-system); in the library's compartment only the code
                (.no-code). -->
-          <StackPanel Grid.Row="1" Margin="0,24,0,0" Spacing="4" Height="66" IsVisible="{TemplateBinding ShowCaption}">
+          <StackPanel Name="PART_CaptionBlock" Grid.Row="1" Margin="0,24,0,0" Spacing="4" Height="66" IsVisible="{TemplateBinding ShowCaption}">
             <c:TailCaption Name="PART_Title" Classes="caption" Source="{Binding WrapCaption}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
                            Height="42" />
 
@@ -392,6 +397,10 @@
       <Setter Property="Transitions">
         <Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut" /></Transitions>
       </Setter>
+    </Style>
+    <!-- "Daneben im Regal" (R3 QA): the board there casts a dark underside band – the caption starts 8 px lower -->
+    <Style Selector="^.deep-caption /template/ StackPanel#PART_CaptionBlock">
+      <Setter Property="Margin" Value="0,32,0,0" />
     </Style>
     <!-- mouse hover (R2 animation): the box rises 3 px and comes 3 % forward, the ring and a wider contact shadow come up
          with it (FocusLayer); a focused box keeps its own lift -->
@@ -487,20 +496,8 @@
   <!-- the solution button (DESIGN 7.3 "Spielen nicht möglich"): a chamfered plate in Regal hell with a 2 px warning
        contour, Icon.Warning and the way out ("Emulator einrichten"); focus = the paper ring like the primary plate -->
   <ControlTheme x:Key="RhSolutionButton" TargetType="Button" BasedOn="{StaticResource RhPrimaryButton}">
-    <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-    <Style Selector="^ /template/ c|ChamferPlate#PART_Plate">
-      <Setter Property="Outline" Value="{DynamicResource RhWarningBrush}" />
-    </Style>
-    <Style Selector="^:pointerover /template/ c|ChamferPlate#PART_Plate">
-      <Setter Property="Background" Value="#32353C" />
-    </Style>
-    <Style Selector="^:pressed /template/ c|ChamferPlate#PART_Plate">
-      <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
-    </Style>
-    <Style Selector="^:focus-visible">
-      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-    </Style>
+    <!-- v2 (R3 QA: the orange contour read as the old amber accent): an ordinary primary plate (Cyan, ink), the warning
+         lives only in its 20 px triangle icon in ink -->
   </ControlTheme>
 
   <!-- ================= Detail (DESIGN 7.3, M4) ================= -->

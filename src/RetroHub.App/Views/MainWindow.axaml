@@ -284,7 +284,7 @@
                   <Panel VerticalAlignment="Center">
                     <c:RhIcon Data="{StaticResource Icon.Info}" Width="18" Height="18" Foreground="#3C424B" IsVisible="{Binding IsInfo}" />
                     <c:RhIcon Data="{StaticResource Icon.Ok}" Width="18" Height="18" Foreground="#2F6B3F" IsVisible="{Binding IsSuccess}" />
-                    <c:RhIcon Data="{StaticResource Icon.Warning}" Width="18" Height="18" Foreground="#C2410C" IsVisible="{Binding IsWarning}" />
+                    <c:RhIcon Data="{StaticResource Icon.Warning}" Width="18" Height="18" Foreground="#0B0C0E" IsVisible="{Binding IsWarning}" />
                     <c:RhIcon Data="{StaticResource Icon.Error}" Width="18" Height="18" Foreground="#A2302A" IsVisible="{Binding IsError}" />
                   </Panel>
                   <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="16" TextTrimming="CharacterEllipsis" MaxLines="1">

@@ -483,10 +483,9 @@ public sealed class FocusLayer
         using var toHost = ctx.PushTransform(Matrix.CreateTranslation(-_region.X, -_region.Y));
         var t = _target;
         var light = LightColor;
-        // QA 2: in a system's context the ring is the system light mixed halfway toward Papier – the plain light (a
-        // lavender, a dark blue) read weaker than the light-colour ring and competed with the spines' colour bands beside it;
-        // cone and board piece keep the system's own light
-        var brush = new ImmutableSolidColorBrush(Light is { } sys ? Mix(sys, RingPaper, RingPaperShare) : light);
+        // R3 QA (theme v2): ONE focus signal everywhere – the ring is always the user's light colour (Cyan); a system's
+        // context keeps its own light only in the cone and the board piece
+        var brush = new ImmutableSolidColorBrush(RingColor(Light));
         // the lit board piece (M3 QA): the front under the box (as wide as the ring) tinted with 16 % light, 2 px light
         // on the board top; the stronger contact shadow falls only BELOW the front (on the front it cancelled the tint).
         // The ring stands on the board top – its legs end there and the light bar closes it: the box stands on the shelf.
@@ -507,12 +506,25 @@ public sealed class FocusLayer
 
     private const double RingGap = 3, RingWidth = 3;
 
-    /// <summary>Share of Papier in a system-context ring (QA 2).</summary>
-    public const double RingPaperShare = 0.5;
-    private static readonly Color RingPaper = Color.Parse("#F5F7FA");
 
-    /// <summary>The ring colour for a context light (null = the user's light colour, unmixed).</summary>
-    public static Color RingColor(Color? systemLight) => systemLight is { } s ? Mix(s, RingPaper, RingPaperShare) : ThemeManager.CurrentAccent;
+    /// <summary>
+    /// The ring colour: always the user's light colour (theme v2, R3 QA – the system light, white or a lightened system
+    /// colour made the focus change from page to page). <paramref name="systemLight"/> is ignored on purpose.
+    /// </summary>
+    public static Color RingColor(Color? systemLight) => ThemeManager.CurrentAccent;
+
+    /// <summary>The focus ring brush in the user's light colour (the Konsolen spines, fronts and sleeves use it too).</summary>
+    public static IImmutableSolidColorBrush RingBrush
+    {
+        get
+        {
+            var c = ThemeManager.CurrentAccent;
+            if (_ringBrush?.Color != c) _ringBrush = new ImmutableSolidColorBrush(c);
+            return _ringBrush;
+        }
+    }
+
+    private static ImmutableSolidColorBrush? _ringBrush;
 
     private static Color Mix(Color a, Color b, double t) => Color.FromRgb(
         (byte)Math.Round(a.R + (b.R - a.R) * t), (byte)Math.Round(a.G + (b.G - a.G) * t), (byte)Math.Round(a.B + (b.B - a.B) * t));

@@ -97,7 +97,13 @@ Bewusst **nicht** übernommen: Logos und Wortmarken, Hardware-Fotos, Trade Dress
 
 Nach dem R3-Test auf echter Hardware: *„diese goldene braun ist kacke“*. Entscheidung des Owners: **Schwarz + Weiß + Cyan** – Grund #0B0C0E (neutrales Fast-Schwarz), Fläche #1A1C20, Text #FFFFFF, Akzent #2FD3F5. Damit entfallen das Bernstein und **jede** warme Braun-, Oliv-, Beige- oder Goldfläche (Wände, Bretter, Holz-Textur, Papier, Etiketten, Kanten, Schuber). Die Systemfarben (2.4: Farbe, Zweitfarbe, Licht) bleiben; sie sind die Farbe des Geräts, nicht des Themes. Die Gehäuse-Wände sind neutral bzw. kühl; „warmgrau“, „beige“ und „holz“ heißen nur noch so, weil das Material so heißt.
 
-Prüfung: `ThemeV2Tests` (kein Neutral-Token und keine Gehäusewand im Farbton 15°–75° mit Sättigung ≥ 0,10; Text 1–3 ≥ 4,5 : 1 auf Raum, Regal, Regal hell und jeder Wand/Wand hell; jede Lichtfarbe als Fokusring ≥ 3 : 1 auf jedem dieser Gründe; Systemlicht ≥ 3 : 1 auf der eigenen Wand; Migration gespeicherter v1-Lichtfarben). Quelltext-Scan `scratchpad/theme/warmscan.py`: übrig sind nur die Statusfarbe Warnung #FF9A4A (immer mit Dreieck-Icon) und die Migrationstabelle.
+Prüfung: `ThemeV2Tests` (kein Neutral-Token und keine Gehäusewand im Farbton 15°–75° mit Sättigung ≥ 0,10; Text 1–3 ≥ 4,5 : 1 auf Raum, Regal, Regal hell und jeder Wand/Wand hell; jede Lichtfarbe als Fokusring ≥ 3 : 1 auf jedem dieser Gründe; Systemlicht ≥ 3 : 1 auf der eigenen Wand; Migration gespeicherter v1-Lichtfarben). Quelltext-Scan `scratchpad/theme/warmscan.py`: übrig ist nur die Migrationstabelle.
+
+**v2, zweite Runde (R3-QA 2)** – was nach der Umstellung noch warm war und wie es geschlossen ist:
+- **Fernsehlicht** (2.5): Das weichgezeichnete Cover färbte die Detailseite braun (oben gemessen (37,18,13)). Das Bild wird jetzt auf HSL-Sättigung ≤ 0,12 geklemmt und 30 % zum Raum gemischt (`RoomBackdrop.Wash`), das Bildlicht (Schein, Brettlicht) auf S ≤ 0,10. Geprüft: `ThemeV2Tests.A_warm_cover_leaves_the_detail_page_top_neutral` (Oliv, Braun, Orange, Beige, Rot: R − B ≤ 8 am Seitenkopf).
+- **Warnung** ist **weiß** (#FFFFFF) mit Dreieck-Icon, nie eine Kontur. Der Lösungsknopf („Importe öffnen“, „Emulator einrichten“) ist eine gewöhnliche Primärplatte (Cyan, Tinte), die Warnung steht nur als 20-px-Dreieck in Tinte darauf. Das Toast-Dreieck ist Tinte auf Papier.
+- **PC**: das beige Gehäuse (#C7B48A) war die letzte große warme Fläche. Farbe jetzt kühles Hellgrau #8C939C (Licht #A6B5C9, Tinte darauf 6,3 : 1), die Diskette behält ihr Grün #3FBF6A als Zweitfarbe; der Körper der gerenderten Rücken heißt für „beige“ jetzt #AEB4BC.
+- **Fokus**: überall die Lichtfarbe (Standard Cyan) – Raster, Systemrücken, offene Front, „Noch leer“-Schuber, Systemkontext. Die Systemfarbe steht nur noch im Band der Front und im Kegel/Brettstück.
 
 **Schuber „Noch leer“ (v2)**: Die Pappe ist grau (#5E646E, ¼ Wand). Kühle Systeme geben ihr 22 % ihrer Farbe mit (Sättigung ≤ 0,16); Systeme mit rotem bis gelbem Farbton (345°–75°) bleiben reine graue Pappe, weil jede Mischung dort zu Braun, Oliv oder Mauve wird. Die Systemfarbe steht klar als 4-px-Druckkante oben auf der Front und als Streifen auf dem Etikett. Die R3-Mischung (30 % Systemfarbe in brauner Pappe) machte aus jedem roten, orangen, gelben und Holz-System Matsch.
 
@@ -145,7 +151,7 @@ Regeln:
 | Status | Hex | Immer zusammen mit |
 |---|---|---|
 | Bereit/OK | #8FD694 | Häkchen-Icon |
-| Warnung | #FF9A4A | Dreieck-Icon (die einzige warme Farbe außerhalb der Systemfarben; Status, nie Fläche) |
+| Warnung | #FFFFFF | Dreieck-Icon (v2 zweite Runde: weiß statt Orange; Status, nie Fläche, nie Kontur) |
 | Fehler | #FF6A5E | gefastes Achteck mit Kreuz |
 | Favorit | #FF4D6A | gefüllter Stern (v2: Rot statt Gelb; 6,1 : 1 auf Raum) |
 | Fenster schließen (Hover) | #C42B1C | OS-Konvention |
@@ -188,7 +194,7 @@ Neu in v1.1: Die Wand wird **aus dem Gehäusematerial** abgeleitet und nicht meh
 | switch | anthrazit | Dock (Bildschirm zwischen zwei Seitenblöcken; R3) | #C41F2A | #2E2E33 | #EB848B | 5,6 | Papier 5,5 |
 | virtualboy | schwarz | TwinLens (Stereobrille) | #C8121C | #1A0505 | #F37C83 | 6,8 | Papier 5,5 |
 | arcade | schwarz | Bedienfeld | #FF2E88 | #22E4FF | #F47BAF | 7,0 | Tinte 5,6 |
-| pc | beige | Diskette | #C7B48A | #3FBF6A | #D1C19E | 7,2 | Tinte 9,6 |
+| pc | beige (Name; Ton kühl) | Diskette | #8C939C | #3FBF6A | #A6B5C9 | 9,4 | Tinte 6,3 |
 | atari2600 | holz | Stick | #C0702A | #2A1A10 | #E5B58A | 7,9 | Tinte 5,2 |
 | atari7800 | schwarz | StickGrip | #C8243A | #C0C0C0 | #E98693 | 7,0 | Papier 5,2 |
 | lynx | schwarz | HandheldLong (sehr breit, Griffe) | #F2A21A | #2B2B2B | #F4C77B | 11,2 | Tinte 9,3 |
@@ -226,7 +232,7 @@ Neu in v1.1: Die Wand wird **aus dem Gehäusematerial** abgeleitet und nicht meh
 **Pipeline** (Control `RoomBackdrop`, eine Instanz *außerhalb* des skalierten Seitenbaums, siehe 7.0):
 1. **Quelle**: fokussiertes Spiel → Snap → Titelbild → Cover → Systemwand.
 2. **Weichzeichnen, vorab und abseits des UI-Threads**: Der Job decodiert das Bild auf 96 px Breite, beschneidet auf 16:9, rechnet auf **64×36** herunter und zeichnet in float weich (drei Box-Durchgänge ≈ Gauß). **R2**: Das Feld wird bilinear auf **256×144** hochgerechnet und mit Interleaved-Gradient-Noise (±½ LSB) auf 8 bit gebracht – die 8-bit-Stufen des alten 64×36-Bitmaps wurden bei 1920 zu 30 px breiten Bändern. Das Ergebnis kommt in einen eigenen LRU-Cache (64 Einträge, Schlüssel Pfad + Änderungszeit). Dargestellt wird es als `Image Stretch=UniformToFill` mit `RenderOptions.BitmapInterpolationMode="HighQuality"` und Deckkraft 0,38. **Kein `BlurEffect`.**
-3. **Bildlicht**: Im selben Job wird aus den 64×36 Pixeln die nach Sättigung gewichtete Mittelfarbe gebildet und auf L 0,55–0,70 und S ≤ 0,70 geklemmt. Sie wird pro Spiel gecacht (`Dictionary<long, Color>`).
+3. **Bildlicht**: Im selben Job wird aus den 64×36 Pixeln die nach Sättigung gewichtete Mittelfarbe gebildet und auf L 0,55–0,70 und **S ≤ 0,10** geklemmt (v2: vorher 0,70 – ein braunes Cover machte Schein und Bretter braun). Danach wird das weiche Bild selbst gewaschen: S ≤ 0,12, 30 % zum Raum (`RoomBackdrop.Wash`). Sie wird pro Spiel gecacht (`Dictionary<long, Color>`).
 4. **Scrims und Schein, zusammen in float gerechnet (R2)**: (a) horizontal Raum 94 % → 52 %, (b) vertikal transparent bis 60 % der Bühnenhöhe → Raum 100 % an der Brettoberkante, (c) Vignette Raum-Tief, (d) Kopfblende, (e) der Schein (Punkt 5) werden pro Pixel vormultipliziert übereinander gelegt und die Farbe mit Interleaved-Gradient-Noise (±½ LSB) quantisiert – **ein** Bitmap in Geräteauflösung (höchstens 2560 breit), auf einem Hintergrund-Thread (`RoomBackdrop.LightPixels`). Als Skia-Verläufe gezeichnet stuften sie sich in Konturringe und senkrechte Bänder, und das Korn unter den Scrims erreichte sie nicht. Neu gerechnet wird pro Fenstergrößen-Bucket (64-px-Raster) und Bühnenhöhe (150 ms nach dem letzten Resize) sowie sofort bei neuer Lichtfarbe/-stärke/-position.
 5. **Schein an der Quelle**: Bildlicht 16 % → 0, Radius 55 % der Fensterbreite, nur über dem Brett. Er sitzt auf Start in der Mitte des Bildschirm-Objekts und im Detail in der Mitte der Schachtel; er ist Teil des Licht-Bitmaps aus Punkt 4.
 6. **Brettlicht**: `RhBoardLightBrush` ist eine einzige, app-weit geteilte `SolidColorBrush` mit `ColorTransition` 420 ms. Auf Start und Detail ist sie Bildlicht bei 35 %, in Bibliothek und Systemkontext die Kontext-Lichtfarbe bei 22 % (Cyan bzw. Licht), sonst #17FFFFFF. Jedes Brett nutzt diese Instanz, also kostet ein Wechsel eine Farbe.
@@ -396,7 +402,7 @@ Jedes Objekt wird aus denselben Teilen gebaut (`Controls/Craft.cs`, `CraftParts.
 
 ### 4.8 Gerenderte Objekte (R3)
 
-Die physischen Objekte sind in **Blender** modelliert und beleuchtet (Cycles, nur CPU, Schlüssellicht oben links vorn, kühles Fülllicht rechts, orthografische Kamera 1,6° von oben, 2,4° gedreht – dieselbe Schrägsicht wie die gezeichneten Seiten- und Oberflächen) und als PNG-Sprites in 1x und 2x gebacken (`Assets/Rendered`, ≈ 14 MB; Budget < 15 MB, `RenderedObjectsTests`). Materialien (Pappe, Laminat, Pulverlack, gebürstetes Metall, Etikettpapier, Staub) sind KI-generierte, nahtlose Kacheln ohne Text oder Logos (ComfyUI, FLUX.2). Skripte und Prompts: `build/tools/assets` (README nennt die Reihenfolge).
+Die physischen Objekte sind in **Blender** modelliert und beleuchtet (Cycles, nur CPU, Schlüssellicht oben links vorn, kühles Fülllicht rechts, orthografische Kamera 1,6° von oben, 2,4° gedreht – dieselbe Schrägsicht wie die gezeichneten Seiten- und Oberflächen) und als PNG-Sprites in 1x und 2x gebacken (`Assets/Rendered`, ≈ 14 MB; Budget < 15 MB, `RenderedObjectsTests`). Materialien (Pappe, Laminat, Pulverlack, gebürstetes Metall, Etikettpapier, Staub, der Filz der Konsolenwand) sind KI-generierte, nahtlose Kacheln ohne Text oder Logos (ComfyUI, FLUX.2). Skripte und Prompts: `build/tools/assets` (README nennt die Reihenfolge).
 
 - **Eine Aufnahme für jede Systemfarbe**: Die eingefärbten Flächen sind mit Albedo 0 gerendert (nur Glanz, Abnutzung, Kanten); **Lichtmasken** (`-band`, `-body`, Motive `-color`/`-body`/`-lift`/`-light`, Grau + Alpha) sagen, wo und wie stark eine Farbe erscheint. `Controls/Rendered.cs` setzt ein Sprite **einmal auf der CPU** zusammen (Schatten, Objekt, jede Farbe durch ihre Maske) und cacht die Bitmap pro Farbkombination (LRU ≈ 160 MB). Gezeichnet wird dann ein `DrawImage` pro Objekt – keine Opacity-Masken pro Frame.
 - **Schärfe**: 1x oder 2x nach den Gerätepixeln, die das Objekt bedeckt (UiScale × Render-Skalierung); 1:1-Bilder werden auf Gerätepixel gerastet, skalierte mit hoher Filterqualität gezeichnet.
@@ -1078,6 +1084,19 @@ Die Objekte der Konsolen-Seite und die Regale aller Seiten sind **gerenderte Obj
 - **Leere Plätze**: auf der leeren Fächerwand blanke Rücken (55 %), auf leeren Brettern leere Hüllen (55 %); die Geste „leeres Regal“ ist ein gelehnter grauer Schuber mit Buchstütze statt der Strichzeichnung.
 - **Ohne Sprites** (z. B. reine Unit-Tests ohne Render-Plattform) zeichnen alle Steuerelemente ihre bisherigen Formen.
 
+### 7.11 Stand R3-QA 2 (Owner nach Build fd82d98: „selber gecoded … mach es für die Maus alles accessible“)
+
+- **Fächerwand = Ordnerwand**: Die Rücken sind **Ordner mit Hebelmechanik** (Blender `spine-l`/`spine-s`, jetzt **128 × 520** bzw. ≈ 1100 **96 × 400** – das 160-px-Loch über 460 px hohen Rücken neben der 600 px hohen Front ist weg): langes **Etikett** im Einsteckfenster und ein **Griffloch** mit gepresstem Stahlring statt der geprägten Motiv-Vertiefung. Das Etikett ist **bedruckt** wie ein echtes: oben der Code (Tinte, liest aufwärts), darunter der Name in der Lese-Schrift 14/12 px (passt er nicht: Hersteller und Jahr; sonst nichts), unten das **Motiv als einfarbiger Druck** in der Systemfarbe (Silhouette, 92 %). Flache Grafik gehört auf Papier; die Relief-Plakette bleibt den großen Flächen (Front, Banner, Fach). Start-Rücken (`m`/`xs`) unverändert mit Plakette.
+- **Wand**: hinter der Fächerwand liegt **Filz** (`WallSurface`: KI-Materialscan, nahtlos, als ±-Overlay bei 10 % über dem Wandton, kein Farbton) und **eine** feste Lampe oben (6 % → 0 über 62 % der Höhe). Keine Dekorverläufe; das Licht ist auf jedem System gleich.
+- **Leere Fächerwand**: fünf leere Ordner (55 %, Etikett im Schatten) und ein sechster, der sich anlehnt – acht gleiche Rücken mit hellen Fenstern lasen sich als Spinde.
+- **Schiene** läuft bis 16 px vor das Positionsschild (die Spalte daneben war tot), Stahl heller gerendert; **Buchstütze** gebürsteter Stahl, 20° gedreht.
+- **„Noch leer“ bei ≈ 1100**: lange Codes, die auf dem schmalen Etikett unter 13 px fielen, werden zum Kurzcode (`SystemPalette.CompactCode`: MD, GG, DC, WS, PCE, MCD); Mindestgröße 12 px.
+- **Motive Remote und Tower** (Außenseiter-Test): Remote ist eine **flache, liegende Box** mit Schlitz, Leuchtstreifen und zwei Funkbögen darüber; Tower sind **zwei gestapelte flache Gehäuse** (das obere zurückgesetzt). Die aufrechten Silhouetten standen zu nah an zwei Produkten.
+- **Detail**: Fernsehlicht neutral (2.0 v2), Lösungsknopf Cyan; in „Daneben im Regal“ steht unter der Lücke „Hier stand es“ (sie las sich als kaputter Nachbar), Bildunterschriften 8 px tiefer unter der dunklen Brett-Unterseite; „Gespielt“ sind **Papierzettel** (`PaperNote`, Tinte) statt doppelter Linien, leere Plätze zeigen nichts mehr (die Rillen lasen sich als unsichtbare Zettel).
+- **Kopfzeile**: Hover = Text 1 + 2-px-Unterstrich Weiß 40 %; die weiße Platte bleibt dem Tastatur-Fokus.
+- **Bibliothek**: die Schulter-Keile (◤ ◥) neben dem Ticker sind **Chevron-Platten** 32 × 32 (gleich zum Start-Brett).
+- **Maus im echten Fenster**: Ein Prüfskript (`build/tools/maus-real.ps1`, UIA + WM_NCHITTEST + Klick-Nachrichten) liegt bei. In der Dev-VM gibt es ohne angemeldete Konsolensitzung nur Session 0: dort meldete das Fenster überall HTCLIENT und ignorierte gesendete Klicks – das beweist nichts, das Skript verweigert Session 0 deshalb. **Offen:** der Test auf einem echten Desktop (Owner-Rechner oder VM mit Anmeldung).
+
 ## 8. Fokus- und Auswahl-Sprache (Controller)
 
 Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wand, Primärbutton) besteht er aus Hebung, Lichtkegel von oben, beleuchtetem Brett und gefastem Ring. Bei kleinen Elementen ist er eine Inversion. Bei Zeilen ist er eine helle Zeile mit Balken und Papier-Chip. Andere Elemente ändern sich nicht. Gedimmt wird nur als Status.
@@ -1095,7 +1114,7 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
   - *Lichtkegel* (M2-QA, M3-QA): kurzes, **hartkantiges** Trapez, das an der Oberkante der gehobenen Schachtel endet und nie hinter der Schachtel liegt. Oben 0,6 × Coverbreite bei Coveroberkante − 32, unten 1,1 × Coverbreite auf der Coveroberkante; Lichtfarbe linear von 0 (oben) auf 12 % (unten), ohne seitliches Ausblenden (der weiche 18-%-Kegel las sich als „Glow“). Ein vorab gerendertes Bitmap pro Lichtfarbe, geteilt; auf die Kopffreiheit beschnitten (Grid 24 px).
   - *Brettstück*: siehe 4.2 (2 px Licht über die Ringbreite, Front + 16 % Licht).
   - *Fokus-Kontaktschatten*: 16 px #000 70 % → 0 auf Coverbreite, **unter** der Brettfront.
-- **Lichtfarbe**: in gemischtem Kontext Cyan (bzw. die gewählte Benutzer-Lichtfarbe), im Systemkontext das *Licht* des Systems für Kegel und Brettstück. **Der Ring** (und die 2-px-Lichtkante, die ihn schließt) ist im Systemkontext das Licht **zur Hälfte mit Papier gemischt** (`FocusLayer.RingPaperShare` 0,5; SNES-Lavendel #A397D8 → #CCC2DC). QA 2: Der reine Systemton las sich schwächer als der Cyan-Ring und konkurrierte mit den Farbbändern der Rücken daneben – die fokussierte Schachtel war im meistgenutzten Raster am schwersten zu finden. Ein Cyan-Ring auch im System hätte die Lichtfarbe des Fachs verlassen; die Mischung hält die Farbfamilie und hebt den Ring über jedes Band.
+- **Lichtfarbe**: in gemischtem Kontext Cyan (bzw. die gewählte Benutzer-Lichtfarbe), im Systemkontext das *Licht* des Systems für Kegel und Brettstück. **Der Ring** ist seit R3-QA 2 (Theme v2) **immer die Lichtfarbe** (`FocusLayer.RingColor`, `FocusLayer.RingBrush`) – auf Rastern, Systemrücken, offenen Fronten und Schubern gleich, damit es genau ein Fokussignal gibt. *Vorher:* im Systemkontext das Licht **zur Hälfte mit Papier gemischt** (`FocusLayer.RingPaperShare` 0,5; SNES-Lavendel #A397D8 → #CCC2DC). QA 2: Der reine Systemton las sich schwächer als der Cyan-Ring und konkurrierte mit den Farbbändern der Rücken daneben – die fokussierte Schachtel war im meistgenutzten Raster am schwersten zu finden. Ein Cyan-Ring auch im System hätte die Lichtfarbe des Fachs verlassen; die Mischung hält die Farbfamilie und hebt den Ring über jedes Band.
 - **Kosten**: zwei Elemente pro Grid, unabhängig von der Kachelzahl. Keine Kachel trägt Fokus-Visuals.
 
 ### 8.2 Pro Elementtyp
@@ -1103,7 +1122,7 @@ Grundsatz: **Der Fokus hebt das Objekt ins Licht.** Bei Objekten (Schachtel, Wan
 | Element | Fokus-Darstellung | Zeit |
 |---|---|---|
 | **Schachtel** (Grid, Bretter, Bühne, Detail) | Hebung 1,06 (Ursprung unten Mitte), Kegel, Brettstück, Fokus-Kontaktschatten, gefaster Ring. Bildunterschrift Text 2 → Papier | Ring 90 ms linear; Hebung 140 ms CubicEaseOut |
-| **Systemrücken / Front / Wand-Banner** | Gefaster Ring in Licht (3 px Raum-Tief-Spalt + 3 px Licht, Fase 6), Hebung 1,03 von unten Mitte, über den Nachbarn (ZIndex 1). Kein Kegel, die Wand ist selbst die Lichtfläche | wie oben |
+| **Systemrücken / Front / Wand-Banner** | Gefaster Ring in der Lichtfarbe (3 px Raum-Tief-Spalt + 3 px, Fase 6; R3-QA 2: nicht mehr das Systemlicht), Hebung 1,03 von unten Mitte, über den Nachbarn (ZIndex 1). Kein Kegel, die Wand ist selbst die Lichtfläche | wie oben |
 | **Primärbutton** (gefaste Platte) | Cyan bleibt, gefaster Ring 3 px **Papier** mit Raum-Tief-Spalt, Skalierung 1,03 | 90 / 140 ms |
 | **Sekundärbutton, Kopfleisten-Icon, Kanal, Ticker-Eintrag, Tastenkappe, Werkzeug** | **Inversion**: Fläche Papier, Text und Icon Tinte (Ticker: Code-Fläche 6×4, R 2; Unterstrich bleibt) | 90 ms |
 | **Listen-, Auswahl-, Einstellungs-, Emulator-, Ordnerzeile** | Zeile Regal hell, 8-px-Balken links (Farbe des Systems bzw. Cyan), 1 px Lichtkante oben, Label bzw. Titel in Papier-Chip (Tinte, 8×4, R 2). Im Service-Menü werden die Wert-Pfeile Papier | 90 ms |
@@ -1334,7 +1353,7 @@ Texte für Leerzustände benennen, was fehlt, und die Lösung, z. B. „Kein Emu
 2. **Texturen**: `tools/TextureGen` erzeugt die PNGs deterministisch. Sie werden committet.
 3. **Schriften**: erledigt (3.1). Für neue Schnitte gilt dasselbe Verfahren: offizielles Repo, eigener Ordner pro Breite, Name-Tabelle prüfen, `FontRoleTests` erweitern.
 4. **Palette**: `SystemPaletteTests` prüft die Regeln aus 2.4 (Kontraste und ΔE2000). Referenzskript: `scratchpad/design/tools/palette2.py`.
-5. **Gerenderte Objekte** (4.8): `build/tools/assets` – Materialien (ComfyUI, `run_comfy.ps1`, eine versteckte Instanz, per PID beendet), Kachelung, Blender-Objekte und Motiv-Reliefs (`run_blender.ps1`: `-b --factory-startup -t 8`, CPU, BelowNormal), Sprites (`build_sprites.py`), Paket (`package_assets.py`) → `src/RetroHub.App/Assets/Rendered`.
+5. **Gerenderte Objekte** (4.8): `build/tools/assets` – Materialien (ComfyUI, `run_comfy.ps1`, eine versteckte Instanz, per PID beendet), Kachelung, die Wandkachel `wall_tile.py` (Filz als ±-Licht/Schatten-Overlay → `Assets/Textures/wand-filz-512.png`), Blender-Objekte und Motiv-Reliefs (`run_blender.ps1`: `-b --factory-startup -t 8`, CPU, BelowNormal), Sprites (`build_sprites.py`), Paket (`package_assets.py`) → `src/RetroHub.App/Assets/Rendered`.
 
 ### 11.3 Meilensteine (Owner-Priorität: Start, Bibliothek, Detail)
 

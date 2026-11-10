@@ -46,7 +46,7 @@ public sealed partial class SystemSpine : Button, Avalonia.Rendering.ICustomHitT
 
     private static readonly IImmutableSolidColorBrush Paper = new ImmutableSolidColorBrush(SystemPalette.Paper);
     private static readonly IImmutableSolidColorBrush Text2 = new ImmutableSolidColorBrush(Color.Parse("#C3C8D1"));
-    private static readonly IImmutableSolidColorBrush SleeveRing = new ImmutableSolidColorBrush(Color.Parse("#D9FFFFFF"));
+
     private static readonly IImmutableSolidColorBrush SleeveKeyline = new ImmutableSolidColorBrush(Color.Parse("#B3000000"));
 
     /// <summary>Where the code hangs: 16 px under the 8 px band (one anchor on Start and Konsolen, M5 QA).</summary>
@@ -535,7 +535,7 @@ public sealed partial class SystemSpine : Button, Avalonia.Rendering.ICustomHitT
                 using (ctx.PushOpacity(_ringOpacity))
                 {
                     Chamfer.DrawStandingRing(ctx, ObjectRect, SleeveKeyline, gap: 2, ring: 5);
-                    Chamfer.DrawStandingRing(ctx, ObjectRect, SleeveRing);
+                    Chamfer.DrawStandingRing(ctx, ObjectRect, FocusLayer.RingBrush);
                 }
             return;
         }
@@ -613,7 +613,7 @@ public sealed partial class SystemSpine : Button, Avalonia.Rendering.ICustomHitT
         // like the ring of a box (open at the foot, M3 QA)
         if (_ringOpacity > 0)
             using (ctx.PushOpacity(_ringOpacity))
-                Chamfer.DrawStandingRing(ctx, area, look.LightBrush);
+                Chamfer.DrawStandingRing(ctx, area, FocusLayer.RingBrush);
     }
 
     // ===================== drawn parts of spine and front (M7 "gezeichnet") =====================

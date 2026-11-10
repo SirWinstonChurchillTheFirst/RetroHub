@@ -67,11 +67,23 @@
       <Setter Property="Height" Value="44" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="Button.shoulder:pointerover c|ButtonGlyph">
-      <Setter Property="Hot" Value="True" />
+    <!-- R3 QA: the shoulder wedges (◤ ◥) did not read as "previous/next" – a 32 × 32 chevron plate like the start shelf's -->
+    <Style Selector="Button.shoulder Border.chev">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource RhLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
     </Style>
-    <Style Selector="Button.shoulder:pressed c|ButtonGlyph">
-      <Setter Property="Hot" Value="True" />
+    <Style Selector="Button.shoulder Border.chev c|RhIcon">
+      <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    </Style>
+    <Style Selector="Button.shoulder:pointerover Border.chev">
+      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
+    </Style>
+    <Style Selector="Button.shoulder:pointerover Border.chev c|RhIcon">
+      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
     </Style>
     <!-- favourites tool on: the star filled in favourite yellow (the status colour, never Cyan) -->
     <Style Selector="ToggleButton#FavToggle:checked c|RhIcon#FavIcon">
@@ -89,7 +101,7 @@
     <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="{DynamicResource RhPageInsetX}" IsVisible="{Binding !IsLibraryEmpty}">
       <Button Name="ShoulderLeft" Theme="{StaticResource RhTickerItem}" Classes="shoulder" Margin="0,0,16,0" Command="{Binding PreviousChipCommand}"
               ToolTip.Tip="{l:T library.prevShelf}">
-        <c:ButtonGlyph Action="PageLeft" Quiet="True" />
+        <Border Classes="chev"><c:RhIcon Data="{StaticResource Icon.ChevronLeft}" Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
       </Button>
       <Panel Grid.Column="1" VerticalAlignment="Center">
         <ScrollViewer Name="TickerScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
@@ -139,7 +151,7 @@
       <!-- 16 px air between the ticker's clip edge (with its 48 px fade) and the right plate (M3 QA) -->
       <Button Name="ShoulderRight" Grid.Column="2" Theme="{StaticResource RhTickerItem}" Classes="shoulder" Margin="16,0,24,0" Command="{Binding NextChipCommand}"
               ToolTip.Tip="{l:T library.nextShelf}">
-        <c:ButtonGlyph Action="PageRight" Quiet="True" />
+        <Border Classes="chev"><c:RhIcon Data="{StaticResource Icon.ChevronRight}" Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
       </Button>
       <!-- tools: 44 high, frameless, focus = inversion -->
       <StackPanel Name="Tools" Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding !IsLibraryEmpty}">

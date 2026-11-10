@@ -42,7 +42,7 @@ public sealed partial class SystemSpine
         Housing.CoolGrey => Color.Parse("#45494F"),
         Housing.WarmGrey or Housing.Wood => Color.Parse("#3C3F45"),
         Housing.White => Color.Parse("#A9ADB3"),
-        Housing.Beige => Color.Parse("#8A8E94"),
+        Housing.Beige => Color.Parse("#AEB4BC"), // R3 QA: a cool light grey (PC, MSX), never beige
         _ => ColorUtil.Mix(Color.Parse("#2B2E33"), look.Color, 0.32),
     };
 
@@ -85,6 +85,44 @@ public sealed partial class SystemSpine
     }
 
     private static readonly IImmutableSolidColorBrush TagInk = new ImmutableSolidColorBrush(Color.Parse("#ECEEF0"));
+    private static readonly IImmutableSolidColorBrush LabelInk2 = new ImmutableSolidColorBrush(Color.Parse("#3A3F47"));
+
+    private FormattedText? _labelName;
+    private (string?, double) _labelNameKey;
+
+    /// <summary>
+    /// R3 QA 2 (the binder's label was a blank white card with only the code): the long label of the Konsolen binder is
+    /// printed like a real one – the code at the top, the system's name in the small face under it (reading upward),
+    /// and the motif in the system's colour at its foot, as ONE flat print on the paper (flat graphics belong on print;
+    /// the relief plaque and the debossed square are gone from the closed spine).
+    /// </summary>
+    private void PrintLabel(DrawingContext ctx, Rect label, double pad, SystemLook look, ViewModels.SystemItemViewModel s)
+    {
+        var size = Math.Round(Math.Min(label.Width - 2 * Math.Round(label.Width * 0.09), label.Height * 0.24));
+        if (size < 12) return;
+        var box = new Rect(Math.Round(label.X + (label.Width - size) / 2), Math.Round(label.Bottom - pad - size), size, size);
+        var codeEnd = label.Y + pad + (_labelCode?.Width ?? 0);
+        var room = box.Y - 10 - (codeEnd + 10);
+        var faceSize = label.Width >= 56 ? 14.0 : 12.0;
+        if (_labelNameKey != (s.PosterName, room) || _labelName == null)
+        {
+            _labelNameKey = (s.PosterName, room);
+            _labelName = null;
+            foreach (var text in new[] { s.PosterName, s.SubTitle })
+            {
+                if (string.IsNullOrWhiteSpace(text) || string.Equals(text, s.ShortName, StringComparison.OrdinalIgnoreCase)) continue;
+                var t = new FormattedText(text, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.ReadFace, faceSize, LabelInk2);
+                if (t.Width <= room) { _labelName = t; break; }
+            }
+        }
+        if (_labelName is { } name)
+            using (ctx.PushClip(label))
+            using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) *
+                Matrix.CreateTranslation(Math.Round(label.X + (label.Width - name.Height) / 2), Math.Round(codeEnd + 10 + name.Width))))
+                ctx.DrawText(name, new Point(0, 0));
+        // the print: the motif's silhouette in the system's colour, a hair thinner than full ink (the paper shows through)
+        MotifCatalog.DrawSilhouette(ctx, look, box, 0.92, look.ColorBrush);
+    }
 
     /// <summary>
     /// The closed wall spine from its render: band and body tinted, the code in ink on the paper label (reading upward,
@@ -110,10 +148,14 @@ public sealed partial class SystemSpine
                 using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) *
                     Matrix.CreateTranslation(Math.Round(label.X + (label.Width - code.Height) / 2), Math.Round(label.Y + pad + code.Width))))
                     Craft.Print(ctx, code, new Point(0, 0), 0.2);
-            var motif = Map(m.Rect("motif"));
-            var inset = Math.Round(motif.Width * 0.065);
-            var box = motif.Deflate(inset);
-            if (!DrawMotifPlaque(ctx, this, look, box)) MotifCatalog.Draw(ctx, look, box, relief: true);
+            if (m.Rects.ContainsKey("motif"))
+            {
+                var motif = Map(m.Rect("motif"));
+                var inset = Math.Round(motif.Width * 0.065);
+                var box = motif.Deflate(inset);
+                if (!DrawMotifPlaque(ctx, this, look, box)) MotifCatalog.Draw(ctx, look, box, relief: true);
+            }
+            else PrintLabel(ctx, label, pad, look, s);
             if (_tagCount is { } count && s.GameCount > 0)
             {
                 var tag = size == "l" ? "tag-l" : "tag-s";
@@ -206,10 +248,17 @@ public sealed partial class SystemSpine
             var room = s.Flat ? m.Rect("label").Width - 16 : m.Rect("label").Height - m.Rect("tab").Height - 12;
             var across = s.Flat ? m.Rect("label").Height - 6 : (s.Lean != 0 ? m.Front.Width - 26 : m.Rect("label").Width) - 6;
             var size = SleeveSprite == "l" ? 16.0 : 14.0;
+            var text = sys.ShortName;
+            // R3 QA: on the narrow ≈1100 sleeves a long code (Mega Drive, WonderSwan) shrank to 7–8 px cap height – the
+            // short code (MD, WS) stays at ≥ 13 px instead
+            FormattedText Make(string t, double px) => new(t, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, px, Craft.Solid(Craft.LabelInk));
+            if (SleeveSprite == "s" && Make(text, 13) is var probe && (probe.Width > room || probe.Height > across)
+                && SystemPalette.CompactCode(sys.Id) is { } compact)
+                text = compact;
             while (true)
             {
-                _sleeveCode = new FormattedText(sys.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, size, Craft.Solid(Craft.LabelInk));
-                if ((_sleeveCode.Width <= room && _sleeveCode.Height <= across) || size <= 11) break;
+                _sleeveCode = Make(text, size);
+                if ((_sleeveCode.Width <= room && _sleeveCode.Height <= across) || size <= 12) break;
                 size--;
             }
         }

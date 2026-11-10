@@ -170,6 +170,32 @@ public sealed class SystemWall : Control
 }
 
 /// <summary>
+/// The wall behind the Konsolen binders (R3 QA 2: flat #121315 read as a code canvas): the generated felt at
+/// <see cref="FeltStrength"/> (a ± overlay, the page ground's tone stays) and ONE fixed lamp above the row – the top
+/// third of the page a few percent lighter, falling off to nothing at the board. Not a decorative gradient: the light
+/// is the same on every system and never moves. Dithered by the felt itself, so the falloff does not band.
+/// </summary>
+public sealed class WallSurface : Control
+{
+    public const double FeltStrength = 0.10, LampStrength = 0.06;
+
+    static WallSurface()
+    {
+        IsHitTestVisibleProperty.OverrideDefaultValue<WallSurface>(false);
+        AffectsRender<WallSurface>(BoundsProperty);
+    }
+
+    public override void Render(DrawingContext ctx)
+    {
+        var r = new Rect(Bounds.Size);
+        if (r.Width <= 0 || r.Height <= 0) return;
+        TextureFill.Draw(ctx, this, r, Texture.WallFelt, FeltStrength);
+        var lamp = Math.Round(r.Height * 0.62);
+        ctx.FillRectangle(Craft.Fade(Craft.Light, LampStrength, 0, Craft.Toward.Down), new Rect(0, 0, r.Width, lamp));
+    }
+}
+
+/// <summary>
 /// A system's motif standing alone (DESIGN 6.4.1: the wall banner of the library – motif right, standing on a stage
 /// board). Square, standing on its bottom edge; the cut-outs take the wall tone behind it.
 /// </summary>

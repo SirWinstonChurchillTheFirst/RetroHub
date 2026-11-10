@@ -158,6 +158,7 @@ public sealed class EmptySlot : Control
             Craft.Groove(ctx, 0, size.Height - 2, size.Width, 0.45, 0.06);
             return;
         }
+        DrawCaption(ctx);
         var outer = new Rect(size);
         var r = Aspect > 0 ? CoverArt.Compute(outer, null, false, Aspect) : outer;
         if (Recessed)
@@ -217,9 +218,44 @@ public sealed class EmptySlot : Control
         var x = Bounds.X + (this.GetVisualParent() is Visual p ? p.Bounds.X : 0);
         var seed = Craft.Mix(Craft.Seed("leerer-platz"), (int)Math.Round(x));
         var name = $"spine-{(r.Width >= 112 ? "l" : "s")}{Craft.Pick(seed, 5, 0, 2)}";
+        // R3 QA 2 (eight blank spines with bright windows read as metal lockers): the binders are empty – their label
+        // paper lies in shade, and the last one of the row leans on its neighbour (rotated about its foot)
+        var lean = Lean ? -0.07 : 0;
+        using (ctx.PushTransform(Matrix.CreateTranslation(-r.X, -r.Bottom) * Matrix.CreateRotation(lean) * Matrix.CreateTranslation(r.X, r.Bottom)))
         using (ctx.PushOpacity(0.55))
-            return Rendered.Draw(ctx, this, name, r, true, new Rendered.Tint("body", BlankBody), new Rendered.Tint("band", BlankBand));
+        {
+            if (!Rendered.Draw(ctx, this, name, r, true, new Rendered.Tint("body", BlankBody), new Rendered.Tint("band", BlankBand))) return false;
+            if (Rendered.MetaOf(name) is { } m && m.Rects.ContainsKey("label"))
+            {
+                var sx = r.Width / m.Front.Width;
+                var sy = r.Height / m.Front.Height;
+                var l = m.Rect("label");
+                ctx.FillRectangle(Craft.Dark(0.62), new Rect(r.X + (l.X - m.Front.X) * sx, r.Y + (l.Y - m.Front.Y) * sy, l.Width * sx, l.Height * sy));
+            }
+        }
+        return true;
     }
+
+    /// <summary>
+    /// A word under the place, where its neighbours have their titles (R3 QA: the gap a pulled box left on "Daneben im
+    /// Regal" read as a broken neighbour): drawn <see cref="CaptionTop"/> px below the bounds in the caption face, Text 3.
+    /// </summary>
+    public string? Caption { get; set; }
+    public double CaptionTop { get; set; } = 32;
+
+    private FormattedText? _caption;
+
+    private void DrawCaption(DrawingContext ctx)
+    {
+        if (string.IsNullOrEmpty(Caption) || Bounds.Width <= 0) return;
+        _caption ??= new FormattedText(Caption, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.ReadFace, 16,
+            new ImmutableSolidColorBrush(Color.Parse("#A0A7B2"))) { MaxTextWidth = Bounds.Width };
+        ctx.DrawText(_caption, new Point(0, Bounds.Height + CaptionTop));
+    }
+
+    /// <summary>The place's blank binder leans on its left neighbour (the last place on the empty Konsolen wall).</summary>
+    public static readonly StyledProperty<bool> LeanProperty = AvaloniaProperty.Register<EmptySlot, bool>(nameof(Lean));
+    public bool Lean { get => GetValue(LeanProperty); set => SetValue(LeanProperty, value); }
 
     /// <summary>
     /// A place on an empty board (R3 QA: the recessed places were flat dark rectangles of one width – "generated"): what

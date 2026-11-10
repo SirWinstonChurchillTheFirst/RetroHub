@@ -68,6 +68,21 @@
         1802
       ],
       "prompt": "flat top-down macro photograph texture of dark gunmetal grey brushed aluminium sheet, fine straight horizontal brushing lines across the whole surface, a few faint hairline scratches, uniform even diffuse lighting, neutral cool grey, seamless material scan, photorealistic, high detail"
+    },
+    {
+      "name": "wall-felt-dark",
+      "seeds": [
+        1901,
+        1902
+      ],
+      "prompt": "flat front-on photograph texture of dark charcoal grey wool needle felt board, dense fine fibres, soft mottled tone variation, matte fabric surface, uniform even diffuse lighting, neutral grey, no pattern, seamless material scan, photorealistic, high detail"
+    },
+    {
+      "name": "wall-trowel-dark",
+      "seeds": [
+        2001
+      ],
+      "prompt": "flat front-on photograph texture of a dark charcoal grey hand trowelled lime plaster wall, visible soft trowel strokes and gentle mottling, matte mineral surface, uniform even diffuse lighting, neutral grey, no cracks, seamless material scan, photorealistic, high detail"
     }
   ]
 }

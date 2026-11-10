@@ -17,16 +17,17 @@
     Narrow pages (logical height < 860, class "compact"): spines 96 × 360, front 380 × 460 (two boxes on its shelf).
   -->
   <p:PageBase.Styles>
+    <!-- R3 QA 2: the binders are 520 (≈1100: 400) tall – a 160 px dead band stood above 460 px spines beside the 600 px front -->
     <Style Selector="c|SystemSpine.wall">
       <Setter Property="Height" Value="600" />
-      <Setter Property="SpineHeight" Value="460" />
+      <Setter Property="SpineHeight" Value="520" />
       <Setter Property="SpineWidth" Value="128" />
       <Setter Property="FrontWidth" Value="520" />
       <Setter Property="ShowMotif" Value="True" />
     </Style>
     <Style Selector="Panel.compact c|SystemSpine.wall">
       <Setter Property="Height" Value="460" />
-      <Setter Property="SpineHeight" Value="360" />
+      <Setter Property="SpineHeight" Value="400" />
       <Setter Property="SpineWidth" Value="96" />
       <Setter Property="FrontWidth" Value="380" />
     </Style>
@@ -52,11 +53,11 @@
     <Style Selector="c|EmptySlot.wall">
       <Setter Property="Recessed" Value="True" />
       <Setter Property="Width" Value="128" />
-      <Setter Property="Height" Value="460" />
+      <Setter Property="Height" Value="520" />
     </Style>
     <Style Selector="Panel.compact c|EmptySlot.wall">
       <Setter Property="Width" Value="96" />
-      <Setter Property="Height" Value="360" />
+      <Setter Property="Height" Value="400" />
     </Style>
   </p:PageBase.Styles>
   <p:PageBase.Resources>
@@ -69,6 +70,9 @@
   </p:PageBase.Resources>
 
   <Panel Name="Root">
+    <!-- R3 QA 2 (a flat #121315 code canvas): the wall behind the binders is a material – a dark painted plaster tile
+         (generated, neutral, no hue) at low contrast and the fixed light of one lamp above, falling off downward -->
+    <c:WallSurface Name="WallSurface" />
     <StackPanel Name="Stack" VerticalAlignment="Top" Margin="0,88,0,0" Spacing="0">
       <!-- the wall: one stage board, spines and the open front standing on it (slot 3) -->
       <Panel>
@@ -85,15 +89,17 @@
               <TextBlock Text="{l:T system.openImports}" VerticalAlignment="Center" />
             </Button>
           </StackPanel>
+          <!-- R3 QA 2: five empty binders and one leaning on them (eight in a row read as lockers) -->
           <c:EmptySlot Classes="wall" /><c:EmptySlot Classes="wall" /><c:EmptySlot Classes="wall" /><c:EmptySlot Classes="wall" />
-          <c:EmptySlot Classes="wall" /><c:EmptySlot Classes="wall" /><c:EmptySlot Classes="wall" /><c:EmptySlot Classes="wall" />
+          <c:EmptySlot Classes="wall" /><c:EmptySlot Classes="wall" Lean="True" Margin="6,0,0,0" />
         </StackPanel>
       </Panel>
 
       <!-- the position rail: one tick per system on the wall (a click turns that front forward), the current one with its
            code; right the position in a fixed column, never touching the rail ("Noch leer · 3 von 20" on the low edge) -->
-      <Grid Name="TickerRow" ColumnDefinitions="*,220" Margin="{DynamicResource RhPageInsetX}" Height="44" IsVisible="{Binding HasSystems}">
-        <c:PositionRail Name="Rail" Systems="{Binding Systems}" Current="{Binding Current}" Margin="0,0,48,0" />
+      <!-- R3 QA 2: the rail runs up to the position tag (16 px before it), no dead column between them -->
+      <Grid Name="TickerRow" ColumnDefinitions="*,Auto" Margin="{DynamicResource RhPageInsetX}" Height="44" IsVisible="{Binding HasSystems}">
+        <c:PositionRail Name="Rail" Systems="{Binding Systems}" Current="{Binding Current}" Margin="0,0,16,0" />
         <!-- the position in a small window set into the bench, like the dial's counter (M7 "gezeichnet") -->
         <!-- R3: the position on a riveted metal tag (rendered, like the count tags on the spines) -->
         <c:TagPlate Name="PositionTag" Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,1" Height="28"

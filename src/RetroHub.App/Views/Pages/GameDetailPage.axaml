@@ -26,30 +26,22 @@
     <!-- a stamp of "Gespielt" (M4 QA): a rubber stamp - 2 px frame in Text 3 at 70 %, an inner 1 px rule 3 px inside,
          date (15, Text 2) over duration (18, Papier), both on 20 px lines, the numbers in Zahl (Archivo SemiExpanded) and
          the words in the UI face so "unter 1 Min." fits the stamp; tilted by hand (static) -->
-    <Style Selector="Border.stamp">
-      <Setter Property="BorderBrush" Value="#B3A0A7B2" />
-      <Setter Property="BorderThickness" Value="2" />
-      <Setter Property="Padding" Value="3" />
-      <Setter Property="Height" Value="64" />
-    </Style>
-    <Style Selector="Border.stamp-rule">
-      <Setter Property="BorderBrush" Value="#B3A0A7B2" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Padding" Value="10,0" />
+    <Style Selector="c|PaperNote.ticket">
+      <Setter Property="Height" Value="60" />
     </Style>
     <Style Selector="TextBlock.stamp-date">
       <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="FontSize" Value="15" />
       <Setter Property="LineHeight" Value="20" />
-      <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+      <Setter Property="Foreground" Value="#4F5560" />
     </Style>
     <Style Selector="TextBlock.stamp-note">
       <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
-      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="FontSize" Value="18" />
       <Setter Property="LineHeight" Value="20" />
-      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+      <Setter Property="Foreground" Value="#0B0C0E" />
     </Style>
   </p:PageBase.Styles>
 
@@ -98,7 +90,7 @@
               <Button Name="SolveButton" Theme="{StaticResource RhSolutionButton}" MinWidth="300" MinHeight="64" Command="{Binding SolveCommand}"
                       IsVisible="{Binding ShowSolution}">
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                  <c:RhIcon Data="{StaticResource Icon.Warning}" Width="24" Height="24" Foreground="{DynamicResource RhWarningBrush}" />
+                  <c:RhIcon Data="{StaticResource Icon.Warning}" Width="20" Height="20" />
                   <TextBlock Text="{Binding SolutionText}" VerticalAlignment="Center" />
                 </StackPanel>
               </Button>
@@ -315,17 +307,16 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:CardPlace">
+                  <!-- R3 QA: paper tickets (the double outlines read as code; the empty places as invisible tickets –
+                       an empty place shows nothing now) -->
                   <Panel Margin="0,0,12,0" Width="132" Height="64">
-                    <c:EmptySlot Baseline="True" IsVisible="{Binding IsEmpty}" />
-                    <Border Classes="stamp" IsVisible="{Binding IsStamp}" RenderTransform="{Binding Tilt}">
-                      <Border Classes="stamp-rule">
-                        <StackPanel Spacing="0" VerticalAlignment="Center">
-                          <TextBlock Classes="stamp-date" c:Sentence.Text="{Binding Date}" />
-                          <TextBlock Classes="stamp-note" c:Sentence.Text="{Binding Note}" IsVisible="{Binding IsSession}" />
-                          <TextBlock Classes="stamp-note" Text="{Binding Note}" Foreground="{DynamicResource RhText2Brush}" IsVisible="{Binding IsEntry}" />
-                        </StackPanel>
-                      </Border>
-                    </Border>
+                    <c:PaperNote Classes="ticket" Tape="False" SeedText="{Binding Date}" IsVisible="{Binding IsStamp}" RenderTransform="{Binding Tilt}">
+                      <StackPanel Spacing="0" VerticalAlignment="Center" Margin="14,0,10,0">
+                        <TextBlock Classes="stamp-date" c:Sentence.Text="{Binding Date}" />
+                        <TextBlock Classes="stamp-note" c:Sentence.Text="{Binding Note}" IsVisible="{Binding IsSession}" />
+                        <TextBlock Classes="stamp-note" Text="{Binding Note}" Foreground="#4F5560" IsVisible="{Binding IsEntry}" />
+                      </StackPanel>
+                    </c:PaperNote>
                   </Panel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

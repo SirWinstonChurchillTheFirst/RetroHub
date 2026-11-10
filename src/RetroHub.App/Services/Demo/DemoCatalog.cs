@@ -60,7 +60,7 @@ public sealed class DemoCatalog : ICatalog
                 S("saturn", "Sega Saturn", "Saturn", "Sega", 1994, SystemCategory.Console, "#5A5FB8", [".cue", ".chd"], []),
                 S("dreamcast", "Sega Dreamcast", "Dreamcast", "Sega", 1998, SystemCategory.Console, "#F26F21", [".gdi", ".chd"], []),
                 S("arcade", "Arcade", "Arcade", "Diverse", null, SystemCategory.Arcade, "#FF2E88", [".zip"], []),
-                S("pc", "PC (Windows)", "PC", "Microsoft", null, SystemCategory.Pc, "#C7B48A", [".exe", ".lnk"], []),
+                S("pc", "PC (Windows)", "PC", "Microsoft", null, SystemCategory.Pc, "#8C939C", [".exe", ".lnk"], []),
             ];
 
         Emulators =

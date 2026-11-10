@@ -55,7 +55,8 @@
   <!-- ===== States (DESIGN 2.3; always with an icon) ===== -->
   <SolidColorBrush x:Key="RhSuccessBrush" Color="#8FD694" />
   <SolidColorBrush x:Key="RhSuccessSoftBrush" Color="#2A3A2A" />
-  <SolidColorBrush x:Key="RhWarningBrush" Color="#FF9A4A" />
+  <!-- v2 (R3 QA): no orange; a warning is white with its triangle icon, never a border colour -->
+  <SolidColorBrush x:Key="RhWarningBrush" Color="#FFFFFF" />
   <SolidColorBrush x:Key="RhWarningSoftBrush" Color="#2B2D33" />
   <SolidColorBrush x:Key="RhDangerBrush" Color="#FF6A5E" />
   <SolidColorBrush x:Key="RhDangerSoftBrush" Color="#3A2228" />

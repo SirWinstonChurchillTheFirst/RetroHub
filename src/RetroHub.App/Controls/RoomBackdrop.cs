@@ -512,7 +512,7 @@ public sealed class RoomBackdrop : Panel
                 }
             for (var pass = 0; pass < 3; pass++) BoxBlur(dst, OutW, OutH, 2);
 
-            // saturation-weighted mean → picture light
+            // saturation-weighted mean → picture light (taken from the picture's own colours, before they are washed out)
             double r = 0, g = 0, b = 0, wsum = 0;
             for (var i = 0; i < OutW * OutH; i++)
             {
@@ -524,9 +524,34 @@ public sealed class RoomBackdrop : Panel
             }
             var mean = Color.FromRgb(ToByte(r / wsum), ToByte(g / wsum), ToByte(b / wsum));
             var (h, s, l) = ColorUtil.ToHsl(mean);
-            var light = ColorUtil.FromHsl(h, Math.Min(s, 0.70), Math.Clamp(l, 0.55, 0.70));
+            var light = ColorUtil.FromHsl(h, Math.Min(s, MaxLightSaturation), Math.Clamp(l, 0.55, 0.70));
+            Wash(dst);
 
             return new Soft(ToBitmap(Upsample(dst), OutW * Up, OutH * Up), light);
+        }
+    }
+
+    /// <summary>
+    /// Theme v2 (R3 QA: a brown or olive cover turned the whole detail page brown – (37,18,13) at its top): the softened
+    /// picture keeps at most this HSL saturation, and the picture light (glow, board light) at most
+    /// <see cref="MaxLightSaturation"/>. The room stays neutral black; the cover itself carries the colour.
+    /// </summary>
+    public const double MaxWashSaturation = 0.12, MaxLightSaturation = 0.10;
+
+    /// <summary>Share the softened picture moves toward the room colour after the saturation clamp.</summary>
+    public const double WashToRoom = 0.3;
+
+    /// <summary>Clamps the blurred field (float BGRA) to <see cref="MaxWashSaturation"/> and mixes it toward the room.</summary>
+    internal static void Wash(float[] px)
+    {
+        for (var i = 0; i < px.Length; i += 4)
+        {
+            var c = Color.FromRgb(ToByte(px[i + 2]), ToByte(px[i + 1]), ToByte(px[i]));
+            var (h, s, l) = ColorUtil.ToHsl(c);
+            if (s > MaxWashSaturation) c = ColorUtil.FromHsl(h, MaxWashSaturation, l);
+            px[i + 2] = (float)(c.R + (Room.R - c.R) * WashToRoom);
+            px[i + 1] = (float)(c.G + (Room.G - c.G) * WashToRoom);
+            px[i] = (float)(c.B + (Room.B - c.B) * WashToRoom);
         }
     }
 

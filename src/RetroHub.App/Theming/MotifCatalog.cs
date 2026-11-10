@@ -264,18 +264,16 @@ public static class MotifCatalog
             B("M4,92 H116 V120 H4 Z"),
             X("M44,103 H76 V108 H44 Z"),
         ],
-        // R3 QA (outsider test: a pointing remote with motion waves was too close to one product): a slim upright
-        // slab standing on a short foot, a disc-slot line near its top, a lit strip in colour at its foot and one wave
-        // arc beside it – "ein Gerät, das funkt", no key layout
+        // R3 QA (outsider test: a pointing remote with motion waves was too close to one product), "ein Gerät, das funkt".
+        // R3 QA 2 (the upright slab with waves still read as one product standing on its foot): a flat box lying on the
+        // board – a slot across its front, a lit strip at its right end – and two wave arcs rising above it
         Motif.Remote =>
         [
-            B("M42,14 H72 Q76,14 76,18 V112 H38 V18 Q38,14 42,14 Z"),
-            B("M30,112 H84 V120 H30 Z"),
-            X("M44,30 H70 V33 H44 Z"),
-            X("M44,40 H50 V42 H44 Z"),
-            C("M44,98 H70 V103 H44 Z"),
-            new(P("M88,40 Q98,56 88,72"), Paint.Color, 3),
-            new(P("M97,32 Q111,56 97,80"), Paint.Color, 3),
+            B("M6,84 H114 V114 Q114,120 108,120 H12 Q6,120 6,114 Z"),
+            X("M16,96 H74 V99 H16 Z"),
+            C("M88,104 H104 V108 H88 Z"),
+            new(P("M44,66 Q60,52 76,66"), Paint.Color, 3.5),
+            new(P("M32,52 Q60,28 88,52"), Paint.Color, 3.5),
         ],
         // a second screen: a tablet with keys standing in front of a large screen drawn as an outline (no monitor
         // stand: on its own stand it read as a monitor)
@@ -341,15 +339,15 @@ public static class MotifCatalog
         // standing slab (R2: the tower with five grooves read as a PC case): a slim slab in its own colour lifted to
         // L 0.55, its top and right faces in the body tone (depth), a vertical tray slit with two keys, two card slots at
         // the foot, short slanted ridges along the side – standing on an oval stand, which no PC case has
+        // R3 QA 2 (an upright tower on a round stand was one product's silhouette): two flat boxes stacked on the board,
+        // the upper one set back – a drawer slot in the lower one, a key and a lit dot at its right
         Motif.Tower =>
         [
-            new(new EllipseGeometry(new Rect(28, 108, 64, 12)), Paint.Body),
-            B("M46,12 L58,4 H86 V104 L74,112 V12 Z"),
-            new(P("M46,12 H74 V112 H46 Z"), Paint.Lift),
-            X("M67,18 H69 V66 H67 Z"),
-            new(Group(Dot(68, 74, 2), Dot(68, 81, 2)), Paint.Cut),
-            X("M51,94 H62 V97 H51 Z M51,101 H62 V104 H51 Z"),
-            new(P("M77,26 L84,22 M77,46 L84,42 M77,66 L84,62 M77,86 L84,82"), Paint.Cut, 1.5),
+            B("M18,64 H102 V88 H18 Z"),
+            new(P("M6,88 H114 V120 H6 Z"), Paint.Lift),
+            X("M16,100 H72 V104 H16 Z"),
+            X("M28,74 H92 V76 H28 Z"),
+            new(Group(Dot(92, 104, 3), Dot(103, 104, 3)), Paint.Cut),
         ],
         _ => [B("M14,10 H106 V120 H14 Z")],
     };
