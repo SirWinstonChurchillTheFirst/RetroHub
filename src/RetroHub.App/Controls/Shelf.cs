@@ -47,6 +47,8 @@ public class Shelf : TemplatedControl
     public static readonly StyledProperty<bool> WheelScrollsRowProperty = AvaloniaProperty.Register<Shelf, bool>(nameof(WheelScrollsRow));
     /// <summary>The board stands in front of this system's wall (Konsolen): its front takes the wall's tone (ShelfBoard.WallLook).</summary>
     public static readonly StyledProperty<SystemLook?> BoardLookProperty = AvaloniaProperty.Register<Shelf, SystemLook?>(nameof(BoardLook));
+    /// <summary>A drawn bookend closes the row (the "Noch leer" edge: the row ends on purpose, not cut off).</summary>
+    public static readonly StyledProperty<bool> BookendProperty = AvaloniaProperty.Register<Shelf, bool>(nameof(Bookend));
 
     /// <summary>The whole shelf: boxes, the 24 px board and 4 px below it.</summary>
     public const double BoardHeight = 24, BelowBoard = 4;
@@ -70,6 +72,10 @@ public class Shelf : TemplatedControl
     public double AnchorX { get => GetValue(AnchorXProperty); set => SetValue(AnchorXProperty, value); }
     public SystemLook? BoardLook { get => GetValue(BoardLookProperty); set => SetValue(BoardLookProperty, value); }
     public bool WheelScrollsRow { get => GetValue(WheelScrollsRowProperty); set => SetValue(WheelScrollsRowProperty, value); }
+    public bool Bookend { get => GetValue(BookendProperty); set => SetValue(BookendProperty, value); }
+
+    /// <summary>Width the row needs after its last item (the bookend and its spacing).</summary>
+    private double EndExtra => Bookend ? ItemSpacing + Controls.Bookend.SlotWidth : 0;
 
     /// <summary>The focus visuals of this shelf (null until the template is applied).</summary>
     public FocusLayer? FocusVisuals { get; private set; }
@@ -182,6 +188,7 @@ public class Shelf : TemplatedControl
         var items = Items();
         double total = 0;
         for (var i = 0; i < items.Count; i++) total += TargetWidth(items[i], false) + (i < items.Count - 1 ? ItemSpacing : 0);
+        total += EndExtra;
         return (total, Bounds.Width - ItemsMargin.Left - ItemsMargin.Right);
     }
 
@@ -286,6 +293,7 @@ public class Shelf : TemplatedControl
             if (i < index) left += w + ItemSpacing;
             total += w + (i < items.Count - 1 ? ItemSpacing : 0);
         }
+        total += EndExtra;
         var view = Bounds.Width - ItemsMargin.Left - ItemsMargin.Right;
         var min = Math.Min(0, view - total);
         var off = Math.Clamp(AnchorX - left, min, 0);

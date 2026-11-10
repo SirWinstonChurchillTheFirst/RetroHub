@@ -57,12 +57,17 @@ public sealed class ShelfBoard : Control
     /// <summary>Objects standing on this board: each casts the 10 px contact shadow on the front (covers by their ArtRect).</summary>
     public IReadOnlyList<Control> Casters { get; set; } = [];
 
+    private uint? _seed;
+
+    /// <summary>The seed of this board's wear (stable: its shelf's or its own name, never a per-process hash).</summary>
+    private uint Seed => _seed ??= Craft.Seed((TemplatedParent as Control)?.Name + "/" + Name + "/" + (IsEdge ? "edge" : "stage"));
+
     public override void Render(DrawingContext context)
     {
         var r = new Rect(Bounds.Size);
-        if (WallLook is { } look) DrawOnWall(context, r, look);
-        else if (IsEdge) DrawEdge(context, r);
-        else Draw(context, r);
+        if (WallLook is { } look) DrawOnWall(context, r, look, this, Seed);
+        else if (IsEdge) DrawEdge(context, r, this, Seed);
+        else Draw(context, r, this, Seed);
         foreach (var c in Casters)
         {
             if (!c.IsEffectivelyVisible) continue;
@@ -78,23 +83,51 @@ public sealed class ShelfBoard : Control
         }
     }
 
+    private static readonly IImmutableSolidColorBrush StageTop = new ImmutableSolidColorBrush(ColorUtil.Mix(Color.Parse("#2A2620"), SystemPalette.Paper, 0.10));
+
+    /// <summary>
+    /// The body of every board (M7 "gezeichnet": the flat bars read as horizontal rules): a visible TOP FACE (we look
+    /// slightly down onto the board; 5 px on a 24 px board, 3 px on a 12 px edge) with the lit arris in front of it,
+    /// the front with a faint grain, a rounded lower edge (1 px light, 2 px dark) and seeded nicks along the arris.
+    /// The board light (TV light) stays the 1 px line at the back edge of the top face.
+    /// </summary>
+    private static void DrawBody(DrawingContext context, Rect r, IBrush front, IBrush top, Visual? visual, uint seed)
+    {
+        context.FillRectangle(front, r);
+        var topFace = r.Height >= 20 ? 5 : r.Height >= 10 ? 3 : 0;
+        if (topFace > 0)
+        {
+            context.FillRectangle(top, new Rect(r.X, r.Y, r.Width, topFace));
+            context.FillRectangle(Craft.Fade(Colors.Black, 0.22, 0, Craft.Toward.Up), new Rect(r.X, r.Y + 1, r.Width, topFace - 1));
+            context.FillRectangle(Craft.Hi(0.11), new Rect(r.X, r.Y + topFace, r.Width, 1));
+        }
+        var face = new Rect(r.X, r.Y + topFace + 1, r.Width, Math.Max(0, r.Height - topFace - 1));
+        if (visual != null && face.Height > 2) TextureFill.Draw(context, visual, face, Texture.BoardGrain, 1.0);
+        if (r.Height >= 10)
+        {
+            context.FillRectangle(Craft.Hi(0.05), new Rect(r.X, r.Bottom - 3, r.Width, 1));
+            context.FillRectangle(Craft.Dark(0.32), new Rect(r.X, r.Bottom - 2, r.Width, 2));
+        }
+        else context.FillRectangle(EdgeBrush, new Rect(r.X, r.Bottom - 1, r.Width, 1));
+        if (seed != 0 && topFace > 0) Craft.Nicks(context, new Rect(r.X, r.Y + topFace, r.Width, 3), seed, 2 + (int)Math.Min(4, r.Width / 600));
+    }
+
     /// <summary>Draws a board front into <paramref name="r"/> (shadow below it).</summary>
-    public static void Draw(DrawingContext context, Rect r)
+    public static void Draw(DrawingContext context, Rect r, Visual? visual = null, uint seed = 0)
     {
         if (r.Width <= 0 || r.Height <= 0) return;
-        context.FillRectangle(FrontBrush, r);
+        DrawBody(context, r, FrontBrush, StageTop, visual, seed);
         context.FillRectangle(ThemeManager.BoardLight, new Rect(r.X, r.Y, r.Width, 1));
-        context.FillRectangle(EdgeBrush, new Rect(r.X, r.Bottom - 1, r.Width, 1));
         context.FillRectangle(ShadowBrush, new Rect(r.X, r.Bottom, r.Width, ShadowHeight));
     }
 
     private static readonly Dictionary<string, (IBrush Front, IBrush Lip, IBrush Edge)> WallBoards = new();
 
     /// <summary>
-    /// A stage board in front of a system's wall: front = Wand hell + 10 % paper, a 2 px lip (+ 18 %) under the board
-    /// light, 1 px edge in the wall darkened, the usual 16 px shadow. Brushes are shared per system.
+    /// A stage board in front of a system's wall: front = Wand hell + 10 % paper, its top face (+ 18 %) under the board
+    /// light, the usual 16 px shadow. Brushes are shared per system.
     /// </summary>
-    public static void DrawOnWall(DrawingContext context, Rect r, SystemLook look)
+    public static void DrawOnWall(DrawingContext context, Rect r, SystemLook look, Visual? visual = null, uint seed = 0)
     {
         if (r.Width <= 0 || r.Height <= 0) return;
         (IBrush Front, IBrush Lip, IBrush Edge) b;
@@ -106,25 +139,21 @@ public sealed class ShelfBoard : Control
                     new ImmutableSolidColorBrush(ColorUtil.Mix(look.WallHi, SystemPalette.Paper, 0.18)),
                     new ImmutableSolidColorBrush(ColorUtil.Mix(look.Wall, Colors.Black, 0.35)));
         }
-        context.FillRectangle(b.Front, r);
-        context.FillRectangle(b.Lip, new Rect(r.X, r.Y + 1, r.Width, 2));
+        DrawBody(context, r, b.Front, b.Lip, visual, seed);
         context.FillRectangle(ThemeManager.BoardLight, new Rect(r.X, r.Y, r.Width, 1));
-        context.FillRectangle(b.Edge, new Rect(r.X, r.Bottom - 1, r.Width, 1));
         context.FillRectangle(ShadowBrush, new Rect(r.X, r.Bottom, r.Width, ShadowHeight));
     }
 
     /// <summary>
-    /// Draws a shelf edge ("Regalkante") into <paramref name="r"/>: 1 px board light, a 2 px lip (#3A352D) below it,
-    /// the front in Regal hell, 1 px edge, the 16 px shadow. The lip gives the edge a thickness the eye reads as a board
-    /// the boxes stand on (M3 QA: the plain 10 px front on the room was ≈ 1.3 : 1 and read as a hairline).
+    /// Draws a shelf edge ("Regalkante") into <paramref name="r"/>: 1 px board light, the top face (#3A352D) below it,
+    /// the front in Regal hell with its rounded lower edge, the 16 px shadow (M3 QA: the plain 10 px front read as a
+    /// hairline; M7: the top face and the grain make it a board the boxes stand on).
     /// </summary>
-    public static void DrawEdge(DrawingContext context, Rect r)
+    public static void DrawEdge(DrawingContext context, Rect r, Visual? visual = null, uint seed = 0)
     {
         if (r.Width <= 0 || r.Height <= 0) return;
-        context.FillRectangle(FrontBrush, r);
-        context.FillRectangle(LipBrush, new Rect(r.X, r.Y + 1, r.Width, 2));
+        DrawBody(context, r, FrontBrush, LipBrush, visual, seed);
         context.FillRectangle(ThemeManager.BoardLight, new Rect(r.X, r.Y, r.Width, 1));
-        context.FillRectangle(EdgeBrush, new Rect(r.X, r.Bottom - 1, r.Width, 1));
         context.FillRectangle(ShadowBrush, new Rect(r.X, r.Bottom, r.Width, ShadowHeight));
     }
 }

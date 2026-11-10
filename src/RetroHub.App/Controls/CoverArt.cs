@@ -368,6 +368,8 @@ public sealed class CoverArt : Control
                     ctx.FillRectangle(tex.Brush, new Rect(ox, oy, w, r.Height));
             }
             if (split > 0) ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y + split, w, 1));
+            // the case is plastic: a soft sheen falls diagonally from the top left (one shared brush)
+            ctx.FillRectangle(Sheen, r);
             // the motif silhouette (DESIGN 10.2): ONE geometry in the system colour at 18 %, 45 % of the height, anchored
             // bottom right with a 14 px inset – always inside the lower 62 % (never across the 38/62 split)
             var band = Band(w);
@@ -387,12 +389,19 @@ public sealed class CoverArt : Control
                     var tw = Math.Max(tt.Width, _subText?.Width ?? 0);
                     if (new Rect(r.X + band + pad, r.Bottom - pad - th, tw, th).Intersects(motifRect)) motifOpacity = 0.07;
                 }
-                MotifCatalog.DrawSilhouette(ctx, look, motifRect, motifOpacity);
+                DrawEmbossedMotif(ctx, look, motifRect, motifOpacity);
             }
             // spine band: full colour, printed like a real spine - code at the top, the title from the foot upwards,
             // the year at the foot (all -90 degrees, read bottom to top); a 1 px fold line where the spine meets the front
             if (band > 0) ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, band, r.Height));
             if (band >= SpineTitleMinBand) ctx.FillRectangle(FoldBrush, new Rect(r.X + band - 1, r.Y, 1, r.Height));
+            // the hinge of the case beside the spine: a groove pressed into the plastic
+            if (band > 0 && w >= 120)
+            {
+                var hx = Math.Round(r.X + band + Math.Max(4, w * 0.03));
+                ctx.FillRectangle(Craft.Dark(0.30), new Rect(hx, r.Y, 1, r.Height));
+                ctx.FillRectangle(Craft.Hi(0.05), new Rect(hx + 1, r.Y, 1, r.Height));
+            }
             if (_codeText is { } code)
             {
                 using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(r.X + (band - code.Height) / 2, r.Y + w * 0.08 + code.Width)))
@@ -416,25 +425,82 @@ public sealed class CoverArt : Control
             ctx.FillRectangle(LightEdge, new Rect(r.X, r.Y, w, 1));
             // title and subtitle: left after the band, anchored at the bottom with the inner margin (the pulled box of
             // the detail: on top under the colour band, like a printed box front)
-            if (_titleText is { } topTitle && TitleOnTop(r))
+            // the case's edges and a little wear (seeded by the title)
+            var seed = Hash(Title ?? "");
+            Craft.Edges(ctx, r, lit: 0.07, dark: 0.35, grime: 0, topLit: 0, softRight: 3);
+            Craft.Scuffs(ctx, r, seed, (int)(seed % 3), 0.05);
+            // title and subtitle on a paper label applied by hand: left after the band, anchored at the bottom with the
+            // inner margin (the pulled box of the detail: on top under the colour band, like a printed box front)
+            if (_titleText is { } title)
             {
-                var x = r.X + pad;
-                var y = r.Y + TopBand(r) + pad;
-                ctx.DrawText(topTitle, new Point(x, y));
-                if (_subText is { } topSub) ctx.DrawText(topSub, new Point(x, y + Math.Ceiling(topTitle.Height) + SubGap));
-            }
-            else if (_titleText is { } title)
-            {
-                var x = r.X + band + pad;
-                var bottom = r.Bottom - pad;
-                if (_subText is { } sub)
+                var lp = LabelPad(w);
+                var th = Math.Ceiling(title.Height) + (_subText is { } s0 ? SubGap + Math.Ceiling(s0.Height) : 0);
+                var tw = Math.Ceiling(Math.Max(title.Width, _subText?.Width ?? 0));
+                var x = TitleOnTop(r) ? r.X + pad : r.X + band + pad;
+                var y = TitleOnTop(r) ? r.Y + TopBand(r) + pad : r.Bottom - pad - th;
+                var label = new Rect(x - lp, y - lp * 0.75, tw + 2 * lp, th + 1.5 * lp);
+                var tilt = Craft.Range(seed, 30, -1.2, 1.2);
+                Craft.DrawPaper(ctx, this, label, seed, Craft.LabelPaper, tilt, jitter: 0.7, shadow: 0.40, fibres: 0.45);
+                using (Craft.PushLabel(ctx, label, tilt))
                 {
-                    ctx.DrawText(sub, new Point(x, bottom - sub.Height));
-                    bottom -= Math.Ceiling(sub.Height) + SubGap;
+                    var origin = new Point(lp, lp * 0.75);
+                    Craft.Print(ctx, title, origin);
+                    if (_subText is { } sub) ctx.DrawText(sub, new Point(origin.X, origin.Y + Math.Ceiling(title.Height) + SubGap));
                 }
-                ctx.DrawText(title, new Point(x, bottom - title.Height));
+                DrawTape(ctx, label, seed, w);
             }
         }
+    }
+
+    /// <summary>The plastic sheen of a case: a soft light band falling diagonally from the top left.</summary>
+    private static readonly IBrush Sheen = new ImmutableLinearGradientBrush(
+        [new ImmutableGradientStop(0, Craft.A(Craft.Light, 0.09)), new ImmutableGradientStop(0.32, Craft.A(Craft.Light, 0.02)),
+         new ImmutableGradientStop(0.5, Craft.A(Craft.Light, 0))],
+        startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(1, 1, RelativeUnit.Relative));
+
+    /// <summary>Inner margin of the paper label around the title: 5–10 px with the box width.</summary>
+    public static double LabelPad(double w) => Math.Clamp(Math.Round(w * 0.04), 5, 10);
+
+    private static readonly IImmutableSolidColorBrush TapeBrush = new ImmutableSolidColorBrush(Craft.A(Color.Parse("#F2EAD8"), 0.38));
+
+    /// <summary>One or two strips of tape holding the label (seeded corners, tilted 6–10°).</summary>
+    private static void DrawTape(DrawingContext ctx, Rect label, uint seed, double w)
+    {
+        var tw = Math.Clamp(Math.Round(w * 0.11), 14, 28);
+        var tht = Math.Round(tw * 0.38);
+        var corners = Craft.Pick(seed, 31, 1, 2);
+        var first = Craft.Pick(seed, 32, 0, 1); // 0 = top left, 1 = top right
+        for (var i = 0; i < corners; i++)
+        {
+            var right = (first + i) % 2 == 1;
+            var cx = right ? label.Right - tw * 0.25 : label.X + tw * 0.25;
+            var cy = label.Y + 1;
+            var angle = (right ? 1 : -1) * Craft.Range(seed, 33 + i, 6, 10) * Math.PI / 180;
+            using (ctx.PushTransform(Matrix.CreateTranslation(-tw / 2, -tht / 2) * Matrix.CreateRotation(angle) * Matrix.CreateTranslation(cx, cy)))
+            {
+                ctx.FillRectangle(TapeBrush, new Rect(0, 0, tw, tht));
+                ctx.FillRectangle(Craft.Hi(0.10), new Rect(0, 0, tw, 1));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The motif pressed into the case plastic (relief): a dark copy one pixel down-right, a light copy one pixel
+    /// up-left and the shape itself in the case tone with a hint of the system colour (DESIGN 10.2, M7).
+    /// </summary>
+    private static void DrawEmbossedMotif(DrawingContext ctx, SystemLook look, Rect box, double opacity)
+    {
+        var k = opacity / 0.18;
+        var scale = Math.Min(box.Width, box.Height) / 120.0;
+        var m = Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(box.Right - 120 * scale, box.Bottom - 120 * scale);
+        var g = MotifCatalog.Silhouette(look.Motif);
+        using (ctx.PushTransform(m * Matrix.CreateTranslation(1, 1)))
+            ctx.DrawGeometry(Craft.Dark(0.30 * k), null, g);
+        using (ctx.PushTransform(m * Matrix.CreateTranslation(-1, -1)))
+            ctx.DrawGeometry(Craft.Hi(0.07 * k), null, g);
+        using (ctx.PushOpacity(Math.Min(1, k)))
+        using (ctx.PushTransform(m))
+            ctx.DrawGeometry(Craft.Solid(ColorUtil.Mix(look.Wall, look.Color, 0.16)), null, g);
     }
 
     private void EnsureText(Rect r, SystemLook look)
@@ -451,7 +517,8 @@ public sealed class CoverArt : Control
         _subText = null;
         if (ShowTitle && !string.IsNullOrEmpty(Title))
         {
-            var maxWidth = Math.Max(1, w - band - pad - Math.Max(6, Math.Round(pad * 0.5)));
+            // the label around the title takes its own margin (LabelPad) inside the box
+            var maxWidth = Math.Max(1, w - band - pad - LabelPad(w) - Math.Max(4, Math.Round(pad * 0.4)));
             var budget = Math.Max(1, r.Height * 0.62);
             var onTop = TitleOnTop(r);
             if (onTop)
@@ -473,7 +540,7 @@ public sealed class CoverArt : Control
                 var narrow = PlaceholderTitle.Fit(main, maxWidth, budget, size, PlaceholderTitle.MaxLines, condensed: true);
                 if (narrow.Size > fit.Size) { fit = narrow; face = FontRoles.SpineFace; }
             }
-            _titleText = new FormattedText(fit.Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, face, fit.Size, PaperBrush)
+            _titleText = new FormattedText(fit.Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, face, fit.Size, LabelInkBrush)
             {
                 LineHeight = Math.Round(fit.Size * PlaceholderTitle.LineFactor),
             };
@@ -489,7 +556,7 @@ public sealed class CoverArt : Control
                     // does not fit, the shared middle drops out and the last part is printed ("Kapitel 1")
                     var text = TitleTrimming.Glue(FitText.Typeset(subtitle));
                     if (!SubtitleFits(text, subSize, subLine, maxWidth, lines) && SubtitleTail(text) is { } tail) text = tail;
-                    _subText = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.ReadMediumFace, subSize, SubBrush)
+                    _subText = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, FontRoles.ReadMediumFace, subSize, LabelSubBrush)
                     {
                         MaxTextWidth = maxWidth,
                         MaxLineCount = lines,
@@ -562,6 +629,9 @@ public sealed class CoverArt : Control
 
     private const double SubGap = 4;
     private static readonly IImmutableSolidColorBrush SubBrush = new ImmutableSolidColorBrush(Color.Parse("#C9BFAF"));
+    /// <summary>The title is printed in ink on the paper label, the subtitle in a lighter ink (M7).</summary>
+    private static readonly IImmutableSolidColorBrush LabelInkBrush = new ImmutableSolidColorBrush(Craft.LabelInk);
+    private static readonly IImmutableSolidColorBrush LabelSubBrush = new ImmutableSolidColorBrush(Color.Parse("#4F473C"));
 
     /// <summary>Main title and subtitle at the first " - ", " – " or ": " (both parts non-empty); else the whole title.</summary>
     public static (string Main, string? Sub) SplitTitle(string title)

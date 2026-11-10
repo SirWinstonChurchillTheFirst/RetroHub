@@ -16,7 +16,9 @@ public enum Motif
 }
 
 /// <summary>Era texture of a wall (DESIGN 4.5); file name = <see cref="Textures.FileName"/>.</summary>
-public enum Texture { None, Grain, Scan, Lcd, Bayer, Dither16, Grooves, Poly, Halftone, ShadowMask, Perforated, Wood, Grid }
+public enum Texture { None, Grain, Scan, Lcd, Bayer, Dither16, Grooves, Poly, Halftone, ShadowMask, Perforated, Wood, Grid,
+    /// <summary>Material textures of the drawn objects (DESIGN 4.6), never a wall's era texture: card fibres, board grain, dust.</summary>
+    Card, BoardGrain, Dust }
 
 /// <summary>The resolved look of one system: wall tones, colour band, light, text on colour, motif, texture.</summary>
 public sealed class SystemLook
@@ -273,6 +275,9 @@ public static class Textures
         Texture.Perforated => "lochblech-10.png",
         Texture.Wood => "holz-256x32.png",
         Texture.Grid => "raster-16.png",
+        Texture.Card => "pappe-64.png",
+        Texture.BoardGrain => "brett-512x24.png",
+        Texture.Dust => "staub-64.png",
         _ => null,
     };
 }

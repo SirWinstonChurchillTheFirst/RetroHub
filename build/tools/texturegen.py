@@ -206,12 +206,68 @@ def raster(out):
     write_png(os.path.join(out, 'raster-16.png'), 16, 16, px)
 
 
+def pappe(out):
+    """Card (Pappe): vertical fibres - short streaks of light and dark, tileable 64 x 64 (sleeves, labels)."""
+    rnd = random.Random(1979)
+    w = h = 64
+    acc = [[0.0] * w for _ in range(h)]
+    for _ in range(260):
+        x = rnd.randrange(w)
+        y0 = rnd.randrange(h)
+        length = rnd.randint(4, 18)
+        v = rnd.choice((-1, 1)) * rnd.uniform(0.4, 1.0)
+        drift = rnd.choice((0, 0, 0, 1, -1))
+        for i in range(length):
+            xx = (x + (drift if i > length // 2 else 0)) % w
+            acc[(y0 + i) % h][xx] += v
+    for _ in range(900):  # fine speckle
+        acc[rnd.randrange(h)][rnd.randrange(w)] += rnd.uniform(-0.5, 0.5)
+    px = blank(w, h)
+    for y in range(h):
+        for x in range(w):
+            v = max(-1.0, min(1.0, acc[y][x]))
+            a = int(abs(v) * 22)
+            px[y][x] = (*(WHITE if v > 0 else BLACK), a)
+    write_png(os.path.join(out, 'pappe-64.png'), w, h, px)
+
+
+def brett(out):
+    """Board grain (Brett): long, low-contrast horizontal streaks, tileable 512 x 24 (board fronts)."""
+    rnd = random.Random(1987)
+    w, h = 512, 24
+    phases = [rnd.uniform(0, math.tau) for _ in range(4)]
+    px = blank(w, h)
+    for y in range(h):
+        for x in range(w):
+            t = x / w * math.tau
+            v = (math.sin(y * 0.9 + 1.6 * math.sin(t + phases[0]) + 0.6 * math.sin(3 * t + phases[1]))
+                 + 0.5 * math.sin(y * 2.3 + 0.8 * math.sin(2 * t + phases[2]) + phases[3]))
+            v += rnd.uniform(-0.25, 0.25)
+            a = int(max(0.0, min(1.0, abs(v) / 1.6)) * 18)
+            px[y][x] = (*(WHITE if v > 0 else BLACK), a)
+    write_png(os.path.join(out, 'brett-512x24.png'), w, h, px)
+
+
+def staub(out):
+    """Dust (Staub): sparse soft specks, tileable 64 x 64 (the place where a box stood)."""
+    rnd = random.Random(1991)
+    w = h = 64
+    px = blank(w, h)
+    for _ in range(170):
+        x, y = rnd.randrange(w), rnd.randrange(h)
+        a = rnd.randint(40, 120)
+        px[y][x] = (*WHITE, a)
+        if rnd.random() < 0.25:
+            px[y][(x + 1) % w] = (*WHITE, a // 2)
+    write_png(os.path.join(out, 'staub-64.png'), w, h, px)
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     default = os.path.normpath(os.path.join(here, '..', '..', 'src', 'RetroHub.App', 'Assets', 'Textures'))
     out = sys.argv[1] if len(sys.argv) > 1 else default
     os.makedirs(out, exist_ok=True)
-    for gen in (korn, scan, lcd, bayer, dither16, rillen, poly, halbton, maske, lochblech, holz, raster):
+    for gen in (korn, scan, lcd, bayer, dither16, rillen, poly, halbton, maske, lochblech, holz, raster, pappe, brett, staub):
         gen(out)
     print('textures written to', out)
 

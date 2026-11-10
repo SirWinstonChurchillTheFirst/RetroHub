@@ -933,8 +933,8 @@
     <Setter Property="Template">
       <ControlTemplate>
         <Panel>
-          <Border Name="PART_Face" Background="{TemplateBinding Background}" />
-          <Border Height="8" VerticalAlignment="Top" Background="{DynamicResource RhAccentBrush}" />
+          <!-- a drawn box like the system spines beside it: printed band, curvature, edges, side and top faces (M7) -->
+          <c:BoxFace Name="PART_Face" Fill="{TemplateBinding Background}" Band="{DynamicResource RhAccentBrush}" />
           <LayoutTransformControl HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16">
             <LayoutTransformControl.LayoutTransform>
               <RotateTransform Angle="-90" />
@@ -951,8 +951,8 @@
         <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.09" /></Transitions>
       </Setter>
     </Style>
-    <Style Selector="^:pointerover /template/ Border#PART_Face">
-      <Setter Property="Background" Value="#363128" />
+    <Style Selector="^:pointerover /template/ c|BoxFace#PART_Face">
+      <Setter Property="Fill" Value="#363128" />
     </Style>
     <Style Selector="^:focus-visible">
       <Setter Property="RenderTransform" Value="scale(1.03)" />
@@ -987,6 +987,7 @@
                   </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
               </ItemsControl>
+              <c:Bookend IsVisible="{TemplateBinding Bookend}" Height="{TemplateBinding ItemHeight}" VerticalAlignment="Bottom" />
               <Button Name="PART_AllSpine" Theme="{StaticResource RhSpineButton}" Content="{TemplateBinding ActionLabel}" Command="{TemplateBinding ActionCommand}"
                       Height="{TemplateBinding ItemHeight}" VerticalAlignment="Bottom"
                       IsVisible="{TemplateBinding ActionLabel, Converter={x:Static ObjectConverters.IsNotNull}}" />

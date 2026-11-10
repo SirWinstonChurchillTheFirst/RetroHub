@@ -722,7 +722,7 @@ public sealed class CoverGrid : UserControl
                 if (row.Children.Count == 0 || row.Children[0] is not GameTile first || first.CoverBottomInTile() is not { } bottom) continue;
                 if (row.TranslatePoint(new Point(0, 0), this) is not { } origin) continue;
                 var y = origin.Y + first.Bounds.Y + bottom;
-                ShelfBoard.DrawEdge(context, new Rect(0, y, width, ShelfBoard.EdgeHeight));
+                ShelfBoard.DrawEdge(context, new Rect(0, y, width, ShelfBoard.EdgeHeight), this);
                 foreach (var child in row.Children)
                 {
                     if (child is not GameTile { IsVisible: true } tile || tile.ArtRectInTile() is not { } art || art.Width <= 0) continue;
