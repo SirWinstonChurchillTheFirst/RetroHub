@@ -394,6 +394,16 @@ Jedes Objekt wird aus denselben Teilen gebaut (`Controls/Craft.cs`, `CraftParts.
 - **Variation** immer **geseedet** aus einem stabilen Hash der Id (FNV-1a, `Craft.Seed`) – nie `string.GetHashCode` (wechselt pro Prozess). Jedes Objekt sieht bei jedem Start gleich aus.
 - **Kosten**: geteilte Brushes (eine pro Farbe/Alpha, Verläufe relativ), Geometrien pro Größe gecacht, keine Bitmaps pro Kachel, kein Blur. Im Grid kostet der Platzhalter pro Kachel ein Papier-Polygon (gecacht) und zwei Klebestreifen.
 
+### 4.8 Gerenderte Objekte (R3)
+
+Die physischen Objekte sind in **Blender** modelliert und beleuchtet (Cycles, nur CPU, Schlüssellicht oben links vorn, kühles Fülllicht rechts, orthografische Kamera 1,6° von oben, 2,4° gedreht – dieselbe Schrägsicht wie die gezeichneten Seiten- und Oberflächen) und als PNG-Sprites in 1x und 2x gebacken (`Assets/Rendered`, ≈ 14 MB; Budget < 15 MB, `RenderedObjectsTests`). Materialien (Pappe, Laminat, Pulverlack, gebürstetes Metall, Etikettpapier, Staub) sind KI-generierte, nahtlose Kacheln ohne Text oder Logos (ComfyUI, FLUX.2). Skripte und Prompts: `build/tools/assets` (README nennt die Reihenfolge).
+
+- **Eine Aufnahme für jede Systemfarbe**: Die eingefärbten Flächen sind mit Albedo 0 gerendert (nur Glanz, Abnutzung, Kanten); **Lichtmasken** (`-band`, `-body`, Motive `-color`/`-body`/`-lift`/`-light`, Grau + Alpha) sagen, wo und wie stark eine Farbe erscheint. `Controls/Rendered.cs` setzt ein Sprite **einmal auf der CPU** zusammen (Schatten, Objekt, jede Farbe durch ihre Maske) und cacht die Bitmap pro Farbkombination (LRU ≈ 160 MB). Gezeichnet wird dann ein `DrawImage` pro Objekt – keine Opacity-Masken pro Frame.
+- **Schärfe**: 1x oder 2x nach den Gerätepixeln, die das Objekt bedeckt (UiScale × Render-Skalierung); 1:1-Bilder werden auf Gerätepixel gerastet, skalierte mit hoher Filterqualität gezeichnet.
+- **Neun-Teilung** für lange Teile (Schiene, Zählschild: links, gekachelte Mitte, rechts) und für die Hülle (Rahmen bleibt 1x-dick, das Fenster wächst mit dem Cover); Bretter werden gekachelt.
+- **Text bleibt App-Sache**: Codes, Zahlen, Namen und Cover setzt die App auf die Renders; kein Sprite enthält Schrift, Logos oder Produktformen (Außenseiter-Test 6.5 gilt auch hier).
+- **Kosten** (1000-Spiele-Demo, `perf`): Fokuswechsel-Frame Median 9,9 ms (vorher 9,8), neue Reihe 17,1 ms (vorher 14,0), stehendes Bild 1,7 ms.
+
 ---
 
 ## 5. Ikonografie
@@ -1050,7 +1060,23 @@ Gesamtbefund: Start, Bibliothek, Detail, Konsolen und Systemseite lesen sich als
 - **Fallblatt**: Der Spalt ist eine weiche Linie (55 %) einen Pixel tiefer mit der Lichtlippe (8 %) darunter, 2 px vor den Kartenkanten (Stifte).
 - **Detail, Bildschirme groß**: Die Beschriftung steht wie auf der Seite als Papierstreifen am Kinn (bis 20 px); das flache Band unter dem Brett entfällt.
 - **Favoriten-Stempel** (`InkStamp`): ein 64-px-Gummistempel in roter Tinte (85 %) unten rechts auf der Schachtel – Stern im Doppelring, der äußere Ring abgenutzt, −9°. Wird dasselbe Spiel Favorit, landet er (1,3 → 1,0, 2° Nachdrehen, 220 ms; Reduziert: Einblenden; Aus: sofort); beim Wechsel des Spiels steht er einfach da.
-- **Noch offen**: Die Etikettgrößen der Platzhalter auf schmalen Hochformat-Hüllen (Switch, Wii U) springen in einer Reihe gegen breite Hüllen – unverändert, weil die Fit-Regeln viele Tests tragen.
+- **Etikettgrößen auf schmalen Hochformat-Hüllen** (R2-QA 14, erledigt in R3): Die Titelgröße hängt nur noch an der Höhe (0,105 × 0,72 × H), eine Reihe gleicher Höhe hat eine Größe. Bräuchte die Plakatschrift auf einer schmalen Hülle (B < 170 und B < 0,8 × H) drei oder mehr Zeilen, steht der Titel in derselben Größe in der Schmalschrift (Archivo Condensed), wenn sie weniger Zeilen braucht.
+
+### 7.10 Stand R3 „gerendert“ (Owner: „sieht zu sehr selber gecoded aus und nicht gezeichnet“)
+
+Die Objekte der Konsolen-Seite und die Regale aller Seiten sind **gerenderte Objekte** (Blender, siehe 4.8), nicht mehr aus Rechtecken gezeichnet:
+
+- **Fächerwand**: Rücken (`spine-l0…2`, ≈ 1100 `spine-s0…2`, Variante geseedet) mit eingelassenem **Papieretikett** (Code in Tinte, liest aufwärts, Archivo Condensed 28 bzw. 22, tritt bis 13 zurück), **Motiv-Plakette** in der geprägten Vertiefung und **Zählschild** aus Metall mit zwei Nieten (Zahl in #ECEEF0). Band in Systemfarbe, Körper im Gehäuseton (schwarz #1F2125, anthrazit #2B2E33, kühlgrau #45494F, warmgrau/holz #3C3F45, weiß #A9ADB3, beige #8A8E94, violett/beere: anthrazit + 32 % Farbe).
+- **Offene Front** (`front-l` 520 × 600, `front-s` 380 × 460) mit modelliertem **Fach** und innerem Brett: Die Schachteln stehen auf dem Brett des Renders, Name und Hersteller passen über die Fachöffnung (Größe tritt bis 26/22 zurück), auf hellen Gehäusen (weiß, beige) in Tinte. Motiv-Plakette unten rechts.
+- **„Noch leer“**: vier stehende Schuber, ein gelehnter (6,5°, höchstens jeder vierte Platz, nie zwei nah beieinander) und der liegende am Ende; Pappe fast neutral (#2E3136, kühle Systeme + 16 % Farbe, rot/orange/gelb bleiben grau), die Systemfarbe nur auf dem Etikett-Reiter. Ruhige Etiketten liegen im Schatten der Reihe (30 %), der gezogene Schuber richtet sich auf.
+- **Buchstütze**: gebogenes Stahlblech, 12° zum Raum gedreht, ohne Schlitz (mit 28° und Schlitz las sie sich als Tür); der Fuß läuft unter den letzten Schuber.
+- **Positionsschiene**: gebürstete Stahlleiste mit Nut (neun-geteilt), **Schlitten** mit eloxiertem Einsatz in der Systemfarbe; Skala, Nadel und Papierfahne bleiben. „Fach 4 von 12“ steht auf einem Metallschild (`TagPlate`).
+- **Bretter überall** (`ShelfBoard`): schwarz pulverbeschichteter Stahl mit Laminat-Oberseite, Bühnenbrett (22 px Lippe) und Regalkante (12 px), gekachelt; ein Brett für alle Systeme (Theme v2: keine Holz- oder Wandtöne mehr im Brett).
+- **Start**: Systemrücken `spine-m` (72 × 200) / `spine-xs` (56 × 160) mit Etikett, Plakette und Schild; die offene Front `front-m` / `front-xs` (quadratisch, ohne Fach) mit Plakette unten rechts.
+- **Platzhalter ohne Cover** stehen in der gerenderten **Hülle** (dunkler Kunststoff, Klarsichtfolie, neun-geteilt auf jedes Format; Rahmen 1x-dick): Schatten darunter, Folie und Rahmen darüber (im Grid 80 %). Echte Cover bekommen keine Hülle.
+- **Große Motive** (Systemseite-Banner, Bibliothek-Fach, Werkbank-Fach, Fronten) sind die Plaketten; kleine Motive im Grid/auf Platzhaltern bleiben gezeichnet.
+- **Leere Plätze**: auf der leeren Fächerwand blanke Rücken (55 %), auf leeren Brettern leere Hüllen (55 %); die Geste „leeres Regal“ ist ein gelehnter grauer Schuber mit Buchstütze statt der Strichzeichnung.
+- **Ohne Sprites** (z. B. reine Unit-Tests ohne Render-Plattform) zeichnen alle Steuerelemente ihre bisherigen Formen.
 
 ## 8. Fokus- und Auswahl-Sprache (Controller)
 
@@ -1225,7 +1251,7 @@ Gezeichnet in `CoverArt.DrawPlaceholder`, Seitenverhältnis 0,72 (B/H) hochkant,
 │B │░░░░░░░░░░░░░░░░│  Rückenband: 16 % der Breite, volle Farbe, Code −90° in Rücken (0,09 × Breite), Text auf Farbe
 │A │░░░░░░░░░░░░░░░░│  Motiv-Silhouette: EINE Geometrie (Teile vereinigt, Aussparungen abgezogen), Farbe 18 %,
 │  │░░░░░░░░░░░░░░░░│    45 % der Höhe, rechts unten mit 14 px Abstand, immer ganz in den unteren 62 %
-│  │░░░░░░░░░▟██▙░░░│  Titel: Plakat-Rolle, clamp(0,105 × min(B, 0,72 × H), 18, 26), Bühnen-Schachteln (H ≥ 300) bis 40;
+│  │░░░░░░░░░▟██▙░░░│  Titel: Plakat-Rolle, clamp(0,105 × 0,72 × H, 18, 26) (R3: nur nach der Höhe, eine Größe pro Reihe), Bühnen-Schachteln (H ≥ 300) bis 40;
 │  │░░░░░░░░░░░░░░░░│    eine Größe für alle Schachteln einer Reihe, Zeilenhöhe 1,1; Untertitel Atkinson ≥ 15 px, Text 2;
 │  │░░░░░░░░░░░░░░░░│    Papier, linksbündig,
 │  │Castlevania:░█░░│    unten verankert, 14 px Innenrand, max. 4 Zeilen
@@ -1308,6 +1334,7 @@ Texte für Leerzustände benennen, was fehlt, und die Lösung, z. B. „Kein Emu
 2. **Texturen**: `tools/TextureGen` erzeugt die PNGs deterministisch. Sie werden committet.
 3. **Schriften**: erledigt (3.1). Für neue Schnitte gilt dasselbe Verfahren: offizielles Repo, eigener Ordner pro Breite, Name-Tabelle prüfen, `FontRoleTests` erweitern.
 4. **Palette**: `SystemPaletteTests` prüft die Regeln aus 2.4 (Kontraste und ΔE2000). Referenzskript: `scratchpad/design/tools/palette2.py`.
+5. **Gerenderte Objekte** (4.8): `build/tools/assets` – Materialien (ComfyUI, `run_comfy.ps1`, eine versteckte Instanz, per PID beendet), Kachelung, Blender-Objekte und Motiv-Reliefs (`run_blender.ps1`: `-b --factory-startup -t 8`, CPU, BelowNormal), Sprites (`build_sprites.py`), Paket (`package_assets.py`) → `src/RetroHub.App/Assets/Rendered`.
 
 ### 11.3 Meilensteine (Owner-Priorität: Start, Bibliothek, Detail)
 

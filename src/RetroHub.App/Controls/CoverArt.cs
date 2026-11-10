@@ -263,7 +263,10 @@ public sealed class CoverArt : Control
                 // R3: the placeholder stands in the rendered keep case (shadow under it, sleeve and frame over it)
                 _cased = Rendered.DrawCase(ctx, this, art, over: false);
                 DrawPlaceholder(ctx, art);
-                if (_cased) Rendered.DrawCase(ctx, this, art, over: true);
+                // grid and shelf boxes: the sleeve and frame a little lighter, so a wall of placeholders stays readable
+                if (_cased)
+                    using (ctx.PushOpacity(art.Width >= StageDetailWidth ? 1 : 0.8))
+                        Rendered.DrawCase(ctx, this, art, over: true);
             }
         }
         DrawMarkers(ctx, art);
@@ -302,13 +305,16 @@ public sealed class CoverArt : Control
     public const double SplitMinWidth = 200;
 
     /// <summary>
-    /// Size of the placeholder title (Archivo Expanded, DESIGN 10.2, M2 QA): 0.105 × min(width, 0.72 × height), at least
+    /// Size of the placeholder title (Archivo Expanded, DESIGN 10.2, M2 QA; R3: by height only): 0.105 × 0.72 × height, at least
     /// 18 px, at most 26 px on shelf and grid boxes (lower than 300 px) and 40 px on stage boxes. A row of boxes of one
     /// height therefore sets all its titles in ONE size, whatever the box format (a narrow GameCube case beside a wide
     /// DS case); <see cref="PlaceholderTitle"/> steps it down only for a single word wider than the line.
     /// </summary>
     public static double PlaceholderTitleSize(double width, double height) =>
-        Math.Clamp(Math.Round(0.105 * Math.Min(width, 0.72 * height)), 18, height >= 300 ? 40 : 26);
+        // one size per box HEIGHT (R2 QA 14: min(width, 0.72 h) made a narrow Switch/Wii U case set a smaller title than
+        // the wide case beside it); a word too wide for a narrow case still steps down (PlaceholderTitle), or takes the
+        // condensed face
+        Math.Clamp(Math.Round(0.105 * 0.72 * height), 18, height >= 300 ? 40 : 26);
 
     /// <summary>Subtitle size (Atkinson Medium, Text 2): never below 15 px (DESIGN 3.2), 0.068 × the title's base.</summary>
     public static double PlaceholderSubSize(double width, double height) =>
@@ -416,7 +422,8 @@ public sealed class CoverArt : Control
             }
             if (_codeText is { } code)
             {
-                using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(r.X + (band - code.Height) / 2, r.Y + w * 0.08 + code.Width)))
+                // in the rendered case the code starts below the frame's top rim
+                using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) * Matrix.CreateTranslation(r.X + (band - code.Height) / 2, r.Y + w * 0.08 + (_cased ? 6 : 0) + code.Width)))
                     ctx.DrawText(code, new Point(0, 0));
             }
             var foot = r.Bottom - Math.Round(w * 0.06);
