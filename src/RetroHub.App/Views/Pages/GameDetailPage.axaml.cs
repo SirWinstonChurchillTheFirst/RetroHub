@@ -399,6 +399,7 @@ public partial class GameDetailPage : PageBase
                 _ when x == MoreButton => DetailFocus.More,
                 _ when x == DetailBox => DetailFocus.Box,
                 _ when x == SystemButton => DetailFocus.System,
+                _ when x == EmulatorFold || x == ModeFold => DetailFocus.Sheet,
                 _ when x == EmulatorBox || x == ModeBox => DetailFocus.Row,
                 _ when x == FileRow => DetailFocus.File,
                 _ when x == VariantsRow => DetailFocus.Variants,
@@ -543,11 +544,17 @@ public partial class GameDetailPage : PageBase
         var panel = sheet is DetailSheet.More or DetailSheet.FileInfo or DetailSheet.Description or DetailSheet.Variants or DetailSheet.Choice;
         // Mehr and "Auch im Regal" are lists that hang at their button (M4 QA: a centred 680 px card for four short
         // items read as a stock modal); file info and the description stay a centred sheet
-        var list = sheet is DetailSheet.More or DetailSheet.Variants or DetailSheet.Choice;
+        var list = sheet is DetailSheet.More or DetailSheet.Variants;
+        // the choice list is no overlay: it folds open under its row (M6 QA – a popup covered the "Start" sentence and
+        // did not line up with the row); everything else lies on the dimmed layer
+        var choice = sheet == DetailSheet.Choice;
+        SheetLayer.IsVisible = sheet != DetailSheet.None && !choice;
+        EmulatorFold.IsOpen = choice && _vm?.Choice == DetailChoice.Emulator;
+        ModeFold.IsOpen = choice && _vm?.Choice == DetailChoice.Mode;
+        panel &= !choice;
         SheetPanel.IsVisible = panel;
         MoreRows.IsVisible = sheet == DetailSheet.More;
         VariantRows.IsVisible = sheet == DetailSheet.Variants;
-        ChoiceRows.IsVisible = sheet == DetailSheet.Choice;
         FileLines.IsVisible = sheet == DetailSheet.FileInfo;
         DescriptionScroll.IsVisible = sheet == DetailSheet.Description;
         SheetFolderButton.IsVisible = sheet == DetailSheet.FileInfo;
@@ -578,10 +585,19 @@ public partial class GameDetailPage : PageBase
             return;
         }
         var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Control;
-        if (focused != null && !IsInside(focused, SheetLayer)) _sheetOpener = focused;
+        if (focused != null && !IsInside(focused, SheetLayer) && !IsInChoice(focused)) _sheetOpener = focused;
         SizeSheetViews();
+        if (choice && ChoiceAnchor() is { } row)
+        {
+            // the row and its list come into view before it opens (260 px below the row)
+            row.BringIntoView(new Rect(0, -48, row.Bounds.Width, row.Bounds.Height + 48 + 260));
+        }
         Dispatcher.UIThread.Post(FocusSheet, DispatcherPriority.Loaded);
     }
+
+    private Control ChoiceAnchor() => _vm?.Choice == DetailChoice.Mode ? ModeBox : EmulatorBox;
+    private ItemsControl ChoiceList() => _vm?.Choice == DetailChoice.Mode ? ModeChoices : EmulatorChoices;
+    private bool IsInChoice(Visual v) => IsInside(v, EmulatorFold) || IsInside(v, ModeFold);
 
     private void FocusSheet()
     {
@@ -591,8 +607,8 @@ public partial class GameDetailPage : PageBase
             DetailSheet.More => MoreRows.Children.OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible),
             DetailSheet.Variants => VariantRows.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible),
             // the list opens on the current choice
-            DetailSheet.Choice => ChoiceRows.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible && b.Classes.Contains("current"))
-                                  ?? ChoiceRows.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible),
+            DetailSheet.Choice => ChoiceList().GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible && b.Classes.Contains("current"))
+                                  ?? ChoiceList().GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible),
             DetailSheet.FileInfo or DetailSheet.Description => SheetCloseButton,
             _ => null,
         };
@@ -610,7 +626,6 @@ public partial class GameDetailPage : PageBase
         {
             DetailSheet.More => (Control)MoreButton,
             DetailSheet.Variants => VariantsRow,
-            DetailSheet.Choice => _vm?.Choice == DetailChoice.Mode ? ModeBox : EmulatorBox,
             _ => null,
         };
         if (anchor == null || anchor.TranslatePoint(new Point(0, 0), Root) is not { } at)
@@ -623,12 +638,11 @@ public partial class GameDetailPage : PageBase
         var layer = Root.Bounds.Size;
         // the variants list starts under the row's value column (label 200 + inset 16)
         // the row lists start under the row's value column (label 200 + inset 16)
-        var x = anchor == VariantsRow || anchor == EmulatorBox || anchor == ModeBox ? at.X + 216 - 28 : at.X;
+        var x = anchor == VariantsRow ? at.X + 216 - 28 : at.X;
         x = Math.Clamp(x, 16, Math.Max(16, layer.Width - SheetPanel.Width - 16));
         var rows = sheet switch
         {
             DetailSheet.More => MoreRows.Children.Count(c => c.IsVisible),
-            DetailSheet.Choice => _vm?.ChoiceItems.Count ?? 0,
             _ => _vm?.Variants.Count ?? 0,
         };
         var height = rows * 56 + 16 + 2;
@@ -671,6 +685,16 @@ public partial class GameDetailPage : PageBase
             {
                 var y = DescriptionScroll.Offset.Y + (action == NavAction.Down ? 120 : -120);
                 DescriptionScroll.Offset = new Vector(0, Math.Clamp(y, 0, Math.Max(0, DescriptionScroll.Extent.Height - DescriptionScroll.Viewport.Height)));
+                return true;
+            }
+            if (_vm.Sheet == DetailSheet.Choice)
+            {
+                // the folded-open list: up/down walk its rows, the focus never leaves it until a choice or Back
+                var rows = ChoiceList().GetVisualDescendants().OfType<Button>().Where(b => b.IsEffectivelyVisible).ToList();
+                var i = rows.IndexOf(focused as Button ?? null!);
+                if (i < 0) { FocusSheet(); return true; }
+                var n = i + (action == NavAction.Down ? 1 : action == NavAction.Up ? -1 : 0);
+                if (n >= 0 && n < rows.Count && n != i) rows[n].Focus(NavigationMethod.Directional);
                 return true;
             }
             var fm = TopLevel.GetTopLevel(this)?.FocusManager;

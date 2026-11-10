@@ -176,9 +176,46 @@
                 <TextBlock c:Sentence.Text="{Binding SelectedEmulator.Status, FallbackValue=''}" Classes="meta" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
+            <!-- the choice list folds open under its row (180 ms, pushing the rows below down): items from the value column -->
+            <c:FoldPanel Name="EmulatorFold" IsOpen="False">
+              <ItemsControl Name="EmulatorChoices" ItemsSource="{Binding ChoiceItems}" Margin="154,0,0,8">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PickOption">
+                    <Button Theme="{StaticResource RhSheetRow}" Classes.current="{Binding IsCurrent}"
+                            Command="{Binding $parent[p:PageBase].((vm:GameDetailViewModel)DataContext).PickCommand}" CommandParameter="{Binding}">
+                      <Grid ColumnDefinitions="22,*">
+                        <c:RhIcon Data="{StaticResource Icon.Check}" Width="18" Height="18" StrokeThickness="2.6" IsVisible="{Binding IsCurrent}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" Margin="12,0,0,0">
+                          <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                          <TextBlock c:Sentence.Text="{Binding Note}" Classes="meta" VerticalAlignment="Center" IsVisible="{Binding HasNote}" />
+                        </StackPanel>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </c:FoldPanel>
             <Button Name="ModeBox" Theme="{StaticResource RhInfoRow}" Tag="{l:T detail.mode}" Command="{Binding ShowModeChoiceCommand}">
               <TextBlock Text="{Binding SelectedMode.Label, FallbackValue=''}" VerticalAlignment="Center" />
             </Button>
+            <c:FoldPanel Name="ModeFold" IsOpen="False">
+              <ItemsControl Name="ModeChoices" ItemsSource="{Binding ChoiceItems}" Margin="154,0,0,8">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PickOption">
+                    <Button Theme="{StaticResource RhSheetRow}" Classes.current="{Binding IsCurrent}"
+                            Command="{Binding $parent[p:PageBase].((vm:GameDetailViewModel)DataContext).PickCommand}" CommandParameter="{Binding}">
+                      <Grid ColumnDefinitions="22,*">
+                        <c:RhIcon Data="{StaticResource Icon.Check}" Width="18" Height="18" StrokeThickness="2.6" IsVisible="{Binding IsCurrent}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" Margin="12,0,0,0">
+                          <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                          <TextBlock c:Sentence.Text="{Binding Note}" Classes="meta" VerticalAlignment="Center" IsVisible="{Binding HasNote}" />
+                        </StackPanel>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </c:FoldPanel>
             <TextBlock Text="{Binding SelectedMode.Hint}" Classes="meta" TextWrapping="Wrap" Margin="16,10,0,6" />
             <!-- status line: icon + one sentence; a download link sits behind "Website" -->
             <ItemsControl ItemsSource="{Binding Problems}" IsVisible="{Binding HasProblems}" Margin="16,0,0,0">
@@ -283,7 +320,7 @@
     </Border>
 
     <!-- ===== overlays: the page dims (room-deep, no blur); header and footer stay ===== -->
-    <Panel Name="SheetLayer" IsVisible="{Binding IsSheetOpen}" Focusable="True" Background="Transparent">
+    <Panel Name="SheetLayer" IsVisible="False" Focusable="True" Background="Transparent">
       <Border Name="SheetScrim" Background="#B80A0908" />
       <!-- Mehr, Dateiinfo, Weiterlesen: one panel -->
       <Border Name="SheetPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Width="680" Background="{DynamicResource RhSurfaceBrush}"
@@ -326,23 +363,6 @@
                 </StackPanel>
               </Button>
             </StackPanel>
-            <!-- Auswahl (emulator / start mode): the current choice carries a check; confirm takes a choice at once -->
-            <ItemsControl Name="ChoiceRows" ItemsSource="{Binding ChoiceItems}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:PickOption">
-                  <Button Theme="{StaticResource RhSheetRow}" Classes.current="{Binding IsCurrent}"
-                          Command="{Binding $parent[p:PageBase].((vm:GameDetailViewModel)DataContext).PickCommand}" CommandParameter="{Binding}">
-                    <Grid ColumnDefinitions="22,*">
-                      <c:RhIcon Data="{StaticResource Icon.Check}" Width="18" Height="18" StrokeThickness="2.6" IsVisible="{Binding IsCurrent}" VerticalAlignment="Center" />
-                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" Margin="12,0,0,0">
-                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                        <TextBlock c:Sentence.Text="{Binding Note}" Classes="meta" VerticalAlignment="Center" IsVisible="{Binding HasNote}" />
-                      </StackPanel>
-                    </Grid>
-                  </Button>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
             <!-- Auch im Regal: the other versions, each opens its detail -->
             <ItemsControl Name="VariantRows" ItemsSource="{Binding Variants}">
               <ItemsControl.ItemTemplate>

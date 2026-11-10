@@ -175,7 +175,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     /// <summary>"Bibliothek › 66 Spiele" – parent in Text 3, page part in Text 2 (DESIGN 7.0).</summary>
     private void UpdateLocation()
     {
-        var section = NavItems.FirstOrDefault(n => n.Key == Ctx.Navigator.Section)?.Label ?? "";
+        var key = Ctx.Navigator.Section;
+        // a game or a system lives in the browsing context (Start, Bibliothek, Konsolen), never on a Werkbank page:
+        // opened from Importe/Emulatoren/Einstellungen (search, a link) its path starts at "Bibliothek" (M6 QA)
+        if (!Navigator.IsTopLevel(Ctx.Navigator.Current) && key is PageKey.Imports or PageKey.Emulators or PageKey.Settings)
+            key = PageKey.Library;
+        var section = NavItems.FirstOrDefault(n => n.Key == key)?.Label ?? "";
         var page = CurrentPage;
         var detail = page?.Location ?? page?.Title ?? "";
         if (string.Equals(detail, section, StringComparison.CurrentCulture)) detail = "";

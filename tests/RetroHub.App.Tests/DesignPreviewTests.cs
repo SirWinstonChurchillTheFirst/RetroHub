@@ -962,6 +962,12 @@ public class DesignPreviewTests
         Save(window, prefix + "-7b-einstellungen-wert.png", 600);
         window.Execute(Input.NavAction.Left);
         TestSupport.Settle(200);
+        // the test-card TV with the channel display standing on it (as when Kanalanzeige is switched on)
+        if (window.CurrentPageView is Views.Pages.SettingsPage settings)
+        {
+            settings.Card.FlashOsd();
+            Save(window, prefix + "-7e-einstellungen-testbild.png", 200);
+        }
         window.Execute(Input.NavAction.PageRight);
         window.Execute(Input.NavAction.PageRight);
         window.Execute(Input.NavAction.Down);
@@ -1035,7 +1041,7 @@ public class DesignPreviewTests
             TestSupport.Pump(() => vm.Launch.Phase == LaunchPhase.Idle, 8000);
             TestSupport.Settle(400);
             var light = Theming.SystemPalette.Get(pick.SystemId, pick.Accent).Light;
-            foreach (var (ms, name) in new[] { (80, "f-aus"), (200, "g-aus-punkt") })
+            foreach (var (ms, name) in new[] { (80, "f-aus"), (200, "g-aus-punkt"), (380, "h-aus-seite") })
             {
                 flight.FreezeOff(light, ms);
                 Save(window, prefix + $"-9{name}.png", 60);

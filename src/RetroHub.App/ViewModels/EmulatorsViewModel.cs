@@ -35,6 +35,9 @@ public sealed class EmulatorItemViewModel
         PathPrefix = install.ExePath != null && IsInstalled ? Loc.T("emulators.foundPrefix") : Loc.T("emulators.expectedPrefix");
         PathOnly = install.ExePath != null && IsInstalled ? services.Paths.ToPortable(install.ExePath) : "emulators/" + def.Id + "/";
         if (install.UserConfigured) PathOnly += " (" + Loc.T("emulators.userPath") + ")";
+        // the opened row's "Programm" line: "RetroArch 1.21.0 in emulators/retroarch/retroarch.exe"
+        NameVersion = install.Version is { } nv && IsInstalled ? $"{def.Name} {nv}" : def.Name;
+        PathInline = install.ExePath != null && IsInstalled ? Loc.T("emulators.inline.found") : Loc.T("emulators.inline.expected");
         Spines = def.Systems.Select(id =>
         {
             var sys = services.Catalog.GetSystem(id);
@@ -64,6 +67,9 @@ public sealed class EmulatorItemViewModel
     public string VersionText { get; }
     public string PathPrefix { get; }
     public string PathOnly { get; }
+    public string NameVersion { get; } = "";
+    /// <summary>"in" / "erwartet in" inside the "Programm" sentence.</summary>
+    public string PathInline { get; } = "";
     /// <summary>Mini spines (colour band + code) of the systems this emulator plays.</summary>
     public IReadOnlyList<SystemSpine> Spines { get; }
     /// <summary>"Startet eingebettet in RetroHub, im Vollbild oder im Fenster."</summary>
@@ -89,13 +95,17 @@ public sealed class EmulatorItemViewModel
 public sealed partial class EmulatorRowViewModel : ObservableObject
 {
     /// <summary>A system row.</summary>
-    public EmulatorRowViewModel(SystemDef system, int games, EmulatorItemViewModel? emulator, bool ready, string? core, IReadOnlyList<EmulatorChoiceLine> choices)
+    public EmulatorRowViewModel(SystemDef system, int games, EmulatorItemViewModel? emulator, bool ready, string? core, IReadOnlyList<EmulatorChoiceLine> choices,
+        string coresText = "")
     {
         System = system;
         var look = SystemPalette.Get(system.Id, ColorUtil.Parse(system.Accent, Color.Parse("#948A7A")));
+        Look = look;
         Band = look.ColorBrush;
+        CoresText = coresText;
         Code = string.IsNullOrEmpty(system.ShortName) ? system.Id.ToUpperInvariant() : system.ShortName;
         Title = system.Name;
+        Games = games;
         GamesText = Loc.T(games == 1 ? "emulators.games.one" : "emulators.games", games);
         Emulator = emulator;
         Ready = ready && emulator is { IsInstalled: true };
@@ -115,16 +125,35 @@ public sealed partial class EmulatorRowViewModel : ObservableObject
         Choices = [];
         PlaysWith = "";
         PlaysVersion = "";
+        CoresText = "";
     }
 
     public SystemDef? System { get; }
+    /// <summary>The system's look for its mini spine (wall, band, light, motif).</summary>
+    public SystemLook? Look { get; }
     public bool IsSystem => System != null;
+    /// <summary>
+    /// The cores THIS system needs, as one sentence ("Benötigt: mupen64plus_next oder parallel_n64 – installiert: keiner
+    /// davon."); empty for programs without cores. (M6 QA: the install's whole core list named unrelated cores.)
+    /// </summary>
+    public string CoresText { get; }
+    public bool HasCores => CoresText.Length > 0;
+    /// <summary>The system can start: the opened row says how ("Startmodi"); a system that cannot start hides it.</summary>
+    public bool ShowModes => Ready && Emulator != null;
+    /// <summary>
+    /// Six or more systems have no program at all (a fresh install): the head says it once and the rows only say
+    /// "Kein Emulator." in Text 3, without a wall of warning icons. Single gaps keep the icon.
+    /// </summary>
+    public bool Quiet { get; init; }
+    public bool ShowGap => NotReady && !Quiet;
+    public bool ShowQuietGap => NotReady && Quiet;
     public bool IsOthers => Others != null;
     public IBrush? Band { get; }
     public string Code { get; }
     public string Title { get; }
     /// <summary>"12 Spiele" (Text 3 beside the name).</summary>
     public string GamesText { get; }
+    public int Games { get; }
     public EmulatorItemViewModel? Emulator { get; }
     public bool HasEmulator => Emulator != null;
     /// <summary>The system can start its games (an installed program, with its core for RetroArch).</summary>
@@ -215,10 +244,16 @@ public sealed partial class EmulatorsViewModel : PageViewModel
             foreach (var c in choices) used.Add(c.Ref.EmulatorId);
             var emulator = chosen != null && items.TryGetValue(chosen.Install!.Def.Id, out var it) ? it
                 : choices[0].Install != null && items.TryGetValue(choices[0].Install!.Def.Id, out var first) ? first : null;
-            var row = new EmulatorRowViewModel(system, games, emulator, chosen != null, core, lines);
-            row.IsOpen = open.Contains(system.Id) || string.Equals(system.Id, SystemFilter, StringComparison.OrdinalIgnoreCase);
-            rows.Add(row);
+            rows.Add(new EmulatorRowViewModel(system, games, emulator, chosen != null, core, lines, CoresFor(choices))
+            {
+                IsOpen = open.Contains(system.Id) || string.Equals(system.Id, SystemFilter, StringComparison.OrdinalIgnoreCase),
+            });
         }
+        // a fresh install: six or more systems without any program – one sentence in the head, quiet rows
+        var bare = rows.Count(IsBare);
+        if (bare >= QuietFrom)
+            rows = rows.Select(r => IsBare(r) ? new EmulatorRowViewModel(r.System!, r.Games, r.Emulator, false, null, r.Choices, r.CoresText)
+            { IsOpen = r.IsOpen, Quiet = true } : r).ToList();
         var system1 = SystemFilter != null ? s.Catalog.GetSystem(SystemFilter) : null;
         Rows = system1 != null ? rows.Where(r => string.Equals(r.System!.Id, system1.Id, StringComparison.OrdinalIgnoreCase)).ToList() : rows;
         NoSystems = Rows.Count == 0;
@@ -230,9 +265,32 @@ public sealed partial class EmulatorsViewModel : PageViewModel
         FilterText = system1 != null ? Loc.T("emulators.filtered", system1.Name) : "";
         Location = system1?.Name;
         var ready = rows.Count(r => r.Ready);
+        Quiet = bare >= QuietFrom;
         SummaryText = rows.Count == 0 ? Loc.T("emulators.summary.none")
             : ready == rows.Count ? Loc.T("emulators.summary.allReady", rows.Count)
+            : ready == 0 && Quiet ? Loc.T("emulators.summary.noneInstalled")
+            : Quiet ? Loc.T("emulators.summary.manyMissing", ready, rows.Count)
             : Loc.T("emulators.summary.some", ready, rows.Count);
+    }
+
+    /// <summary>No program at all for the system (not just a missing core).</summary>
+    private static bool IsBare(EmulatorRowViewModel r) => r.NotReady && !r.Choices.Any(c => c.State == Loc.T("emulators.choice.noCore"));
+
+    /// <summary>From this many systems without a program the gaps are said once in the head (M6 QA).</summary>
+    public const int QuietFrom = 6;
+
+    /// <summary>The rows are quiet (see <see cref="QuietFrom"/>).</summary>
+    [ObservableProperty] public partial bool Quiet { get; private set; }
+
+    /// <summary>"Benötigt: a oder b – installiert: a." for the cores a system's RetroArch choices name; "" without cores.</summary>
+    private static string CoresFor(IReadOnlyList<(EmulatorRef Ref, EmulatorInstall? Install)> choices)
+    {
+        var needed = choices.Where(c => c.Ref.Core != null).Select(c => c.Ref.Core!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (needed.Count == 0) return "";
+        var have = needed.Where(core => choices.Any(c => c.Install?.InstalledCores.Contains(core) == true)).ToList();
+        if (have.Count == 0 && needed.Count == 1) return Loc.T("emulators.coreNotInstalled", needed[0]);
+        return Loc.T("emulators.coresNeeded", EmulatorItemViewModel.JoinOr(needed),
+            have.Count == 0 ? Loc.T("emulators.coresNone") : string.Join(", ", have));
     }
 
     /// <summary>

@@ -75,6 +75,27 @@ public sealed class PixelScreen : Panel
     public bool IsOff { get => GetValue(IsOffProperty); set => SetValue(IsOffProperty, value); }
     public bool IsTvSystem { get => GetValue(IsTvSystemProperty); set => SetValue(IsTvSystemProperty, value); }
 
+    /// <summary>The power LED's colour when the set shows something of its own (the Einstellungen test card): the light colour.</summary>
+    public static readonly StyledProperty<IBrush?> LedBrushProperty = AvaloniaProperty.Register<PixelScreen, IBrush?>(nameof(LedBrush));
+    public IBrush? LedBrush { get => GetValue(LedBrushProperty); set => SetValue(LedBrushProperty, value); }
+
+    private Control? _card;
+
+    /// <summary>
+    /// A picture of its own drawn by the owner (the test card of Einstellungen, DESIGN 7.6.2): it lies over the picture
+    /// layers and under the scanlines and the glass, and draws itself into <see cref="PictureRect"/> of the set.
+    /// </summary>
+    public Control? Card
+    {
+        get => _card;
+        set
+        {
+            if (_card != null) Children.Remove(_card);
+            _card = value;
+            if (value != null) Children.Insert(Children.IndexOf(_scan), value);
+        }
+    }
+
     /// <summary>What the picture shows now (tests, diagnostics).</summary>
     public PictureKind Showing => _shown?.Kind ?? PictureKind.None;
 
@@ -149,6 +170,7 @@ public sealed class PixelScreen : Panel
     protected override Size ArrangeOverride(Size finalSize)
     {
         _set.Arrange(new Rect(finalSize));
+        _card?.Arrange(new Rect(finalSize)); // the card finds the picture itself (PictureRect of its bounds)
         var pic = PictureRect(finalSize);
         var glass = new RectangleGeometry(new Rect(pic.Size)) { RadiusX = TubeRadius, RadiusY = TubeRadius };
         foreach (var layer in new Control[] { _a, _b, _scan, _glass })
@@ -167,6 +189,7 @@ public sealed class PixelScreen : Panel
         if (change.Property == PicturePathProperty || change.Property == SystemIdProperty || change.Property == AccentProperty
             || change.Property == CodeProperty || change.Property == IsOffProperty || change.Property == IsTvSystemProperty)
             Refresh();
+        else if (change.Property == LedBrushProperty) _set.InvalidateVisual();
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -283,7 +306,7 @@ public sealed class PixelScreen : Panel
             if (chin < 10) return;
             var led = Math.Max(4, Math.Round(6 * k));
             var look = string.IsNullOrEmpty(owner.SystemId) ? null : SystemPalette.Get(owner.SystemId, owner.Accent);
-            var ledBrush = owner.IsOff || look == null ? LedOff : look.LightBrush;
+            var ledBrush = owner.LedBrush ?? (owner.IsOff || look == null ? LedOff : look.LightBrush);
             ctx.FillRectangle(ledBrush, new Rect(pic.X, Math.Round(chinTop + (chin - led) / 2), led, led));
             const int lines = 7;
             var pitch = Math.Max(2, Math.Round(3 * k));

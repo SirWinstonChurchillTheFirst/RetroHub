@@ -7,28 +7,24 @@
             x:Class="RetroHub.App.Views.Pages.SettingsPage"
             x:DataType="vm:SettingsViewModel">
   <!--
-    Einstellungen as a service menu (DESIGN 7.6): one continuous list on the room, paper labels as section heads, flat
-    72 px rows with the value between two arrows on one axis (◀ Wert ▶). Left/right change a value at once, confirm moves
-    it on, the mouse clicks the arrows; shoulder left/right jump between the sections. No cards, no toggle switches, no
-    sliders, no segment controls, no drop-down.
+    Einstellungen as a TV's service menu (DESIGN 7.6, 7.6.2): the pinned Werkbank head, one continuous numbered list on the
+    room ("01" … in Rücken), paper labels as section heads, flat 72 px rows with the value in a room-deep display window
+    between two filled triangles (◀ [Wert] ▶). Left/right change a value at once, confirm moves it on, the mouse clicks the
+    triangles; shoulder left/right jump between the sections. Right of the list stands the TV from Start with a test card
+    that previews what changes (light colour, channel display, motion) – an object, not an inspector. No cards, no toggle
+    switches, no sliders, no segment controls, no drop-down.
   -->
-  <ScrollViewer Name="Scroller" HorizontalScrollBarVisibility="Disabled">
-    <!-- the menu is at most 1100 wide and stands left at the page margin (DESIGN 7.6) -->
-    <Grid Margin="{DynamicResource RhPageInset}">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="1000*" MaxWidth="1100" />
-        <ColumnDefinition Width="*" />
-      </Grid.ColumnDefinitions>
-    <StackPanel Spacing="0">
-      <StackPanel Spacing="2" HorizontalAlignment="Left">
-        <TextBlock Text="{l:T nav.settings}" Classes="title" />
-        <TextBlock Text="{l:T settings.intro}" Classes="meta" />
-      </StackPanel>
+  <c:WorkbenchFrame Name="Frame">
+    <StackPanel c:WorkbenchFrame.Role="Head" Spacing="8">
+      <TextBlock Text="{l:T nav.settings}" Classes="poster" />
+      <TextBlock Text="{l:T settings.intro}" Classes="meta" />
+    </StackPanel>
 
-      <ItemsControl Name="SectionList" ItemsSource="{Binding Sections}" Margin="0,16,0,0">
+    <ScrollViewer Name="Scroller" c:WorkbenchFrame.Role="Scroll" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl Name="SectionList" ItemsSource="{Binding Sections}" Margin="0,16,24,48">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ServiceSection">
-            <StackPanel Spacing="0" Margin="0,32,0,0" Classes="section">
+            <StackPanel Spacing="0" Margin="0,0,0,40" Classes="section">
               <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,12">
                 <c:ShelfLabel Text="{Binding Title}" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding Note}" Classes="meta" VerticalAlignment="Center" IsVisible="{Binding HasNote}" />
@@ -45,7 +41,14 @@
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
+    </ScrollViewer>
+    <Border c:WorkbenchFrame.Role="Fade" IsHitTestVisible="False" Background="{x:Static c:WorkbenchFrame.FadeBrush}" />
+
+    <!-- the TV from Start with the test card, standing on a shelf edge (hidden below 1500 px page width) -->
+    <StackPanel Name="TvColumn" c:WorkbenchFrame.Role="Side" Spacing="0">
+      <c:PixelScreen Name="Tv" Width="420" Height="351" HorizontalAlignment="Left" LedBrush="{DynamicResource RhAccentBrush}" />
+      <c:ShelfBoard IsEdge="True" Height="12" Width="420" HorizontalAlignment="Left" />
+      <TextBlock Text="{l:T settings.testCard}" Classes="meta" Margin="0,14,0,0" TextWrapping="Wrap" />
     </StackPanel>
-    </Grid>
-  </ScrollViewer>
+  </c:WorkbenchFrame>
 </p:PageBase>

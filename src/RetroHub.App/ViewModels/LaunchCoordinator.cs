@@ -403,6 +403,8 @@ public sealed partial class LaunchCoordinator : ObservableObject
         var item = Game;
         Log.Info($"Session ended after {session.Elapsed.TotalSeconds:0} s (exit code {session.ExitCode?.ToString() ?? "-"}) – back to the hub");
         TestHooks.Report("session-ended", ("seconds", Math.Round(session.Elapsed.TotalSeconds, 1)), ("exitCode", session.ExitCode), ("error", session.Error));
+        // after a fullscreen hand-off the window comes back without a switch-off: nothing to wait for
+        var handoff = Presentation == LaunchPresentation.Handoff || IsShellHidden;
         ResetToIdle();
         try { _ctx.Services.Input.SetSuspended(false); } catch (Exception ex) { Log.Warn("Input resume failed", ex); }
         if (item != null)
@@ -410,12 +412,31 @@ public sealed partial class LaunchCoordinator : ObservableObject
             if (session.State == SessionState.Failed || session.Error != null)
                 _ctx.Toasts.Show(Loc.T("launch.endedWithError", item.Title), ToastKind.Error, session.Error);
             else
-                _ctx.Toasts.Show(Loc.T("launch.ended"), ToastKind.Success, Loc.T("launch.sessionTime", Fmt.PlayTime((long)session.Elapsed.TotalSeconds)));
+            {
+                // "Willkommen zurück" once the page is back (after the switch-off and its fade, DESIGN 9.3 step 7); a
+                // session under a minute says so instead of a dash
+                var seconds = Math.Max(1, (long)session.Elapsed.TotalSeconds);
+                var detail = Loc.T("launch.sessionTime", Fmt.PlayTime(seconds));
+                var delay = handoff ? TimeSpan.Zero : ReturnToastDelay;
+                if (delay <= TimeSpan.Zero) _ctx.Toasts.Show(Loc.T("launch.ended"), ToastKind.Success, detail);
+                else DispatcherTimer.RunOnce(() => _ctx.Toasts.Show(Loc.T("launch.ended"), ToastKind.Success, detail), delay);
+            }
             if (!(_ctx.Navigator.Current == PageKey.GameDetail && Equals(_ctx.Navigator.CurrentArgument, item)))
                 _ctx.Navigator.Navigate(PageKey.GameDetail, item);
         }
         try { Returned?.Invoke(item, session); } catch (Exception ex) { Log.Error("Returned handler failed", ex); }
     });
+
+    /// <summary>
+    /// How long "Willkommen zurück" waits: until the switch-off (240 ms) and the page's fade (280 ms) are over; at once
+    /// when nothing moves.
+    /// </summary>
+    public static TimeSpan ReturnToastDelay => Theming.Motion.Current switch
+    {
+        Theming.EffectiveMotion.Full => RetroHub.App.Controls.FlightLayer.OffDuration,
+        Theming.EffectiveMotion.Reduced => TimeSpan.FromMilliseconds(RetroHub.App.Controls.FlightLayer.ReducedOff),
+        _ => TimeSpan.Zero,
+    };
 
     /// <summary>Back to idle: everything about the last session is cleared (the window shows again if it was hidden).</summary>
     private void ResetToIdle()

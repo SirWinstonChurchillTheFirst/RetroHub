@@ -312,6 +312,14 @@ public sealed class CoverArt : Control
     /// <summary>Inner margin of the placeholder text: 14 px at 196, 24 px on the stage boxes.</summary>
     public static double PlaceholderPad(double w) => Math.Clamp(Math.Round(w * 0.0714), 10, 24);
 
+
+    /// <summary>
+    /// The placeholder keeps its title clear of the motif: where they would meet, the motif steps back to 7 % behind
+    /// the title (the start surface's box, M6 QA). Shelf, grid and stage boxes keep their M2–M5 look.
+    /// </summary>
+    public static readonly StyledProperty<bool> KeepTitleClearProperty = AvaloniaProperty.Register<CoverArt, bool>(nameof(KeepTitleClear));
+    public bool KeepTitleClear { get => GetValue(KeepTitleClearProperty); set => SetValue(KeepTitleClearProperty, value); }
+
     /// <summary>Spine band width: 16 % of the box width.</summary>
     private static double BandWidth(double w) => Math.Max(6, Math.Round(w * 0.16));
 
@@ -368,7 +376,19 @@ public sealed class CoverArt : Control
             var room = split > 0 ? r.Height - split - inset - 2 : r.Height - 2 * inset;
             var motif = Math.Round(Math.Min(Math.Min(r.Height * (TitleOnTop(r) ? 0.5 : 0.45), (w - band) * 0.8), room));
             if (motif > 8)
-                MotifCatalog.DrawSilhouette(ctx, look, new Rect(r.Right - inset - motif, r.Bottom - inset - motif, motif, motif), 0.18);
+            {
+                // a stage-size box (the start surface, 240 and up) never sets its title over its own motif (M6 QA): where
+                // they would meet, the motif steps back to 7 % behind the title. Shelf and grid boxes stay as they are.
+                var motifRect = new Rect(r.Right - inset - motif, r.Bottom - inset - motif, motif, motif);
+                var motifOpacity = 0.18;
+                if (KeepTitleClear && !TitleOnTop(r) && _titleText is { } tt)
+                {
+                    var th = Math.Ceiling(tt.Height) + (_subText is { } st ? SubGap + Math.Ceiling(st.Height) : 0);
+                    var tw = Math.Max(tt.Width, _subText?.Width ?? 0);
+                    if (new Rect(r.X + band + pad, r.Bottom - pad - th, tw, th).Intersects(motifRect)) motifOpacity = 0.07;
+                }
+                MotifCatalog.DrawSilhouette(ctx, look, motifRect, motifOpacity);
+            }
             // spine band: full colour, printed like a real spine - code at the top, the title from the foot upwards,
             // the year at the foot (all -90 degrees, read bottom to top); a 1 px fold line where the spine meets the front
             if (band > 0) ctx.FillRectangle(look.ColorBrush, new Rect(r.X, r.Y, band, r.Height));

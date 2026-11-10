@@ -123,6 +123,38 @@ public class DesignM6Tests
         }
     });
 
+    [Fact]
+    public Task The_werkbank_head_never_scrolls_and_a_detail_from_there_belongs_to_the_library() => UiTest.Run(() =>
+    {
+        var (window, vm) = Open(1920, 1080);
+        try
+        {
+            foreach (var key in new[] { PageKey.Settings, PageKey.Emulators, PageKey.Imports })
+            {
+                vm.Navigator.Navigate(key);
+                TestSupport.Settle(300);
+                var page = window.CurrentPageView!;
+                var title = page.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("poster"));
+                var before = title.TranslatePoint(default, window)!.Value;
+                var scroller = page.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.Name == "Scroller");
+                scroller.Offset = new Vector(0, 400);
+                TestSupport.Settle(100);
+                Assert.Equal(before, title.TranslatePoint(default, window)!.Value); // pinned: never cut under the header
+                // the first section label stands at the same height on every page
+                var label = page.GetVisualDescendants().OfType<ShelfLabel>().First(l => l.IsEffectivelyVisible);
+                scroller.Offset = default;
+                TestSupport.Settle(100);
+                Assert.InRange(label.TranslatePoint(default, window)!.Value.Y, 205, 219);
+            }
+            // a game opened from a Werkbank page lives in the library
+            var game = vm.Ctx.Items.Get(vm.Ctx.Services.Games.Query(new GameQuery { Text = "Smaragd" }).Single());
+            vm.Navigator.Navigate(PageKey.GameDetail, game);
+            TestSupport.Settle(200);
+            Assert.Equal(RetroHub.App.Localization.Loc.T("nav.library"), vm.LocationParent);
+        }
+        finally { window.Close(); }
+    });
+
     // ===================== Emulatoren =====================
 
     [Fact]
@@ -282,10 +314,16 @@ public class DesignM6Tests
 
             flight.PowerOn(art, light, EffectiveMotion.Full);
             Assert.Equal(0, tile.Opacity); // the original box stays in place, unseen
+            // the copy becomes the start surface's box: the same bitmap, not a second placeholder (M6 QA)
+            Assert.NotNull(flight.LandingImage?.Source);
+            Assert.True(flight.LandingImage!.IsVisible);
+            Assert.False(flight.LandingArt!.IsVisible);
             flight.Freeze(FlightLayer.LineEnd + 5);
             Assert.True(flight.FlashShown); // one frame of overexposure
             flight.Cancel();
             Assert.Equal(1, tile.Opacity);
+            Assert.Null(flight.LandingImage.Source);
+            Assert.True(flight.LandingArt.IsVisible);
 
             flight.PowerOn(art, light, EffectiveMotion.Reduced);
             Assert.Equal(1, tile.Opacity); // reduced: no flight, the box stays

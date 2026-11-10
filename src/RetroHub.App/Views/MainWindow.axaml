@@ -94,11 +94,12 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </StackPanel>
-          <!-- demo mode: plain text (label 15, Text 3) after a 6 × 6 square in Warnung – no fill: a paper block was the
-               brightest thing in the header and competed with the active channel (M3 QA). Bernstein stays reserved (2.2). -->
+          <!-- demo mode: plain text (label 15, Text 3) after a 6 × 6 square in Text 3 – no fill: a paper block was the
+               brightest thing in the header and competed with the active channel (M3 QA); an orange square read as a
+               second standby light beside the word mark's (M6 QA). Bernstein stays reserved (2.2). -->
           <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowDemoChip}" Background="Transparent"
                       ToolTip.Tip="{l:T shell.demo.tip}" VerticalAlignment="Center" Margin="24,0,0,0">
-            <Border Width="6" Height="6" Background="{DynamicResource RhWarningBrush}" VerticalAlignment="Center" />
+            <Border Width="6" Height="6" Background="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />
             <TextBlock Classes="label" Text="{Binding DemoText}" Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" />
           </StackPanel>
           <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="24" VerticalAlignment="Center" Margin="24,0,0,0">
@@ -198,22 +199,23 @@
         <Border Background="{DynamicResource RhRoomDeepBrush}" />
         <LayoutTransformControl Name="StartScale" HorizontalAlignment="Center" VerticalAlignment="Center">
           <StackPanel Spacing="0">
-            <Panel Width="240" Height="336" HorizontalAlignment="Center">
-              <c:CoverArt Source="{Binding Launch.Game.CoverPath}" Title="{Binding Launch.Game.Title}" Badge="{Binding Launch.Game.SystemShort}"
+            <!-- the box the game was started from: the flying copy lands here and becomes this box (the same bitmap) -->
+            <Panel Name="StartBoxSlot" Width="240" Height="336" HorizontalAlignment="Center">
+              <c:CoverArt Name="StartBoxArt" KeepTitleClear="True" Source="{Binding Launch.Game.CoverPath}" Title="{Binding Launch.Game.Title}" Badge="{Binding Launch.Game.SystemShort}"
                           SystemId="{Binding Launch.Game.SystemId}" Accent="{Binding Launch.Game.Accent}" Year="{Binding Launch.Game.YearText}" />
+              <Image Name="StartBoxImage" Stretch="Uniform" VerticalAlignment="Bottom" HorizontalAlignment="Center" IsVisible="False"
+                     RenderOptions.BitmapInterpolationMode="HighQuality" />
             </Panel>
             <c:ShelfBoard Width="420" Height="10" IsEdge="True" />
             <TextBlock Text="{Binding Launch.Game.Title}" Classes="poster-s" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="1000" TextWrapping="Wrap"
                        Margin="0,44,0,0" />
             <TextBlock HorizontalAlignment="Center" Classes="read-l" Margin="0,12,0,0" Text="{Binding Launch.StartingText}" />
-            <c:SegmentBar IsIndeterminate="{Binding Launch.IsStarting}" HorizontalAlignment="Center" Margin="0,32,0,0" />
+            <c:SegmentBar Name="StartSegments" IsIndeterminate="{Binding Launch.IsStarting}" HorizontalAlignment="Center" Margin="0,32,0,0" />
           </StackPanel>
         </LayoutTransformControl>
       </Panel>
     </Panel>
 
-    <!-- the power-on line, the flying box, the switch-off (unscaled; DESIGN 9.3) -->
-    <c:FlightLayer Name="Flight" />
 
     <!-- ============ Toasts ============ -->
     <ItemsControl Name="ToastHost" ItemsSource="{Binding Toasts.Items}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,32,80" Width="420">
@@ -246,6 +248,10 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+
+    <!-- the power-on line, the flying box, the switch-off (unscaled; DESIGN 9.3) – above the toasts: "Willkommen zurück"
+         waits for the page anyway, and nothing may stand on the closed dark of the switch-off -->
+    <c:FlightLayer Name="Flight" />
 
     <!-- ============ Dialog overlay (scaled like the shell) ============ -->
     <LayoutTransformControl Name="DialogScaleHost" IsVisible="{Binding Dialogs.IsOpen}">

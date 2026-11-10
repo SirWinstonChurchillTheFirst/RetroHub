@@ -15,7 +15,7 @@ namespace RetroHub.App.ViewModels;
 /// read, the value is its state "◀ Aktiv ▶" / "◀ Pausiert ▶" (left/right switch it at once); confirm opens its
 /// "Mehr" list. The built-in games/ folder is always active (no arrows).
 /// </summary>
-public sealed class FolderItemViewModel
+public sealed partial class FolderItemViewModel : ObservableObject
 {
     public FolderItemViewModel(LibraryFolder folder, AppServices services, Action<FolderItemViewModel, bool> setEnabled, Action<FolderItemViewModel> openMenu)
     {
@@ -29,7 +29,7 @@ public sealed class FolderItemViewModel
         OptionsText = folder.Recursive ? Loc.T("imports.recursive") : Loc.T("imports.topLevelOnly");
         // "Durchsucht vor 2 Tagen, mit Unterordnern, System automatisch erkennen." – one line, no chips; the time first,
         // so a narrow row (≈ 1100) cuts the least important part
-        var hint = $"{Fmt.SentenceStart(ScanText)}, {OptionsText}, {SystemText}";
+        var hint = $"{Fmt.SentenceStart(ScanText)}, {OptionsText}, {(folder.SystemId == null ? SystemText : Loc.T("imports.fixedSystem.inSentence", services.Catalog.GetSystem(folder.SystemId)?.Name ?? folder.SystemId))}.";
         Row = folder.IsBuiltIn
             ? ServiceSetting.Choice(PathText, hint, [new ServiceValue(true, Loc.T("imports.alwaysActive"))], 0, _ => { })
             : ServiceSetting.Choice(PathText, hint,
@@ -50,6 +50,8 @@ public sealed class FolderItemViewModel
     public bool IsEnabled => Folder.Enabled;
     /// <summary>"Pausieren" / "Aktivieren" in the Mehr list.</summary>
     public string ToggleText => Folder.Enabled ? Loc.T("imports.pause") : Loc.T("imports.resume");
+    /// <summary>Its "Mehr" list is folded open under the row (the row keeps its focus look meanwhile).</summary>
+    [ObservableProperty] public partial bool IsMenuOpen { get; set; }
 }
 
 /// <summary>
@@ -120,12 +122,26 @@ public sealed partial class ImportsViewModel : PageViewModel
     /// <summary>The folder whose "Mehr" list is open (null = none).</summary>
     [ObservableProperty] public partial FolderItemViewModel? MenuFolder { get; private set; }
     public bool IsMenuOpen => MenuFolder != null;
-    partial void OnMenuFolderChanged(FolderItemViewModel? value)
+    partial void OnMenuFolderChanged(FolderItemViewModel? oldValue, FolderItemViewModel? newValue)
     {
+        // the list folds open under its own row (M6 QA: a floating list over the dimmed page looked like another row's)
+        if (oldValue != null) oldValue.IsMenuOpen = false;
+        if (newValue != null) newValue.IsMenuOpen = true;
         OnPropertyChanged(nameof(IsMenuOpen));
-        HeaderDim = value != null ? GameDetailViewModel.SheetDim : default;
         RaiseHintsChanged();
     }
+
+    /// <summary>The scan column's label: "Letzter Scan", while a scan runs "Scan läuft".</summary>
+    public string ScanLabel => IsScanning ? Loc.T("imports.scanRunning") : Loc.T("imports.lastReport");
+    /// <summary>"Zuletzt gescannt heute." – while a scan runs "Gestartet um 19:53.".</summary>
+    public string ScanSentence => IsScanning ? Loc.T("imports.startedAt", _scanStarted.ToLocalTime().ToString("t", Loc.Culture)) : LastScanText;
+    partial void OnLastScanTextChanged(string value) => OnPropertyChanged(nameof(ScanSentence));
+    private DateTime _scanStarted = DateTime.UtcNow;
+
+    /// <summary>The games the last scan brought in, newest first (at most 12), as small spines under the delivery note.</summary>
+    [ObservableProperty] public partial IReadOnlyList<GameItemViewModel> NewGames { get; private set; } = [];
+    public bool HasNewGames => NewGames.Count > 0;
+    partial void OnNewGamesChanged(IReadOnlyList<GameItemViewModel> value) => OnPropertyChanged(nameof(HasNewGames));
 
     // ---- covers (ArtworkService) ----
     [ObservableProperty] public partial bool IsFindingCovers { get; private set; }
@@ -192,6 +208,8 @@ public sealed partial class ImportsViewModel : PageViewModel
 
     partial void OnIsScanningChanged(bool value)
     {
+        OnPropertyChanged(nameof(ScanLabel));
+        OnPropertyChanged(nameof(ScanSentence));
         ScanCommand.NotifyCanExecuteChanged();
         CancelScanCommand.NotifyCanExecuteChanged();
     }
@@ -217,6 +235,7 @@ public sealed partial class ImportsViewModel : PageViewModel
             if (!quiet) Ctx.Toasts.Show(Loc.T("imports.alreadyScanning"), ToastKind.Warning);
             return;
         }
+        _scanStarted = DateTime.UtcNow;
         IsScanning = true;
         IsIndeterminate = true;
         // the delivery note of the last scan stands until the next one begins
@@ -230,7 +249,7 @@ public sealed partial class ImportsViewModel : PageViewModel
         {
             IsIndeterminate = p.FilesTotal <= 0;
             Progress = p.FilesTotal > 0 ? 100.0 * p.FilesSeen / p.FilesTotal : 0;
-            ProgressText = p.FilesTotal > 0 ? Loc.T("imports.progress", PhaseText(p.Phase), p.FilesSeen, p.FilesTotal) : PhaseText(p.Phase);
+            ProgressText = p.FilesTotal > 0 ? Loc.T(p.Phase switch { "hashes" => "imports.progress.hashes", "database" => "imports.progress.database", _ => "imports.progress.files" }, p.FilesSeen, p.FilesTotal) : PhaseText(p.Phase) + ".";
             CurrentFile = p.CurrentFile ?? "";
         });
         var options = new ScanOptions { ComputeHashes = Ctx.Services.Settings.Current.ComputeHashes };
@@ -355,9 +374,11 @@ public sealed partial class ImportsViewModel : PageViewModel
         HasReport = true;
         ReportTitle = Loc.T("imports.reportTitle", Fmt.DateTimeText(DateTime.UtcNow), r.Duration.TotalSeconds.ToString("0.0", Loc.Culture));
         var groups = new List<IssueGroup>();
-        if (r.Duplicates.Count > 0) groups.Add(new IssueGroup(Loc.T("imports.duplicates"), r.Duplicates.Take(50).ToList(), r.Duplicates.Count, false));
-        if (r.Unknown.Count > 0) groups.Add(new IssueGroup(Loc.T("imports.unknown"), r.Unknown.Take(50).ToList(), r.Unknown.Count, false));
-        if (r.Errors.Count > 0) groups.Add(new IssueGroup(Loc.T("imports.errors"), r.Errors.Take(50).ToList(), r.Errors.Count, true));
+        // "1 doppelte Datei", "2 nicht zugeordnet", "1 Fehler" – the number leads, no "A · 1" chain (DESIGN 3.2)
+        string Head(string key, int n) => Loc.T(n == 1 ? key + ".one" : key, n);
+        if (r.Duplicates.Count > 0) groups.Add(new IssueGroup(Head("imports.issues.duplicates", r.Duplicates.Count), r.Duplicates.Take(50).ToList(), r.Duplicates.Count, false));
+        if (r.Unknown.Count > 0) groups.Add(new IssueGroup(Head("imports.issues.unknown", r.Unknown.Count), r.Unknown.Take(50).ToList(), r.Unknown.Count, false));
+        if (r.Errors.Count > 0) groups.Add(new IssueGroup(Head("imports.issues.errors", r.Errors.Count), r.Errors.Take(50).ToList(), r.Errors.Count, true));
         Issues = groups;
         ReportClean = groups.Count == 0;
         var files = r.Added + r.Updated + r.Unchanged + r.Duplicates.Count + r.Unknown.Count + r.Errors.Count;
@@ -372,6 +393,17 @@ public sealed partial class ImportsViewModel : PageViewModel
         IssuesText = Loc.T(IssueCount == 1 ? "imports.note.issue" : "imports.note.issues");
         ReportTitle = Fmt.DateTimeText(DateTime.UtcNow);
         ReportFoot = Loc.T("imports.note.duration", r.Duration.TotalSeconds.ToString("0.0", Loc.Culture));
+        NewGames = [];
+        if (r.Added > 0)
+        {
+            try
+            {
+                var since = _scanStarted.AddSeconds(-1);
+                NewGames = Ctx.Services.Games.Query(new GameQuery { Sort = GameSort.Added })
+                    .Where(g => g.AddedUtc >= since).OrderByDescending(g => g.AddedUtc).Take(12).Select(Ctx.Items.Get).ToList();
+            }
+            catch (Exception ex) { Log.Warn("Reading the new games of the scan failed", ex); }
+        }
     }
 
     private static string PhaseText(string phase) => phase switch

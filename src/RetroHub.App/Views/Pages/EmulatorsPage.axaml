@@ -49,44 +49,61 @@
       <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
       <Setter Property="FontSize" Value="15" />
       <Setter Property="FontWeight" Value="Normal" />
-      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
+    </Style>
+    <Style Selector="TextBlock.quiet-gap">
+      <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.kv-key">
+      <Setter Property="FontFamily" Value="{DynamicResource RhFontUi}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="LetterSpacing" Value="0.45" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Margin" Value="0,8,0,0" />
+    </Style>
+    <Style Selector="TextBlock.kv-value">
+      <Setter Property="FontFamily" Value="{DynamicResource RhFontRead}" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="LineHeight" Value="32" />
+      <Setter Property="Foreground" Value="{DynamicResource RhText2Brush}" />
     </Style>
   </p:PageBase.Styles>
 
-  <ScrollViewer Name="Scroller" HorizontalScrollBarVisibility="Disabled">
-    <!-- at most 1100 wide, left at the page margin (DESIGN 7.6) -->
-    <Grid Margin="{DynamicResource RhPageInset}">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="1000*" MaxWidth="1100" />
-        <ColumnDefinition Width="*" />
-      </Grid.ColumnDefinitions>
-    <StackPanel Spacing="0">
-      <Grid ColumnDefinitions="*,Auto">
-        <StackPanel Spacing="2">
-          <TextBlock Text="{l:T nav.emulators}" Classes="title" />
-          <TextBlock c:Sentence.Text="{Binding SummaryText}" Classes="meta" />
-        </StackPanel>
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
-          <Button Name="FolderButton" Theme="{StaticResource RhGhostButton}" Command="{Binding OpenEmulatorsFolderCommand}" MinHeight="44">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <c:RhIcon Data="{StaticResource Icon.Folder}" Width="18" Height="18" />
-              <TextBlock Text="{l:T emulators.openFolder}" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button Name="RefreshButton" Theme="{StaticResource RhGhostButton}" Command="{Binding RefreshCommand}" MinHeight="44">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <c:RhIcon Data="{StaticResource Icon.Refresh}" Width="18" Height="18" />
-              <TextBlock Text="{l:T emulators.refresh}" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-        </StackPanel>
-      </Grid>
-      <TextBlock Text="{l:T emulators.intro}" Classes="read" MaxWidth="860" HorizontalAlignment="Left" Margin="0,14,0,0" TextWrapping="Wrap" />
+  <c:WorkbenchFrame Name="Frame">
+    <!-- the head: title, one meta line; the buttons right on the list edge, their text on the meta line -->
+    <Grid c:WorkbenchFrame.Role="Head" ColumnDefinitions="*,Auto">
+      <StackPanel Spacing="8">
+        <TextBlock Text="{l:T nav.emulators}" Classes="poster" />
+        <TextBlock c:Sentence.Text="{Binding SummaryText}" Classes="meta" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top" Margin="0,58,0,0">
+        <Button Name="FolderButton" Theme="{StaticResource RhGhostButton}" Command="{Binding OpenEmulatorsFolderCommand}" MinHeight="44">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:RhIcon Data="{StaticResource Icon.Folder}" Width="18" Height="18" />
+            <TextBlock Text="{l:T emulators.openFolder}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Name="RefreshButton" Theme="{StaticResource RhGhostButton}" Command="{Binding RefreshCommand}" MinHeight="44">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:RhIcon Data="{StaticResource Icon.Refresh}" Width="18" Height="18" />
+            <TextBlock Text="{l:T emulators.refresh}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Grid>
 
-      <!-- the systems -->
-      <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,32,0,12">
+    <ScrollViewer Name="Scroller" c:WorkbenchFrame.Role="Scroll" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="0" Margin="0,16,24,48">
+      <!-- the systems; where RetroHub looks, as one meta line beside the label -->
+      <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,12" Height="24">
         <c:ShelfLabel Text="{Binding FilterText}" IsVisible="{Binding IsFiltered}" VerticalAlignment="Center" />
         <c:ShelfLabel Text="{l:T emulators.systems}" IsVisible="{Binding !IsFiltered}" VerticalAlignment="Center" />
+        <TextBlock Classes="meta" VerticalAlignment="Center" IsVisible="{Binding !IsFiltered}">
+          <Run Text="{l:T emulators.where.before}" /><Run Classes="mono" Text="emulators/&lt;name&gt;/" /><Run Text="{l:T emulators.where.after}" />
+        </TextBlock>
         <Button Theme="{StaticResource RhGhostButton}" Command="{Binding ShowAllCommand}" Content="{l:T emulators.showAll}" IsVisible="{Binding IsFiltered}" MinHeight="36" />
       </StackPanel>
       <Border Height="1" Background="{DynamicResource RhLineBrush}" />
@@ -96,12 +113,12 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:EmulatorRowViewModel">
             <StackPanel>
-              <Button Theme="{StaticResource RhFoldRow}" Classes="fold-row own-bar sysrow" AutomationProperties.Name="{Binding Title}"
+              <Button Theme="{StaticResource RhFoldRow}" Classes="fold-row sysrow" AutomationProperties.Name="{Binding Title}"
                       Command="{Binding $parent[p:PageBase].((vm:EmulatorsViewModel)DataContext).ToggleCommand}" CommandParameter="{Binding}">
-                <Grid ColumnDefinitions="8,124,*,Auto" MinHeight="72">
-                  <Border Classes="row-band" Background="{Binding Band}" />
-                  <TextBlock Grid.Column="1" Classes="sys-code" Text="{Binding Code}" VerticalAlignment="Center" Margin="16,0,0,0" />
-                  <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="0" Margin="0,8,16,8">
+                <!-- the system's spine (40 × 72), then the name from x 172 -->
+                <Grid ColumnDefinitions="16,40,20,*,Auto" MinHeight="72">
+                  <c:MiniSpine Grid.Column="1" Look="{Binding Look}" Code="{Binding Code}" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="3" VerticalAlignment="Center" Spacing="0" Margin="0,8,16,8">
                     <StackPanel Orientation="Horizontal" Spacing="12">
                       <Border Classes="row-chip" Padding="8,1" CornerRadius="2" Margin="-8,0,0,0">
                         <TextBlock Text="{Binding Title}" FontFamily="{DynamicResource RhFontUi}" FontWeight="Medium" FontSize="20" LineHeight="26" />
@@ -112,46 +129,59 @@
                     <TextBlock Classes="read" LineHeight="26" IsVisible="{Binding Ready}" TextTrimming="CharacterEllipsis">
                       <Run Text="{l:T emulators.playsWith}" /><Run Text=" " /><Run Classes="prog" Text="{Binding PlaysWith}" /><Run Text=" " /><Run Classes="ver" Text="{Binding PlaysVersion}" />
                     </TextBlock>
-                    <!-- Kein Emulator gefunden. Einrichten › -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding NotReady}">
+                    <!-- a single gap: Kein Emulator gefunden. Einrichten › (with the warning) -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowGap}">
                       <c:RhIcon Data="{StaticResource Icon.Warning}" Width="18" Height="18" Foreground="{DynamicResource RhWarningBrush}" VerticalAlignment="Center" />
                       <TextBlock Classes="read" LineHeight="26" VerticalAlignment="Center">
                         <Run Text="{Binding MissingText}" /><Run Text=" " /><Run Text="{l:T emulators.setUp}" Foreground="{DynamicResource RhText1Brush}" />
                       </TextBlock>
                     </StackPanel>
+                    <!-- many gaps (a fresh install): the head says it once; the row only states it -->
+                    <TextBlock Classes="read quiet-gap" LineHeight="26" IsVisible="{Binding ShowQuietGap}" Text="{l:T emulators.noneShort}" />
                   </StackPanel>
-                  <c:RhIcon Grid.Column="3" Classes="row-chevron" Data="{StaticResource Icon.Expand}" Width="18" Height="18" StrokeThickness="2.6" Margin="0,0,20,0"
+                  <c:RhIcon Grid.Column="4" Classes="row-chevron" Data="{StaticResource Icon.Expand}" Width="18" Height="18" StrokeThickness="2.6" Margin="0,0,20,0"
                             Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" IsVisible="{Binding !IsOpen}" />
-                  <c:RhIcon Grid.Column="3" Classes="row-chevron" Data="{StaticResource Icon.Collapse}" Width="18" Height="18" StrokeThickness="2.6" Margin="0,0,20,0"
+                  <c:RhIcon Grid.Column="4" Classes="row-chevron" Data="{StaticResource Icon.Collapse}" Width="18" Height="18" StrokeThickness="2.6" Margin="0,0,20,0"
                             Foreground="{DynamicResource RhText3Brush}" VerticalAlignment="Center" IsVisible="{Binding IsOpen}" />
                 </Grid>
               </Button>
+              <!-- opened: a key/value grid – keys in label 15 Text 3 at x 228 (168 wide), values at x 412 in read 18 Text 2,
+                   every line 32 px, paths in Cascadia Mono 15; 16 px before the buttons -->
               <c:FoldPanel IsOpen="{Binding IsOpen}">
-                <StackPanel Margin="132,6,24,26" Spacing="10" IsVisible="{Binding HasEmulator}">
-                  <TextBlock Classes="path">
-                    <Run Text="{Binding Emulator.PathPrefix}" /><Run Text=" " /><Run Classes="mono" Text="{Binding Emulator.PathOnly}" />
-                  </TextBlock>
-                  <TextBlock Text="{Binding Emulator.ModesSentence}" Classes="read" />
-                  <TextBlock Text="{Binding Emulator.CoresText}" Classes="meta" IsVisible="{Binding Emulator.HasCores}" TextWrapping="Wrap" />
+                <StackPanel Margin="132,8,24,24" Spacing="0" IsVisible="{Binding HasEmulator}">
+                  <Grid ColumnDefinitions="168,16,*" MinHeight="32">
+                    <TextBlock Classes="kv-key" Text="{l:T emulators.key.program}" />
+                    <TextBlock Grid.Column="2" Classes="kv-value" TextTrimming="CharacterEllipsis">
+                      <Run Text="{Binding Emulator.NameVersion}" /><Run Text=" " /><Run Text="{Binding Emulator.PathInline}" /><Run Text=" " /><Run Classes="mono" Text="{Binding Emulator.PathOnly}" />
+                    </TextBlock>
+                  </Grid>
+                  <Grid ColumnDefinitions="168,16,*" MinHeight="32" IsVisible="{Binding ShowModes}">
+                    <TextBlock Classes="kv-key" Text="{l:T emulators.key.modes}" />
+                    <TextBlock Grid.Column="2" Classes="kv-value" Text="{Binding Emulator.ModesSentence}" TextTrimming="CharacterEllipsis" />
+                  </Grid>
+                  <Grid ColumnDefinitions="168,16,*" MinHeight="32" IsVisible="{Binding HasCores}">
+                    <TextBlock Classes="kv-key" Text="{l:T emulators.key.cores}" />
+                    <TextBlock Grid.Column="2" Classes="kv-value" Text="{Binding CoresText}" TextWrapping="Wrap" />
+                  </Grid>
                   <!-- the candidates in the planner's order: the one that plays in Papier -->
-                  <StackPanel Spacing="2" IsVisible="{Binding HasChoices}" Margin="0,4,0,0">
-                    <TextBlock Text="{l:T emulators.order}" Classes="label" />
-                    <ItemsControl ItemsSource="{Binding Choices}">
+                  <Grid ColumnDefinitions="168,16,*" IsVisible="{Binding HasChoices}">
+                    <TextBlock Classes="kv-key" Text="{l:T emulators.key.order}" />
+                    <ItemsControl Grid.Column="2" ItemsSource="{Binding Choices}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:EmulatorChoiceLine">
-                          <StackPanel Orientation="Horizontal" Spacing="10" Height="28">
+                          <StackPanel Orientation="Horizontal" Spacing="10" Height="32">
                             <Panel Width="18" VerticalAlignment="Center">
                               <c:RhIcon Data="{StaticResource Icon.Ok}" Width="16" Height="16" Foreground="{DynamicResource RhSuccessBrush}" IsVisible="{Binding IsUsable}" />
                               <c:RhIcon Data="{StaticResource Icon.Warning}" Width="16" Height="16" Foreground="{DynamicResource RhWarningBrush}" IsVisible="{Binding !IsUsable}" />
                             </Panel>
-                            <TextBlock Text="{Binding Name}" Classes="ui choice" VerticalAlignment="Center" Classes.chosen="{Binding IsChosen}" />
+                            <TextBlock Text="{Binding Name}" Classes="kv-value choice" VerticalAlignment="Center" Classes.chosen="{Binding IsChosen}" />
                             <TextBlock Text="{Binding State}" Classes="meta" VerticalAlignment="Center" />
                           </StackPanel>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                  </StackPanel>
-                  <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
+                  </Grid>
+                  <StackPanel Orientation="Horizontal" Spacing="12" Margin="184,16,0,0">
                     <Button Command="{Binding $parent[p:PageBase].((vm:EmulatorsViewModel)DataContext).OpenFolderCommand}" CommandParameter="{Binding Emulator}" MinHeight="44">
                       <StackPanel Orientation="Horizontal" Spacing="8">
                         <c:RhIcon Data="{StaticResource Icon.Folder}" Width="18" Height="18" />
@@ -230,6 +260,7 @@
       </StackPanel>
       </Panel>
     </StackPanel>
-    </Grid>
-  </ScrollViewer>
+    </ScrollViewer>
+    <Border c:WorkbenchFrame.Role="Fade" IsHitTestVisible="False" Background="{x:Static c:WorkbenchFrame.FadeBrush}" />
+  </c:WorkbenchFrame>
 </p:PageBase>

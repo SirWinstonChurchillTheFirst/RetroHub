@@ -189,7 +189,8 @@ public sealed partial class GameDetailViewModel : PageViewModel
         // the dim reaches under the header too (no seam at its lower edge; the header's content stays above it)
         HeaderDim = value switch
         {
-            DetailSheet.None => default,
+            // the choice list folds open in the Start rows themselves: nothing dims (M6 QA)
+            DetailSheet.None or DetailSheet.Choice => default,
             DetailSheet.Cover or DetailSheet.Screens => SheetDimDeep,
             _ => SheetDim,
         };

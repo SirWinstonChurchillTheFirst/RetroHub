@@ -574,8 +574,12 @@
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
           <Border Height="1" VerticalAlignment="Bottom" Background="{DynamicResource RhLineBrush}" />
           <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
-          <Grid ColumnDefinitions="*,320" Margin="24,0,8,0">
-            <StackPanel VerticalAlignment="Center" Spacing="1" Margin="0,10,24,10">
+          <Grid ColumnDefinitions="Auto,*,392" Margin="24,0,8,0">
+            <!-- the service-menu number "01" … (Rücken 17, Text 3); the label follows 48 px further on -->
+            <TextBlock Name="PART_Number" Text="{Binding Number}" IsVisible="{Binding HasNumber}" Width="44" VerticalAlignment="Center"
+                       FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="17" LineHeight="20" LetterSpacing="0.7"
+                       Foreground="{DynamicResource RhText3Brush}" />
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1" Margin="0,10,24,10">
               <Border Name="PART_Chip" HorizontalAlignment="Left" Padding="8,2" CornerRadius="2" Margin="-8,0,0,0" Background="Transparent">
                 <TextBlock Name="PART_Label" Text="{Binding Label}" FontFamily="{DynamicResource RhFontUi}" FontWeight="Medium" FontSize="20" LineHeight="26"
                            Foreground="{DynamicResource RhText1Brush}" />
@@ -583,24 +587,31 @@
               <TextBlock Name="PART_Hint" Text="{Binding Hint}" IsVisible="{Binding HasHint}" FontFamily="{DynamicResource RhFontRead}" FontSize="15" LineHeight="20"
                          Foreground="{DynamicResource RhText3Brush}" TextTrimming="CharacterEllipsis" />
             </StackPanel>
-            <!-- ◀ value ▶ -->
-            <Grid Name="PART_Value" Grid.Column="1" ColumnDefinitions="44,*,44" IsVisible="{Binding IsChoice}" VerticalAlignment="Stretch">
+            <!-- ◀ [display window] ▶ : filled triangles 12 × 20, 12 px outside a 320 × 40 room-deep window with an edge line;
+                 the value inside in Zahl 20 (+tnum, Papier); on focus the window's top edge lights in the light colour -->
+            <Grid Name="PART_Value" Grid.Column="2" ColumnDefinitions="36,320,36" IsVisible="{Binding IsChoice}" VerticalAlignment="Stretch" HorizontalAlignment="Center">
               <Border Name="PART_Previous" Background="Transparent" Cursor="Hand" IsVisible="{Binding !IsFixed}">
-                <c:RhIcon Name="PART_PrevIcon" Data="{DynamicResource Icon.ArrowLeft}" Filled="True" Width="20" Height="20" Foreground="{DynamicResource RhText3Brush}"
-                          Classes.end="{Binding !CanPrevious}" />
+                <Path Name="PART_PrevIcon" Data="M12,0 L12,20 L0,10 Z" Width="12" Height="20" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"
+                      Fill="{DynamicResource RhText3Brush}" Classes.end="{Binding !CanPrevious}" />
               </Border>
-              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Border Width="16" Height="16" Background="{Binding Swatch}" IsVisible="{Binding HasSwatch}" VerticalAlignment="Center" />
-                <TextBlock Name="PART_ValueText" Text="{Binding ValueText}" FontFamily="{DynamicResource RhFontUi}" FontWeight="SemiBold" FontSize="18" LineHeight="22"
-                           LetterSpacing="0.3" Foreground="{DynamicResource RhText1Brush}" VerticalAlignment="Center" />
-              </StackPanel>
+              <Border Name="PART_Window" Grid.Column="1" Height="40" VerticalAlignment="Center" Background="{DynamicResource RhRoomDeepBrush}"
+                      BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="0">
+                <Panel>
+                  <Border Name="PART_WindowEdge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
+                  <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border Width="16" Height="16" Background="{Binding Swatch}" IsVisible="{Binding HasSwatch}" VerticalAlignment="Center" />
+                    <TextBlock Name="PART_ValueText" Text="{Binding ValueText}" Classes="number" FontSize="20" LineHeight="24"
+                               Foreground="{DynamicResource RhText1Brush}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Panel>
+              </Border>
               <Border Name="PART_Next" Grid.Column="2" Background="Transparent" Cursor="Hand" IsVisible="{Binding !IsFixed}">
-                <c:RhIcon Name="PART_NextIcon" Data="{DynamicResource Icon.ArrowRight}" Filled="True" Width="20" Height="20" Foreground="{DynamicResource RhText3Brush}"
-                          Classes.end="{Binding !CanNext}" />
+                <Path Name="PART_NextIcon" Data="M0,0 L0,20 L12,10 Z" Width="12" Height="20" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"
+                      Fill="{DynamicResource RhText3Brush}" Classes.end="{Binding !CanNext}" />
               </Border>
             </Grid>
             <!-- action: "Öffnen ›" right-aligned on the arrows' outer edge -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"
                         IsVisible="{Binding IsAction}">
               <TextBlock Name="PART_ActionText" Text="{Binding ActionText}" FontFamily="{DynamicResource RhFontUi}" FontWeight="SemiBold" FontSize="18" LineHeight="22"
                          LetterSpacing="0.3" Foreground="{DynamicResource RhText2Brush}" VerticalAlignment="Center" />
@@ -611,14 +622,33 @@
         </Panel>
       </ControlTemplate>
     </Setter>
-    <Style Selector="^ /template/ c|RhIcon.end">
+    <Style Selector="^ /template/ Path.end">
       <Setter Property="Opacity" Value="0.3" />
     </Style>
     <Style Selector="^:pointerover /template/ Border#PART_Bg">
       <Setter Property="Background" Value="{DynamicResource RhSurfaceBrush}" />
     </Style>
-    <Style Selector="^ /template/ Border#PART_Previous:pointerover > c|RhIcon, ^ /template/ Border#PART_Next:pointerover > c|RhIcon">
-      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    <Style Selector="^ /template/ Border#PART_Previous:pointerover > Path, ^ /template/ Border#PART_Next:pointerover > Path">
+      <Setter Property="Fill" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Path">
+      <Setter Property="Fill" Value="{DynamicResource RhText1Brush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_WindowEdge, ^.open /template/ Border#PART_WindowEdge">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <!-- a row whose list is folded open under it (Importe "Mehr") keeps its focus look while the focus is in the list -->
+    <Style Selector="^.open /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
+    </Style>
+    <Style Selector="^.open /template/ Border#PART_Edge, ^.open /template/ Border#PART_Bar">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^.open /template/ Border#PART_Chip">
+      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
+    </Style>
+    <Style Selector="^.open /template/ TextBlock#PART_Label">
+      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Bg">
       <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />

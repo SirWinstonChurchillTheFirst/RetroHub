@@ -512,12 +512,12 @@ public static class MotifCatalog
     /// The placeholder motif (DESIGN 10.2): the <see cref="Silhouette"/> filled once in the system's colour at
     /// <paramref name="opacity"/>, standing on the bottom edge of <paramref name="box"/>, right-aligned.
     /// </summary>
-    public static void DrawSilhouette(DrawingContext ctx, SystemLook look, Rect box, double opacity)
+    public static void DrawSilhouette(DrawingContext ctx, SystemLook look, Rect box, double opacity, IBrush? brush = null)
     {
         var scale = Math.Min(box.Width, box.Height) / 120.0;
         using (ctx.PushOpacity(opacity))
         using (ctx.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(box.Right - 120 * scale, box.Bottom - 120 * scale)))
-            ctx.DrawGeometry(look.ColorBrush, null, Silhouette(look.Motif));
+            ctx.DrawGeometry(brush ?? look.ColorBrush, null, Silhouette(look.Motif));
     }
 
     /// <summary>

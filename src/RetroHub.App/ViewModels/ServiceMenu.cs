@@ -49,6 +49,9 @@ public sealed partial class ServiceSetting : ObservableObject
         new(label, hint, [], 0, false, null, invoke, actionText);
 
     public string Label { get; }
+    /// <summary>The service-menu number ("01" … ) in Rücken 17 Text 3 before the label; empty = none (folder rows).</summary>
+    public string Number { get; set; } = "";
+    public bool HasNumber => Number.Length > 0;
     /// <summary>One line in <c>meta</c> Text 3 under the label (empty = none).</summary>
     public string Hint { get; private set; }
     public bool HasHint => Hint.Length > 0;

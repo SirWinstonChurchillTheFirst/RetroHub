@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using RetroHub.App.Input;
@@ -95,6 +96,7 @@ public sealed partial class SettingsViewModel : PageViewModel
             var stored = string.Equals(hex, ThemeManager.DefaultAccent, StringComparison.OrdinalIgnoreCase) ? null : hex;
             ThemeManager.ApplyAccent(stored);
             Save(x => x.Accent = stored);
+            Preview("accent");
         });
 
         var motions = new (MotionLevel Level, string Key)[]
@@ -110,8 +112,13 @@ public sealed partial class SettingsViewModel : PageViewModel
             _motion.SetHint(Loc.T(motions.First(m => m.Level == level).Key + ".hint"));
             Motion.Apply(level);
             Save(x => x.Motion = level);
+            Preview("motion");
         });
-        _osd = ServiceSetting.Switch(Loc.T("settings.osd"), Loc.T("settings.osd.hint"), ui.ShowOsd, v => UpdateUi(x => x.ShowOsd = v), on, off);
+        _osd = ServiceSetting.Switch(Loc.T("settings.osd"), Loc.T("settings.osd.hint"), ui.ShowOsd, v =>
+        {
+            UpdateUi(x => x.ShowOsd = v);
+            if (v) Preview("osd");
+        }, on, off);
         _hints = ServiceSetting.Switch(Loc.T("settings.hints"), Loc.T("settings.hints.hint"), ui.ShowHints, v => UpdateUi(x => x.ShowHints = v), on, off);
         _fullscreen = ServiceSetting.Switch(Loc.T("settings.fullscreen"), Loc.T("settings.fullscreen.hint"), s.StartFullscreen, v => Save(x => x.StartFullscreen = v), on, off);
 
@@ -133,14 +140,26 @@ public sealed partial class SettingsViewModel : PageViewModel
         var folders = Paths.Select(path => ServiceSetting.Action(path.Label, path.Display, Loc.T("settings.open"), () => OpenPath(path))).ToList();
 
         ControllerStatus = ControllerText();
-        return
+        // "Sprache" is the last row of Darstellung (M6 QA: a section "Sprache" holding one row "Sprache" said it twice)
+        IReadOnlyList<ServiceSection> sections =
         [
-            new(Loc.T("settings.appearance"), [_accent, _motion, _osd, _hints, _fullscreen]),
+            new(Loc.T("settings.appearance"), [_accent, _motion, _osd, _hints, _fullscreen, _language]),
             new(Loc.T("settings.controls"), [_controller, _exitCombo], ControllerStatus),
             new(Loc.T("settings.library"), [_scan, _watch, _hashes, _online]),
-            new(Loc.T("settings.language"), [_language]),
             new(Loc.T("settings.paths"), folders, Loc.T("settings.paths.hint")),
         ];
+        // numbered like a TV's service menu, continuously across the sections
+        var n = 0;
+        foreach (var row in sections.SelectMany(s => s.Rows)) row.Number = (++n).ToString("00", CultureInfo.InvariantCulture);
+        return sections;
+    }
+
+    /// <summary>A value the test-card TV previews changed ("accent", "motion", "osd"; the page plays it on the card).</summary>
+    public event Action<string>? Previewed;
+
+    private void Preview(string what)
+    {
+        if (!_loading) Previewed?.Invoke(what);
     }
 
     private static int AccentIndex(IReadOnlyList<ServiceValue> accents, string? hex)
@@ -164,9 +183,8 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     private string ControllerText()
     {
-        var input = Ctx.Services.Input;
-        return input.ControllerName is { } n ? Loc.T("settings.controller.connected", n)
-            : input is NullInputSource ? Loc.T("settings.controller.notAvailable") : Loc.T("settings.controller.none");
+        // the device state as a fact (M6 QA: "Controller-Unterstützung folgt" read like an unfinished note)
+        return Ctx.Services.Input.ControllerName is { } n ? Loc.T("settings.controller.connected", n) : Loc.T("settings.controller.none");
     }
 
     /// <summary>The page is shown again: every row shows what is stored now (nothing is applied or saved).</summary>

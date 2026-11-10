@@ -101,6 +101,9 @@ public partial class MainWindow : Window
         // the power-on (DESIGN 9.3): the flight dims the launch overlay and opens its start surface
         Flight.Scrim = LaunchScrim;
         Flight.Reveal = StartPanel;
+        Flight.LandingSlot = StartBoxSlot;
+        Flight.LandingImage = StartBoxImage;
+        Flight.LandingArt = StartBoxArt;
         // toasts lie above the embedded game: the game screen cuts a hole for them into its native host (airspace)
         GameScreen.SetHoleSource(ToastHost);
         ToastHost.SizeChanged += (_, _) => Dispatcher.UIThread.Post(GameScreen.UpdateHoles, DispatcherPriority.Render);
@@ -231,6 +234,14 @@ public partial class MainWindow : Window
             case LaunchPhase.Starting when before == LaunchPhase.Idle:
                 _gameShown = false;
                 _powerLight = light;
+                // the staged moment is the system's: the segment light in its Licht, the dark segments in its Wand hell
+                // (Bernstein stays the app's own progress, DESIGN 2.2)
+                if (game != null)
+                {
+                    var look = SystemPalette.Get(game.SystemId, game.Accent);
+                    StartSegments.Lit = look.LightBrush;
+                    StartSegments.Unlit = look.WallHiBrush;
+                }
                 Flight.PowerOn(FindLaunchBox(game), light, Motion.Current);
                 if (game != null)
                 {

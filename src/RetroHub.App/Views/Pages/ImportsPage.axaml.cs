@@ -32,13 +32,17 @@ public partial class ImportsPage : PageBase
             _vm.PickFolder = PickFolderAsync;
             _vm.PropertyChanged += OnVmChanged;
         };
-        MenuScrim.PointerPressed += (_, e) =>
-        {
-            e.Handled = true;
-            _vm?.CloseMenuCommand.Execute(null);
-        };
-        MenuLayer.SizeChanged += (_, _) => PlaceMenu();
         AddHandler(GotFocusEvent, (_, e) => { if (_vm?.IsMenuOpen != true) EmulatorsPage.KeepClear(e.Source as Control); }, RoutingStrategies.Bubble);
+    }
+
+    /// <summary>The owner row of the open list and the list's buttons (the fold right under the row).</summary>
+    private (ServiceRow? Row, IReadOnlyList<Button> Buttons) OpenMenu()
+    {
+        if (_vm?.MenuFolder is not { } folder) return (null, []);
+        var row = FolderList.GetVisualDescendants().OfType<ServiceRow>().FirstOrDefault(r => ReferenceEquals(r.DataContext, folder.Row));
+        var fold = row?.GetVisualParent()?.GetVisualChildren().OfType<FoldPanel>().FirstOrDefault();
+        var buttons = fold?.GetVisualDescendants().OfType<Button>().Where(b => b.IsVisible).ToList() ?? [];
+        return (row, buttons);
     }
 
     private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -46,9 +50,9 @@ public partial class ImportsPage : PageBase
         if (e.PropertyName != nameof(ImportsViewModel.MenuFolder)) return;
         if (_vm?.MenuFolder != null)
         {
-            _menuOpener = FolderList.GetVisualDescendants().OfType<ServiceRow>()
-                .FirstOrDefault(r => ReferenceEquals(r.DataContext, _vm.MenuFolder.Row));
-            PlaceMenu();
+            _menuOpener = OpenMenu().Row;
+            // the list folds open under its row: the row and its three lines come into view (260 px below the row)
+            if (_menuOpener != null) _menuOpener.BringIntoView(new Rect(0, -48, _menuOpener.Bounds.Width, _menuOpener.Bounds.Height + 48 + 260));
             Dispatcher.UIThread.Post(FocusMenu, DispatcherPriority.Loaded);
         }
         else
@@ -63,28 +67,14 @@ public partial class ImportsPage : PageBase
         }
     }
 
-    private void FocusMenu() =>
-        MenuRows.Children.OfType<Button>().FirstOrDefault(b => b.IsEffectivelyVisible)?.Focus(NavigationMethod.Directional);
-
-    /// <summary>The list hangs under its row, aligned with the value column; above it when there is no room below.</summary>
-    private void PlaceMenu()
-    {
-        if (_menuOpener == null || _menuOpener.TranslatePoint(new Point(0, 0), MenuLayer) is not { } at) return;
-        var layer = MenuLayer.Bounds.Size;
-        var rows = MenuRows.Children.Count(c => c.IsVisible);
-        var height = rows * 56 + 16 + 2;
-        var x = Math.Clamp(at.X + _menuOpener.Bounds.Width - MenuPanel.Width, 16, Math.Max(16, layer.Width - MenuPanel.Width - 16));
-        var below = at.Y + _menuOpener.Bounds.Height + 8;
-        var y = below + height <= layer.Height - 64 ? below : Math.Max(16, at.Y - 8 - height);
-        MenuPanel.Margin = new Thickness(x, y, 0, 0);
-    }
+    private void FocusMenu() => OpenMenu().Buttons.FirstOrDefault(b => b.IsEffectivelyVisible)?.Focus(NavigationMethod.Directional);
 
     public override bool MoveFocus(NavAction action, Control focused)
     {
         if (_vm?.IsMenuOpen == true)
         {
-            // the list is modal: the focus stays inside
-            var buttons = MenuRows.Children.OfType<Button>().Where(b => b.IsEffectivelyVisible).ToList();
+            // the list is modal: the focus stays inside it
+            var buttons = OpenMenu().Buttons.Where(b => b.IsEffectivelyVisible).ToList();
             var at = buttons.IndexOf(focused as Button ?? null!);
             if (at < 0) { FocusMenu(); return true; }
             var next = at + (action == NavAction.Down ? 1 : action == NavAction.Up ? -1 : 0);
@@ -98,7 +88,6 @@ public partial class ImportsPage : PageBase
         }
         return false;
     }
-
     private async Task<string?> PickFolderAsync()
     {
         var storage = TopLevel.GetTopLevel(this)?.StorageProvider;

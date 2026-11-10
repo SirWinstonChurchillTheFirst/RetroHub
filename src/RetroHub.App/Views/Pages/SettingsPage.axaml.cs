@@ -15,17 +15,37 @@ namespace RetroHub.App.Views.Pages;
 public partial class SettingsPage : PageBase
 {
     private SettingsViewModel? _vm;
+    private readonly TestCard _card = new();
 
     public SettingsPage()
     {
         InitializeComponent();
+        Tv.Card = _card;
         DataContextChanged += (_, _) =>
         {
-            if (_vm != null) _vm.SectionRequested -= OnSectionRequested;
+            if (_vm != null)
+            {
+                _vm.SectionRequested -= OnSectionRequested;
+                _vm.Previewed -= OnPreviewed;
+            }
             _vm = DataContext as SettingsViewModel;
-            if (_vm != null) _vm.SectionRequested += OnSectionRequested;
+            if (_vm != null)
+            {
+                _vm.SectionRequested += OnSectionRequested;
+                _vm.Previewed += OnPreviewed;
+            }
         };
     }
+
+    /// <summary>The test-card TV plays what just changed (the light colour follows the resource by itself).</summary>
+    private void OnPreviewed(string what)
+    {
+        if (what == "osd") _card.FlashOsd();
+        else if (what == "motion") _card.Glide();
+    }
+
+    /// <summary>The test card (previews, tests).</summary>
+    internal TestCard Card => _card;
 
     private IReadOnlyList<ServiceRow> Rows() =>
         SectionList.GetVisualDescendants().OfType<ServiceRow>().Where(r => r.IsEffectivelyVisible).ToList();
@@ -65,7 +85,7 @@ public partial class SettingsPage : PageBase
     private void Focus(ServiceRow row)
     {
         row.Focus(NavigationMethod.Directional);
-        row.BringIntoView(new Rect(0, -56, row.Bounds.Width, row.Bounds.Height + 96));
+        row.BringIntoView(new Rect(0, -64, row.Bounds.Width, row.Bounds.Height + 64 + 96));
     }
 
     public override bool FocusDefault() => Rows().FirstOrDefault() is { } first && FocusVisible(first);

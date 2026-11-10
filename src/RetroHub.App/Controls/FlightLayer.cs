@@ -20,8 +20,8 @@ namespace RetroHub.App.Controls;
 /// <item>320–520 ms: the line opens vertically into the start surface (<see cref="Reveal"/>, ScaleY, CubicEaseOut); its
 /// two edges carry the light and fade.</item>
 /// </list>
-/// <see cref="PowerOff"/> ("Ausschalten", the return): the picture collapses to a line in the light (160 ms), the line to
-/// a point (80 ms); the page lies under it. Reduced motion: a 150 ms cross-fade without flight and overexposure (100 ms
+/// <see cref="PowerOff"/> ("Ausschalten", the return): on a closed room-deep backdrop the picture collapses to a line in
+/// the light (160 ms), the line to a point (80 ms); only then the page fades in (280 ms). Reduced motion: a 150 ms cross-fade without flight and overexposure (100 ms
 /// out); off: hard. The layer is never above the embedded emulator window: the game screen stays masked while the
 /// launch is starting, and the transition ends long before the minimum start time (900 ms).
 /// Everything is computed from the elapsed time in <see cref="Apply"/>, so a frame can be shown on its own
@@ -29,8 +29,10 @@ namespace RetroHub.App.Controls;
 /// </summary>
 public sealed class FlightLayer : Canvas
 {
-    public static readonly TimeSpan OffDuration = TimeSpan.FromMilliseconds(240);
+    /// <summary>Switch-off: collapse 160 + point 80 on a closed room-deep backdrop, then the page fades in (Scene 280).</summary>
+    public static readonly TimeSpan OffDuration = TimeSpan.FromMilliseconds(OffPoint + OffFade);
     public const double FlyEnd = 220, LineEnd = 320, FlashEnd = 336, OpenEnd = 520;
+    public const double OffCollapse = 160, OffPoint = 240, OffFade = 280;
     public const double ReducedFade = 150, ReducedOff = 100;
 
     private readonly Image _copy = new() { Stretch = Stretch.Fill, IsVisible = false };
@@ -38,6 +40,8 @@ public sealed class FlightLayer : Canvas
     private readonly Border _edgeTop = new() { IsVisible = false }, _edgeBottom = new() { IsVisible = false };
     private readonly Border _flash = new() { IsVisible = false, Background = new ImmutableSolidColorBrush(Color.FromArgb(0x40, 0xF4, 0xEC, 0xDF)) };
     private readonly Border _off = new() { IsVisible = false, Background = new ImmutableSolidColorBrush(Color.FromRgb(0x0A, 0x09, 0x08)) };
+    /// <summary>The picture collapsing on the switch-off: a lit tube (Regal) on the closed room-deep backdrop.</summary>
+    private readonly Border _tube = new() { IsVisible = false, Background = new ImmutableSolidColorBrush(Color.FromRgb(0x1E, 0x1B, 0x17)) };
     private readonly DispatcherTimer _timer;
     private readonly System.Diagnostics.Stopwatch _clock = new();
     private Rect _from;
@@ -52,6 +56,7 @@ public sealed class FlightLayer : Canvas
         IsHitTestVisible = false;
         ClipToBounds = true;
         Children.Add(_off);
+        Children.Add(_tube);
         Children.Add(_copy);
         Children.Add(_edgeTop);
         Children.Add(_edgeBottom);
@@ -66,6 +71,15 @@ public sealed class FlightLayer : Canvas
 
     /// <summary>The start surface ("Spiel wird gestartet" with the box, title, emulator, segment light) that opens from the line.</summary>
     public Control? Reveal { get; set; }
+
+    /// <summary>
+    /// Where the copy lands (M6 QA): the box slot of the start surface (240 × 336, standing on its shelf edge). The copy
+    /// flies there and shrinks to it, and the start surface shows the SAME bitmap in <see cref="LandingImage"/> instead
+    /// of its own <see cref="LandingArt"/> – one box goes up on the shelf, no other box appears.
+    /// </summary>
+    public Control? LandingSlot { get; set; }
+    public Image? LandingImage { get; set; }
+    public Control? LandingArt { get; set; }
 
     /// <summary>The UI scale (the layer itself is unscaled): line thickness and the copy follow it.</summary>
     public double Scale { get; set; } = 1;
@@ -101,6 +115,12 @@ public sealed class FlightLayer : Canvas
             // the original stays in its row (focus, virtualisation) but is not seen twice – the whole box, spine and all
             _hidden = (Control?)source.FindAncestorOfType<GameTile>() ?? source;
             _hidden.Opacity = 0;
+            if (LandingImage != null)
+            {
+                LandingImage.Source = _snapshot;
+                LandingImage.IsVisible = true;
+                if (LandingArt != null) LandingArt.IsVisible = false;
+            }
         }
         Start();
     }
@@ -211,11 +231,37 @@ public sealed class FlightLayer : Canvas
     {
         if (_hidden != null) _hidden.Opacity = 1;
         _hidden = null;
+        ResetLanding();
+    }
+
+    private void ResetLanding()
+    {
+        if (LandingImage != null)
+        {
+            LandingImage.Source = null;
+            LandingImage.IsVisible = false;
+        }
+        if (LandingArt != null) LandingArt.IsVisible = true;
+    }
+
+    /// <summary>
+    /// The landing rectangle in this layer: the snapshot's aspect contained in the box slot, bottom on the shelf edge,
+    /// centred (the slot's position includes UiScale). Null while the start surface is not laid out.
+    /// </summary>
+    private Rect? Landing()
+    {
+        if (LandingSlot is not { } slot || slot.Bounds.Width < 4 || _from.Width < 1 || _from.Height < 1) return null;
+        if (slot.TranslatePoint(default, this) is not { } tl || slot.TranslatePoint(new Point(slot.Bounds.Width, slot.Bounds.Height), this) is not { } br) return null;
+        var box = new Rect(tl, br);
+        var aspect = _from.Width / _from.Height;
+        var w = Math.Min(box.Width, box.Height * aspect);
+        var h = w / aspect;
+        return new Rect(box.X + (box.Width - w) / 2, box.Bottom - h, w, h);
     }
 
     private void HideParts()
     {
-        _copy.IsVisible = _line.IsVisible = _edgeTop.IsVisible = _edgeBottom.IsVisible = _flash.IsVisible = _off.IsVisible = false;
+        _copy.IsVisible = _line.IsVisible = _edgeTop.IsVisible = _edgeBottom.IsVisible = _flash.IsVisible = _off.IsVisible = _tube.IsVisible = false;
     }
 
     private void ResetTargets(bool visible)
@@ -262,7 +308,8 @@ public sealed class FlightLayer : Canvas
         {
             var p = Math.Clamp(ms / FlyEnd, 0, 1);
             var e = p * p * p;
-            var target = new Rect(w / 2 - _from.Width * 1.4 / 2, h / 2 - _from.Height * 1.4 / 2, _from.Width * 1.4, _from.Height * 1.4);
+            // the copy lands where the start surface's box will stand (fallback: the middle at 1.4×)
+            var target = Landing() ?? new Rect(w / 2 - _from.Width * 1.4 / 2, h / 2 - _from.Height * 1.4 / 2, _from.Width * 1.4, _from.Height * 1.4);
             var r = Lerp(_from, target, e);
             Place(_copy, r);
             _copy.Opacity = ms <= FlyEnd ? 1 : 1 - Math.Clamp((ms - FlyEnd) / (LineEnd - FlyEnd), 0, 1);
@@ -321,7 +368,7 @@ public sealed class FlightLayer : Canvas
 
     private void ApplyOff(double ms, double w, double h, IBrush light, double thick)
     {
-        _copy.IsVisible = _flash.IsVisible = _edgeTop.IsVisible = _edgeBottom.IsVisible = false;
+        _copy.IsVisible = _flash.IsVisible = _edgeTop.IsVisible = _edgeBottom.IsVisible = _tube.IsVisible = false;
         if (_motion != EffectiveMotion.Full)
         {
             // reduced: the dark surface fades away (100 ms)
@@ -331,15 +378,28 @@ public sealed class FlightLayer : Canvas
             _off.IsVisible = _off.Opacity > 0.01;
             return;
         }
-        if (ms < 160)
+        // a closed room-deep backdrop over the whole window until the point has gone (M6 QA: the line was drawn over the
+        // restored page and read as a stray underline); then the page fades in (Scene 280, CubicEaseOut)
+        Place(_off, new Rect(0, 0, w, h));
+        if (ms < OffPoint)
         {
-            // the picture collapses vertically to a line in the light
-            var p = Math.Clamp(ms / 160, 0, 1);
+            _off.Opacity = 1;
+            _off.IsVisible = true;
+        }
+        else
+        {
+            var f = Math.Clamp((ms - OffPoint) / OffFade, 0, 1);
+            _off.Opacity = Math.Pow(1 - f, 3);
+            _off.IsVisible = _off.Opacity > 0.01;
+        }
+        if (ms < OffCollapse)
+        {
+            // the picture (a lit tube) collapses vertically to a line in the light
+            var p = Math.Clamp(ms / OffCollapse, 0, 1);
             var e = p * p;
             var oh = Math.Max(thick, h * (1 - e));
-            _off.Opacity = 1;
-            Place(_off, new Rect(0, (h - oh) / 2, w, oh));
-            _off.IsVisible = true;
+            Place(_tube, new Rect(0, (h - oh) / 2, w, oh));
+            _tube.IsVisible = true;
             _line.Background = light;
             _line.Opacity = Math.Clamp(p * 1.5, 0, 1);
             Place(_line, new Rect(0, Math.Round(h / 2 - thick / 2), w, thick));
@@ -347,9 +407,9 @@ public sealed class FlightLayer : Canvas
         }
         else
         {
-            // the line shrinks to a point in the middle
-            _off.IsVisible = false;
-            var p = Math.Clamp((ms - 160) / 80, 0, 1);
+            // the line shrinks to a point in the middle, on the dark
+            _tube.IsVisible = false;
+            var p = Math.Clamp((ms - OffCollapse) / (OffPoint - OffCollapse), 0, 1);
             var lw = Math.Max(thick, w * (1 - p) * (1 - p));
             _line.Background = light;
             _line.Opacity = 1;
@@ -357,7 +417,6 @@ public sealed class FlightLayer : Canvas
             _line.IsVisible = p < 1;
         }
     }
-
     private static Rect Lerp(Rect a, Rect b, double t) =>
         new(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t, a.Width + (b.Width - a.Width) * t, a.Height + (b.Height - a.Height) * t);
 
