@@ -8,10 +8,11 @@ public enum Housing { WarmGrey, CoolGrey, Black, Anthracite, Violet, White, Beig
 /// <summary>Category motif of a system (DESIGN 6.2). Categories, never products.</summary>
 public enum Motif
 {
-    Cart8, Cart16, Cart64, CartStack, Card,
-    HandheldTall, HandheldTallDouble, HandheldWide, HandheldBroad, Clamshell,
-    Disc, DiscTrack, DiscBands, DiscHalftone, MiniDisc, Tray, Stand, Tablet, Dock,
-    TwinLens, ControlPanel, Stick, Floppy, KeyBlock, Tower,
+    Cart8, CartWide, Cart16, CartGrip, Cart64, CartStack, Card,
+    HandheldTall, HandheldTallDouble, HandheldNarrow, HandheldWide, HandheldBig, HandheldLong, HandheldCompact, HandheldBroad,
+    Clamshell, ClamshellWide,
+    Disc, DiscTrack, DiscBands, DiscHalftone, MiniDisc, Tray, SlotDisc, Tablet, Dock,
+    TwinLens, ControlPanel, Stick, StickGrip, Floppy, KeyBlock, Tower,
 }
 
 /// <summary>Era texture of a wall (DESIGN 4.5); file name = <see cref="Textures.FileName"/>.</summary>
@@ -20,9 +21,12 @@ public enum Texture { None, Grain, Scan, Lcd, Bayer, Dither16, Grooves, Poly, Ha
 /// <summary>The resolved look of one system: wall tones, colour band, light, text on colour, motif, texture.</summary>
 public sealed class SystemLook
 {
-    internal SystemLook(string id, Housing housing, Motif motif, Texture texture, double textureOpacity, Color color, Color second)
+    internal SystemLook(string id, Housing housing, Motif motif, Texture texture, double textureOpacity, Color color, Color second,
+        Texture overlay = Texture.None, double overlayOpacity = 0)
     {
         Id = id;
+        Overlay = overlay;
+        OverlayOpacity = overlayOpacity;
         Housing = housing;
         Motif = motif;
         Texture = texture;
@@ -48,6 +52,12 @@ public sealed class SystemLook
     public Motif Motif { get; }
     public Texture Texture { get; }
     public double TextureOpacity { get; }
+    /// <summary>
+    /// A second era texture laid over the first (DESIGN 6.3: the 16-bit modules carry dither AND the grooves of their
+    /// housings); None for most systems.
+    /// </summary>
+    public Texture Overlay { get; }
+    public double OverlayOpacity { get; }
     /// <summary>Lower 62 % of the wall.</summary>
     public Color Wall { get; }
     /// <summary>Upper 38 % of the wall.</summary>
@@ -99,37 +109,38 @@ public static class SystemPalette
         _ => (Color.Parse("#20132A"), Color.Parse("#311D3F")), // Berry (transparent housing)
     };
 
-    private sealed record Def(Housing Housing, Motif Motif, Texture Texture, double TextureOpacity, string Color, string Second);
+    private sealed record Def(Housing Housing, Motif Motif, Texture Texture, double TextureOpacity, string Color, string Second,
+        Texture Overlay = Texture.None, double OverlayOpacity = 0);
 
     // DESIGN 2.4 system table + 6.3 textures (opacity from 4.5)
     private static readonly Dictionary<string, Def> Defs = new(StringComparer.OrdinalIgnoreCase)
     {
         ["nes"] = new(Housing.WarmGrey, Motif.Cart8, Texture.Bayer, 0.07, "#C51F1B", "#A8A39A"),
-        ["snes"] = new(Housing.WarmGrey, Motif.Cart16, Texture.Dither16, 0.07, "#6652BE", "#BDB7AD"),
+        ["snes"] = new(Housing.WarmGrey, Motif.Cart16, Texture.Dither16, 0.07, "#6652BE", "#BDB7AD", Texture.Grooves, 0.05),
         ["n64"] = new(Housing.Anthracite, Motif.Cart64, Texture.Poly, 0.06, "#12A05E", "#4A4A50"),
         ["gb"] = new(Housing.WarmGrey, Motif.HandheldTall, Texture.Lcd, 0.08, "#8BAC0F", "#306230"),
         ["gbc"] = new(Housing.Berry, Motif.HandheldTallDouble, Texture.Lcd, 0.08, "#8E3BD0", "#2FB8A6"),
         ["gba"] = new(Housing.Violet, Motif.HandheldWide, Texture.Lcd, 0.08, "#5A46D9", "#A9A2E8"),
         ["gamecube"] = new(Housing.Violet, Motif.MiniDisc, Texture.Halftone, 0.07, "#6450CC", "#F29A3B"),
-        ["wii"] = new(Housing.White, Motif.Stand, Texture.Halftone, 0.04, "#3FC0EE", "#E6EEF2"),
+        ["wii"] = new(Housing.White, Motif.SlotDisc, Texture.Halftone, 0.04, "#3FC0EE", "#E6EEF2"),
         ["wiiu"] = new(Housing.White, Motif.Tablet, Texture.Halftone, 0.07, "#12A0CC", "#F0F0F0"),
         ["nds"] = new(Housing.CoolGrey, Motif.Clamshell, Texture.Lcd, 0.08, "#8FA3B8", "#3C4654"),
-        ["3ds"] = new(Housing.Anthracite, Motif.Clamshell, Texture.Lcd, 0.08, "#C21D26", "#2B2B30"),
+        ["3ds"] = new(Housing.Anthracite, Motif.ClamshellWide, Texture.Lcd, 0.08, "#C21D26", "#2B2B30"),
         ["switch"] = new(Housing.Anthracite, Motif.Dock, Texture.Perforated, 0.06, "#C41F2A", "#2E2E33"),
         // 6.3 lists scan-4x3, but scanlines are reserved for the screen object (QA 11.5) → bayer-8
         ["virtualboy"] = new(Housing.Black, Motif.TwinLens, Texture.Bayer, 0.07, "#C8121C", "#1A0505"),
         ["arcade"] = new(Housing.Black, Motif.ControlPanel, Texture.ShadowMask, 0.10, "#FF2E88", "#22E4FF"),
         ["pc"] = new(Housing.Beige, Motif.Floppy, Texture.Perforated, 0.06, "#C7B48A", "#3FBF6A"),
         ["atari2600"] = new(Housing.Wood, Motif.Stick, Texture.Wood, 0.10, "#C0702A", "#2A1A10"),
-        ["atari7800"] = new(Housing.Black, Motif.Stick, Texture.Bayer, 0.07, "#C8243A", "#C0C0C0"),
-        ["lynx"] = new(Housing.Black, Motif.HandheldWide, Texture.Lcd, 0.08, "#F2A21A", "#2B2B2B"),
+        ["atari7800"] = new(Housing.Black, Motif.StickGrip, Texture.Bayer, 0.07, "#C8243A", "#C0C0C0"),
+        ["lynx"] = new(Housing.Black, Motif.HandheldLong, Texture.Lcd, 0.08, "#F2A21A", "#2B2B2B"),
         ["pcengine"] = new(Housing.White, Motif.Card, Texture.Dither16, 0.07, "#F05A28", "#E8E4DA"),
-        ["ngp"] = new(Housing.Anthracite, Motif.HandheldWide, Texture.Lcd, 0.08, "#2E5DB8", "#D9D4C8"),
-        ["wonderswan"] = new(Housing.White, Motif.HandheldTall, Texture.Lcd, 0.08, "#10A8B5", "#F0E6C8"),
+        ["ngp"] = new(Housing.Anthracite, Motif.HandheldCompact, Texture.Lcd, 0.08, "#2E5DB8", "#D9D4C8"),
+        ["wonderswan"] = new(Housing.White, Motif.HandheldNarrow, Texture.Lcd, 0.08, "#10A8B5", "#F0E6C8"),
         ["msx"] = new(Housing.Beige, Motif.KeyBlock, Texture.Grid, 0.07, "#3368A3", "#D8D2C4"),
-        ["mastersystem"] = new(Housing.Black, Motif.Cart8, Texture.Grid, 0.07, "#C42019", "#1A1A1A"),
-        ["megadrive"] = new(Housing.Black, Motif.Cart16, Texture.Dither16, 0.07, "#1B66B2", "#121212"),
-        ["gamegear"] = new(Housing.Black, Motif.HandheldWide, Texture.Grid, 0.07, "#2D9CDB", "#1A1A1A"),
+        ["mastersystem"] = new(Housing.Black, Motif.CartWide, Texture.Grid, 0.07, "#C42019", "#1A1A1A"),
+        ["megadrive"] = new(Housing.Black, Motif.CartGrip, Texture.Dither16, 0.07, "#1B66B2", "#121212", Texture.Grooves, 0.05),
+        ["gamegear"] = new(Housing.Black, Motif.HandheldBig, Texture.Grid, 0.07, "#2D9CDB", "#1A1A1A"),
         ["segacd"] = new(Housing.Black, Motif.Tray, Texture.Halftone, 0.07, "#4A86D0", "#1A1A1A"),
         ["sega32x"] = new(Housing.Black, Motif.CartStack, Texture.Dither16, 0.07, "#F2AE00", "#1A1A1A"),
         ["saturn"] = new(Housing.Anthracite, Motif.DiscBands, Texture.Poly, 0.06, "#5A5FB8", "#2A2A2E"),
@@ -191,7 +202,8 @@ public static class SystemPalette
             if (id != null && Cache.TryGetValue(id, out var look)) return look;
             if (id != null && Defs.TryGetValue(id, out var d))
             {
-                look = new SystemLook(id.ToLowerInvariant(), d.Housing, d.Motif, d.Texture, d.TextureOpacity, Color.Parse(d.Color), Color.Parse(d.Second));
+                look = new SystemLook(id.ToLowerInvariant(), d.Housing, d.Motif, d.Texture, d.TextureOpacity, Color.Parse(d.Color), Color.Parse(d.Second),
+                    d.Overlay, d.OverlayOpacity);
                 Cache[id] = look;
                 return look;
             }

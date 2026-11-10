@@ -694,58 +694,6 @@
     </Style>
   </ControlTheme>
 
-  <!-- ================= System wall ("Wand") ================= -->
-  <ControlTheme x:Key="{x:Type c:SystemCard}" TargetType="c:SystemCard">
-    <Setter Property="ClipToBounds" Value="False" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
-    <Setter Property="Cursor" Value="Hand" />
-    <Setter Property="FocusAdorner" Value="{x:Null}" />
-    <Setter Property="RenderTransformOrigin" Value="50%,100%" />
-    <Setter Property="RenderTransform" Value="scale(1)" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut" />
-      </Transitions>
-    </Setter>
-    <Setter Property="Template">
-      <ControlTemplate x:DataType="vm:SystemItemViewModel">
-        <!-- the wall stands on a board (drawn by the panel below it); the name sits in the light upper zone at full
-             width in ONE poster size (26, max. 3 lines – 4 for the longest names, word boundaries only, product names kept together – else the
-             code in the spine role); the motif stands on the bottom edge at 72 % of the wall height; maker/year and
-             the count bottom left beside it -->
-        <Panel>
-          <c:SystemWall Name="PART_Wall" SystemId="{Binding Id}" Accent="{Binding Accent}" MotifShare="0.72" MotifInset="12" />
-          <c:FitText Name="PART_Name" Classes="poster" Source="{Binding PosterName}" FallbackSource="{Binding ShortName}" Sizes="26" FallbackSize="28"
-                     MaxLines="3" LastResortLines="4" LineFactor="1.08" VerticalAlignment="Top" Margin="20,18,20,0" Foreground="{DynamicResource RhText1Brush}" />
-          <StackPanel Name="PART_Meta" VerticalAlignment="Bottom" HorizontalAlignment="Left" Spacing="0" Margin="20,0,0,14">
-            <TextBlock Text="{Binding SubTitle}" Classes="ui" FontSize="15" Foreground="{DynamicResource RhText2Brush}" />
-            <TextBlock Text="{Binding CountText}" Classes="number" FontSize="15" Foreground="{DynamicResource RhText1Brush}" />
-          </StackPanel>
-          <c:FocusRing Name="PART_Ring" Brush="{Binding LightBrush}" Opacity="0" />
-        </Panel>
-      </ControlTemplate>
-    </Setter>
-    <Style Selector="^ /template/ c|FocusRing#PART_Ring">
-      <Setter Property="Transitions">
-        <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.09" /></Transitions>
-      </Setter>
-    </Style>
-    <Style Selector="^:pointerover /template/ c|FocusRing#PART_Ring">
-      <Setter Property="Opacity" Value="0.4" />
-    </Style>
-    <Style Selector="^:focus-visible">
-      <Setter Property="RenderTransform" Value="scale(1.03)" />
-      <Setter Property="ZIndex" Value="2" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ c|FocusRing#PART_Ring">
-      <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="^:pressed">
-      <Setter Property="RenderTransform" Value="scale(0.98)" />
-    </Style>
-  </ControlTheme>
-
   <!-- ================= Stat tile (legacy; flat) ================= -->
   <ControlTheme x:Key="{x:Type c:StatTile}" TargetType="c:StatTile">
     <Setter Property="Template">
@@ -855,7 +803,7 @@
     <Setter Property="Template">
       <ControlTemplate>
         <Grid Name="PART_Host" RowDefinitions="Auto,24,4">
-          <c:ShelfBoard Grid.Row="1" Height="24" />
+          <c:ShelfBoard Grid.Row="1" Height="24" WallLook="{TemplateBinding BoardLook}" />
           <c:ShelfTrack Name="PART_Track" Grid.RowSpan="3" Margin="{TemplateBinding ItemsMargin}">
             <StackPanel Name="PART_Row" Orientation="Horizontal" Spacing="{TemplateBinding ItemSpacing}" VerticalAlignment="Top"
                         HorizontalAlignment="Left" Height="{TemplateBinding ItemHeight}">
@@ -875,7 +823,8 @@
             </StackPanel>
           </c:ShelfTrack>
           <Border Grid.Row="0" Height="{TemplateBinding ItemHeight}" IsHitTestVisible="False" />
-          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" Margin="{TemplateBinding LabelMargin}" IsHitTestVisible="False">
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" Margin="{TemplateBinding LabelMargin}" IsHitTestVisible="False"
+                      IsVisible="{TemplateBinding Header, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
             <c:ShelfLabel Text="{TemplateBinding Header}" Height="24" />
             <TextBlock Text="{TemplateBinding SubHeader}" Classes="meta" VerticalAlignment="Center" />
           </StackPanel>

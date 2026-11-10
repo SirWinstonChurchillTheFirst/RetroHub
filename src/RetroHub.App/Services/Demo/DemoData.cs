@@ -79,6 +79,39 @@ public static class DemoData
         new("md", "Gunstar Heroes", 1993, "Treasure", "Run and Gun", 2),
     ];
 
+    /// <summary>Design QA (DESIGN 7.4): the demo carries every catalog system (see <see cref="DemoCatalog"/>).</summary>
+    public static bool AllSystems { get; set; }
+
+    /// <summary>A few games for each system the "all systems" demo adds (no covers: every box a spine placeholder).</summary>
+    private static readonly Entry[] ExtraEntries =
+    [
+        new("virtualboy", "Mario's Tennis", 1995, "Nintendo", "Sport", 1), new("virtualboy", "Wario Land", 1995, "Nintendo", "Jump 'n' Run"),
+        new("wii", "Super Mario Galaxy", 2007, "Nintendo", "3D-Jump 'n' Run"), new("wii", "Xenoblade Chronicles", 2010, "Monolith Soft", "Rollenspiel"),
+        new("wii", "Wii Sports", 2006, "Nintendo", "Sport", 4),
+        new("wiiu", "Super Mario 3D World", 2013, "Nintendo", "3D-Jump 'n' Run", 4), new("wiiu", "Splatoon", 2015, "Nintendo", "Shooter", 8),
+        new("switch", "The Legend of Zelda: Breath of the Wild", 2017, "Nintendo", "Action-Adventure"), new("switch", "Celeste", 2018, "Maddy Makes Games", "Jump 'n' Run"),
+        new("switch", "Hades", 2020, "Supergiant Games", "Action-Rollenspiel"),
+        new("atari2600", "Pitfall!", 1982, "Activision", "Action"), new("atari2600", "Adventure", 1980, "Atari", "Adventure"),
+        new("atari2600", "River Raid", 1982, "Activision", "Shoot 'em up"),
+        new("atari7800", "Ninja Golf", 1990, "BlueSky Software", "Sport"), new("atari7800", "Food Fight", 1987, "General Computer", "Action"),
+        new("lynx", "California Games", 1989, "Epyx", "Sport", 4), new("lynx", "Chip's Challenge", 1989, "Epyx", "Puzzle"),
+        new("pcengine", "Bonk's Adventure", 1989, "Red Company", "Jump 'n' Run"), new("pcengine", "Blazing Lazers", 1989, "Compile", "Shoot 'em up"),
+        new("ngp", "SNK vs. Capcom: The Match of the Millennium", 1999, "SNK", "Kampfspiel", 2), new("ngp", "Sonic the Hedgehog Pocket Adventure", 1999, "Sega", "Jump 'n' Run"),
+        new("wonderswan", "Gunpey", 1999, "Bandai", "Puzzle"), new("wonderswan", "Klonoa: Moonlight Museum", 1999, "Namco", "Jump 'n' Run"),
+        new("msx", "Metal Gear", 1987, "Konami", "Stealth-Action"), new("msx", "Knightmare", 1986, "Konami", "Shoot 'em up"),
+        new("mastersystem", "Alex Kidd in Miracle World", 1986, "Sega", "Jump 'n' Run"), new("mastersystem", "Phantasy Star", 1987, "Sega", "Rollenspiel"),
+        new("mastersystem", "Wonder Boy III: The Dragon's Trap", 1989, "Westone", "Action-Adventure"),
+        new("gamegear", "Shinobi", 1991, "Sega", "Action"), new("gamegear", "Sonic Triple Trouble", 1994, "Aspect", "Jump 'n' Run"),
+        new("segacd", "Sonic CD", 1993, "Sega", "Jump 'n' Run"), new("segacd", "Snatcher", 1994, "Konami", "Adventure"),
+        new("sega32x", "Knuckles' Chaotix", 1995, "Sega", "Jump 'n' Run", 2), new("sega32x", "Virtua Racing Deluxe", 1994, "Sega", "Rennspiel", 2),
+        new("saturn", "Panzer Dragoon Saga", 1998, "Team Andromeda", "Rollenspiel"), new("saturn", "NiGHTS into Dreams", 1996, "Sonic Team", "Action"),
+        new("saturn", "Guardian Heroes", 1996, "Treasure", "Beat 'em up", 2),
+        new("dreamcast", "Jet Set Radio", 2000, "Smilebit", "Action"), new("dreamcast", "Shenmue", 1999, "Sega AM2", "Adventure"),
+        new("dreamcast", "Rez", 2001, "United Game Artists", "Rhythmus-Shooter"),
+        new("arcade", "Metal Slug", 1996, "Nazca", "Run and Gun", 2), new("arcade", "Street Fighter II", 1991, "Capcom", "Kampfspiel", 2),
+        new("pc", "Doom", 1993, "id Software", "Ego-Shooter"), new("pc", "Monkey Island 2", 1991, "LucasArts", "Adventure"),
+    ];
+
     // title → (days since last played, play minutes, play count)
     private static readonly Dictionary<string, (double Days, int Minutes, int Count)> History = new()
     {
@@ -166,7 +199,7 @@ public static class DemoData
         var now = DateTime.UtcNow;
         var list = new List<Game>(Entries.Length);
         long id = 1;
-        foreach (var e in Entries)
+        foreach (var e in AllSystems ? Entries.Concat(ExtraEntries) : Entries)
         {
             var sys = catalog.GetSystem(e.System);
             var ext = sys?.Extensions.FirstOrDefault() ?? ".rom";

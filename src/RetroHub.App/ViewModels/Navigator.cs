@@ -39,6 +39,12 @@ public sealed partial class Navigator : ObservableObject
         Raise(new NavigationEntry(key, argument, false));
     }
 
+    /// <summary>
+    /// The current page shows another subject in place (the system page's shoulders): the argument changes, the back
+    /// stack does not, so Back still returns to where the page was opened from.
+    /// </summary>
+    public void ReplaceArgument(object? argument) => CurrentArgument = argument;
+
     public bool GoBack()
     {
         if (_back.Count == 0) return false;

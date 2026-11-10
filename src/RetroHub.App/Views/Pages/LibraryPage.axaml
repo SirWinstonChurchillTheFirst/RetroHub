@@ -190,7 +190,7 @@
              on a stage board; randlos (the negative margins are set in code from the grid's padding) -->
         <Panel Name="Banner" Height="200" IsVisible="{Binding IsSystemSelected}" ClipToBounds="True">
           <c:SystemWall Name="BannerWall" SystemId="{Binding SystemLook.Id, FallbackValue={x:Null}}" Accent="{Binding BannerAccent}" MotifShare="0" TextureOpacity="0.09" />
-          <c:ShelfBoard Name="BannerBoard" Height="24" VerticalAlignment="Bottom" />
+          <c:ShelfBoard Name="BannerBoard" Height="24" VerticalAlignment="Bottom" WallLook="{Binding SystemLook}" />
           <Panel Name="BannerContent" Margin="{DynamicResource RhPageInsetX}">
             <StackPanel Name="BannerText" VerticalAlignment="Bottom" Margin="0,0,280,48">
               <TextBlock Name="BannerTitle" Classes="poster" Text="{Binding BannerTitle}" TextTrimming="CharacterEllipsis" MaxLines="1" />

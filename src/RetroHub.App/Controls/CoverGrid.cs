@@ -68,6 +68,10 @@ public sealed class CoverGrid : UserControl
         AvaloniaProperty.Register<CoverGrid, Control?>(nameof(Header));
 
     /// <summary>The header runs edge to edge over the content padding (the library's wall banner, DESIGN 7.2.1).</summary>
+    /// <summary>Content after the last row (scrolls along; the system page's "Fachende").</summary>
+    public static readonly StyledProperty<Control?> FooterProperty =
+        AvaloniaProperty.Register<CoverGrid, Control?>(nameof(Footer));
+
     public static readonly StyledProperty<bool> HeaderBleedProperty =
         AvaloniaProperty.Register<CoverGrid, bool>(nameof(HeaderBleed));
 
@@ -84,6 +88,7 @@ public sealed class CoverGrid : UserControl
     private readonly StackPanel _outer;
     private readonly Panel _content;
     private readonly ContentControl _headerHost;
+    private readonly ContentControl _footerHost;
     private readonly FocusLayer _focus;
     private readonly Control _boards;
     private readonly Border _fade;
@@ -250,7 +255,8 @@ public sealed class CoverGrid : UserControl
             ClipToBounds = false,
         };
         _headerHost = new ContentControl();
-        _outer = new StackPanel { Children = { _headerHost, _rows } };
+        _footerHost = new ContentControl();
+        _outer = new StackPanel { Children = { _headerHost, _rows, _footerHost } };
         // one focus layer per grid, inside the scroll content (scrolls along): cone behind the rows, ring above them
         _content = new Panel();
         _focus = new FocusLayer(_content, _rows) { BoardFront = ShelfBoard.EdgeHeight };
@@ -295,6 +301,7 @@ public sealed class CoverGrid : UserControl
     public Thickness ContentPadding { get => GetValue(ContentPaddingProperty); set => SetValue(ContentPaddingProperty, value); }
     public ICommand? ItemInvokedCommand { get => GetValue(ItemInvokedCommandProperty); set => SetValue(ItemInvokedCommandProperty, value); }
     public Control? Header { get => GetValue(HeaderProperty); set => SetValue(HeaderProperty, value); }
+    public Control? Footer { get => GetValue(FooterProperty); set => SetValue(FooterProperty, value); }
     public bool ShowBoard { get => GetValue(ShowBoardProperty); set => SetValue(ShowBoardProperty, value); }
     public bool HeaderBleed { get => GetValue(HeaderBleedProperty); set => SetValue(HeaderBleedProperty, value); }
     public double PlaceholderAspect { get => GetValue(PlaceholderAspectProperty); set => SetValue(PlaceholderAspectProperty, value); }
@@ -332,6 +339,7 @@ public sealed class CoverGrid : UserControl
         else if (change.Property == TopFadeColorProperty) UpdateTopFade();
         else if (change.Property == PlaceholderAspectProperty) foreach (var presenter in RealizedRows()) presenter.ApplySize();
         else if (change.Property == HeaderProperty) _headerHost.Content = Header;
+        else if (change.Property == FooterProperty) _footerHost.Content = Footer;
         else if (change.Property == ItemTemplateProperty) Rebuild(keepFocus: false);
     }
 

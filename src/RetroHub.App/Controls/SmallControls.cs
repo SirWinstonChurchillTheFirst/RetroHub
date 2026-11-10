@@ -134,12 +134,6 @@ public class GameTile : Button
     }
 }
 
-/// <summary>A system wall button (template in Themes/Controls.axaml; DataContext = SystemItemViewModel).</summary>
-public class SystemCard : Button
-{
-    protected override Type StyleKeyOverride => typeof(SystemCard);
-}
-
 /// <summary>Legacy dashboard statistic (removed from the pages; deleted in M6).</summary>
 public class StatTile : TemplatedControl
 {

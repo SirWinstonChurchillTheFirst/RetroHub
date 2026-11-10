@@ -57,6 +57,8 @@ public sealed partial class SystemItemViewModel : ObservableObject
     [ObservableProperty] public partial string CountText { get; private set; } = "";
     [ObservableProperty] public partial string PlayTimeText { get; private set; } = "";
     [ObservableProperty] public partial bool IsEmpty { get; private set; }
+    /// <summary>The system whose front stands open on the Konsolen wall (its ticker code is underlined).</summary>
+    [ObservableProperty] public partial bool IsCurrent { get; set; }
 
     public void Update(int gameCount, long playSeconds)
     {

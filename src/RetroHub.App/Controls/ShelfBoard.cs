@@ -36,9 +36,19 @@ public sealed class ShelfBoard : Control
 
     public bool IsEdge { get => GetValue(IsEdgeProperty); set => SetValue(IsEdgeProperty, value); }
 
+    /// <summary>
+    /// The board stands in front of this system's wall (banner of the system page and the library compartment): its
+    /// front is the wall's upper tone lifted by 10 % paper with a 2 px lip, so it reads against every wall – the plain
+    /// Regal-hell front almost vanished in front of the warm-grey walls (M5, DESIGN 4.2).
+    /// </summary>
+    public static readonly StyledProperty<SystemLook?> WallLookProperty = AvaloniaProperty.Register<ShelfBoard, SystemLook?>(nameof(WallLook));
+
+    public SystemLook? WallLook { get => GetValue(WallLookProperty); set => SetValue(WallLookProperty, value); }
+
     static ShelfBoard()
     {
         HeightProperty.OverrideDefaultValue<ShelfBoard>(StageHeight);
+        AffectsRender<ShelfBoard>(WallLookProperty, IsEdgeProperty);
         ClipToBoundsProperty.OverrideDefaultValue<ShelfBoard>(false);
         IsHitTestVisibleProperty.OverrideDefaultValue<ShelfBoard>(false);
         VerticalAlignmentProperty.OverrideDefaultValue<ShelfBoard>(VerticalAlignment.Top);
@@ -50,7 +60,8 @@ public sealed class ShelfBoard : Control
     public override void Render(DrawingContext context)
     {
         var r = new Rect(Bounds.Size);
-        if (IsEdge) DrawEdge(context, r);
+        if (WallLook is { } look) DrawOnWall(context, r, look);
+        else if (IsEdge) DrawEdge(context, r);
         else Draw(context, r);
         foreach (var c in Casters)
         {
@@ -74,6 +85,31 @@ public sealed class ShelfBoard : Control
         context.FillRectangle(FrontBrush, r);
         context.FillRectangle(ThemeManager.BoardLight, new Rect(r.X, r.Y, r.Width, 1));
         context.FillRectangle(EdgeBrush, new Rect(r.X, r.Bottom - 1, r.Width, 1));
+        context.FillRectangle(ShadowBrush, new Rect(r.X, r.Bottom, r.Width, ShadowHeight));
+    }
+
+    private static readonly Dictionary<string, (IBrush Front, IBrush Lip, IBrush Edge)> WallBoards = new();
+
+    /// <summary>
+    /// A stage board in front of a system's wall: front = Wand hell + 10 % paper, a 2 px lip (+ 18 %) under the board
+    /// light, 1 px edge in the wall darkened, the usual 16 px shadow. Brushes are shared per system.
+    /// </summary>
+    public static void DrawOnWall(DrawingContext context, Rect r, SystemLook look)
+    {
+        if (r.Width <= 0 || r.Height <= 0) return;
+        (IBrush Front, IBrush Lip, IBrush Edge) b;
+        lock (WallBoards)
+        {
+            if (!WallBoards.TryGetValue(look.Id, out b))
+                WallBoards[look.Id] = b = (
+                    new ImmutableSolidColorBrush(ColorUtil.Mix(look.WallHi, SystemPalette.Paper, 0.10)),
+                    new ImmutableSolidColorBrush(ColorUtil.Mix(look.WallHi, SystemPalette.Paper, 0.18)),
+                    new ImmutableSolidColorBrush(ColorUtil.Mix(look.Wall, Colors.Black, 0.35)));
+        }
+        context.FillRectangle(b.Front, r);
+        context.FillRectangle(b.Lip, new Rect(r.X, r.Y + 1, r.Width, 2));
+        context.FillRectangle(ThemeManager.BoardLight, new Rect(r.X, r.Y, r.Width, 1));
+        context.FillRectangle(b.Edge, new Rect(r.X, r.Bottom - 1, r.Width, 1));
         context.FillRectangle(ShadowBrush, new Rect(r.X, r.Bottom, r.Width, ShadowHeight));
     }
 

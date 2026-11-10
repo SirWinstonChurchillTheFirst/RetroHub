@@ -98,7 +98,18 @@ public class SystemPaletteTests
                 // same housing and (nearly) the same colour: the motifs must differ
                 if (de < 15) Assert.True(a.Motif != b.Motif, $"{a.Id}/{b.Id}: same housing, ΔE {de:0.0}, same motif");
             }
-        Assert.True(pairs >= 1); // lynx/gamegear today
+        Assert.Equal(0, pairs); // M5: no two catalog systems share a motif any more (see below)
+    }
+
+    /// <summary>
+    /// M5 acceptance (DESIGN 6.5): every catalog system is told apart without text – each has its OWN motif, so even
+    /// two systems with the same housing and a similar colour never look alike.
+    /// </summary>
+    [Fact]
+    public void Every_catalog_system_has_its_own_motif()
+    {
+        var byMotif = SystemPalette.KnownIds.GroupBy(id => SystemPalette.Get(id).Motif).Where(g => g.Count() > 1).ToList();
+        Assert.True(byMotif.Count == 0, string.Join("; ", byMotif.Select(g => $"{g.Key}: {string.Join(", ", g)}")));
     }
 
     [Fact]

@@ -43,6 +43,8 @@ public class Shelf : TemplatedControl
     public static readonly StyledProperty<double> TopGapProperty = AvaloniaProperty.Register<Shelf, double>(nameof(TopGap), 40);
     /// <summary>Where the focused box's left edge stands, measured from the board's first box (DESIGN 7.1: x 240 − margin 96).</summary>
     public static readonly StyledProperty<double> AnchorXProperty = AvaloniaProperty.Register<Shelf, double>(nameof(AnchorX), 144);
+    /// <summary>The board stands in front of this system's wall (Konsolen): its front takes the wall's tone (ShelfBoard.WallLook).</summary>
+    public static readonly StyledProperty<SystemLook?> BoardLookProperty = AvaloniaProperty.Register<Shelf, SystemLook?>(nameof(BoardLook));
 
     /// <summary>The whole shelf: boxes, the 24 px board and 4 px below it.</summary>
     public const double BoardHeight = 24, BelowBoard = 4;
@@ -64,6 +66,7 @@ public class Shelf : TemplatedControl
     public double ItemHeight { get => GetValue(ItemHeightProperty); set => SetValue(ItemHeightProperty, value); }
     public double TopGap { get => GetValue(TopGapProperty); set => SetValue(TopGapProperty, value); }
     public double AnchorX { get => GetValue(AnchorXProperty); set => SetValue(AnchorXProperty, value); }
+    public SystemLook? BoardLook { get => GetValue(BoardLookProperty); set => SetValue(BoardLookProperty, value); }
 
     /// <summary>The focus visuals of this shelf (null until the template is applied).</summary>
     public FocusLayer? FocusVisuals { get; private set; }
@@ -213,6 +216,8 @@ public class Shelf : TemplatedControl
                     span = new Rect(p.X, y, r.Width, 10);
                     _ = tile;
                 }
+                else if (item is SystemSpine spine && spine.ObjectRect is { Width: > 0 } o && spine.TranslatePoint(o.TopLeft, this) is { } sp)
+                    span = new Rect(sp.X, y, o.Width, 10);
                 else if (item.TranslatePoint(new Point(0, 0), this) is { } q) span = new Rect(q.X, y, item.Bounds.Width, 10);
                 else continue;
                 context.FillRectangle(ShelfBoard.ContactBrush, span);
@@ -393,7 +398,7 @@ public sealed class ShelfViewport : Decorator
     }
 
     /// <summary>Boundary feedback (DESIGN 8.4): the focused element shakes 0 → −6 → +4 → 0 px in 180 ms.</summary>
-    private static void Bump(Control c, int direction)
+    internal static void Bump(Control c, int direction)
     {
         if (!Motion.AllowsMovement || direction == 0) return;
         var t = c.RenderTransform as TranslateTransform;

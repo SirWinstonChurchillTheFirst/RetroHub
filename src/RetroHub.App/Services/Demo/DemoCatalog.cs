@@ -12,7 +12,7 @@ public sealed class DemoCatalog : ICatalog
     public DemoCatalog()
     {
         var order = 0;
-        SystemDef S(string id, string name, string shortName, string maker, int year, SystemCategory cat, string accent,
+        SystemDef S(string id, string name, string shortName, string maker, int? year, SystemCategory cat, string accent,
             string[] ext, string[] emus, double aspect = 4.0 / 3, BiosFile[]? bios = null) => new()
         {
             Id = id, Name = name, ShortName = shortName, Manufacturer = maker, Year = year, Category = cat,
@@ -37,6 +37,31 @@ public sealed class DemoCatalog : ICatalog
             S("psp", "PlayStation Portable", "PSP", "Sony", 2004, SystemCategory.Handheld, "#A07CFE", [".iso", ".cso"], ["ppsspp"], 16.0 / 9),
             S("md", "Sega Mega Drive", "MD", "Sega", 1988, SystemCategory.Console, "#12A594", [".md", ".gen", ".bin"], ["retroarch/genesis_plus_gx"]),
         ];
+        // design QA (DESIGN 7.4: "a wall with many systems"): every other catalog system, each with a few games
+        if (DemoData.AllSystems)
+            Systems =
+            [
+                .. Systems,
+                S("virtualboy", "Virtual Boy", "VB", "Nintendo", 1995, SystemCategory.Console, "#C8121C", [".vb"], []),
+                S("wii", "Nintendo Wii", "Wii", "Nintendo", 2006, SystemCategory.Console, "#3FC0EE", [".iso", ".rvz"], []),
+                S("wiiu", "Nintendo Wii U", "Wii U", "Nintendo", 2012, SystemCategory.Console, "#12A0CC", [".wua"], []),
+                S("switch", "Nintendo Switch", "Switch", "Nintendo", 2017, SystemCategory.Console, "#C41F2A", [".nsp", ".xci"], []),
+                S("atari2600", "Atari 2600", "2600", "Atari", 1977, SystemCategory.Console, "#B5651D", [".a26"], []),
+                S("atari7800", "Atari 7800", "7800", "Atari", 1986, SystemCategory.Console, "#C8102E", [".a78"], []),
+                S("lynx", "Atari Lynx", "Lynx", "Atari", 1989, SystemCategory.Handheld, "#F2A21A", [".lnx"], []),
+                S("pcengine", "PC Engine / TurboGrafx-16", "PC Engine", "NEC", 1987, SystemCategory.Console, "#F05A28", [".pce"], []),
+                S("ngp", "Neo Geo Pocket / Color", "NGP", "SNK", 1998, SystemCategory.Handheld, "#2E5DB8", [".ngp", ".ngc"], []),
+                S("wonderswan", "WonderSwan / Color", "WonderSwan", "Bandai", 1999, SystemCategory.Handheld, "#10A8B5", [".ws", ".wsc"], []),
+                S("msx", "MSX", "MSX", "Microsoft / ASCII", 1983, SystemCategory.Computer, "#3368A3", [".rom", ".mx2"], []),
+                S("mastersystem", "Sega Master System", "SMS", "Sega", 1985, SystemCategory.Console, "#C42019", [".sms"], []),
+                S("gamegear", "Sega Game Gear", "Game Gear", "Sega", 1990, SystemCategory.Handheld, "#2D9CDB", [".gg"], []),
+                S("segacd", "Sega Mega-CD / Sega CD", "Mega-CD", "Sega", 1991, SystemCategory.Console, "#4A86D0", [".cue", ".chd"], []),
+                S("sega32x", "Sega 32X", "32X", "Sega", 1994, SystemCategory.Console, "#F2AE00", [".32x"], []),
+                S("saturn", "Sega Saturn", "Saturn", "Sega", 1994, SystemCategory.Console, "#5A5FB8", [".cue", ".chd"], []),
+                S("dreamcast", "Sega Dreamcast", "Dreamcast", "Sega", 1998, SystemCategory.Console, "#F26F21", [".gdi", ".chd"], []),
+                S("arcade", "Arcade", "Arcade", "Diverse", null, SystemCategory.Arcade, "#FF2E88", [".zip"], []),
+                S("pc", "PC (Windows)", "PC", "Microsoft", null, SystemCategory.Pc, "#C7B48A", [".exe", ".lnk"], []),
+            ];
 
         Emulators =
         [

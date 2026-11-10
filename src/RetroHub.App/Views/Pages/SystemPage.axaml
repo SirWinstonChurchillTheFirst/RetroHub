@@ -6,37 +6,143 @@
             xmlns:l="using:RetroHub.App.Localization"
             x:Class="RetroHub.App.Views.Pages.SystemPage"
             x:DataType="vm:SystemViewModel">
-  <!-- Systemseite (M1 foundation state): the page ground is the system's wall (RoomBackdrop); banner and motif follow in M5 (DESIGN 7.5). -->
+  <!--
+    Systemseite "Das Fach" (DESIGN 7.5, M5). The WALL BANNER heads the grid and scrolls with it (randlos): the system's
+    wall (38/62, band, texture 8 %), top left the neighbours as text buttons with shoulder glyphs, bottom left the name
+    (measured poster), ONE sentence and the emulator line with "Systeminfo", right the motif (300) standing on the stage
+    board – a board in the wall's own tone, so it reads in front of every wall. Below the board the grid in the system's
+    light on the wall as a flat tone. One to six games end in "Fachende" (a sentence and the way to the imports); an
+    empty compartment shows the empty shelf. Systeminfo is an overlay (folders, file types, emulators, BIOS).
+    1080: wall window y 72–440, board 440–464, first box ≈ 512.
+  -->
   <p:PageBase.Resources>
     <DataTemplate x:Key="GridTile" x:DataType="vm:GameItemViewModel">
-      <c:GameTile Classes="in-system" />
+      <!-- in one system the label line drops the code (bar, variant and year stay) -->
+      <c:GameTile Classes="in-system no-code" Classes.bare="{Binding !HasLabelDetail}" ShowSticker="True" />
     </DataTemplate>
   </p:PageBase.Resources>
-  <Panel>
+  <p:PageBase.Styles>
+    <!-- the banner's text buttons: quiet on the wall (Text 2, ui 16), focus = inversion like every small element -->
+    <Style Selector="Button.wall-text">
+      <Setter Property="MinHeight" Value="40" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="FontSize" Value="16" />
+    </Style>
+    <Style Selector="Button.wall-text:pointerover c|ButtonGlyph">
+      <Setter Property="Hot" Value="True" />
+    </Style>
+  </p:PageBase.Styles>
+
+  <Panel Name="Root">
     <c:CoverGrid Name="Covers" ItemsSource="{Binding Games}" ItemTemplate="{StaticResource GridTile}" ItemWidth="176" Spacing="28" RowSpacing="24"
-                 CoverAspect="{Binding SlotAspect}" CaptionHeight="90" MaxStretch="1.15" ContentPadding="{DynamicResource RhGridInset}">
+                 CoverAspect="{Binding SlotAspect}" CaptionHeight="90" MaxStretch="1.15" ContentPadding="{DynamicResource RhGridInset}" HeaderBleed="True">
       <c:CoverGrid.Header>
-        <!-- interim until the wall banner (M5, DESIGN 7.5): code label, measured name, ONE sentence, then the emulator
-             status as a line with an 8 px status dot, left-aligned under the sentence; folders/extensions as meta -->
-        <StackPanel Spacing="6" Margin="0,0,0,48" MaxWidth="1400" HorizontalAlignment="Left">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <Border Width="4" Height="18" Background="{Binding System.AccentBrush}" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding System.ShortName}" Classes="code" Foreground="{Binding System.LightBrush}" VerticalAlignment="Center" />
-          </StackPanel>
-          <c:FitText Classes="poster" Source="{Binding System.PosterName}" Sizes="56,48,40" MaxLines="2" LineFactor="1.06" Margin="0,6,0,0" />
-          <TextBlock Classes="read-l" c:Sentence.Text="{Binding SentenceText}" />
-          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
-            <Ellipse Width="8" Height="8" Fill="{DynamicResource RhSuccessBrush}" IsVisible="{Binding EmulatorReady}" VerticalAlignment="Center" />
-            <c:RhIcon Data="{StaticResource Icon.Warning}" Width="20" Height="20" Foreground="{DynamicResource RhWarningBrush}" IsVisible="{Binding !EmulatorReady}" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding EmulatorText}" Classes="ui" FontSize="16" TextWrapping="Wrap" MaxWidth="900" VerticalAlignment="Center" />
-          </StackPanel>
-          <TextBlock Classes="meta" TextWrapping="Wrap">
-            <Run Text="{l:T system.folders}" /><Run Text=" " /><Run Text="{Binding FoldersText}" /><Run Text="   " />
-            <Run Text="{l:T system.extensions}" /><Run Text=" " /><Run Text="{Binding ExtensionsText}" />
-          </TextBlock>
-        </StackPanel>
+        <Panel Name="Banner" Height="392" ClipToBounds="True">
+          <c:SystemWall Name="BannerWall" Margin="0,0,0,24" SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#948A7A}"
+                        MotifShare="0" TextureOpacity="0.08" />
+          <c:ShelfBoard Name="BannerBoard" Height="24" VerticalAlignment="Bottom" WallLook="{Binding System.Look, FallbackValue={x:Null}}" />
+          <Panel Name="BannerContent" Margin="{DynamicResource RhPageInsetX}">
+            <!-- the neighbours: text buttons with the shoulder glyphs (the shoulders do the same) -->
+            <StackPanel Name="Neighbours" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="-10,28,0,0"
+                        IsVisible="{Binding HasNeighbours}">
+              <Button Name="PrevSystem" Theme="{StaticResource RhGhostButton}" Classes="wall-text" Command="{Binding PreviousSystemCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <c:ButtonGlyph Action="PageLeft" Quiet="True" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Previous.Name, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Name="NextSystem" Theme="{StaticResource RhGhostButton}" Classes="wall-text" Command="{Binding NextSystemCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="{Binding Next.Name, FallbackValue={x:Null}}" VerticalAlignment="Center" />
+                  <c:ButtonGlyph Action="PageRight" Quiet="True" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+            <!-- name, ONE sentence, the emulator line – anchored to the board -->
+            <StackPanel Name="BannerText" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="0,0,380,48">
+              <c:FitText Name="BannerTitle" Classes="poster" Source="{Binding System.PosterName, FallbackValue={x:Null}}" Sizes="72,56,44" MaxLines="2" LineFactor="1.04" />
+              <TextBlock Name="BannerSentence" Classes="read-l" c:Sentence.Text="{Binding SentenceText}" TextWrapping="Wrap" MaxLines="2" Margin="0,8,0,0" />
+              <StackPanel Name="StatusRow" Orientation="Horizontal" Spacing="12" Margin="0,16,0,0">
+                <Ellipse Width="8" Height="8" Fill="{DynamicResource RhSuccessBrush}" IsVisible="{Binding EmulatorReady}" VerticalAlignment="Center" />
+                <c:RhIcon Data="{StaticResource Icon.Warning}" Width="20" Height="20" Foreground="{DynamicResource RhWarningBrush}" IsVisible="{Binding !EmulatorReady}"
+                          VerticalAlignment="Center" />
+                <TextBlock Text="{Binding EmulatorText}" Classes="ui" FontSize="16" VerticalAlignment="Center" />
+                <Button Name="SetupButton" Theme="{StaticResource RhGhostButton}" Classes="wall-text" Command="{Binding OpenEmulatorsCommand}"
+                        IsVisible="{Binding !EmulatorReady}" Margin="4,0,0,0">
+                  <TextBlock Text="{l:T system.setup}" />
+                </Button>
+                <Button Name="InfoButton" Theme="{StaticResource RhGhostButton}" Classes="wall-text" Command="{Binding ShowInfoCommand}" Margin="12,0,0,0">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <c:RhIcon Data="{StaticResource Icon.More}" Width="20" Height="20" VerticalAlignment="Center" />
+                    <TextBlock Text="{l:T system.info}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </StackPanel>
+            <c:MotifView Name="BannerMotif" Width="300" Height="300" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,24"
+                         SystemId="{Binding System.Id, FallbackValue={x:Null}}" Accent="{Binding System.Accent, FallbackValue=#948A7A}" />
+          </Panel>
+        </Panel>
       </c:CoverGrid.Header>
+      <c:CoverGrid.Footer>
+        <!-- one to six games: "Fachende" – the compartment ends in one sentence and the way to more; empty: the empty shelf -->
+        <StackPanel Name="Ending" Spacing="0" Margin="0,4,0,0">
+          <StackPanel Name="EmptyEnding" IsVisible="{Binding IsEmpty}" Margin="0,24,0,0">
+            <StackPanel Name="EmptyPlaces" Orientation="Horizontal" Spacing="24" ClipToBounds="True">
+              <c:EmptyShelfDrawing Tight="True" Width="380" Height="200" VerticalAlignment="Bottom" Margin="0,0,24,0" />
+              <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
+              <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
+              <c:EmptySlot Width="150" Height="200" VerticalAlignment="Bottom" />
+            </StackPanel>
+            <c:ShelfBoard Name="EmptyBoard" Height="12" IsEdge="True" Margin="-200,0,-200,0" />
+            <TextBlock Classes="poster-s" Text="{l:T system.emptyTitle}" Margin="0,48,0,0" />
+            <TextBlock Classes="read-l" Text="{Binding EmptyText}" TextWrapping="Wrap" Margin="0,12,0,0" />
+          </StackPanel>
+          <TextBlock Name="FewText" Classes="read-l" Text="{l:T system.fewGames}" IsVisible="{Binding IsFewGames}" />
+          <Button Name="ImportsButton" Margin="0,20,0,0" MinHeight="56" Padding="24,0" Command="{Binding OpenImportsCommand}" HorizontalAlignment="Left">
+            <Button.IsVisible>
+              <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                <Binding Path="IsEmpty" />
+                <Binding Path="IsFewGames" />
+              </MultiBinding>
+            </Button.IsVisible>
+            <TextBlock Text="{l:T system.openImports}" VerticalAlignment="Center" />
+          </Button>
+        </StackPanel>
+      </c:CoverGrid.Footer>
     </c:CoverGrid>
-    <TextBlock Text="{l:T system.empty}" Classes="read" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+    <!-- ===== Systeminfo: the page dims (room-deep 72 %, no blur); header and footer stay ===== -->
+    <Panel Name="InfoLayer" IsVisible="{Binding IsInfoOpen}" Background="Transparent">
+      <Border Name="InfoScrim" Background="#B80A0908" />
+      <Border Name="InfoPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Width="760" Background="{DynamicResource RhSurfaceBrush}"
+              BorderBrush="{DynamicResource RhLineBrush}" BorderThickness="1" CornerRadius="{DynamicResource RhRadiusPanel}" Padding="0,28,0,24"
+              BoxShadow="{DynamicResource RhPanelShadow}" ClipToBounds="False">
+        <Panel>
+          <Border Height="1" VerticalAlignment="Top" Margin="0,-28,0,0" Background="{DynamicResource RhLightEdgeBrush}" />
+          <StackPanel Spacing="0">
+            <TextBlock Classes="h2" Margin="36,0,36,16" Text="{Binding System.Name, FallbackValue={x:Null}}" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding InfoLines}" Margin="36,0,36,8">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:InfoLine">
+                  <Grid ColumnDefinitions="180,*" Margin="0,0,0,12">
+                    <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource RhFontUi}" FontWeight="Medium" FontSize="18" LineHeight="24"
+                               Foreground="{DynamicResource RhText3Brush}" />
+                    <TextBlock Grid.Column="1" Text="{Binding Value}" Classes="ui" TextWrapping="Wrap" IsVisible="{Binding !Mono}" />
+                    <TextBlock Grid.Column="1" Text="{Binding Value}" FontFamily="Cascadia Mono, Consolas, monospace" FontSize="15" LineHeight="24"
+                               Foreground="{DynamicResource RhText1Brush}" TextWrapping="Wrap" IsVisible="{Binding Mono}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="36,12,36,0" HorizontalAlignment="Right">
+              <Button Name="InfoCloseButton" Command="{Binding CloseInfoCommand}" MinHeight="48">
+                <TextBlock Text="{l:T detail.close}" />
+              </Button>
+            </StackPanel>
+          </StackPanel>
+        </Panel>
+      </Border>
+    </Panel>
   </Panel>
 </p:PageBase>

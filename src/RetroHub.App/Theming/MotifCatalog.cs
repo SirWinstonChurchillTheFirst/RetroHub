@@ -7,7 +7,7 @@ namespace RetroHub.App.Theming;
 /// Category motifs (DESIGN 6.2) on a 120×120 grid, standing on y = 120. Each motif is a short list of flat parts
 /// painted in the system's colours: the body (Zweitfarbe, lifted when it would vanish on a dark wall), the colour
 /// parts (Farbe), cut-outs in the wall tone (labels, screens, grooves) and a few light lines. Categories, never
-/// products. Geometries are parsed once and shared; final drawings and the outsider test follow in M5.
+/// products (outsider test, DESIGN 6.5). Geometries are parsed once and shared; every catalog system has its own motif.
 /// </summary>
 public static class MotifCatalog
 {
@@ -78,13 +78,22 @@ public static class MotifCatalog
 
     private static Part[] Create(Motif motif) => motif switch
     {
-        // module: grooves on top, a label inset in colour
+        // ---- modules (cartridges) ----
+        // upright module with three grooves on top and a label inset in colour
         Motif.Cart8 =>
         [
             B("M14,10 H106 V120 H14 Z"),
             X("M24,17 H96 V19 H24 Z M24,24 H96 V26 H24 Z M24,31 H96 V33 H24 Z"),
             C("M24,46 H96 V112 H24 Z"),
         ],
+        // module lying on its side: a raised grip on top, the label left, vertical ribs right
+        Motif.CartWide =>
+        [
+            B("M24,40 H96 V48 H24 Z M6,48 H114 V120 H6 Z"),
+            C("M16,60 H70 V110 H16 Z"),
+            X("M82,60 H84 V110 H82 Z M90,60 H92 V110 H90 Z M98,60 H100 V110 H98 Z"),
+        ],
+        // module with rounded shoulders, label in the middle, one groove near the foot
         Motif.Cart16 =>
         [
             B("M18,22 Q18,8 32,8 H88 Q102,8 102,22 V120 H18 Z"),
@@ -92,31 +101,64 @@ public static class MotifCatalog
             C("M30,34 H90 V100 H30 Z"),
             X("M18,107 H102 V109 H18 Z"),
         ],
+        // module with a narrower ribbed grip stepped on top of the body
+        Motif.CartGrip =>
+        [
+            B("M28,6 H92 V30 H28 Z M16,30 H104 V120 H16 Z"),
+            X("M38,10 H40 V26 H38 Z M48,10 H50 V26 H48 Z M58,10 H60 V26 H58 Z M68,10 H70 V26 H68 Z M78,10 H80 V26 H78 Z"),
+            C("M28,42 H92 V108 H28 Z"),
+        ],
+        // module with sloped shoulders
         Motif.Cart64 =>
         [
             B("M14,30 L26,10 H94 L106,30 V120 H14 Z"),
             X("M32,20 H88 V22 H32 Z"),
             C("M28,38 H92 V104 H28 Z"),
         ],
-        // two modules: the upper one at 80 % width, 8 px joint
+        // a module on a module: the upper one at 80 % width, 8 px joint
         Motif.CartStack =>
         [
             B("M30,20 Q30,8 42,8 H78 Q90,8 90,20 V42 H30 Z M18,62 Q18,50 30,50 H90 Q102,50 102,62 V120 H18 Z"),
             C("M40,16 H80 V36 H40 Z M32,64 H88 V108 H32 Z"),
         ],
+        // a flat card with a row of contacts at its foot
         Motif.Card =>
         [
-            B("M20,60 H100 V120 H20 Z"),
-            C("M30,68 H90 V100 H30 Z"),
-            X("M30,108 H34 V116 H30 Z M40,108 H44 V116 H40 Z M50,108 H54 V116 H50 Z M60,108 H64 V116 H60 Z M70,108 H74 V116 H70 Z M80,108 H84 V116 H80 Z"),
+            B("M14,44 H106 V120 H14 Z"),
+            C("M24,52 H96 V94 H24 Z"),
+            X("M24,104 H28 V114 H24 Z M34,104 H38 V114 H34 Z M44,104 H48 V114 H44 Z M54,104 H58 V114 H54 Z M64,104 H68 V114 H64 Z M74,104 H78 V114 H74 Z M84,104 H88 V114 H84 Z M92,104 H96 V114 H92 Z"),
         ],
-        Motif.HandheldTall or Motif.HandheldTallDouble =>
+
+        // ---- handhelds ----
+        // upright handheld: screen on top, cross and a LEVEL pair of keys below, a speaker slot (no diagonal pair, no
+        // rounded corner)
+        Motif.HandheldTall =>
         [
             C("M30,4 H90 L98,12 V120 H22 V12 Z"),
             X("M34,16 H86 V62 H34 Z"),
             X(Cross(42, 86, 10, 6)),
-            new(Group(Dot(74, 92, 4.5), Dot(86, 82, 4.5)), Paint.Cut),
+            new(Group(Dot(74, 86, 4.5), Dot(88, 86, 4.5)), Paint.Cut),
+            X("M68,104 H92 V106 H68 Z M68,110 H92 V112 H68 Z"),
         ],
+        // the same upright handheld with its outline repeated 6 px behind it (a clear second shell)
+        Motif.HandheldTallDouble =>
+        [
+            new(P("M36,1 H96 L104,9 V116 H28 V9 Z"), Paint.Body, 2),
+            C("M30,4 H90 L98,12 V120 H22 V12 Z"),
+            X("M34,16 H86 V62 H34 Z"),
+            X(Cross(42, 86, 10, 6)),
+            new(Group(Dot(74, 86, 4.5), Dot(88, 86, 4.5)), Paint.Cut),
+        ],
+        // a narrow upright handheld: small screen, a small cross, two keys above each other, speaker lines
+        Motif.HandheldNarrow =>
+        [
+            C("M38,2 H82 L88,8 V120 H32 V8 Z"),
+            X("M38,14 H82 V56 H38 Z"),
+            X(Cross(47, 76, 7, 4)),
+            new(Group(Dot(72, 70, 4), Dot(72, 84, 4)), Paint.Cut),
+            X("M42,98 H78 V100 H42 Z M42,104 H78 V106 H42 Z M42,110 H78 V112 H42 Z"),
+        ],
+        // a landscape handheld: chamfered body, screen in the middle, cross left, two keys right
         Motif.HandheldWide =>
         [
             C("M14,40 H106 L114,48 V112 L106,120 H14 L6,112 V48 Z"),
@@ -124,20 +166,56 @@ public static class MotifCatalog
             X(Cross(22, 76, 8, 5)),
             new(Group(Dot(96, 70, 4), Dot(96, 84, 4)), Paint.Cut),
         ],
+        // a big landscape handheld: tall body, a large screen, speaker slots under the keys
+        Motif.HandheldBig =>
+        [
+            C("M10,26 H110 L116,32 V114 L110,120 H10 L4,114 V32 Z"),
+            X("M32,36 H88 V92 H32 Z"),
+            X(Cross(18, 60, 8, 5)),
+            new(Group(Dot(102, 54, 4.5), Dot(102, 68, 4.5)), Paint.Cut),
+            X("M95,88 H97 V106 H95 Z M101,88 H103 V106 H101 Z M107,88 H109 V106 H107 Z"),
+        ],
+        // a very wide handheld with grips hanging at both ends
+        Motif.HandheldLong =>
+        [
+            C("M8,56 H112 L118,62 V106 L110,120 H88 L82,104 H38 L32,120 H10 L2,106 V62 Z"),
+            X("M42,64 H78 V98 H42 Z"),
+            X(Cross(19, 80, 7, 4)),
+            new(Group(Dot(100, 74, 4), Dot(100, 88, 4)), Paint.Cut),
+        ],
+        // a small, almost square handheld: screen on top, a round knob and two keys below
+        Motif.HandheldCompact =>
+        [
+            C("M26,44 H94 L102,52 V112 L94,120 H26 L18,112 V52 Z"),
+            X("M34,52 H86 V88 H34 Z"),
+            new(Dot(36, 104, 6), Paint.Body),
+            new(Group(Dot(76, 104, 4), Dot(88, 100, 4)), Paint.Cut),
+        ],
+        // a broad, flat handheld whose screen fills most of the front
         Motif.HandheldBroad =>
         [
             C("M12,64 H108 L116,72 V112 L108,120 H12 L4,112 V72 Z"),
-            X("M34,72 H86 V112 H34 Z"),
-            X(Cross(19, 92, 7, 4)),
-            new(Group(Dot(101, 86, 3.5), Dot(101, 98, 3.5)), Paint.Cut),
+            X("M30,70 H90 V114 H30 Z"),
+            X(Cross(17, 90, 6, 4)),
+            new(Group(Dot(103, 84, 3.5), Dot(103, 97, 3.5)), Paint.Cut),
         ],
-        // clamshell: two halves, a hinge in the body tone, two screens cut out
+        // clamshell: two equal halves, a hinge in the body tone, two equal screens cut out
         Motif.Clamshell =>
         [
             C("M18,10 H102 V56 H18 Z M18,64 H102 V120 H18 Z"),
             B("M14,57 H106 V63 H14 Z"),
-            X("M30,18 H90 V50 H30 Z M38,72 H82 V112 H38 Z"),
+            X("M36,16 H84 V50 H36 Z M36,72 H84 V106 H36 Z"),
         ],
+        // clamshell whose upper half is wider (a wide screen above, a small screen and a round pad below)
+        Motif.ClamshellWide =>
+        [
+            C("M8,8 H112 V56 H8 Z M20,64 H100 V120 H20 Z"),
+            B("M16,57 H104 V63 H16 Z"),
+            X("M20,15 H100 V49 H20 Z M44,72 H82 V104 H44 Z"),
+            new(Dot(31, 80, 5), Paint.Cut),
+        ],
+
+        // ---- discs ----
         Motif.Disc => [new(Disc(60, 68, 52, 9), Paint.Color)],
         Motif.DiscTrack =>
         [
@@ -160,41 +238,50 @@ public static class MotifCatalog
             new(Disc(60, 82, 38, 13), Paint.Color),
             new(Rings(60, 82, 31, 25), Paint.Body),
         ],
-        // disc on a drawer: the drawer front stands clearly in front of the disc
+        // disc on a drawer: the wide drawer front stands clearly in front of the disc
         Motif.Tray =>
         [
-            new(Disc(60, 62, 40, 7), Paint.Color),
-            B("M8,86 H112 V120 H8 Z"),
-            X("M44,100 H76 V105 H44 Z"),
+            new(Disc(60, 58, 46, 8), Paint.Color),
+            B("M4,92 H116 V120 H4 Z"),
+            X("M44,103 H76 V108 H44 Z"),
         ],
-        // slot console: a thin upright slab with one horizontal slot line on a low foot; no disc, no lit slot
-        Motif.Stand =>
+        // slot loader: a disc a third of the way into the slot of a block (the disc, not the housing, carries the
+        // category; no stand, no lit slot, the block lies wide instead of standing slim)
+        Motif.SlotDisc =>
         [
-            B("M46,10 H74 V112 H46 Z"),
-            X("M51,30 H69 V33 H51 Z"),
-            C("M34,112 H86 V120 H34 Z"),
+            new(Disc(60, 42, 30, 6), Paint.Color),
+            B("M22,56 H98 V120 H22 Z"),
+            X("M28,56 H92 V60 H28 Z"),
+            X("M30,108 H46 V111 H30 Z"),
         ],
-        // tablet with grips on a stand: plate, cut screen, two dots outside the screen, foot on y 120
+        // a second screen: a tablet with keys standing in front of a large screen drawn as an outline (no monitor
+        // stand: on its own stand it read as a monitor)
         Motif.Tablet =>
         [
-            B("M52,100 H68 V112 H52 Z M34,112 H86 V120 H34 Z"),
-            C("M10,30 H110 V100 H10 Z"),
-            X("M30,38 H90 V92 H30 Z"),
-            new(Group(Dot(20, 54, 4.5), Dot(100, 54, 4.5)), Paint.Body),
+            new(P("M5,13 H115 V119 H5 Z"), Paint.Body, 2),
+            C("M20,62 H100 V120 H20 Z"),
+            X("M38,68 H82 V112 H38 Z"),
+            X(Cross(29, 84, 5, 3)),
+            new(Group(Dot(91, 80, 3), Dot(91, 92, 3)), Paint.Cut),
         ],
-        // a screen plate standing in a flat block (a generic "device in a stand"): no U-shaped dock arms, no side parts
+        // hybrid: a one-piece handheld lifted a little out of the slot of a low base (no dock walls hiding the
+        // screen, no detachable side parts, no colour pair)
         Motif.Dock =>
         [
-            B("M20,24 H100 V92 H20 Z"),
-            X("M27,31 H93 V86 H27 Z"),
-            C("M12,84 H108 V120 H12 Z"),
-            X("M48,99 H72 V103 H48 Z"),
+            B("M12,34 H108 V90 H12 Z"),
+            X("M32,40 H88 V84 H32 Z"),
+            X(Cross(22, 54, 5, 3)),
+            new(Group(Dot(98, 50, 3), Dot(98, 62, 3)), Paint.Cut),
+            C("M6,98 H114 V120 H6 Z"),
+            X("M18,98 H102 V102 H18 Z"),
         ],
+
+        // ---- other devices ----
+        // stereo goggles: a visor with a nose notch, two lenses and strap stubs, drawn in light lines (no stand)
         Motif.TwinLens =>
         [
-            new(P("M14,40 H106 V84 H14 Z M60,84 V112 M36,113 H84"), Paint.Light, 2),
-            new(Group(Dot(40, 62, 13), Dot(80, 62, 13)), Paint.Light, 2),
-            B("M36,112 H84 V120 H36 Z"),
+            new(P("M12,66 H108 V110 L100,118 H72 L64,104 H56 L48,118 H20 L12,110 Z M12,80 H3 M108,80 H117"), Paint.Light, 2),
+            new(Group(Dot(37, 88, 14), Dot(83, 88, 14)), Paint.Light, 2),
         ],
         Motif.ControlPanel =>
         [
@@ -203,11 +290,20 @@ public static class MotifCatalog
             new(Dot(40, 38, 9), Paint.Color),
             new(Group(Dot(66, 84, 5), Dot(80, 84, 5), Dot(94, 84, 5), Dot(66, 100, 5), Dot(80, 100, 5), Dot(94, 100, 5)), Paint.Cut),
         ],
+        // a joystick: low base, thin shaft with a ball, one key
         Motif.Stick =>
         [
             B("M24,92 H96 V120 H24 Z"),
             B("M57,40 H63 V92 H57 Z"),
             new(Group(Dot(60, 36, 10), Dot(36, 102, 6)), Paint.Color),
+        ],
+        // a grip stick: a thick handle without a ball on a base with two keys
+        Motif.StickGrip =>
+        [
+            B("M18,98 H102 V120 H18 Z"),
+            C("M54,30 H66 L70,34 V98 H50 V34 Z"),
+            X("M54,40 H66 V42 H54 Z"),
+            new(Group(Dot(32, 109, 5), Dot(88, 109, 5)), Paint.Color),
         ],
         Motif.Floppy =>
         [
@@ -269,13 +365,18 @@ public static class MotifCatalog
         {
             if (Silhouettes.TryGetValue(motif, out var g)) return g;
             Geometry? solid = null, cuts = null;
+            var seamPen = new Pen(Brushes.Black, 4, lineJoin: PenLineJoin.Miter);
             foreach (var part in Get(motif).Parts)
             {
                 var geo = part.Stroke > 0
                     ? part.Geometry.GetWidenedGeometry(new Pen(Brushes.Black, part.Stroke, lineCap: PenLineCap.Square, lineJoin: PenLineJoin.Miter))
                     : part.Geometry;
-                if (part.Paint == Paint.Cut) cuts = cuts == null ? geo : new CombinedGeometry(GeometryCombineMode.Union, cuts, geo);
-                else solid = solid == null ? geo : new CombinedGeometry(GeometryCombineMode.Union, solid, geo);
+                if (part.Paint == Paint.Cut) { cuts = cuts == null ? geo : new CombinedGeometry(GeometryCombineMode.Union, cuts, geo); continue; }
+                // a part laid over earlier ones keeps a 2 px seam around it (labels, keys, bands, the hinge): in one
+                // colour the drawing stays readable instead of melting into a plain block (M5 outsider sheet)
+                if (solid != null && part.Stroke <= 0)
+                    solid = new CombinedGeometry(GeometryCombineMode.Exclude, solid, part.Geometry.GetWidenedGeometry(seamPen));
+                solid = solid == null ? geo : new CombinedGeometry(GeometryCombineMode.Union, solid, geo);
             }
             g = solid == null ? new RectangleGeometry(default) : cuts == null ? solid : new CombinedGeometry(GeometryCombineMode.Exclude, solid, cuts);
             Silhouettes[motif] = g;

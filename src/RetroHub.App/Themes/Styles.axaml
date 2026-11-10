@@ -147,21 +147,21 @@
   </Style>
 
   <!-- ===== Motion levels (classes on the shell root) ===== -->
-  <Style Selector=".motion-off Button, .motion-off ToggleButton, .motion-off c|GameTile, .motion-off c|SystemCard">
+  <Style Selector=".motion-off Button, .motion-off ToggleButton, .motion-off c|GameTile">
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
-  <Style Selector=".motion-off Button /template/ :is(Control), .motion-off ToggleButton /template/ :is(Control), .motion-off c|GameTile /template/ :is(Control), .motion-off c|SystemCard /template/ :is(Control)">
+  <Style Selector=".motion-off Button /template/ :is(Control), .motion-off ToggleButton /template/ :is(Control), .motion-off c|GameTile /template/ :is(Control)">
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
   <!-- reduced: no lift, no scaling (DESIGN 9.4) -->
   <Style Selector=".motion-reduced c|GameTile /template/ Panel#PART_CoverArea, .motion-off c|GameTile /template/ Panel#PART_CoverArea">
     <Setter Property="RenderTransform" Value="scale(1)" />
   </Style>
-  <Style Selector=".motion-reduced c|SystemCard:focus-visible, .motion-reduced Button:focus-visible, .motion-off c|SystemCard:focus-visible, .motion-off Button:focus-visible">
+  <Style Selector=".motion-reduced Button:focus-visible, .motion-off Button:focus-visible">
     <Setter Property="RenderTransform" Value="scale(1)" />
   </Style>
   <!-- auto-repeat: the lift jumps (no transition), the ring jumps along (DESIGN 8.4) -->
-  <Style Selector=".nav-repeat c|GameTile /template/ Panel#PART_CoverArea, .nav-repeat c|SystemCard, .nav-repeat Button">
+  <Style Selector=".nav-repeat c|GameTile /template/ Panel#PART_CoverArea, .nav-repeat Button">
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
 </Styles>

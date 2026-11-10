@@ -54,6 +54,18 @@ public sealed class SystemWall : Control
         Draw(context, this, r, look, BandHeight, MotifShare, MotifInset, TextureOpacity);
     }
 
+    /// <summary>
+    /// The era texture of <paramref name="look"/> (and its overlay, e.g. the grooves of the 16-bit modules) into
+    /// <paramref name="r"/>; <paramref name="strength"/> NaN = the system's own strength, else the overlay scales along.
+    /// </summary>
+    public static void DrawTextures(DrawingContext context, Visual visual, Rect r, SystemLook look, double strength = double.NaN)
+    {
+        var main = double.IsNaN(strength) ? look.TextureOpacity : strength;
+        TextureFill.Draw(context, visual, r, look.Texture, main);
+        if (look.Overlay != Texture.None && look.TextureOpacity > 0)
+            TextureFill.Draw(context, visual, r, look.Overlay, look.OverlayOpacity * main / look.TextureOpacity);
+    }
+
     /// <summary>Draws a wall into <paramref name="r"/> (shared by placeholders and banners).</summary>
     public static void Draw(DrawingContext context, Visual visual, Rect r, SystemLook look, double band, double motifShare, double motifInset,
         double textureOpacity = double.NaN)
@@ -61,7 +73,7 @@ public sealed class SystemWall : Control
         var split = Math.Round(r.Height * 0.38);
         context.FillRectangle(look.WallHiBrush, new Rect(r.X, r.Y, r.Width, split));
         context.FillRectangle(look.WallBrush, new Rect(r.X, r.Y + split, r.Width, r.Height - split));
-        TextureFill.Draw(context, visual, r, look.Texture, double.IsNaN(textureOpacity) ? look.TextureOpacity : textureOpacity);
+        DrawTextures(context, visual, r, look, textureOpacity);
         context.FillRectangle(LightEdge, new Rect(r.X, r.Y + split, r.Width, 1));
         if (motifShare > 0)
         {
@@ -82,21 +94,31 @@ public sealed class MotifView : Control
 {
     public static readonly StyledProperty<string?> SystemIdProperty = AvaloniaProperty.Register<MotifView, string?>(nameof(SystemId));
     public static readonly StyledProperty<Color> AccentProperty = AvaloniaProperty.Register<MotifView, Color>(nameof(Accent), Color.Parse("#948A7A"));
+    /// <summary>Set: the motif as ONE flat silhouette in this brush (no colours: the outsider-test sheet, DESIGN 6.5).</summary>
+    public static readonly StyledProperty<IBrush?> SilhouetteBrushProperty = AvaloniaProperty.Register<MotifView, IBrush?>(nameof(SilhouetteBrush));
 
     static MotifView()
     {
-        AffectsRender<MotifView>(SystemIdProperty, AccentProperty);
+        AffectsRender<MotifView>(SystemIdProperty, AccentProperty, SilhouetteBrushProperty);
         IsHitTestVisibleProperty.OverrideDefaultValue<MotifView>(false);
     }
 
     public string? SystemId { get => GetValue(SystemIdProperty); set => SetValue(SystemIdProperty, value); }
     public Color Accent { get => GetValue(AccentProperty); set => SetValue(AccentProperty, value); }
+    public IBrush? SilhouetteBrush { get => GetValue(SilhouetteBrushProperty); set => SetValue(SilhouetteBrushProperty, value); }
 
     public override void Render(DrawingContext context)
     {
         var r = new Rect(Bounds.Size);
         if (r.Width <= 0 || r.Height <= 0 || string.IsNullOrEmpty(SystemId)) return;
         var look = SystemPalette.Get(SystemId, Accent);
+        if (SilhouetteBrush is { } flat)
+        {
+            var scale = Math.Min(r.Width, r.Height) / 120.0;
+            using (context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(r.Right - 120 * scale, r.Bottom - 120 * scale)))
+                context.DrawGeometry(flat, null, MotifCatalog.Silhouette(look.Motif));
+            return;
+        }
         MotifCatalog.Draw(context, look, r, alignRight: true);
     }
 }

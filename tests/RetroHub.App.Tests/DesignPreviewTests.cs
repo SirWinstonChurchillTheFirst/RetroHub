@@ -49,6 +49,10 @@ public class DesignPreviewTests
     public Task Demo_library() => Run("demo", null, ShortSizes);
 
     /// <summary>The 1000-game demo (DESIGN 9.5): no covers at all – every box a generated spine placeholder.</summary>
+    /// <summary>The demo with EVERY catalog system (DESIGN 7.4: a wall of 32 systems), Konsolen and Systemseite only.</summary>
+    [Fact]
+    public Task Demo_all_systems() => Run("demoall", null, AllSizes);
+
     [Fact]
     public Task Demo_library_1000() => Run("demo1000", null, [(1920, 1080), (2560, 1440)]);
 
@@ -64,10 +68,16 @@ public class DesignPreviewTests
         .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static readonly string[] PageTokens = ["start", "states", "bibliothek", "detail", "konsolen", "systemseite", "emulatoren", "einstellungen"];
-    private static readonly string[] VariantTokens = ["preview", "nocovers", "demo", "demo1000", "empty", "perf"];
+    private static readonly string[] VariantTokens = ["preview", "nocovers", "demo", "demo1000", "demoall", "empty", "perf"];
+
+    /// <summary>Sheets rendered by their own facts ("specimen", "motive"): asked for alone, the page runs are skipped.</summary>
+    private static readonly string[] SheetTokens = ["specimen", "motive"];
+
+    private static bool OnlySheets => OnlyTokens.Any(SheetTokens.Contains) && !OnlyTokens.Any(t => VariantTokens.Contains(t) || PageTokens.Contains(t));
 
     private static bool Wants(string token, string[] kind)
     {
+        if (OnlySheets) return false;
         var given = OnlyTokens.Where(kind.Contains).ToList();
         return given.Count == 0 || given.Contains(token);
     }
@@ -127,6 +137,58 @@ public class DesignPreviewTests
         Assert.NotNull(frame);
         frame!.Save(Path.Combine(outDir, "specimen.png"), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
         window.Close();
+    });
+
+    /// <summary>
+    /// The motifs of every catalog system (DESIGN 6, M5 acceptance), WITHOUT any text: <c>motive-farbig.png</c> (each
+    /// system's wall with band, texture and motif – "distinguishable without reading"), <c>motive-umriss.png</c> (the
+    /// outsider-test sheet: one flat paper silhouette per motif, no colour), <c>motive-klein.png</c> (the same walls at
+    /// spine/placeholder size). The order is written to <c>motive-legende.txt</c>, never into the pictures.
+    /// </summary>
+    [Fact]
+    public Task Motif_sheet() => UiTest.Run(() =>
+    {
+        Assert.SkipWhen(string.IsNullOrEmpty(DesignDir), "RETROHUB_DESIGN_DIR is not set (design previews only on request)");
+        Assert.SkipWhen(OnlyTokens.Length > 0 && !OnlyTokens.Contains("motive"), "filtered out (RETROHUB_DESIGN_ONLY)");
+        var outDir = Path.Combine(DesignDir!, "shots", Milestone);
+        Directory.CreateDirectory(outDir);
+        TestSupport.CreateContext();
+        string[] ids =
+        [
+            "nes", "mastersystem", "snes", "megadrive", "n64", "sega32x", "pcengine", "atari2600",
+            "gb", "gbc", "wonderswan", "gba", "gamegear", "lynx", "ngp", "psp",
+            "nds", "3ds", "ps1", "saturn", "dreamcast", "segacd", "gamecube", "wii",
+            "wiiu", "switch", "ps2", "virtualboy", "arcade", "pc", "msx", "atari7800",
+        ];
+        Assert.Equal(Theming.SystemPalette.KnownIds.Count, ids.Length);
+        File.WriteAllLines(Path.Combine(outDir, "motive-legende.txt"),
+            ids.Select((id, i) => $"{i / 8 + 1}.{i % 8 + 1}  {id}  {Theming.SystemPalette.Get(id).Motif}"));
+        var room = new Avalonia.Media.SolidColorBrush(Theming.SystemPalette.Room);
+        var paper = new Avalonia.Media.SolidColorBrush(Theming.SystemPalette.Paper);
+
+        void Sheet(string file, double cell, double gap, Func<string, Control> make)
+        {
+            var grid = new Avalonia.Controls.WrapPanel { ItemSpacing = gap, LineSpacing = gap, Margin = new Avalonia.Thickness(gap) };
+            foreach (var id in ids)
+            {
+                var c = make(id);
+                c.Width = cell;
+                c.Height = cell;
+                grid.Children.Add(c);
+            }
+            var w = 8 * cell + 9 * gap;
+            var window = new Avalonia.Controls.Window { Width = w, Height = 4 * cell + 5 * gap, Background = room, Content = grid };
+            window.Show();
+            TestSupport.Settle(300);
+            var frame = window.CaptureRenderedFrame();
+            Assert.NotNull(frame);
+            frame!.Save(Path.Combine(outDir, file), new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+            window.Close();
+        }
+
+        Sheet("motive-farbig.png", 200, 16, id => new Controls.SystemWall { SystemId = id, MotifShare = 0.72, MotifInset = 14 });
+        Sheet("motive-umriss.png", 160, 32, id => new Controls.MotifView { SystemId = id, SilhouetteBrush = paper });
+        Sheet("motive-klein.png", 72, 10, id => new Controls.SystemWall { SystemId = id, MotifShare = 0.72, MotifInset = 4, BandHeight = 4 });
     });
 
     // ===================== scratch roots =====================
@@ -276,10 +338,12 @@ public class DesignPreviewTests
         foreach (var (w, h) in sizes)
         {
             Services.Demo.DemoData.TargetCount = variant == "demo1000" ? 1000 : null;
+            Services.Demo.DemoData.AllSystems = variant == "demoall";
             var ctx = root == null
                 ? TestSupport.CreateContext(s => s.Motion = MotionLevel.Full)
                 : new UiContext(CreateReal(root));
             Services.Demo.DemoData.TargetCount = null;
+            Services.Demo.DemoData.AllSystems = false;
             if (root != null) App.InitializeUi(ctx.Services.Settings.Current, null);
             var vm = new MainViewModel(ctx);
             var window = new MainWindow(vm) { Width = w, Height = h };
@@ -288,32 +352,24 @@ public class DesignPreviewTests
             {
                 TestSupport.Pump(() => vm.CurrentPage is HomeViewModel { IsLoaded: true }, 8000);
                 var prefix = Path.Combine(outDir, $"{variant}-{w}x{h}");
-                if (variant != "demo1000")
+                var wallOnly = variant == "demoall"; // the many-systems demo: Konsolen and Systemseite only
+                if (variant != "demo1000" && !wallOnly)
                 {
                     if (Wants("start", PageTokens)) Save(window, prefix + "-1-start.png", 1400);
                     if (Wants("states", PageTokens)) StartStates(window, vm, prefix);
                 }
 
-                if (Wants("bibliothek", PageTokens)) LibraryStates(window, vm, prefix, deep: variant == "demo1000");
+                if (!wallOnly && Wants("bibliothek", PageTokens)) LibraryStates(window, vm, prefix, deep: variant == "demo1000");
                 if (variant == "demo1000") continue;
 
                 var pick = PickGame(ctx);
-                if (pick != null && Wants("detail", PageTokens)) DetailStates(window, vm, ctx, pick, prefix);
+                if (!wallOnly && pick != null && Wants("detail", PageTokens)) DetailStates(window, vm, ctx, pick, prefix);
 
-                if (Wants("konsolen", PageTokens))
-                {
-                    vm.Navigator.Navigate(PageKey.Systems);
-                    TestSupport.Pump(() => vm.CurrentPage is SystemsViewModel { Systems.Count: > 0 }, 8000);
-                    Save(window, prefix + "-4-konsolen.png", 600);
-                }
+                if (Wants("konsolen", PageTokens)) SystemsStates(window, vm, prefix);
 
-                if (pick != null && Wants("systemseite", PageTokens))
-                {
-                    vm.Navigator.Navigate(PageKey.System, pick.SystemId);
-                    TestSupport.Pump(() => vm.CurrentPage is SystemViewModel { Games.Count: > 0 }, 8000);
-                    Save(window, prefix + "-5-systemseite.png", 1200);
-                }
+                if (pick != null && Wants("systemseite", PageTokens)) SystemStates(window, vm, ctx, pick, prefix);
 
+                if (wallOnly) continue;
                 if (Wants("emulatoren", PageTokens))
                 {
                     vm.Navigator.Navigate(PageKey.Emulators);
@@ -334,6 +390,83 @@ public class DesignPreviewTests
             }
         }
     });
+
+    /// <summary>
+    /// Konsolen (DESIGN 7.4) driven like a controller: the first front open; three spines on (the row glides, the front
+    /// stands in slot 3, the page ground is that system's wall); the last system (the row ends at the right edge); down
+    /// to the "Noch leer" edge when the library has systems without games.
+    /// </summary>
+    private static void SystemsStates(MainWindow window, MainViewModel vm, string prefix)
+    {
+        Control? Focused() => window.FocusManager?.GetFocusedElement() as Control;
+        vm.Navigator.Navigate(PageKey.Systems);
+        TestSupport.Pump(() => vm.CurrentPage is SystemsViewModel { IsLoaded: true }, 8000);
+        TestSupport.Pump(() => Focused() is Controls.SystemSpine, 3000);
+        Save(window, prefix + "-4-konsolen.png", 900);
+        if (vm.CurrentPage is not SystemsViewModel { HasSystems: true } systems) return;
+        for (var i = 0; i < 3; i++) { window.Execute(Input.NavAction.Right); TestSupport.Settle(60); }
+        Save(window, prefix + "-4b-konsolen-fokus.png", 900);
+        for (var i = 0; i < systems.Systems.Count; i++) window.Execute(Input.NavAction.Right);
+        Save(window, prefix + "-4c-konsolen-ende.png", 900);
+        if (systems.HasEmptySystems)
+        {
+            window.Execute(Input.NavAction.Down);
+            window.Execute(Input.NavAction.Right);
+            window.Execute(Input.NavAction.Right);
+            Save(window, prefix + "-4d-konsolen-leer.png", 900);
+            window.Execute(Input.NavAction.Up);
+        }
+        for (var i = 0; i < systems.Systems.Count; i++) window.Execute(Input.NavAction.Left);
+        TestSupport.Settle(300);
+    }
+
+    /// <summary>
+    /// Systemseite (DESIGN 7.5): the subject's system with a box focused; up into the banner (Systeminfo focused);
+    /// the Systeminfo overlay; deeper in the grid; the shoulder to the next system; a system with few games
+    /// ("Fachende"); an empty system (when the library has one).
+    /// </summary>
+    private static void SystemStates(MainWindow window, MainViewModel vm, UiContext ctx, GameItemViewModel pick, string prefix)
+    {
+        Control? Focused() => window.FocusManager?.GetFocusedElement() as Control;
+        vm.Navigator.Navigate(PageKey.Systems);
+        TestSupport.Pump(() => vm.CurrentPage is SystemsViewModel { IsLoaded: true }, 8000);
+        var systemId = ctx.Services.Catalog.GetSystem(pick.SystemId)?.Id ?? pick.SystemId;
+        vm.Navigator.Navigate(PageKey.System, systemId);
+        TestSupport.Pump(() => vm.CurrentPage is SystemViewModel { IsLoaded: true, Games.Count: > 0 } s && s.System?.Id == systemId, 8000);
+        TestSupport.Pump(() => Focused() is GameTile, 3000);
+        window.Execute(Input.NavAction.Right);
+        Save(window, prefix + "-5-systemseite.png", 1200);
+        if (vm.CurrentPage is not SystemViewModel page) return;
+        window.Execute(Input.NavAction.Up);
+        Save(window, prefix + "-5b-systemseite-banner.png", 700);
+        page.ShowInfoCommand.Execute(null);
+        Save(window, prefix + "-5c-systemseite-info.png", 700);
+        window.Execute(Input.NavAction.Back);
+        TestSupport.Settle(200);
+        window.Execute(Input.NavAction.Down);
+        for (var i = 0; i < 2; i++) window.Execute(Input.NavAction.Down);
+        Save(window, prefix + "-5d-systemseite-tief.png", 900);
+        var before = page.System?.Id;
+        window.Execute(Input.NavAction.PageRight);
+        TestSupport.Pump(() => page.System?.Id != before && page.IsLoaded, 4000);
+        Save(window, prefix + "-5e-systemseite-wechsel.png", 1000);
+        var stats = ctx.Services.Games.Stats();
+        var few = ctx.Services.Catalog.Systems.Where(s => stats.GamesPerSystem.GetValueOrDefault(s.Id) is > 0 and <= 6)
+            .OrderBy(s => stats.GamesPerSystem.GetValueOrDefault(s.Id)).FirstOrDefault();
+        if (few != null)
+        {
+            vm.Navigator.Navigate(PageKey.System, few.Id);
+            TestSupport.Pump(() => page.System?.Id == few.Id && page.IsLoaded, 4000);
+            Save(window, prefix + "-5f-systemseite-wenige.png", 1000);
+        }
+        var empty = ctx.Services.Catalog.Systems.FirstOrDefault(s => stats.GamesPerSystem.GetValueOrDefault(s.Id) == 0);
+        if (empty != null)
+        {
+            vm.Navigator.Navigate(PageKey.System, empty.Id);
+            TestSupport.Pump(() => page.System?.Id == empty.Id && page.IsLoaded, 4000);
+            Save(window, prefix + "-5g-systemseite-leer.png", 1000);
+        }
+    }
 
     /// <summary>
     /// Start in the focus states that matter (DESIGN 7.1), driven like a controller: a box on the first shelf after the

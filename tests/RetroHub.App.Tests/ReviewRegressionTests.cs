@@ -429,10 +429,10 @@ public class ReviewRegressionTests
         Assert.Same(tile, Focused(window));
 
         vm.Navigator.Navigate(PageKey.Systems);
-        TestSupport.Pump(() => Focused(window) is SystemCard);
+        TestSupport.Pump(() => Focused(window) is RetroHub.App.Controls.SystemSpine);
         window.Execute(NavAction.Right);
         TestSupport.Settle(40);
-        var card = Assert.IsType<SystemCard>(Focused(window));
+        var card = Assert.IsType<RetroHub.App.Controls.SystemSpine>(Focused(window));
         repo.SetHidden(repo.Query(new GameQuery { Text = "Tetris" }).First().Id, false);
         RunDispatcher(700);
         Assert.Same(card, Focused(window));
