@@ -40,7 +40,7 @@
       "ngp": ["mednafen_ngp", "race"],
       "wonderswan": ["mednafen_wswan"],
       "msx": ["bluemsx", "fmsx"],
-      "arcade": ["fbneo", "mame"],
+      "arcade": ["mame", "fbneo"],
     },
     "portable": "retroarch",
     "defaultMode": "Fullscreen",

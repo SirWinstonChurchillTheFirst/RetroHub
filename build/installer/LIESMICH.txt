@@ -77,8 +77,9 @@ ersetzte ältere Datei bleibt als "….retrohub-old-<Zeit>" liegen.
   MSX – RetroArch (blueMSX): die Datenordner "Machines" und "Databases"
       aus dem blueMSX-Download -> bios\Machines\, bios\Databases\
       (nicht mitgeliefert; über "Ordner importieren")
-  Neo Geo (Arcade) – RetroArch (FBNeo): nur für Neo-Geo-Spiele:
-      neogeo.zip -> bios\ (oder neben die Spiele)
+  Arcade (auch Neo Geo) – RetroArch (MAME 0.282): Romsets passend zu
+      MAME 0.282 (Dateiname = Name des Sets, z. B. sf2.zip); Neo-Geo-
+      Spiele zusätzlich das BIOS-Set neogeo.zip -> bios\mameios      (oder neben die Spiele)
   Alle anderen Systeme (SNES, N64, Mega Drive, Master System, Game Gear,
   32X, Atari 2600, Virtual Boy, Neo Geo Pocket, WonderSwan) brauchen
   nichts.
@@ -209,7 +210,7 @@ von Edens eigenem Server geladen.
 - RetroArch 1.22.2 – GPL-3.0 – https://www.retroarch.com
   mit diesen Cores (Lizenzen und Quellcode-Links:
   emulators\retroarch\licenses\, Übersicht in CORES.txt):
-  FBNeo (Arcade, nicht-kommerzielle Lizenz), FCEUmm (NES, GPL-2.0),
+  MAME 0.282 (Arcade, GPL-2.0-or-later), FCEUmm (NES, GPL-2.0),
   Snes9x (SNES, nicht-kommerzielle Lizenz), Beetle VB (Virtual Boy, GPL-2.0),
   Mupen64Plus-Next (N64, GPL-2.0), Stella (Atari 2600, GPL-2.0),
   ProSystem (Atari 7800, GPL-2.0), Handy (Lynx, Zlib),
@@ -226,11 +227,11 @@ Die Quelltexte der GPL-lizenzierten Programme gibt es bei den jeweiligen
 Projekten (Links oben).
 
 LIZENZ
-RetroHub ist kostenlos und muss kostenlos bleiben. Einige mitgelieferte
-RetroArch-Cores dürfen nur nicht-kommerziell weitergegeben werden: FBNeo
-(Arcade), Snes9x (SNES), Genesis Plus GX (Master System, Mega Drive, Game
-Gear, Mega-CD) und PicoDrive (32X). RetroHub darf deshalb nie verkauft oder
-kostenpflichtig gebündelt werden. RetroHub ist ein inoffizielles Projekt
+RetroHub ist kostenlos. Es darf weder verkauft noch kommerziell genutzt
+werden, denn einige mitgelieferte RetroArch-Cores erlauben nur eine
+nicht-kommerzielle Weitergabe: Snes9x (SNES), Genesis Plus GX (Master
+System, Mega Drive, Game Gear, Mega-CD) und PicoDrive (32X). Spenden zur
+Unterstützung von RetroHub sind willkommen und erlaubt. RetroHub ist ein inoffizielles Projekt
 ohne Verbindung zu Nintendo, Sony, Sega, Atari oder anderen Herstellern.
 Alle Marken gehören ihren Inhabern. Nutze nur Kopien von Spielen, BIOS und
 Keys, die dir gehören.

@@ -50,7 +50,7 @@ ersetzte ältere Datei bleibt als `….retrohub-old-<Zeit>` liegen.
 | Atari Lynx | RetroArch (Handy) | nichts (optional) | `lynxboot.img` | `bios\` |
 | Atari 7800 | RetroArch (ProSystem) | nichts (optional: Startlogo) | `7800 BIOS (U).rom` | `bios\` |
 | MSX | RetroArch (blueMSX) | die Datenordner `Machines` und `Databases` | aus dem blueMSX-Download | `bios\Machines\`, `bios\Databases\` |
-| Neo Geo (Arcade) | RetroArch (FBNeo) | nur für Neo-Geo-Spiele | `neogeo.zip` | `bios\` (oder neben die Spiele) |
+| Arcade (auch Neo Geo) | RetroArch (MAME 0.282) | Romsets passend zu **MAME 0.282**; Neo-Geo-Spiele zusätzlich das BIOS-Set | `neogeo.zip` | `bios\mameios\` (oder neben die Spiele) |
 
 Alle anderen Systeme (SNES, N64, Mega Drive, Master System, Game Gear, 32X, Atari 2600, Virtual Boy,
 Neo Geo Pocket, WonderSwan) brauchen nichts.
@@ -138,9 +138,9 @@ gewählt, lässt RetroHub es unverändert – es speichert dann weiter dort, wo 
 
 ## Lizenz
 
-RetroHub ist kostenlos und muss kostenlos bleiben. Einige mitgelieferte RetroArch-Cores dürfen nur
-**nicht-kommerziell** weitergegeben werden: **FBNeo** (Arcade), **Snes9x** (SNES), **Genesis Plus GX**
-(Master System, Mega Drive, Game Gear, Mega-CD) und **PicoDrive** (32X). RetroHub darf deshalb nie verkauft
-oder kostenpflichtig gebündelt werden. Die Lizenztexte liegen in den Ordnern der Emulatoren
+RetroHub ist kostenlos. Es darf weder verkauft noch kommerziell genutzt werden, denn einige mitgelieferte
+RetroArch-Cores erlauben nur eine **nicht-kommerzielle** Weitergabe: **Snes9x** (SNES), **Genesis Plus GX**
+(Master System, Mega Drive, Game Gear, Mega-CD) und **PicoDrive** (32X). Spenden zur Unterstützung von
+RetroHub sind willkommen und erlaubt. Arcade-Spiele laufen mit dem MAME-Core (GPL-2.0-or-later). Die Lizenztexte liegen in den Ordnern der Emulatoren
 (`emulators\retroarch\licenses\`). RetroHub ist ein inoffizielles Projekt ohne Verbindung zu Nintendo, Sony,
 Sega, Atari oder anderen Herstellern. Nutze nur Kopien von Spielen, BIOS und Keys, die dir gehören.

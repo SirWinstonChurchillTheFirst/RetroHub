@@ -48,7 +48,7 @@ from bios/import"**. Your originals are only read. A replaced older file is kept
 | Atari Lynx | RetroArch (Handy) | nothing (optional) | `lynxboot.img` | `bios\` |
 | Atari 7800 | RetroArch (ProSystem) | nothing (optional: boot logo) | `7800 BIOS (U).rom` | `bios\` |
 | MSX | RetroArch (blueMSX) | the data folders `Machines` and `Databases` | from the blueMSX download | `bios\Machines\`, `bios\Databases\` |
-| Neo Geo (arcade) | RetroArch (FBNeo) | only for Neo Geo games | `neogeo.zip` | `bios\` (or next to the games) |
+| Arcade (incl. Neo Geo) | RetroArch (MAME 0.282) | romsets matching **MAME 0.282**; Neo Geo games also need the BIOS set | `neogeo.zip` | `bios\mameios\` (or next to the games) |
 
 All other systems (SNES, N64, Mega Drive, Master System, Game Gear, 32X, Atari 2600, Virtual Boy, Neo Geo
 Pocket, WonderSwan) need nothing.
@@ -132,9 +132,10 @@ keeps saving where it always did.
 
 ## Licence
 
-RetroHub is free and must stay free. Some bundled RetroArch cores may only be distributed
-**non-commercially**: **FBNeo** (arcade), **Snes9x** (SNES), **Genesis Plus GX** (Master System, Mega Drive,
-Game Gear, Mega-CD) and **PicoDrive** (32X). RetroHub must therefore never be sold or bundled for a fee. The
+RetroHub is free. It must not be sold or used commercially, because some bundled RetroArch cores may only be
+distributed **non-commercially**: **Snes9x** (SNES), **Genesis Plus GX** (Master System, Mega Drive, Game Gear,
+Mega-CD) and **PicoDrive** (32X). Donations to support RetroHub are welcome and allowed. Arcade games run on the
+MAME core (GPL-2.0-or-later). The
 licence texts are in the emulators' folders (`emulators\retroarch\licenses\`). RetroHub is an unofficial
 project with no connection to Nintendo, Sony, Sega, Atari or any other manufacturer. Only use copies of games,
 BIOS and keys that you own.

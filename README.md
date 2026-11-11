@@ -61,6 +61,7 @@ and compiles it with Inno Setup 6. The Konsolen artwork is rendered with Blender
 
 RetroHub is free software under the **GNU GPL v3** ([LICENSE](LICENSE)). The bundled emulators keep their own
 licences (GPL-2.0/3.0, MPL-2.0); their licence texts are installed next to each emulator and listed in
-`LIESMICH.txt`. Several bundled RetroArch cores (FBNeo, Snes9x, Genesis Plus GX, PicoDrive) allow
-**non-commercial use only** – RetroHub is and stays free, and asks for no donations. Fonts: Archivo and Atkinson
+`LIESMICH.txt`. RetroHub is free and must not be sold or used commercially, because several bundled
+RetroArch cores (Snes9x, Genesis Plus GX, PicoDrive) allow **non-commercial distribution only**. Donations to
+support RetroHub are welcome and allowed. Arcade games use the bundled MAME core (MAME 0.282, GPL-2.0-or-later). Fonts: Archivo and Atkinson
 Hyperlegible (SIL Open Font License).

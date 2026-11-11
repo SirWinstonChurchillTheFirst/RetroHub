@@ -168,6 +168,17 @@ public sealed class BuiltInCatalogTests : IDisposable
     }
 
     [Fact]
+    public void Arcade_prefers_the_bundled_MAME_core_FBNeo_only_optional()
+    {
+        // the installer bundles mame_libretro (FBNeo's licence forbids asking for donations, so it is not shipped)
+        var arcade = _catalog.GetSystem("arcade")!;
+        Assert.Equal(["retroarch/mame", "retroarch/fbneo", "mame"], arcade.Emulators);
+        Assert.Equal(["mame", "fbneo"], _catalog.GetEmulator("retroarch")!.Cores["arcade"]);
+        // the MAME core looks for BIOS sets in <system dir>/mame/bios
+        Assert.Equal("mame/bios/neogeo.zip", Assert.Single(arcade.Bios).File);
+    }
+
+    [Fact]
     public void Systems_AreSortedBySortOrderThenName()
     {
         var sorted = _catalog.Systems.OrderBy(s => s.SortOrder).ThenBy(s => s.Name, StringComparer.InvariantCultureIgnoreCase).ToList();

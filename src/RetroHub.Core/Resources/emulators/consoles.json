@@ -99,9 +99,9 @@
     "exe": ["mame.exe", "mame64.exe"],
     "systems": ["arcade"],
     // MAME is fullscreen by default. "-window" makes it windowed; in fullscreen mode "-nowindow" follows and,
-    // being later on the command line, wins. The BIOS folder is a second rompath (neogeo.zip etc.).
+    // being later on the command line, wins. The BIOS folder and bios/mame/bios (where the RetroArch MAME core keeps neogeo.zip etc.) are further rompaths.
     // MAME resolves its relative paths (cfg/, nvram/, …) against the working directory → emulator folder.
-    "args": ["{romName}", "-rompath", "{romDir};{bios}", "-skip_gameinfo", "-window", "{fullscreen}"],
+    "args": ["{romName}", "-rompath", "{romDir};{bios};{bios}/mame/bios", "-skip_gameinfo", "-window", "{fullscreen}"],
     "fullscreenArgs": ["-nowindow"],
     "defaultMode": "Fullscreen",
     "modes": ["Fullscreen", "Windowed"],

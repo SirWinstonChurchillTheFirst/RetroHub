@@ -162,7 +162,8 @@
       "The cores come from the stable core pack of the same RetroArch release (only the listed dlls are unpacked).",
       "Chosen: for every system of the catalog (Resources\\systems\\*.json) whose first choice is not a bundled stand-alone",
       "emulator, the first RetroArch core of its list (LaunchPlanner takes the first installed entry). Licence texts come",
-      "from the core's source repository, pinned to a commit."
+      "from the core's source repository, pinned to a commit (MAME: mamedev/mame tag mame0282 - COPYING and docs/legal).",
+      "Arcade uses MAME, NOT FBNeo: FBNeo's licence forbids asking for donations (owner decision) - build.ps1 refuses fbneo."
     ],
     "id": "retroarch-cores",
     "version": "1.22.2",
@@ -173,7 +174,17 @@
     "target": "emulators\\retroarch\\cores",
     "licenseTarget": "emulators\\retroarch\\licenses",
     "cores": [
-      { "core": "fbneo",             "systems": "arcade",                                   "license": "FBNeo (nicht-kommerziell)", "source": "https://github.com/libretro/FBNeo",                    "licenseUrl": "https://raw.githubusercontent.com/libretro/FBNeo/a836e52198aa5ce1f54be7b050e44872a1223797/src/license.txt",                 "licenseSha256": "BB2369F1B75F42242968A78191B47EE90F85682224D3AD1EF63044E244B3E202" },
+      { "core": "mame",              "systems": "arcade (MAME 0.282 romsets, libretro/mame a90e86e1)", "license": "GPL-2.0-or-later (MAME)", "source": "https://github.com/libretro/mame",                    "licenseUrl": "https://raw.githubusercontent.com/mamedev/mame/mame0282/COPYING",                 "licenseSha256": "7355656D8E575144FC9A33A93183BE2E3CEFF16E1843B1F27FED20F1183FC7CC",
+        "extraLicenses": [
+          { "name": "BSD-2-Clause", "url": "https://raw.githubusercontent.com/mamedev/mame/mame0282/docs/legal/BSD-2-Clause", "sha256": "32BEF3825A21972C113E32B123FAD97AE146FFC32C1B22AB5E7C06C35A692F1C" },
+          { "name": "BSD-3-Clause", "url": "https://raw.githubusercontent.com/mamedev/mame/mame0282/docs/legal/BSD-3-Clause", "sha256": "A27554938D3DD6569931E5E18B93214A57F47BC1BB8B75FC32FDD18ABE042A07" },
+          { "name": "BSL-1.0", "url": "https://raw.githubusercontent.com/mamedev/mame/mame0282/docs/legal/BSL-1.0", "sha256": "3602A15699004C836BA75FD667207389B20795E933436B761CDD97FBA3EB00D6" },
+          { "name": "CC0", "url": "https://raw.githubusercontent.com/mamedev/mame/mame0282/docs/legal/CC0", "sha256": "7097C533BB812BCE9E9AD17B919DCAB3F66F9C1AECF5A16291F3D0468A217AD0" },
+          { "name": "GPL-2.0", "url": "https://raw.githubusercontent.com/mamedev/mame/mame0282/docs/legal/GPL-2.0", "sha256": "BA20C40872287B52EECA54D48E875879B33D841B98F8CEDBA3558B405467D5DE" },
+          { "name": "LGPL-2.1", "url": "https://raw.githubusercontent.com/mamedev/mame/mame0282/docs/legal/LGPL-2.1", "sha256": "04DEC8D7181EEFC5A8D239BB459C2E0625C2D1153D85F305E8596D6E874C42E2" },
+          { "name": "MIT", "url": "https://raw.githubusercontent.com/mamedev/mame/mame0282/docs/legal/MIT", "sha256": "1E718DB2273870673B631BFCBF1712746C7495B0E3991DF1C86AB0025A03BECB" },
+          { "name": "Zlib", "url": "https://raw.githubusercontent.com/mamedev/mame/mame0282/docs/legal/Zlib", "sha256": "7490DF3D98428F2672E17CED7B19559B9909C002E4D2362EB23EC263685FE2F0" }
+        ] },
       { "core": "fceumm",            "systems": "nes",                                      "license": "GPL-2.0",                   "source": "https://github.com/libretro/libretro-fceumm",            "licenseUrl": "https://raw.githubusercontent.com/libretro/libretro-fceumm/e0f3086a8104f8fbbe49a2615b10401504a9533f/Copying",               "licenseSha256": "A6996DCF0C334281F734560926E079B2DBBD5B78E81C0CA00A413EC01E1CD2FB" },
       { "core": "snes9x",            "systems": "snes",                                     "license": "Snes9x (nicht-kommerziell)", "source": "https://github.com/libretro/snes9x",                   "licenseUrl": "https://raw.githubusercontent.com/libretro/snes9x/fae2fea08f74180759ef540ee94259213f503480/LICENSE",                        "licenseSha256": "70EFEEE282D82A6E9D26AEED5466D08C632369858371DC6A4644C8DCEDC2BE78" },
       { "core": "mednafen_vb",       "systems": "virtualboy",                               "license": "GPL-2.0",                   "source": "https://github.com/libretro/beetle-vb-libretro",          "licenseUrl": "https://raw.githubusercontent.com/libretro/beetle-vb-libretro/d5ae54c8e23b573a3b34e888b2d48a588027e92c/COPYING",           "licenseSha256": "A6996DCF0C334281F734560926E079B2DBBD5B78E81C0CA00A413EC01E1CD2FB" },

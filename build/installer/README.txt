@@ -71,8 +71,10 @@ only read. A replaced older file is kept as "….retrohub-old-<time>".
   MSX – RetroArch (blueMSX): the data folders "Machines" and "Databases"
       from the blueMSX download -> bios\Machines\, bios\Databases\
       (not included; use "Import a folder")
-  Neo Geo (arcade) – RetroArch (FBNeo): only for Neo Geo games:
-      neogeo.zip -> bios\ (or next to the games)
+  Arcade (incl. Neo Geo) – RetroArch (MAME 0.282): romsets matching
+      MAME 0.282 (file name = set name, e.g. sf2.zip); Neo Geo games also
+      need the BIOS set neogeo.zip -> bios\mameios\ (or next to the
+      games)
   All other systems (SNES, N64, Mega Drive, Master System, Game Gear, 32X,
   Atari 2600, Virtual Boy, Neo Geo Pocket, WonderSwan) need nothing.
 
@@ -195,7 +197,7 @@ downloaded from Eden's own server during the installation.
 - RetroArch 1.22.2 – GPL-3.0 – https://www.retroarch.com
   with these cores (licences and source links: emulators\retroarch\licenses\,
   overview in CORES.txt):
-  FBNeo (arcade, non-commercial licence), FCEUmm (NES, GPL-2.0),
+  MAME 0.282 (arcade, GPL-2.0-or-later), FCEUmm (NES, GPL-2.0),
   Snes9x (SNES, non-commercial licence), Beetle VB (Virtual Boy, GPL-2.0),
   Mupen64Plus-Next (N64, GPL-2.0), Stella (Atari 2600, GPL-2.0),
   ProSystem (Atari 7800, GPL-2.0), Handy (Lynx, Zlib),
@@ -212,10 +214,10 @@ The source code of the GPL-licensed programs is available from the
 respective projects (links above).
 
 LICENCE
-RetroHub is free and must stay free. Some bundled RetroArch cores may only
-be distributed non-commercially: FBNeo (arcade), Snes9x (SNES), Genesis Plus
-GX (Master System, Mega Drive, Game Gear, Mega-CD) and PicoDrive (32X).
-RetroHub must therefore never be sold or bundled for a fee. RetroHub is an
+RetroHub is free. It must not be sold or used commercially, because some
+bundled RetroArch cores may only be distributed non-commercially: Snes9x
+(SNES), Genesis Plus GX (Master System, Mega Drive, Game Gear, Mega-CD) and
+PicoDrive (32X). Donations to support RetroHub are welcome and allowed. RetroHub is an
 unofficial project with no connection to Nintendo, Sony, Sega, Atari or any
 other manufacturer. All trademarks belong to their owners. Only use copies
 of games, BIOS and keys that you own.

@@ -37,7 +37,7 @@ $extract = Join-Path $WorkDir "extract"
 $stage = Join-Path $WorkDir "stage"
 $out = Join-Path $WorkDir "out"
 $version = ([xml](Get-Content (Join-Path $repo "Directory.Build.props"))).Project.PropertyGroup.Version
-if (-not $version) { $version = "0.1.0" }
+if (-not $version) { $version = "0.1.1" }
 
 if (-not (Test-Path $SevenZip)) { throw "7-Zip fehlt: $SevenZip" }
 if (-not $NoCompile -and -not (Test-Path $Iscc)) { throw "Inno Setup 6 fehlt: $Iscc" }
@@ -186,6 +186,12 @@ foreach ($core in $c.cores) {
     Copy-Item $dll $coreTarget
     $lic = Get-Dep $core.licenseUrl "license-core-$($core.core)" $core.licenseSha256
     Copy-Item $lic (Join-Path $licTarget "$($core.core)_libretro-LICENSE.txt")
+    # further licence texts the main one refers to (MAME: docs/legal/*)
+    foreach ($x in @($core.extraLicenses)) {
+        if (-not $x) { continue }
+        $xf = Get-Dep $x.url "license-core-$($core.core)-$($x.name)" $x.sha256
+        Copy-Item $xf (Join-Path $licTarget "$($core.core)_libretro-$($x.name).txt")
+    }
     $overview += "$($core.core)_libretro.dll | $($core.systems) | $($core.license) | $($core.source)"
 }
 $overview += "", "Die Lizenztexte liegen in diesem Ordner (<core>_libretro-LICENSE.txt)."
@@ -213,6 +219,11 @@ foreach ($pattern in $forbiddenFiles) {
 # Eden must not be inside the setup at all (it is downloaded during the installation)
 $forbiddenDirs += "emulators\eden"
 $hits += Get-ChildItem $stage -Recurse -File -Filter "eden*.exe" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+# FBNeo must not be in the setup (its licence forbids asking for donations): no core dll anywhere, no licence text.
+# (RetroArch's own package keeps its playlist icons/database/info entries named "FBNeo - Arcade Games" – those are
+# RetroArch files describing a core the player may add himself, not FBNeo.)
+$hits += Get-ChildItem $emuStage -Recurse -File -Filter "fbneo*.dll" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+$hits += Get-ChildItem (Join-Path $stage $c.licenseTarget) -File -Filter "fbneo*" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
 foreach ($d in $forbiddenDirs) {
     if (Test-Path (Join-Path $stage $d)) { $hits += (Join-Path $stage $d) }
 }

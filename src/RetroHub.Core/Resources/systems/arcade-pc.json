@@ -6,16 +6,18 @@
     "shortName": "Arcade",
     "manufacturer": "Diverse",
     "category": "Arcade",
-    // Neo Geo MVS/AES is part of arcade: FBNeo and MAME run the same romsets (+ neogeo.zip)
+    // Neo Geo MVS/AES is part of arcade (romsets + neogeo.zip). First choice is the MAME core that the installer bundles
+    // (RetroArch 1.22.2 core pack: MAME 0.282 – romsets must match that version); FBNeo is only used when the player
+    // installs that core himself (its licence forbids asking for donations, so RetroHub does not ship it).
     "folders": ["arcade", "mame", "fbneo", "fba", "neogeo"],
     // romsets; the file name (without extension) is the set name ("sf2.zip" → sf2). CHDs live in <set>/ subfolders.
     "extensions": [".zip", ".7z"],
     "aspectRatio": 1.3333,
     "libretroName": "MAME",
-    "emulators": ["retroarch/fbneo", "retroarch/mame", "mame"],
+    "emulators": ["retroarch/mame", "retroarch/fbneo", "mame"],
     "accent": "#FFB000",
     "bios": [
-      { "file": "neogeo.zip", "required": false, "description": "Neo-Geo-BIOS-Set – nur für Neo-Geo-Spiele nötig (alternativ im Spieleordner)." }
+      { "file": "mame/bios/neogeo.zip", "required": false, "description": "Neo-Geo-BIOS-Set – nur für Neo-Geo-Spiele nötig (der MAME-Core sucht in bios/mame/bios/; alternativ neben den Spielen)." }
     ],
     "sortOrder": 800
   },
