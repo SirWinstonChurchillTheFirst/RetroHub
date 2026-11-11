@@ -57,6 +57,14 @@ assembles the installer from pinned, hash-checked official emulator downloads (`
 and compiles it with Inno Setup 6. The Konsolen artwork is rendered with Blender from the scripts in
 `build\tools\assets`.
 
+## Support
+
+RetroHub is and stays free, with no paid features. If you like it, you can support its development with a
+coffee – voluntary, nothing in return: **[ko-fi.com/krogger](https://ko-fi.com/krogger)** ☕
+
+**Do donations unlock anything?** No. Donations are a thank-you, nothing more – there are no paid features and
+nothing is behind a paywall. RetroHub is never sold.
+
 ## Licences
 
 RetroHub is free software under the **GNU GPL v3** ([LICENSE](LICENSE)). The bundled emulators keep their own
