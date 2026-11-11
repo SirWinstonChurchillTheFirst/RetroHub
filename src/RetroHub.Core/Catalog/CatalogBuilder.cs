@@ -417,7 +417,14 @@ internal sealed partial class CatalogBuilder
                 Warn($"{ctx}: BIOS-Datei „{file}“ ist doppelt eingetragen.");
                 continue;
             }
-            list.Add(b with { File = file, Md5 = md5.ToArray(), Description = string.IsNullOrWhiteSpace(b.Description) ? null : b.Description.Trim() });
+            // sizes: positive, at most 64 MiB (a BIOS/firmware dump, not a game), no duplicates
+            var sizes = (b.Sizes ?? []).Where(s => s is > 0 and <= 64L * 1024 * 1024).Distinct().ToArray();
+            if (sizes.Length != (b.Sizes ?? []).Length) Warn($"{ctx}: ungültige Größenangabe für „{file}“ wird ignoriert.");
+            list.Add(b with
+            {
+                File = file, Md5 = md5.ToArray(), Sizes = sizes,
+                Description = string.IsNullOrWhiteSpace(b.Description) ? null : b.Description.Trim(),
+            });
         }
         return list.ToArray();
     }

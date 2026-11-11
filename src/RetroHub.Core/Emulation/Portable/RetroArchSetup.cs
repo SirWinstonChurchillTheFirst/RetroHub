@@ -29,6 +29,9 @@ public sealed class RetroArchSetup : PortableSetupBase
 {
     public override string Id => "retroarch";
 
+    /// <summary>Only data/config/retroarch/retrohub.cfg is written – also fine for a RetroArch outside the RetroHub folder.</summary>
+    public override bool WritesOnlyRetroHubFiles => true;
+
     public override string Summary =>
         "RetroHub schreibt nur seine eigene Zusatzkonfiguration (data/config/retroarch/retrohub.cfg), nie deine retroarch.cfg. " +
         "Spielstände landen in saves/<System>, Savestates in savestates/<System>, Screenshots in screenshots/<System>, " +

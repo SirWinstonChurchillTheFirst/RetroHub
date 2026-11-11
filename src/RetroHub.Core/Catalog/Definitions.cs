@@ -41,6 +41,11 @@ public sealed record BiosFile
     public string[] Md5 { get; init; } = [];
     public bool Required { get; init; }
     public string? Description { get; init; }
+    /// <summary>
+    /// Byte sizes a real dump has (any matches). Used by the firmware import to recognise a file by name when the
+    /// catalog knows no MD5 (e.g. DS firmware, Sega CD BIOS). Empty = any non-empty file of that name.
+    /// </summary>
+    public long[] Sizes { get; init; } = [];
 }
 
 public sealed record SystemDef

@@ -30,7 +30,7 @@
     "emulators": ["retroarch/prosystem"],
     "accent": "#C8102E",
     "bios": [
-      { "file": "7800 BIOS (U).rom", "required": false, "description": "Optional – zeigt das Startlogo, einige Spiele laufen damit besser." }
+      { "file": "7800 BIOS (U).rom", "sizes": [4096], "required": false, "description": "Optional – zeigt das Startlogo, einige Spiele laufen damit besser." }
     ],
     "sortOrder": 405
   },
@@ -51,6 +51,7 @@
     "bios": [
       {
         "file": "lynxboot.img",
+        "sizes": [512],
         "md5": ["fcd403db69f54290b51035d82f835e7b"],
         "required": false,
         "description": "Lynx-Boot-ROM – Beetle Lynx braucht sie, Handy läuft auch ohne."
@@ -77,6 +78,7 @@
     "bios": [
       {
         "file": "syscard3.pce",
+        "sizes": [262144],
         "md5": ["38179df8f4ac870017db21ebcbf53114"],
         "required": false,
         "description": "Super System Card 3.0 – nur für CD-Spiele nötig."

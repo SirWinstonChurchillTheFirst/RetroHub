@@ -16,6 +16,11 @@ public enum PortableApplyResult
     Failed,
     /// <summary>No recipe with that id.</summary>
     NoRecipe,
+    /// <summary>
+    /// The exe lies outside the RetroHub folder (the player's own install, chosen on the Emulators page): RetroHub
+    /// writes nothing into it – no portable markers, no config changes. It keeps its data where it always did.
+    /// </summary>
+    SkippedExternal,
 }
 
 /// <summary>What a recipe works with: absolute paths recomputed on every run, so a moved RetroHub folder repairs itself.</summary>
@@ -96,6 +101,13 @@ public abstract class PortableSetupBase : IPortableSetup
     /// <summary>German description of what the recipe does and where the emulator keeps its data (for the Emulators page).</summary>
     public abstract string Summary { get; }
 
+    /// <summary>
+    /// True when the recipe only writes RetroHub's own files (RetroArch's override in data/config) and may therefore
+    /// also run for an emulator outside the RetroHub folder. All other recipes write next to the exe and skip such
+    /// installs (<see cref="PortableApplyResult.SkippedExternal"/>).
+    /// </summary>
+    public virtual bool WritesOnlyRetroHubFiles => false;
+
     public void Apply(EmulatorInstall emulator, LaunchPlan plan, AppPaths paths) => Run(emulator, plan, paths);
 
     public PortableApplyResult Run(EmulatorInstall emulator, LaunchPlan plan, AppPaths paths)
@@ -107,6 +119,11 @@ public abstract class PortableSetupBase : IPortableSetup
             {
                 Log.Warn($"Portable setup '{Id}': emulator {emulator.Def.Id} is not installed, nothing to configure");
                 return PortableApplyResult.NotInstalled;
+            }
+            if (!WritesOnlyRetroHubFiles && !AppPaths.IsInside(exe, paths.Root))
+            {
+                Log.Info($"Portable setup '{Id}' skipped: {exe} is outside the RetroHub folder (the player's own install is left untouched)");
+                return PortableApplyResult.SkippedExternal;
             }
             if (EmulatorProcesses.IsRunning(exe))
             {

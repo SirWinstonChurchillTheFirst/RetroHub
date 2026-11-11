@@ -66,9 +66,9 @@
     "accent": "#3D7DCA",
     // Genesis Plus GX / PicoDrive need the BIOS of the game's region (one of the three)
     "bios": [
-      { "file": "bios_CD_U.bin", "required": false, "description": "Sega-CD-BIOS USA – für US-Spiele nötig." },
-      { "file": "bios_CD_E.bin", "required": false, "description": "Mega-CD-BIOS Europa – für europäische Spiele nötig." },
-      { "file": "bios_CD_J.bin", "required": false, "description": "Mega-CD-BIOS Japan – für japanische Spiele nötig." }
+      { "file": "bios_CD_U.bin", "sizes": [131072], "required": false, "description": "Sega-CD-BIOS USA – für US-Spiele nötig." },
+      { "file": "bios_CD_E.bin", "sizes": [131072], "required": false, "description": "Mega-CD-BIOS Europa – für europäische Spiele nötig." },
+      { "file": "bios_CD_J.bin", "sizes": [131072], "required": false, "description": "Mega-CD-BIOS Japan – für japanische Spiele nötig." }
     ],
     "sortOrder": 315
   },
@@ -105,12 +105,14 @@
     "bios": [
       {
         "file": "sega_101.bin",
+        "sizes": [524288],
         "md5": ["85ec9ca47d8f6807718151cbcca8b964"],
         "required": false,
         "description": "Saturn-BIOS Japan – Beetle Saturn braucht eines der beiden Saturn-BIOS."
       },
       {
         "file": "mpr-17933.bin",
+        "sizes": [524288],
         "md5": ["3240872c70984b6cbfda1586cab68dbe"],
         "required": false,
         "description": "Saturn-BIOS USA/Europa – Beetle Saturn braucht eines der beiden Saturn-BIOS."
@@ -136,12 +138,14 @@
     "bios": [
       {
         "file": "dc/dc_boot.bin",
+        "sizes": [2097152],
         "md5": ["e10c53c2f8b90bab96ead2d368858623"],
         "required": false,
         "description": "Dreamcast-BIOS – optional, Flycast und Redream haben ein Ersatz-BIOS."
       },
       {
         "file": "dc/dc_flash.bin",
+        "sizes": [131072],
         "required": false,
         "description": "Dreamcast-Flash (Einstellungen, Region) – optional."
       }

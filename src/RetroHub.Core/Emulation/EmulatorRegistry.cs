@@ -274,6 +274,7 @@ public sealed class EmulatorRegistry : IEmulatorRegistry
         {
             Log.Debug($"No version resource in {exe}: {ex.Message}");
         }
+        if (VersionFile(exe, emulatorsRoot) is { } fromFile) return fromFile;
         // folder names from the exe's folder up to (excluding) emulators/, then the exe name itself
         var names = new List<string>();
         try
@@ -290,6 +291,37 @@ public sealed class EmulatorRegistry : IEmulatorRegistry
         names.Add(Path.GetFileNameWithoutExtension(exe));
         foreach (var n in names)
             if (VersionFromName(n) is { } v) return v;
+        return null;
+    }
+
+    /// <summary>Name of the optional version file the installer writes (emulators/&lt;id&gt;/version.txt).</summary>
+    public const string VersionFileName = "version.txt";
+
+    /// <summary>
+    /// For exes without a version resource (Cemu, Azahar, Eden in the flat installer layout): the first line of a
+    /// version.txt in the exe's folder or a parent folder below emulators/ ("2.6", "v0.2.1" → "0.2.1"). Only a
+    /// version-like token is taken; a file larger than 256 bytes is ignored. Null when there is none.
+    /// </summary>
+    internal static string? VersionFile(string exe, string emulatorsRoot)
+    {
+        try
+        {
+            var stop = Path.GetFullPath(emulatorsRoot).TrimEnd('\\', '/');
+            var dir = new DirectoryInfo(Path.GetDirectoryName(Path.GetFullPath(exe))!);
+            for (int level = 0; dir != null && level <= MaxDepth; dir = dir.Parent, level++)
+            {
+                if (string.Equals(dir.FullName.TrimEnd('\\', '/'), stop, StringComparison.OrdinalIgnoreCase)) break;
+                var file = new FileInfo(Path.Combine(dir.FullName, VersionFileName));
+                if (!file.Exists) continue;
+                if (file.Length is 0 or > 256) return null;
+                var first = File.ReadLines(file.FullName).FirstOrDefault(l => l.Trim().Length > 0);
+                return first == null ? null : VersionFromName(first.Trim());
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or PathTooLongException)
+        {
+            Log.Debug($"No version file for {exe}: {ex.Message}");
+        }
         return null;
     }
 

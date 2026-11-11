@@ -158,7 +158,8 @@ public sealed class CemuDiscKeyTests : IDisposable
         var before = _t.Files();
         Assert.Equal(PortableApplyResult.Applied, Launch(wux));
         Assert.Equal(Template, File.ReadAllText(keysTxt));
-        Assert.Equal(before, _t.Files());
+        // the only new file is Cemu's settings.xml with the update check switched off (OneFolderTests)
+        Assert.Equal(before.Append("emulators/cemu/Cemu_2.6/portable/settings.xml").Order(StringComparer.OrdinalIgnoreCase), _t.Files());
         Assert.False(CemuSetup.HasDiscKeys(keysTxt)); // only Cemu's example line
     }
 

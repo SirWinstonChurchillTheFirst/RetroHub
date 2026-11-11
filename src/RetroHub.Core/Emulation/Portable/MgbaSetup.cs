@@ -16,6 +16,13 @@ public sealed class MgbaSetup : PortableSetupBase
         "mGBA läuft portabel (portable.ini neben der mGBA.exe, Einstellungen in config.ini daneben). " +
         "Spielstände: saves/<System>, Savestates: savestates/<System>, Screenshots: screenshots/<System>.";
 
+    private static readonly Catalog.SystemDef GbaBios = new()
+    {
+        Id = "gba",
+        Name = "Game Boy Advance",
+        Bios = [new Catalog.BiosFile { File = "gba_bios.bin", Md5 = ["a860e8c0b6d573d191e4ec7db1b1e4f6"] }],
+    };
+
     protected override void Configure(PortableContext ctx)
     {
         ctx.EnsureMarker("portable.ini");
@@ -27,6 +34,15 @@ public sealed class MgbaSetup : PortableSetupBase
         ini.Set(s, "screenshotPath", ctx.ScreenshotsDir);
         ini.Set(s, "lastDirectory", ctx.GamesDir);
         if (ctx.Embedded) ini.Set(s, "pauseOnFocusLost", "0");
+        // mGBA 0.10.5 only checks for updates when updateAutoCheck is set (GBAApp.cpp); written as 0 so it stays off
+        ini.Set(s, "updateAutoCheck", "0");
+        // the player's own GBA BIOS (bios/gba_bios.bin, MD5-checked): boot logo; otherwise mGBA's built-in one stays
+        var bios = BiosCheck.Check(GbaBios, ctx.Paths.Bios).FirstOrDefault();
+        if (bios is { State: BiosState.Ok, FoundPath: { } path })
+        {
+            ini.Set(s, "gba.bios", path);
+            ini.Set(s, "useBios", "1");
+        }
         Saved(Id, file, ini.SaveIfChanged(file));
     }
 }

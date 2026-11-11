@@ -18,7 +18,7 @@
     "emulators": ["retroarch/fceumm", "retroarch/nestopia", "retroarch/mesen"],
     "accent": "#E4002B",
     "bios": [
-      { "file": "disksys.rom", "required": false, "description": "Famicom Disk System BIOS – nur für .fds-Spiele nötig." }
+      { "file": "disksys.rom", "sizes": [8192], "required": false, "description": "Famicom Disk System BIOS – nur für .fds-Spiele nötig." }
     ],
     "sortOrder": 100
   },
@@ -118,6 +118,7 @@
     "bios": [
       {
         "file": "gba_bios.bin",
+        "sizes": [16384],
         "md5": ["a860e8c0b6d573d191e4ec7db1b1e4f6"],
         "required": false,
         "description": "Optional – mGBA hat ein eingebautes Ersatz-BIOS; mit Original-BIOS erscheint das Startlogo."
@@ -161,18 +162,21 @@
     "bios": [
       {
         "file": "bios7.bin",
+        "sizes": [16384],
         "md5": ["df692a80a5b1bc90728bc3dfc76cd948"],
         "required": false,
         "description": "ARM7-BIOS – optional, melonDS hat ein freies Ersatz-BIOS (FreeBIOS)."
       },
       {
         "file": "bios9.bin",
+        "sizes": [4096],
         "md5": ["a392174eb3e572fed6447e956bde4b25"],
         "required": false,
         "description": "ARM9-BIOS – optional, melonDS hat ein freies Ersatz-BIOS (FreeBIOS)."
       },
       {
         "file": "firmware.bin",
+        "sizes": [131072, 262144, 524288],
         "required": false,
         "description": "DS-Firmware – optional, nötig für das Systemmenü und manche WLAN-Funktionen."
       }

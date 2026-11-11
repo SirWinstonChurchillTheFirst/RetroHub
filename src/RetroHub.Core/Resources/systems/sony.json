@@ -21,24 +21,28 @@
     "bios": [
       {
         "file": "scph5501.bin",
+        "sizes": [524288],
         "md5": ["490f666e1afb15b7362b406ed1cea246"],
         "required": false,
         "description": "PS1-BIOS USA (SCPH-5501) – DuckStation braucht mindestens ein PS1-BIOS, PCSX ReARMed läuft auch ohne."
       },
       {
         "file": "scph5500.bin",
+        "sizes": [524288],
         "md5": ["8dd7d5296a650fac7319bce665a6a53c"],
         "required": false,
         "description": "PS1-BIOS Japan (SCPH-5500)."
       },
       {
         "file": "scph5502.bin",
+        "sizes": [524288],
         "md5": ["32736f17079d0b2b7024407c39bd3050"],
         "required": false,
         "description": "PS1-BIOS Europa (SCPH-5502)."
       },
       {
         "file": "scph1001.bin",
+        "sizes": [524288],
         "md5": ["924e392ed05558ffdb115408c263dccf"],
         "required": false,
         "description": "PS1-BIOS USA (SCPH-1001)."
