@@ -37,7 +37,8 @@ if ($LASTEXITCODE -ne 0) { throw "Publish App fehlgeschlagen" }
 
 Write-Host "== Starter (NativeAOT)" -ForegroundColor Cyan
 $starterOut = Join-Path $repo "build\obj\starter"
-dotnet publish (Join-Path $repo "src\RetroHub.Starter") -c Release -r win-x64 -p:DebugType=none -o $starterOut -nologo
+dotnet publish (Join-Path $repo "src\RetroHub.Starter") -c Release -r win-x64 -p:DebugType=none `
+    -p:RuntimeFrameworkVersion=$Runtime -o $starterOut -nologo   # pins the ILCompiler pack too (NU1903 on older ones)
 if ($LASTEXITCODE -ne 0) { throw "Publish Starter fehlgeschlagen" }
 Copy-Item (Join-Path $starterOut "RetroHub.exe") (Join-Path $dist "RetroHub.exe") -Force
 
