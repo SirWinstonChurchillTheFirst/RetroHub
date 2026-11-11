@@ -16,13 +16,17 @@ namespace RetroHub.Core.Metadata;
 /// The system's file index comes from the GitHub API (cached 30 days, <see cref="ThumbnailIndexStore"/>) and is
 /// matched by name/normalised title + region preference (<see cref="ThumbnailIndex"/>); without an index, a few
 /// direct names are tried. Downloads land in artwork/covers/&lt;system&gt;/&lt;rom name&gt;.png (temp file + move, an existing
-/// file is never overwritten), max 4 in parallel, User-Agent "RetroHub/0.1", 404s remembered for 7 days
-/// (<see cref="ArtworkMissCache"/>). Network failures are logged and counted, never thrown.</item>
+/// file is never overwritten), max 4 in parallel, User-Agent "RetroHub/0.1", 404s remembered for 7 days (1 day when
+/// the index was unavailable and only names were guessed; <see cref="ArtworkMissCache"/>). Network failures are logged
+/// and counted, never remembered as misses, never thrown. Satellaview games on the SNES also search
+/// "Nintendo - Satellaview" (<see cref="LibretroThumbnails.SetsFor"/>); language tags such as "(Deutsch)" prefer the
+/// matching regions (<see cref="LibretroThumbnails.PreferredRegions"/>).</item>
 /// <item><b>GameTDB</b> for systems libretro has no set for (<see cref="SystemDef.GameTdb"/>, Nintendo Switch): the
 /// platform's database (<see cref="GameTdbIndexStore"/>, monthly, ETag) is matched by title (<see cref="GameTdbIndex"/>)
 /// and the coverM front is fetched in German, else English, else US (<see cref="GameTdb.CoverLanguages"/>), saved as
 /// artwork/covers/&lt;system&gt;/&lt;rom name&gt;.jpg, at most 2 downloads from art.gametdb.com at a time. Same opt-in, miss
-/// cache and rules as libretro.</item>
+/// cache and rules as libretro. The database download starts with the online phase and these games come last (it can
+/// take minutes, see <see cref="GameTdbIndexStore"/>).</item>
 /// <item><b>Thumbnails</b>: Core has no image library, so downscaled copies for the UI are produced by the App's
 /// AsyncImageLoader (disk cache in data/cache/thumbs). This service only stores paths.</item>
 /// </list>
@@ -64,6 +68,18 @@ public sealed class ArtworkService : IDisposable
     /// <summary>Timeout of a single boxart download.</summary>
     public TimeSpan DownloadTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>One attempt at the GameTDB database (built on demand by the server: slow first byte).</summary>
+    public TimeSpan GameTdbTimeout { get; init; } = GameTdbIndexStore.DefaultTimeout;
+
+    /// <summary>Pause before the one retry of a failed GameTDB database download.</summary>
+    public TimeSpan GameTdbRetryDelay { get; init; } = GameTdbIndexStore.DefaultRetryDelay;
+
+    /// <summary>
+    /// Life of a miss recorded while the system's index was unavailable (GitHub rate limit, network): only the direct
+    /// name guesses were asked, so the miss is a weak one and the index is consulted again tomorrow.
+    /// </summary>
+    public static readonly TimeSpan UnindexedMissTtl = TimeSpan.FromDays(1);
+
     /// <summary>Folder of the cached GitHub indexes (data/metadata/libretro-thumbnails).</summary>
     public string IndexCacheFolder => Path.Combine(_paths.Metadata, "libretro-thumbnails");
 
@@ -99,7 +115,9 @@ public sealed class ArtworkService : IDisposable
                     MaxConnectionsPerServer = MaxParallelDownloads,
                     ConnectTimeout = TimeSpan.FromSeconds(15),
                 })
-                { Timeout = TimeSpan.FromSeconds(120) };
+                // every caller has its own limit (cover 30 s, GitHub index 2 min, GameTDB database 3 min per attempt):
+                // a client-wide 120 s cut the slow, built-on-demand GameTDB download short
+                { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
             }
         }
     }
@@ -116,7 +134,7 @@ public sealed class ArtworkService : IDisposable
     {
         get
         {
-            lock (_httpGate) return _gameTdb ??= new GameTdbIndexStore(GameTdbCacheFolder, Http);
+            lock (_httpGate) return _gameTdb ??= new GameTdbIndexStore(GameTdbCacheFolder, Http, timeout: GameTdbTimeout, retryDelay: GameTdbRetryDelay);
         }
     }
 
@@ -187,6 +205,16 @@ public sealed class ArtworkService : IDisposable
         int downloaded = 0, errors = 0, skipped = 0, done = 0, notFound;
         if (online && needOnline.Count > 0)
         {
+            // GameTDB games wait for one database download that can take minutes (built on demand by the server):
+            // start it now, in the background, and let the libretro games go first, so the workers do not all sit
+            // waiting for it while the libretro covers could be loading
+            var gameTdbPlatforms = needOnline
+                .Where(g => !_misses.IsRecentMiss(GameTdbMissKey(g.SystemId, ArtworkNames.Stem(g))))
+                .Select(g => _catalog.GetSystem(g.SystemId)?.GameTdb)
+                .Where(p => p is { Length: > 0 }).Distinct(StringComparer.Ordinal).ToList();
+            foreach (var p in gameTdbPlatforms) _ = GameTdbIndexes.GetAsync(p!, ct).ContinueWith(t => _ = t.Exception, TaskScheduler.Default);
+            if (gameTdbPlatforms.Count > 0)
+                needOnline = needOnline.OrderBy(g => _catalog.GetSystem(g.SystemId)?.GameTdb is { Length: > 0 } ? 1 : 0).ToList();
             await Parallel.ForEachAsync(needOnline, new ParallelOptions { MaxDegreeOfParallelism = MaxParallelDownloads, CancellationToken = ct }, async (g, token) =>
             {
                 var r = await FetchOnlineAsync(g, finder, token).ConfigureAwait(false);
@@ -265,37 +293,40 @@ public sealed class ArtworkService : IDisposable
 
         try
         {
-            var index = await Indexes.GetAsync(g.SystemId, libretroName, ct).ConfigureAwait(false);
-            IReadOnlyList<string> names;
-            if (index != null)
+            var target = Path.Combine(_paths.Covers, LocalArtworkFinder.SystemFolder(sys, g.SystemId), stem + ".png");
+            bool anyError = false, unindexed = false;
+            // usually one set; a Satellaview game on the SNES also looks in "Nintendo - Satellaview" (first)
+            foreach (var (indexKey, set) in LibretroThumbnails.SetsFor(g.SystemId, libretroName, g))
             {
-                var match = index.Match(g);
-                if (match != null) names = [match];
+                var index = await Indexes.GetAsync(indexKey, set, ct).ConfigureAwait(false);
+                IReadOnlyList<string> names;
+                if (index == null)
+                {
+                    unindexed = true; // GitHub unavailable (rate limit, network): guesses only
+                    names = LibretroThumbnails.DirectCandidates(g);
+                }
+                else if (index.Match(g) is { } match) names = [match];
                 else if (index.Truncated) names = LibretroThumbnails.DirectCandidates(g); // incomplete listing: ask directly
                 else
                 {
-                    Log.Debug($"No libretro boxart matches '{stem}' ({g.SystemId})");
-                    _misses.AddMiss(missKey);
-                    return OnlineResult.NotFound;
+                    Log.Debug($"No libretro boxart matches '{stem}' ({set})");
+                    continue;
+                }
+
+                foreach (var name in names)
+                {
+                    if (!_settings.Current.OnlineCovers) return OnlineResult.Skipped;
+                    var r = await DownloadAsync(LibretroThumbnails.BoxartUrl(set, name), target, ct).ConfigureAwait(false);
+                    if (r == DownloadResult.NotFound) continue;
+                    if (r == DownloadResult.Error) { anyError = true; continue; }
+                    finder.Invalidate(Path.GetDirectoryName(target)!);
+                    SetCover(g.Id, target);
+                    if (r == DownloadResult.Saved) Log.Info($"Cover downloaded for '{g.DisplayTitle}': {name}" + (set != libretroName ? $" ({set})" : ""));
+                    return OnlineResult.Downloaded;
                 }
             }
-            else names = LibretroThumbnails.DirectCandidates(g);
-
-            var target = Path.Combine(_paths.Covers, LocalArtworkFinder.SystemFolder(sys, g.SystemId), stem + ".png");
-            var anyError = false;
-            foreach (var name in names)
-            {
-                if (!_settings.Current.OnlineCovers) return OnlineResult.Skipped;
-                var r = await DownloadAsync(LibretroThumbnails.BoxartUrl(libretroName, name), target, ct).ConfigureAwait(false);
-                if (r == DownloadResult.NotFound) continue;
-                if (r == DownloadResult.Error) { anyError = true; continue; }
-                finder.Invalidate(Path.GetDirectoryName(target)!);
-                SetCover(g.Id, target);
-                if (r == DownloadResult.Saved) Log.Info($"Cover downloaded for '{g.DisplayTitle}': {name}");
-                return OnlineResult.Downloaded;
-            }
-            if (anyError) return OnlineResult.Error;
-            _misses.AddMiss(missKey);
+            if (anyError) return OnlineResult.Error; // a transient failure is never remembered as a miss
+            _misses.AddMiss(missKey, unindexed ? UnindexedMissTtl : null);
             return OnlineResult.NotFound;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }

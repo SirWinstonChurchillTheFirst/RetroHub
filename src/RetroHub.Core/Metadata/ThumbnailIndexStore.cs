@@ -34,7 +34,7 @@ public sealed class ThumbnailIndexStore
         _dir = cacheDir;
         _http = http;
         _now = utcNow ?? (() => DateTime.UtcNow);
-        _timeout = timeout ?? TimeSpan.FromSeconds(60);
+        _timeout = timeout ?? TimeSpan.FromMinutes(2); // the SNES listing is ~4.5 MB: room for a slow or busy line
     }
 
     /// <summary>Number of HTTP requests sent to GitHub by this store (diagnostics/tests).</summary>

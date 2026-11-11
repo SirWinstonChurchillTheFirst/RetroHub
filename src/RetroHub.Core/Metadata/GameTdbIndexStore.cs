@@ -12,13 +12,19 @@ namespace RetroHub.Core.Metadata;
 /// The GameTDB database of a platform (<see cref="GameTdb.DatabaseUrl"/>), fetched at most every <see cref="MaxAge"/>
 /// and cached as data/metadata/gametdb/&lt;platform&gt;.json with only what matching needs (id, type, regions, titles;
 /// ~2–3 MB for Switch instead of the 20 MB XML). A refresh sends the stored ETag (If-None-Match); 304 only renews the
-/// date. A failed fetch falls back to a stale cache, else returns null, and is not retried for <see cref="RetryAfter"/>
-/// (GameTDB asks crawlers for 30 s between requests; RetroHub asks once a month). Never throws (except cancellation).
+/// date. The server builds the ZIP on demand when its copy is stale: the first byte can take 40+ s (measured
+/// 2026-11-11: 43 s for an uncached language), more on a busy line, so one attempt may take <see cref="DefaultTimeout"/>
+/// and a transient failure (timeout, network error, HTTP 5xx/408/429) is retried once after <see cref="DefaultRetryDelay"/>
+/// (GameTDB asks crawlers for 30 s between requests; by then the ZIP is usually built). A failed fetch falls back to a
+/// stale cache, else returns null; a failure is shared for <see cref="RetryAfter"/> only (a short cool-down, so the next
+/// run asks again instead of failing instantly for the rest of the session). Never throws (except cancellation).
 /// </summary>
 public sealed class GameTdbIndexStore
 {
     public static readonly TimeSpan MaxAge = TimeSpan.FromDays(30);
-    public static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(2);
+    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(3);
+    public static readonly TimeSpan DefaultRetryDelay = TimeSpan.FromSeconds(30);
     private const long MaxZipBytes = 32L * 1024 * 1024;
     private const long MaxXmlBytes = 256L * 1024 * 1024;
     private const int FormatVersion = 1;
@@ -32,16 +38,20 @@ public sealed class GameTdbIndexStore
     private readonly HttpClient _http;
     private readonly Func<DateTime> _now;
     private readonly TimeSpan _timeout;
+    private readonly TimeSpan _retryDelay;
     private readonly object _gate = new();
     private readonly Dictionary<string, (Task<GameTdbIndex?> Task, DateTime Started)> _loads = new(StringComparer.Ordinal);
     private int _requests;
 
-    public GameTdbIndexStore(string cacheDir, HttpClient http, Func<DateTime>? utcNow = null, TimeSpan? timeout = null)
+    /// <param name="timeout">One attempt (headers and body); default <see cref="DefaultTimeout"/>.</param>
+    /// <param name="retryDelay">Pause before the one retry after a transient failure; default <see cref="DefaultRetryDelay"/>.</param>
+    public GameTdbIndexStore(string cacheDir, HttpClient http, Func<DateTime>? utcNow = null, TimeSpan? timeout = null, TimeSpan? retryDelay = null)
     {
         _dir = cacheDir;
         _http = http;
         _now = utcNow ?? (() => DateTime.UtcNow);
-        _timeout = timeout ?? TimeSpan.FromSeconds(60);
+        _timeout = timeout ?? DefaultTimeout;
+        _retryDelay = retryDelay ?? DefaultRetryDelay;
     }
 
     /// <summary>Number of HTTP requests sent to www.gametdb.com by this store (diagnostics/tests).</summary>
@@ -76,6 +86,12 @@ public sealed class GameTdbIndexStore
         if (cached != null && _now() - cached.FetchedUtc < MaxAge) return ToIndex(cached);
 
         var fetched = await FetchAsync(platform, cached?.ETag, ct).ConfigureAwait(false);
+        if (fetched.Transient)
+        {
+            Log.Info($"GameTDB database of {platform}: trying again in {_retryDelay.TotalSeconds:0} s");
+            await Task.Delay(_retryDelay, ct).ConfigureAwait(false);
+            fetched = await FetchAsync(platform, cached?.ETag, ct).ConfigureAwait(false);
+        }
         if (fetched is { NotModified: true } && cached != null)
         {
             Write(platform, cached with { FetchedUtc = _now() });
@@ -84,7 +100,7 @@ public sealed class GameTdbIndexStore
         }
         if (fetched is { Entries: { } entries })
         {
-            var file = new CacheFile(FormatVersion, platform, _now(), fetched.Value.ETag, entries);
+            var file = new CacheFile(FormatVersion, platform, _now(), fetched.ETag, entries);
             Write(platform, file);
             return ToIndex(file);
         }
@@ -122,11 +138,18 @@ public sealed class GameTdbIndexStore
         }
     }
 
-    private async Task<(bool NotModified, string? ETag, List<CacheEntry>? Entries)?> FetchAsync(string platform, string? etag, CancellationToken ct)
+    /// <summary>One attempt: 304, entries, or a failure (<see cref="Transient"/>: worth one retry).</summary>
+    private readonly record struct FetchResult(bool NotModified, string? ETag, List<CacheEntry>? Entries, bool Transient)
+    {
+        public static FetchResult Failed(bool transient) => new(false, null, null, transient);
+    }
+
+    private async Task<FetchResult> FetchAsync(string platform, string? etag, CancellationToken ct)
     {
         var url = GameTdb.DatabaseUrl(platform);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(_timeout);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
@@ -134,30 +157,60 @@ public sealed class GameTdbIndexStore
             if (!string.IsNullOrEmpty(etag) && EntityTagHeaderValue.TryParse(etag, out var tag)) req.Headers.IfNoneMatch.Add(tag);
             Interlocked.Increment(ref _requests);
             using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
-            if (resp.StatusCode == HttpStatusCode.NotModified) return (true, etag, null);
+            if (resp.StatusCode == HttpStatusCode.NotModified) return new FetchResult(true, etag, null, false);
             if (!resp.IsSuccessStatusCode)
             {
-                Log.Warn($"GameTDB database {url} failed: HTTP {(int)resp.StatusCode}");
-                return null;
+                var code = (int)resp.StatusCode;
+                Log.Warn($"GameTDB database {url} failed: HTTP {code} after {sw.ElapsedMilliseconds} ms");
+                return FetchResult.Failed(transient: code >= 500 || resp.StatusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests);
             }
             if (resp.Content.Headers.ContentLength is > MaxZipBytes)
             {
                 Log.Warn($"GameTDB database {url} skipped: {resp.Content.Headers.ContentLength} bytes");
-                return null;
+                return FetchResult.Failed(transient: false);
             }
-            var bytes = await resp.Content.ReadAsByteArrayAsync(timeout.Token).ConfigureAwait(false);
-            if (bytes.Length > MaxZipBytes) return null;
+            var bytes = await ReadCappedAsync(resp.Content, timeout.Token).ConfigureAwait(false);
+            if (bytes == null)
+            {
+                Log.Warn($"GameTDB database {url} skipped: larger than {MaxZipBytes} bytes");
+                return FetchResult.Failed(transient: false);
+            }
             var entries = Parse(bytes, platform);
-            if (entries == null) return null;
-            Log.Info($"Fetched the GameTDB database of {platform}: {entries.Count} games ({bytes.Length / 1024} KB)");
-            return (false, resp.Headers.ETag?.ToString(), entries);
+            if (entries == null) return FetchResult.Failed(transient: false);
+            Log.Info($"Fetched the GameTDB database of {platform}: {entries.Count} games ({bytes.Length / 1024} KB, {sw.ElapsedMilliseconds} ms)");
+            return new FetchResult(false, resp.Headers.ETag?.ToString(), entries, false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or IOException or InvalidDataException or XmlException)
+        catch (OperationCanceledException)
         {
-            Log.Warn($"GameTDB database {url} could not be fetched: {ex.Message}");
-            return null;
+            Log.Warn($"GameTDB database {url} timed out after {sw.ElapsedMilliseconds} ms (limit {_timeout.TotalSeconds:0} s)");
+            return FetchResult.Failed(transient: true);
         }
+        catch (Exception ex) when (ex is HttpRequestException or IOException)
+        {
+            Log.Warn($"GameTDB database {url} could not be fetched after {sw.ElapsedMilliseconds} ms: {ex.Message}");
+            return FetchResult.Failed(transient: true);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or XmlException)
+        {
+            Log.Warn($"GameTDB database {url} is unreadable: {ex.Message}");
+            return FetchResult.Failed(transient: false);
+        }
+    }
+
+    /// <summary>The body, or null when it exceeds <see cref="MaxZipBytes"/> (also without a Content-Length).</summary>
+    private static async Task<byte[]?> ReadCappedAsync(HttpContent content, CancellationToken ct)
+    {
+        await using var src = await content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        using var ms = new MemoryStream();
+        var buf = new byte[64 * 1024];
+        int n;
+        while ((n = await src.ReadAsync(buf, ct).ConfigureAwait(false)) > 0)
+        {
+            if (ms.Length + n > MaxZipBytes) return null;
+            ms.Write(buf, 0, n);
+        }
+        return ms.ToArray();
     }
 
     /// <summary>Reads &lt;platform&gt;tdb.xml from the ZIP (or a bare XML) in one streaming pass. Null when it is neither.</summary>

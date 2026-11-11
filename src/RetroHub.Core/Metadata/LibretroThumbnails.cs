@@ -83,6 +83,116 @@ public static class LibretroThumbnails
         return best;
     }
 
+    // ───────────── the ROM's region / language tag → the No-Intro regions to prefer, best first ─────────────
+
+    private static readonly Dictionary<string, string[]> RegionWordPrefs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // No-Intro region names stand for themselves (handled below); languages and German names of personal collections:
+        ["deutsch"] = ["Germany", "Europe", "Austria", "Switzerland"], ["german"] = ["Germany", "Europe", "Austria", "Switzerland"],
+        ["deutschland"] = ["Germany", "Europe"], ["österreich"] = ["Austria", "Germany", "Europe"], ["schweiz"] = ["Switzerland", "Germany", "Europe"],
+        ["englisch"] = ["Europe", "USA", "UK", "Australia", "World"], ["english"] = ["Europe", "USA", "UK", "Australia", "World"],
+        ["französisch"] = ["France", "Europe", "Canada"], ["franzoesisch"] = ["France", "Europe", "Canada"],
+        ["french"] = ["France", "Europe", "Canada"], ["frankreich"] = ["France", "Europe"],
+        ["spanisch"] = ["Spain", "Europe", "Mexico", "Latin America"], ["spanish"] = ["Spain", "Europe", "Mexico", "Latin America"], ["spanien"] = ["Spain", "Europe"],
+        ["italienisch"] = ["Italy", "Europe"], ["italian"] = ["Italy", "Europe"], ["italien"] = ["Italy", "Europe"],
+        ["portugiesisch"] = ["Portugal", "Brazil", "Europe"], ["portuguese"] = ["Portugal", "Brazil", "Europe"],
+        ["niederländisch"] = ["Netherlands", "Europe"], ["dutch"] = ["Netherlands", "Europe"],
+        ["schwedisch"] = ["Sweden", "Scandinavia", "Europe"], ["swedish"] = ["Sweden", "Scandinavia", "Europe"],
+        ["russisch"] = ["Russia", "Europe"], ["russian"] = ["Russia", "Europe"], ["polnisch"] = ["Poland", "Europe"], ["polish"] = ["Poland", "Europe"],
+        ["japanisch"] = ["Japan"], ["japanese"] = ["Japan"],
+        ["chinesisch"] = ["China", "Taiwan", "Hong Kong", "Asia"], ["chinese"] = ["China", "Taiwan", "Hong Kong", "Asia"],
+        ["koreanisch"] = ["Korea"], ["korean"] = ["Korea"],
+        ["europa"] = ["Europe"], ["weltweit"] = ["World"],
+    };
+
+    /// <summary>TV standards: alone they name regions; next to a language they pick the regions that broadcast in them.</summary>
+    private static readonly Dictionary<string, string[]> TvStandardPrefs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ntsc"] = ["USA", "Canada"], ["ntsc-u"] = ["USA", "Canada"], ["ntsc-j"] = ["Japan"], ["pal"] = ["Europe"], ["pal-g"] = ["Germany", "Europe"],
+    };
+
+    private static readonly HashSet<string> NtscRegions = new(StringComparer.OrdinalIgnoreCase)
+    { "USA", "Canada", "Japan", "Korea", "Taiwan", "Mexico", "Latin America" };
+
+    /// <summary>
+    /// The No-Intro regions a ROM's region or language tag asks for, best first: "Germany" → [Germany];
+    /// "Deutsch" → [Germany, Europe, …]; "Englisch" → [Europe, USA, …]; "Englisch, NTSC" → [USA, …] (the English
+    /// regions that use NTSC first); "Französisch" → [France, Europe, Canada]; "Japanisch" → [Japan]. Unknown → empty.
+    /// </summary>
+    public static IReadOnlyList<string> PreferredRegions(string? romRegion)
+    {
+        if (string.IsNullOrWhiteSpace(romRegion)) return [];
+        var langs = new List<string>();
+        var tv = new List<string>();
+        bool? ntsc = null;
+        foreach (var p in romRegion.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (TvStandardPrefs.TryGetValue(p, out var t))
+            {
+                tv.AddRange(t);
+                ntsc = p.StartsWith("ntsc", StringComparison.OrdinalIgnoreCase);
+            }
+            else if (RegionWordPrefs.TryGetValue(p, out var l)) langs.AddRange(l);
+            else langs.Add(p); // a No-Intro region name ("Germany", "USA") stands for itself
+        }
+        IEnumerable<string> list;
+        if (langs.Count == 0) list = tv;
+        else if (ntsc is { } isNtsc) list = langs.Where(r => NtscRegions.Contains(r) == isNtsc).Concat(tv).Concat(langs);
+        else list = langs;
+        return list.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>True when the region carries a language or TV-standard word ("Deutsch", "Englisch, NTSC") rather than No-Intro regions only.</summary>
+    public static bool IsLanguageTag(string? region) =>
+        region != null && region.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Any(p => RegionWordPrefs.ContainsKey(p) || TvStandardPrefs.ContainsKey(p));
+
+    /// <summary>
+    /// Sort key of a thumbnail's region for a ROM (lower is better): −1 the ROM's own region exactly; 0.. its position
+    /// in <see cref="PreferredRegions"/>; otherwise 100 + <see cref="RegionRank(string?, string?)"/> (Europe &gt; USA &gt; …).
+    /// </summary>
+    public static int RegionScore(string? entryRegion, string? romRegion)
+    {
+        var general = RegionRank(entryRegion, romRegion);
+        if (general == -1) return -1;
+        if (!string.IsNullOrWhiteSpace(entryRegion))
+        {
+            var prefs = PreferredRegions(romRegion);
+            var best = int.MaxValue;
+            foreach (var p in entryRegion.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                for (var i = 0; i < prefs.Count && i < best; i++)
+                    if (string.Equals(prefs[i], p, StringComparison.OrdinalIgnoreCase)) best = i;
+            }
+            if (best != int.MaxValue) return best;
+        }
+        return 100 + general;
+    }
+
+    // ───────────── extra sets: Satellaview broadcasts live in their own repository ─────────────
+
+    public const string SnesSet = "Nintendo - Super Nintendo Entertainment System";
+    public const string SatellaviewSet = "Nintendo - Satellaview";
+
+    /// <summary>
+    /// The libretro sets to search for a game, in order, as (index cache key, libretro name): the system's own set;
+    /// for a Satellaview game on the SNES (".bs", or a "BS …" title) the "Nintendo - Satellaview" set first.
+    /// </summary>
+    public static IReadOnlyList<(string Key, string LibretroName)> SetsFor(string systemId, string libretroName, Game game)
+    {
+        if (string.Equals(libretroName, SnesSet, StringComparison.Ordinal) && IsSatellaview(game))
+            return [(systemId + "-satellaview", SatellaviewSet), (systemId, libretroName)];
+        return [(systemId, libretroName)];
+    }
+
+    /// <summary>A Satellaview (BS-X) download: ".bs" file, or a file/title starting with "BS " (No-Intro writes "BS F-Zero Grand Prix 2 …").</summary>
+    public static bool IsSatellaview(Game game)
+    {
+        if (string.Equals(Path.GetExtension(game.Path ?? ""), ".bs", StringComparison.OrdinalIgnoreCase)) return true;
+        var stem = ArtworkNames.FileStem(game);
+        return stem.StartsWith("BS ", StringComparison.Ordinal) || (game.Title?.StartsWith("BS ", StringComparison.Ordinal) ?? false);
+    }
+
     /// <summary>
     /// Names to try directly on thumbnails.libretro.com when no file index is available (at most 4, sanitised, distinct):
     /// the ROM file name without extension (usually already the No-Intro name), then the cleaned title with its region,
@@ -102,7 +212,12 @@ public static class LibretroThumbnails
         var parsed = TitleParser.Parse(stem, isFileName: false);
         var title = string.IsNullOrWhiteSpace(parsed.Title) || TitleParser.IsMeaningless(parsed.Title) ? game.Title : parsed.Title;
         var region = parsed.Region ?? game.Region;
-        if (region != null) Add($"{title} ({region})");
+        if (region != null && IsLanguageTag(region))
+        {
+            // "(Deutsch)" is no libretro name: ask for the regions it stands for ("(Germany)", "(Europe)")
+            foreach (var r in PreferredRegions(region).Take(2)) Add($"{title} ({r})");
+        }
+        else if (region != null) Add($"{title} ({region})");
         else
         {
             Add($"{title} (Europe)");
@@ -183,7 +298,7 @@ public sealed partial class ThumbnailIndex
 
     private static string? Best(List<Entry> list, string? region, bool romIsOdd) => list
         .OrderBy(e => romIsOdd ? 0 : e.Penalty)
-        .ThenBy(e => LibretroThumbnails.RegionRank(e.Region, region))
+        .ThenBy(e => LibretroThumbnails.RegionScore(e.Region, region))
         .ThenBy(e => e.TagCount)
         .ThenBy(e => e.Name.Length)
         .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
