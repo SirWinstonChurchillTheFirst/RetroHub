@@ -37,7 +37,7 @@ $extract = Join-Path $WorkDir "extract"
 $stage = Join-Path $WorkDir "stage"
 $out = Join-Path $WorkDir "out"
 $version = ([xml](Get-Content (Join-Path $repo "Directory.Build.props"))).Project.PropertyGroup.Version
-if (-not $version) { $version = "0.1.1" }
+if (-not $version) { $version = "0.1.2" }
 
 if (-not (Test-Path $SevenZip)) { throw "7-Zip fehlt: $SevenZip" }
 if (-not $NoCompile -and -not (Test-Path $Iscc)) { throw "Inno Setup 6 fehlt: $Iscc" }

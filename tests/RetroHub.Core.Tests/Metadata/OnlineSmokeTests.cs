@@ -84,7 +84,7 @@ public sealed class OnlineSmokeTests
     }
 
     /// <summary>
-    /// GameTDB for Nintendo Switch: the real database (one ZIP, ~1.9 MB) is parsed and the owner's eight game names
+    /// GameTDB for Nintendo Switch: the real database (one ZIP, ~1.9 MB) is parsed and eight well-known game names
     /// match the right product codes; then the real pipeline (ArtworkService, online on) downloads two covers – one
     /// with a German box, one that falls back to English. Three requests to art.gametdb.com at most per game.
     /// </summary>

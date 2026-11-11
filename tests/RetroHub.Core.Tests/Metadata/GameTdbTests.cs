@@ -80,7 +80,7 @@ public sealed class GameTdbTests : IDisposable
     }
 
     [Theory]
-    // the owner's eight Switch games, named like their folders on disk
+    // eight well-known Switch titles, named like typical folders on disk
     [InlineData("The Legend of Zelda - Breath of the Wild", "AAAAA")]        // not AAAAG "+ Expansion Pass" (JPN)
     [InlineData("Hyrule Warriors - Zeit der Verheerung", "AXEAB")]           // German title, via the DE locale
     [InlineData("Hyrule Warriors - Definitive Edition", "AKUTB")]
@@ -93,7 +93,7 @@ public sealed class GameTdbTests : IDisposable
     [InlineData("Hyrule Warriors - Age of Calamity [0100A6301214E000][v0]", "AXEAB")] // the European entry, not the Japanese AXEAA
     [InlineData("The Legend of Zelda: Tears of the Kingdom", "AXN7A")]
     [InlineData("Zelda, The Legend of - Skyward Sword HD", "AZ89A")]
-    public void Matches_the_owners_games(string title, string expected) =>
+    public void Matches_well_known_titles(string title, string expected) =>
         Assert.Equal(expected, SampleIndex().Match(title));
 
     [Theory]
