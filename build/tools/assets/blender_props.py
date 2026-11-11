@@ -51,6 +51,28 @@ TINT_NODES = {"band": [], "body": []}
 
 # ----------------------------------------------------------------------------------------------------------------- scene
 
+GPU_KIND = None if os.environ.get("RH_BLENDER_GPU") == "1" else ""
+
+
+def _enable_gpu():
+    """Turn on the first OptiX (else CUDA) device in this session's (factory) prefs; returns the kind or ''."""
+    prefs = bpy.context.preferences.addons["cycles"].preferences
+    for kind in ("OPTIX", "CUDA"):
+        try:
+            prefs.compute_device_type = kind
+            prefs.get_devices()
+            devs = [d for d in prefs.devices if d.type == kind]
+        except Exception:
+            continue
+        if devs:
+            for d in prefs.devices:
+                d.use = d.type == kind
+            print("GPU", kind, [d.name for d in devs], flush=True)
+            return kind
+    print("GPU requested but none found - CPU", flush=True)
+    return ""
+
+
 def reset_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     TINT_NODES["band"].clear()
@@ -58,16 +80,18 @@ def reset_scene():
     _images.clear()
     sc = bpy.context.scene
     sc.render.engine = "CYCLES"
-    # CPU ONLY (owner's rule: the GPU belongs to ComfyUI / the desktop; a GPU overload killed the shell once):
-    # Cycles on the CPU, OpenImageDenoise on the CPU, at most 8 threads (run_blender.ps1 also passes -t 8)
-    sc.cycles.device = "CPU"
+    # Default CPU ONLY (owner's rule: the GPU belongs to ComfyUI / the desktop; a GPU overload killed the shell once):
+    # Cycles on the CPU, OpenImageDenoise on the CPU, at most 8 threads (run_blender.ps1 also passes -t 8).
+    # RH_BLENDER_GPU=1 (run_blender.ps1 -Gpu): the final full-quality pass on the GPU — only with Blender alone on it.
     sc.render.threads_mode = "FIXED"
     sc.render.threads = 8
     sc.cycles.samples = SAMPLES
     sc.cycles.use_denoising = True
     sc.cycles.denoiser = "OPENIMAGEDENOISE"
+    gpu = GPU_KIND if GPU_KIND is not None else _enable_gpu()
+    sc.cycles.device = "GPU" if gpu else "CPU"
     try:
-        sc.cycles.denoising_use_gpu = False
+        sc.cycles.denoising_use_gpu = bool(gpu)
     except Exception:
         pass
     sc.cycles.seed = 7
