@@ -110,12 +110,12 @@
       <!-- the position rail: one tick per system on the wall (a click turns that front forward), the current one with its
            code; right the position in a fixed column, never touching the rail ("Noch leer · 3 von 20" on the low edge) -->
       <!-- R3 QA 2: the rail runs up to the position tag (16 px before it), no dead column between them -->
-      <Grid Name="TickerRow" ColumnDefinitions="*,Auto" Margin="{DynamicResource RhPageInsetX}" Height="52" IsVisible="{Binding HasSystems}">
+      <Grid Name="TickerRow" ColumnDefinitions="*,Auto" Margin="{DynamicResource RhPageInsetX}" Height="62" IsVisible="{Binding HasSystems}">
         <c:PositionRail Name="Rail" Systems="{Binding Systems}" Current="{Binding Current}" Margin="0,0,16,0" />
         <!-- the position in a small window set into the bench, like the dial's counter (M7 "gezeichnet") -->
         <!-- R3: the position on a riveted metal tag (rendered, like the count tags on the spines) -->
         <!-- R3 QA 3: a paper card in a steel clamp frame (rendered "sign"), printed in ink in the binders' label face -->
-        <c:TagPlate Name="PositionTag" Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,-2" Height="34"
+        <c:TagPlate Name="PositionTag" Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,2" Height="34"
                     IsVisible="{Binding PositionText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
           <TextBlock FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="17" Foreground="#0B0C0E" Margin="26,0,26,1"
                      VerticalAlignment="Center" Text="{Binding PositionText}" />
@@ -123,7 +123,7 @@
       </Grid>
 
       <!-- the systems without games: thin, quiet spines on a low edge, the label hangs at its front -->
-      <Panel Name="UnusedShelf" IsVisible="{Binding HasEmptySystems}" Margin="0,32,0,0">
+      <Panel Name="UnusedShelf" IsVisible="{Binding HasEmptySystems}" Margin="0,22,0,0">
         <c:Shelf Name="Unused" WheelScrollsRow="True" Bookend="True" ItemsSource="{Binding EmptySystems}" ItemTemplate="{StaticResource UnusedSpine}" ItemSpacing="2" TopGap="0"
                  ItemsMargin="{DynamicResource RhPageInsetX}" LabelMargin="{DynamicResource RhPageInsetX}" Header="{l:T systems.unused}"
                  BoardLook="{Binding Current.Look, FallbackValue={x:Null}}"

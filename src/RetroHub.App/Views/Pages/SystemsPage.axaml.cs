@@ -89,8 +89,9 @@ public partial class SystemsPage : PageBase
         EmptyText.Width = compact ? 380 : 520;
         Unused.ItemHeight = compact ? 116 : 168;
         // the rail and the "Noch leer" spines read as two bands, not one (M5 QA)
-        UnusedShelf.Margin = new Thickness(0, compact ? 20 : 32, 0, 0);
-        TickerRow.Height = compact ? 46 : 52;
+        // R3 QA 4: the rail is 34 px (≈1100: 28) – its row grows by 10 (8) and the gap under it shrinks by as much
+        UnusedShelf.Margin = new Thickness(0, compact ? 12 : 22, 0, 0);
+        TickerRow.Height = compact ? 54 : 62;
         ApplyTall();
     }
 

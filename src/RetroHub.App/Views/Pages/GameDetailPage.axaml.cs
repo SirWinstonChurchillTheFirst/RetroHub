@@ -45,7 +45,8 @@ public partial class GameDetailPage : PageBase
         };
         Stage.LayoutUpdated += (_, _) => StageBoard.InvalidateVisual();
         TextColumn.SizeChanged += (_, _) => Dispatcher.UIThread.Post(ApplyStageHeight, DispatcherPriority.Loaded);
-        Scroll.ScrollChanged += (_, _) => OnScrolled();
+        Scroll.ScrollChanged += (_, _) => { OnScrolled(); UpdateFold(); };
+        Back.LayoutUpdated += (_, _) => UpdateFold();
         ScreensBoard.Casters = [TitleSet, SnapSet];
         ScreenSets.LayoutUpdated += (_, _) => ScreensBoard.InvalidateVisual();
         CoverBoard.Casters = [CoverLarge];
@@ -312,7 +313,8 @@ public partial class GameDetailPage : PageBase
         if (_vm == null) return;
         var width = NeighbourHost.Bounds.Width;
         if (width <= 0) width = _compact ? 1100 : 744;
-        var height = _compact ? 150.0 : 180.0;
+        // R3 QA 4: 144 at 1920 (was 180) – under a one-line "Über das Spiel" the captions' year line ended in the footer
+        var height = _compact ? 150.0 : NeighbourHeight;
         var aspect = SystemPalette.BoxAspect(_vm.Game?.SystemId);
         var slot = Math.Round(height / Math.Clamp(aspect, 0.6, 1.8));
         const double gap = 24;
@@ -384,6 +386,9 @@ public partial class GameDetailPage : PageBase
         if (_gap == null) return;
         _gap.Aspect = DetailBox.Art?.ImageAspect ?? 1 / Math.Clamp(SystemPalette.BoxAspect(_vm?.Game?.SystemId), 0.6, 1.8);
     }
+
+    /// <summary>The neighbours' box height at the 1080 values (≈1100: 150).</summary>
+    internal const double NeighbourHeight = 144;
 
     /// <summary>The caption under a box (GameTile .deep-caption: 32 = board 12 + 20 under its dark underside, then the 66 px title and label block).</summary>
     private const double CaptionBlock = 98;
@@ -513,6 +518,64 @@ public partial class GameDetailPage : PageBase
         BottomSpacer.Height = Math.Max(0, Math.Ceiling(target + viewport - content));
         var version = ++_scrollVersion;
         Dispatcher.UIThread.Post(() => { if (version == _scrollVersion) Scroll.Offset = new Vector(0, target); }, DispatcherPriority.Loaded);
+    }
+
+    // ===================== the fold: nothing cut at the footer =====================
+
+    /// <summary>
+    /// R3 QA 4 ("the year line under 'Daneben im Regal' is clipped by the footer"): while the page rests on the stage (over
+    /// the board stop), a piece of the back that would be cut by the page's lower edge (incl. the footer's 40 px shade,
+    /// <see cref="FoldShade"/> of it) is not shown – the back ends on whole pieces. A piece is a section's heading with its
+    /// first content (a heading never stands alone), then each further row; once one piece is folded away, the rest of
+    /// its section follows. Read further (board stop and below) everything shows and the page scrolls freely; a focused
+    /// piece is always shown (the focus scrolls it whole into view anyway).
+    /// </summary>
+    private void UpdateFold()
+    {
+        var viewport = Scroll.Viewport.Height;
+        if (viewport <= 0 || _updatingFold) return;
+        _updatingFold = true;
+        try
+        {
+            var reading = Scroll.Offset.Y >= BoardStop - 0.5;
+            var fold = Scroll.Offset.Y + viewport - FoldShade;
+            var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Visual;
+            foreach (var section in new Control[] { AboutSection, ShelfSection, StartSection, CardSection })
+            {
+                var pieces = FoldPieces(section);
+                var folded = false;
+                foreach (var piece in pieces)
+                {
+                    if (!folded && !reading)
+                    {
+                        var top = piece[0].TranslatePoint(new Point(0, 0), PageContent)?.Y ?? 0;
+                        var last = piece[^1];
+                        var bottom = last.TranslatePoint(new Point(0, last.Bounds.Height), PageContent)?.Y ?? 0;
+                        var hasFocus = focused != null && piece.Any(c => c == focused || focused.GetVisualAncestors().Contains(c));
+                        folded = top < fold && bottom > fold && !hasFocus;
+                    }
+                    foreach (var c in piece) c.Opacity = folded && !reading ? 0 : 1;
+                }
+            }
+        }
+        finally { _updatingFold = false; }
+    }
+
+    private bool _updatingFold;
+
+    /// <summary>The lower part of the footer's shade that counts as cut (the shade is 40 px; its lower half is near black).</summary>
+    private const double FoldShade = 20;
+
+    /// <summary>A section's visible children as fold pieces: the heading joined with the first content, then one per row.</summary>
+    private static List<Control[]> FoldPieces(Control section)
+    {
+        var list = new List<Control[]>();
+        if (section is not Panel { IsVisible: true } panel) return list;
+        var shown = panel.Children.Where(c => c.IsVisible && c.Bounds.Height > 0).ToList();
+        if (shown.Count == 0) return list;
+        list.Add(shown.Count > 1 ? new[] { shown[0], shown[1] } : new[] { shown[0] });
+        for (var i = 2; i < shown.Count; i++) list.Add(new[] { shown[i] });
+        return list;
     }
 
     private DispatcherTimer? _snapTimer;

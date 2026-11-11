@@ -31,7 +31,11 @@ edges are in it), then for each light map: `FillRectangle(colour)` under `PushOp
 - case (keep case, 9-slice `slice` l13 t8 r8 b8): cover image into `window`, then `case-shade` (black: darkens the
   cover = multiply by the light), `case-gloss` (white: the sleeve's sheen), then `case` (frame with the window cut out).
 - boards: tile `-tile` (and `-shadow-tile`) horizontally; rail, tag, reiter, sign: `-left`, tiled `-tile`, `-right` (a `-band-*` light map is sliced the same way and tinted).
-- rail notch (R3 QA 3): job `rail` also renders `rail-notch` (one notch cut into the top lip); build_sprites writes the difference as the overlay `rail-notch-mark@Nx.png`, which the app sets once per Fach.
+- rail notch (R3 QA 3; R3 QA 4: rail 34 px, 12 px top lip, notch 5 × 9 px modelled as geometry): job `rail` also renders `rail-notch`; build_sprites writes the difference, cut to the top lip (`lip` rect), as the overlay `rail-notch-mark@Nx.png`, which the app sets once per Fach.
 - tv (R3 QA 3): the Start TV cabinet, nine-sliced by the app (borders 135/24/150/60 px at 560 px width; LED light and caption are drawn by the app).
 - front-l/front-s (R3 QA 3): the binder turned 25° (`binder_front`): `cover` = the cover face (the app's print starts there), `edge` = the steel edge protector, `recess`/`innerBoard` = the window.
+  R3 QA 4: the cover's board uses `mat_cardboard(grain=…, scuffs=…)` (mean-preserving fibre contrast, rub marks from the
+  scuffed-plastic scan) and a soft `coverlamp`; the app tints it with `SystemSpine.CoverBody` (housing tone lifted 30 %).
+- grey sprites (R3 QA 4): a base render whose visible pixels differ ≤ 8 levels between R, G and B is saved as LA
+  (grey + alpha) – the binder and the steel parts; the app decodes it like RGBA. Keeps `Assets/Rendered` under 15 MiB.
 All rects in `<name>.json` are 1x px from the sprite's top-left; `front` is the object's front face.

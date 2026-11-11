@@ -45,9 +45,20 @@ def straight(p):
     return np.where(a > 1e-5, p[..., :3] / np.maximum(a, 1e-5), 0), a[..., 0]
 
 
+NEUTRAL_CHROMA = 8   # 8-bit levels: a sprite whose visible pixels never differ more between R, G and B is stored grey
+
+
 def save_rgba(path, rgb_lin, alpha):
-    out = np.dstack([srgb(rgb_lin), np.clip(alpha, 0, 1)[..., None]])
-    Image.fromarray((out * 255 + 0.5).astype(np.uint8), "RGBA").save(path, optimize=True)
+    out = (np.dstack([srgb(rgb_lin), np.clip(alpha, 0, 1)[..., None]]) * 255 + 0.5).astype(np.uint8)
+    vis = out[..., 3] > 8
+    chroma = (out[..., :3].max(-1).astype(int) - out[..., :3].min(-1))[vis]
+    if chroma.size and chroma.max() <= NEUTRAL_CHROMA:
+        # R3 QA 4: neutral renders (graphite binder, steel) as grey+alpha – half the bytes, no visible change (the lamps'
+        # faint warm/cool cast is ≤ 8 levels); the app decodes LA like RGBA
+        grey = np.round(out[..., :3].astype(np.float32) @ np.array([0.2126, 0.7152, 0.0722], np.float32)).astype(np.uint8)
+        Image.fromarray(np.dstack([grey, out[..., 3]]), "LA").save(path, optimize=True)
+        return
+    Image.fromarray(out, "RGBA").save(path, optimize=True)
 
 
 def save_la(path, grey, alpha):
@@ -109,8 +120,8 @@ def notch_overlay(root, meta):
     cropped 12 px wide around the notch); the app sets it once per Fach on the tiled rail."""
     dst = os.path.join(root, "sprites")
     for suffix, k in (("@2x", 2), ("@1x", 1)):
-        a = np.asarray(Image.open(os.path.join(dst, f"rail-notch{suffix}.png"))).astype(np.float32) / 255
-        b = np.asarray(Image.open(os.path.join(dst, f"rail{suffix}.png"))).astype(np.float32) / 255
+        a = np.asarray(Image.open(os.path.join(dst, f"rail-notch{suffix}.png")).convert("RGBA")).astype(np.float32) / 255
+        b = np.asarray(Image.open(os.path.join(dst, f"rail{suffix}.png")).convert("RGBA")).astype(np.float32) / 255
         h = min(a.shape[0], b.shape[0])
         cx = int(round(meta["notch"][0] * k / 2))
         hw = 6 * k
@@ -123,6 +134,10 @@ def notch_overlay(root, meta):
         g2 = g.copy()
         g2[:, 1:] = np.maximum(g2[:, 1:], g[:, :-1])
         g2[:, :-1] = np.maximum(g2[:, :-1], g[:, 1:])
+        if "lip" in meta:
+            # R3 QA 4: only the top lip (+2 px of its shade) – the slot's render noise under the notch read as a black block
+            lip_bottom = int(round((meta["lip"][1] + meta["lip"][3]) * k / 2)) + 2 * k
+            g2[lip_bottom:] = 0
         out = np.dstack([a[..., :3], g2 * a[..., 3]])
         Image.fromarray((out * 255 + 0.5).astype(np.uint8), "RGBA").save(os.path.join(dst, f"rail-notch-mark{suffix}.png"), optimize=True)
 

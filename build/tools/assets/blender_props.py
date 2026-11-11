@@ -376,17 +376,24 @@ def z_band(nb, tc, z0, z1, axis=2):
     return nb.math("MULTIPLY", nb.math("GREATER_THAN", z, z0), nb.math("LESS_THAN", z, z1))
 
 
-def mat_cardboard(name, rnd, band=None, tint_body=True, body_level=0.92, wear=0.55, tex_scale=3.6, band_axis=2, rough=0.78):
+def mat_cardboard(name, rnd, band=None, tint_body=True, body_level=0.92, wear=0.55, tex_scale=3.6, band_axis=2, rough=0.78,
+                  grain=None, scuffs=0.0, bump=0.5):
     """Tintable printed cardboard: the body (tint 'body') and an optional printed band (tint 'band', z0..z1 in object
-    space). Tinted albedo = normalised scan luminance x level x TINT; worn edges show light grey fibre."""
+    space). Tinted albedo = normalised scan luminance x level x TINT; worn edges show light grey fibre.
+    R3 QA 4 (the binder cover): grain = the scan's relative contrast around its true linear mean (0.51, so the level
+    holds), scuffs = light, untinted rub marks from the scuffed-plastic scan (0 = none)."""
     m = bpy.data.materials.new(name)
     nb = NB(m)
     col, tc = textured(nb, "cardboard-grey", tex_scale, rnd)
     bw = nb.n("ShaderNodeRGBToBW")
     nb.link(col, bw.inputs[0])
     # scan mean ~0.74 -> level, its fibre and mottling contrast x3 so it survives a dark tint
-    lum = nb.math("MULTIPLY", nb.math("ADD", nb.math("MULTIPLY", nb.math("SUBTRACT", bw.outputs[0], 0.74), 1.6), 0.74),
-                  body_level / 0.74)
+    if grain is None:
+        lum = nb.math("MULTIPLY", nb.math("ADD", nb.math("MULTIPLY", nb.math("SUBTRACT", bw.outputs[0], 0.74), 1.6), 0.74),
+                      body_level / 0.74)
+    else:
+        lum = nb.math("MULTIPLY", nb.math("ADD", nb.math("MULTIPLY", nb.math("SUBTRACT", bw.outputs[0], 0.511), grain / 0.511), 1.0),
+                      body_level, clamp=True)
     t_body = nb.val(1.0 if not tint_body else 0.0, "TINT_BODY")
     if tint_body:
         TINT_NODES["body"].append(t_body.node)
@@ -418,7 +425,14 @@ def mat_cardboard(name, rnd, band=None, tint_body=True, body_level=0.92, wear=0.
     dbw = nb.n("ShaderNodeRGBToBW")
     nb.link(dcol, dbw.inputs[0])
     alb = nb.mix(nb.math("MULTIPLY", dbw.outputs[0], 0.12), alb, (0.5, 0.5, 0.52, 1))
-    nrm = bump_from(nb, col, 0.5, 0.004, bv.outputs["Normal"])
+    if scuffs > 0:
+        scol, _ = textured(nb, "plastic-scuffed", 1.4, rnd, 0.3)
+        sbw = nb.n("ShaderNodeRGBToBW")
+        nb.link(scol, sbw.inputs[0])
+        smask = nb.math("MULTIPLY", nb.math("SUBTRACT", sbw.outputs[0], 0.15), 6.0, clamp=True)
+        alb = nb.mix(nb.math("MULTIPLY", smask, scuffs), alb, (0.40, 0.405, 0.415, 1))
+        rough = nb.math("ADD", rough, nb.math("MULTIPLY", smask, 0.12))
+    nrm = bump_from(nb, col, bump, 0.004, bv.outputs["Normal"])
     nrm = warp(nb, rnd, nrm)
     principled(nb, alb, rough, spec=0.5, normal=nrm)
     return m
@@ -467,8 +481,9 @@ def mat_laminate(name, rnd):
     return m
 
 
-def mat_brushed(name, rnd, level=0.55, rough=0.38, tint=False):
-    """Brushed aluminium (metallic). tint=True: an anodised inlay that takes the band colour (TINT_BAND)."""
+def mat_brushed(name, rnd, level=0.55, rough=0.38, tint=False, metal=0.85):
+    """Brushed aluminium (metallic). tint=True: an anodised inlay that takes the band colour (TINT_BAND). metal < 0.85:
+    satin zinc-plated steel – more of its own light grey, less of the dark room in its reflection (R3 QA 4)."""
     m = bpy.data.materials.new(name)
     nb = NB(m)
     col, tc = textured(nb, "metal-brushed-dark", 2.0, rnd, 0.1)
@@ -484,7 +499,7 @@ def mat_brushed(name, rnd, level=0.55, rough=0.38, tint=False):
     wf, bv = edge_wear(nb, rnd, radius=0.008, gain=4, noise_scale=120, threshold=0.4)
     alb = nb.mix(nb.math("MULTIPLY", wf, 0.4), alb, (0.75, 0.75, 0.76, 1))
     nrm = bump_from(nb, col, 0.12, 0.001, bv.outputs["Normal"])
-    principled(nb, alb, rough, spec=0.5, metal=0.0 if tint else 0.85, normal=nrm, aniso=0.0 if tint else 0.5)
+    principled(nb, alb, rough, spec=0.5, metal=0.0 if tint else metal, normal=nrm, aniso=0.0 if tint else 0.5)
     return m
 
 
@@ -691,6 +706,7 @@ def front(size, variant):
 # deep into the binder where the app stands up to three boxes on an inner board (real AO from the cut).
 BINDER = {"l": dict(W=5.20, H=6.00, S=1.28, rec=(26, 168, 376, 10)), "s": dict(W=3.80, H=4.60, S=0.96, rec=(20, 128, 285, 8))}
 BINDER_TURN = 25.0
+COVER_LAMP = {"l": (60.0, 2.6), "s": (35.0, 2.0)}   # power (W), disc size (BU): scaled with the binder (distance ~ H)
 
 
 def binder_front(size):
@@ -700,7 +716,10 @@ def binder_front(size):
     C = (W - S * math.sin(a)) / math.cos(a)          # cover length so the whole projection is W wide
     rnd = random.Random(3100 + (0 if size == "l" else 500))
     band = (H - 0.16, H - 0.08)                       # an 8 px printed band round the binder, 8 px under its top edge
-    mat = mat_cardboard(f"binder-{size}", rnd, band=band, wear=0.85, rough=0.62)
+    # R3 QA 4 ("the lid is too dark and smooth"): the cover's board shows its material – the scan's fibre and mottling at
+    # full relative contrast (level kept), light rub marks from the scuffed-plastic scan and a firmer bump – and it gets
+    # its own soft lamp (below) instead of only the grazing key
+    mat = mat_cardboard(f"binder-{size}", rnd, band=band, body_level=0.55, wear=0.85, rough=0.60, grain=3.0, scuffs=0.8, bump=1.0, tex_scale=2.0)
     ob = box("binder", 0, 0, 0, C, S, H, mat)
     # the window into the binder (on the cover, x along the cover): inset from the cover's left/right, deep into it
     ins, top, btop, bh = [v * PX for v in p["rec"]]
@@ -755,6 +774,20 @@ def binder_front(size):
     bpy.context.view_layer.update()
     cat = catchers(4.2, wall=False)
     objs = [ob] + extra
+    # R3 QA 4: turned 25 deg away from the key, the cover got ~60 % of the spines' light and read as a black slab. A soft
+    # lamp in front of the cover, high and a little left: the cover reads lit like the pulled binder it is, its light
+    # falling off softly from the top-left corner toward the foot (the near top gets more than the far bottom)
+    t = Vector((math.cos(a), math.sin(a), 0.0))
+    n = Vector((math.sin(a), -math.cos(a), 0.0))
+    centre = t * (C / 2) + Vector((0, 0, H / 2))
+    lamp_d = bpy.data.lights.new("coverlamp", "AREA")
+    lamp_d.shape = "DISK"
+    lamp_d.size = COVER_LAMP[size][1]
+    lamp_d.energy = COVER_LAMP[size][0]
+    lamp_d.color = (0.98, 0.99, 1.0)
+    lamp = link(bpy.data.objects.new("coverlamp", lamp_d))
+    lamp.location = centre + n * (H * 0.62) + Vector((0, 0, H * 0.55)) - t * (C * 0.18)
+    lamp.rotation_euler = (centre - lamp.location).normalized().to_track_quat("-Z", "Y").to_euler()
 
     def rects(fr):
         pts = [ob.matrix_world @ Vector(v) for v in ((0, S, 0), (0, S, H), (C, 0, 0), (C, 0, H), (0, 0, 0), (0, 0, H))]
@@ -851,7 +884,9 @@ def bookend():
     # R3 QA 2: black powder coat vanished on the black room (a dark bar) – brushed steel, so the fold and its turn read
     # R3 QA 3 (still a dark plate without a shape at x 1520): light steel (#8C939C-ish with a bright folded edge), an L
     # whose foot points out of the row (40 px, its edge catches the light), turned only 12 deg so the L stays readable
-    mat = mat_brushed("bookend", rnd, level=0.78, rough=0.30)
+    # R3 QA 4 (still "too dark in the app": a mirror-metallic steel reflects the dark room): satin zinc-plated steel,
+    # mostly its own light grey (metal 0.15), so it reads against the felt wall
+    mat = mat_brushed("bookend", rnd, level=1.15, rough=0.40, metal=0.15)
     t = 0.05
     up = box("upright", 0, 0, 0, t, 1.0, 1.30, mat)
     corner = box("c_corner", -0.1, 0.55, 0.95, 0.2, 1.4, 1.7)
@@ -892,36 +927,48 @@ def tag(size):
     return objs, cat, {"kind": "tag", "size": size, "slice": round(edge * 100)}, lambda fr: {"front": rect_px(fr, pl, 0, 0, W, H)}
 
 
-RAIL_L, RAIL_H, RAIL_D = 6.0, 0.24, 0.14
+RAIL_L, RAIL_H, RAIL_D = 6.0, 0.34, 0.18
+RAIL_LIP = 0.12        # the top lip (12 px): the Reiter's clip rides on it, the notches are cut into it
 
 
 def rail(notch=False):
-    """R3 QA 3: the position rail as a steel running rail (24 px): a C-profile of bent sheet steel – a scale lip on top,
-    the slot between the lips dark, a lower lip – with a screw at each end. notch=True cuts one 2 px notch into the top
-    lip at the middle (build_sprites turns the difference into the notch overlay the app sets once per Fach)."""
+    """The position rail as a steel running rail. R3 QA 4 ("thin at 1920, the notches barely visible"): 34 px tall (was
+    24), a C-profile of satin zinc-plated steel – a 12 px top lip with a rounded, lit front edge, the dark slot between
+    the lips, a 10 px lower lip – with a screw at each end. notch=True cuts one 5 px notch 9 px deep into the top lip at
+    the middle, through to the back plate (build_sprites turns the difference into the notch overlay the app sets once
+    per Fach)."""
     rnd = random.Random(7500)
     L, H, D = RAIL_L, RAIL_H, RAIL_D
-    steel = mat_brushed("rail", rnd, level=0.72, rough=0.34)
+    steel = mat_brushed("rail", rnd, level=1.05, rough=0.36, metal=0.25)
     back = box("back", 0, D - 0.03, 0, L, D, H, steel, bevel=0.008, segs=2)
-    top = box("lip_t", 0, 0, H - 0.075, L, D - 0.03, H, steel)
-    low = box("lip_b", 0, 0, 0, L, D - 0.03, 0.06, steel, bevel=0.012, segs=3)
+    low = box("lip_b", 0, 0, 0, L, D - 0.03, 0.10, steel, bevel=0.024, segs=4)
     if notch:
-        cut(top, box("c_notch", L / 2 - 0.01, -0.1, H - 0.045, L / 2 + 0.01, D, H + 0.1))
-    add_bevel(top, 0.012, 3)
-    for o in (back, top, low):
+        # the notch as geometry (a boolean cut under the lip's bevel broke its shading across the whole lip): the lip in
+        # two lengths with a 5 px gap, the 3 px of lip left under the gap as its floor
+        nw, nd = 0.025, 0.09
+        lips = [box("lip_t", 0, 0, H - RAIL_LIP, L / 2 - nw, D - 0.03, H, steel, bevel=0.032, segs=5),
+                box("lip_t2", L / 2 + nw, 0, H - RAIL_LIP, L, D - 0.03, H, steel, bevel=0.032, segs=5),
+                box("lip_floor", L / 2 - nw - 0.01, 0.004, H - RAIL_LIP, L / 2 + nw + 0.01, D - 0.03, H - nd, steel, bevel=0.012, segs=3),
+                # behind the gap the slot's dark lining shows (the notch reads as a cut, not a dent)
+                box("notch_back", L / 2 - nw, D - 0.036, H - nd, L / 2 + nw, D - 0.031, H, mat_flat("slot", (0.045, 0.047, 0.05)))]
+    else:
+        lips = [box("lip_t", 0, 0, H - RAIL_LIP, L, D - 0.03, H, steel, bevel=0.032, segs=5)]
+    top = lips[0]
+    for o in [back, low] + lips:
         smooth(o)
-    slot = box("slot", 0.02, D - 0.035, 0.06, L - 0.02, D - 0.03, H - 0.075, mat_flat("slot", (0.018, 0.019, 0.021)))
-    objs = [back, top, low, slot]
+    slot = box("slot", 0.02, D - 0.035, 0.10, L - 0.02, D - 0.03, H - RAIL_LIP, mat_flat("slot", (0.045, 0.047, 0.05)))
+    objs = [back, low, slot] + lips
     for x in (0.12, L - 0.12):
-        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.03, depth=0.02, location=(x, D - 0.04, (H - 0.075 + 0.06) / 2), rotation=(math.pi / 2, 0, 0))
+        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.035, depth=0.02, location=(x, D - 0.04, (H - RAIL_LIP + 0.10) / 2), rotation=(math.pi / 2, 0, 0))
         sc = bpy.context.active_object
-        sc.data.materials.append(mat_brushed("screw", rnd, level=0.72, rough=0.28))
+        sc.data.materials.append(mat_brushed("screw", rnd, level=0.80, rough=0.28, metal=0.6))
         add_bevel(sc, 0.008, 2)
         smooth(sc)
         objs.append(sc)
     cat = catchers(D + 0.001, floor=False, wall=True, wall_from=-5, wall_to=5)
     return objs, cat, {"kind": "rail", "slice": 24}, lambda fr: {"front": rect_px(fr, back, 0, 0, L, H, y=0),
-                                                                   "notch": [round(to_px(fr, Vector((L / 2, 0, H)))[0], 1), 0, 0, 0]}
+                                                                   "notch": [round(to_px(fr, Vector((L / 2, 0, H)))[0], 1), 0, 0, 0],
+                                                                   "lip": rect_px(fr, top, 0, H - RAIL_LIP, L, H, y=0)}
 
 
 def reiter():

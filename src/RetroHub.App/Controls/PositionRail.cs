@@ -173,7 +173,7 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
         if (systems == null || systems.Count == 0 || w <= 0) return;
         var n = systems.Count;
         var bottom = Math.Round(Bounds.Height - StripFromBottom);
-        // R3 QA 3: the rendered steel running rail (24 px, C-profile) with one notch per Fach and an index tab (Reiter) as
+        // R3 QA 3: the rendered steel running rail (R3 QA 4: 34 px, C-profile) with one notch per Fach and an index tab (Reiter) as
         // the slider; the printed ticks, the needle and the paper flag are gone. Without the renders: the drawn dial.
         if (Rendered.Available && Rendered.MetaOf("rail") is { } rm && Rendered.MetaOf("reiter") is not null)
         {
@@ -254,13 +254,19 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
         DrawFlag(ctx, c, flag, fh, swing);
     }
 
-    /// <summary>Height of the rendered running rail (1080: 24 px; the control's height decides, ≈1100: 20).</summary>
-    private double RailHeight => Bounds.Height >= 50 ? 24 : 20;
+    /// <summary>
+    /// Height of the rendered running rail. R3 QA 4 ("thin at 1920"): 34 px at 1080 – the render's own size, a steel
+    /// C-profile with a 12 px top lip – and 28 at ≈1100 (the control's height decides: 62 / 54 px).
+    /// </summary>
+    internal double RailHeight => Bounds.Height >= 58 ? 34 : 28;
+
+    /// <summary>The Reiter's scale: its render's size at 1080 (36 px), ≈1100 a step smaller – it no longer grows with the rail.</summary>
+    private double ReiterScale => Bounds.Height >= 58 ? 1.0 : 0.85;
 
     private FormattedText? _tabCode;
 
     /// <summary>
-    /// R3 QA 3 (the rail read as a UI slider): the rendered running rail along the whole width, a notch cut into its top lip
+    /// R3 QA 3 (the rail read as a UI slider): the rendered running rail along the whole width (R3 QA 4: 34 px), a notch cut into its top lip
     /// for every Fach (the notch render set at each system's place), and the Reiter – a paper index tab in a steel clip
     /// riding on the top lip – at the current system, its colour only a 4 px printed stripe, the code printed in ink.
     /// </summary>
@@ -286,13 +292,14 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
         if (current < 0 || double.IsNaN(Needle) || Rendered.MetaOf("reiter") is not { } tm) return;
         var c = systems[current];
         var nx = Math.Round(Needle);
-        var kt = rh / 24.0;
+        var kt = ReiterScale;
         _tabCode ??= new FormattedText(c.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, Math.Round(15 * kt),
             Craft.Solid(Craft.LabelInk));
         var th = Math.Round(tm.Front.Height * kt);
         var tw = Math.Max(Math.Round(28 * kt), Math.Ceiling(_tabCode.Width) + Math.Round(16 * kt));
-        // the clip hugs the rail's top lip: its foot 9 px (×k) under the rail's top edge
-        var tab = new Rect(Math.Clamp(Math.Round(nx - tw / 2), 0, Math.Max(0, w - tw)), Math.Round(rail.Y + 9 * kt - th), tw, th);
+        // the clip hugs the rail's top lip: its foot at the lip's lower edge (the render's "lip", 12 px × the rail's scale)
+        var lipFoot = (rm.Rects.TryGetValue("lip", out var lip) ? lip.Bottom - rm.Front.Y : 9) * k;
+        var tab = new Rect(Math.Clamp(Math.Round(nx - tw / 2), 0, Math.Max(0, w - tw)), Math.Round(rail.Y + lipFoot - th), tw, th);
         var swing = Math.Abs(_swingAngle) > 0.01
             ? Matrix.CreateTranslation(-nx, -rail.Y) * Matrix.CreateRotation(_swingAngle * Math.PI / 180) * Matrix.CreateTranslation(nx, rail.Y)
             : Matrix.Identity;

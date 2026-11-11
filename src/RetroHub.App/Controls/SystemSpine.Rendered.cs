@@ -46,6 +46,14 @@ public sealed partial class SystemSpine
         _ => ColorUtil.Mix(Color.Parse("#2B2E33"), look.Color, 0.32),
     };
 
+    /// <summary>
+    /// R3 QA 4 ("the lid is too dark and smooth"): the pulled binder's cover is the housing tone lifted 30 % toward a light
+    /// cool grey – a lighter graphite that shows the render's grain, scuffs and the lamp's falloff, still far below the
+    /// label paper. Light housings (white, beige) keep their tone.
+    /// </summary>
+    internal static Color CoverBody(SystemLook look) =>
+        LightBody(look) ? HousingBody(look) : ColorUtil.Mix(HousingBody(look), Color.Parse("#AEB4BC"), 0.30);
+
     /// <summary>A light body (white/beige housings): the front's text is printed in ink instead of paper.</summary>
     private static bool LightBody(SystemLook look) => ColorUtil.Contrast(SystemPalette.Paper, HousingBody(look)) < 3.5;
 
@@ -184,7 +192,8 @@ public sealed partial class SystemSpine
 
     /// <summary>The open front's render (band, body, the compartment with its inner board) into <paramref name="front"/>.</summary>
     private bool DrawRenderedFrontBody(DrawingContext ctx, Rect front, SystemLook look) =>
-        FrontSprite is { } name && Draw(ctx, this, name, front, true, new Tint("body", HousingBody(look)), new Tint("band", look.Color));
+        FrontSprite is { } name && Draw(ctx, this, name, front, true,
+            new Tint("body", name is "front-l" or "front-s" ? CoverBody(look) : HousingBody(look)), new Tint("band", look.Color));
 
     /// <summary>
     /// The compartment of the rendered front in front coordinates (top of its opening, top of the inner board), or null
@@ -293,19 +302,43 @@ public sealed partial class SystemSpine
             using (ctx.PushOpacity(leanOpacity))
             {
                 if (!Draw(ctx, this, name, f, true, tints)) return false;
-                PrintSleeveLabel(ctx, m, f, code, s, pull);
+                PrintSleeveLabel(ctx, look, m, f, code, s, pull);
             }
         if (upright != null && pull > 0 && MetaOf(upright) is { } um)
             using (ctx.PushOpacity(pull))
             {
                 var uf = new Rect(f.Right - um.Front.Width - 4, f.Bottom - um.Front.Height, um.Front.Width, um.Front.Height);
                 Draw(ctx, this, upright, uf, true, tints);
-                PrintSleeveLabel(ctx, um, uf, code, s with { Lean = 0 }, pull);
+                PrintSleeveLabel(ctx, look, um, uf, code, s with { Lean = 0 }, pull);
             }
         return true;
     }
 
-    private void PrintSleeveLabel(DrawingContext ctx, Meta m, Rect f, FormattedText code, SleeveShape s, double pull)
+    /// <summary>
+    /// R3 QA 4 (the PC sleeve's label was a bare code on blank paper): under the code the label carries the system's motif
+    /// as a flat print in its colour at the label's foot, like the binder labels – on every sleeve whose code leaves room
+    /// for it (a long code such as "PC Engine" or "WonderSwan" fills the label and stays alone). Returns the motif's box
+    /// in label-body coordinates, or an empty rect when it does not fit.
+    /// </summary>
+    internal static Rect SleeveMotifBox(Size body, double codeLength)
+    {
+        var size = Math.Round(Math.Min(body.Width * 0.62, 28));
+        if (size < 14) return default;
+        var pad = Math.Round(body.Width * 0.18);
+        var box = new Rect(Math.Round((body.Width - size) / 2), Math.Round(body.Height - pad - size), size, size);
+        // the code hangs 6 px under the tab; 8 px of paper between it and the print
+        return 6 + codeLength + 8 <= box.Y ? box : default;
+    }
+
+    /// <summary>
+    /// The sleeve print's ink: the system colour; a pale one (PC's cool grey, Wii's silver) is mixed half with the label
+    /// ink so the motif stands on the shaded paper (≥ 3 : 1 against #D8DADC instead of ≈ 2 : 1).
+    /// </summary>
+    internal static IBrush SleevePrintInk(SystemLook look) =>
+        ColorUtil.Contrast(look.Color, Color.Parse("#D8DADC")) >= 3 ? look.ColorBrush
+            : new ImmutableSolidColorBrush(ColorUtil.Mix(look.Color, Color.Parse("#3A3F47"), 0.5));
+
+    private void PrintSleeveLabel(DrawingContext ctx, SystemLook look, Meta m, Rect f, FormattedText code, SleeveShape s, double pull)
     {
         var sx = f.Width / m.Front.Width;
         var sy = f.Height / m.Front.Height;
@@ -325,13 +358,26 @@ public sealed partial class SystemSpine
         {
             // the label turns with the sleeve: printed about the label's centre below the tab
             var c = new Point(label.Center.X + 2, label.Y + (tab.Height + label.Height) / 2);
-            if (shade > 0 && MetaOf($"sleeve-{SleeveSprite}1") is { } um)
+            if (MetaOf($"sleeve-{SleeveSprite}1") is { } um)
             {
                 // the label's paper below the tab, turned with the sleeve
                 var lw = um.Rect("label").Width * sx;
                 var lh = (um.Rect("label").Height - um.Rect("tab").Height) * sy;
+                var motif = SleeveMotifBox(new Size(lw, lh), code.Width);
                 using (ctx.PushTransform(Matrix.CreateRotation(s.Lean) * Matrix.CreateTranslation(c.X, c.Y)))
-                    ctx.FillRectangle(Craft.Dark(shade), new Rect(-lw / 2, -lh / 2, lw, lh));
+                {
+                    var paper = new Rect(-lw / 2, -lh / 2, lw, lh);
+                    if (shade > 0) ctx.FillRectangle(Craft.Dark(shade), paper);
+                    if (motif.Width > 0)
+                    {
+                        // with the print the code hangs from the top like on the upright sleeves
+                        MotifCatalog.DrawSilhouette(ctx, look, motif.Translate(new Vector(paper.X, paper.Y)), 0.92, SleevePrintInk(look));
+                        using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) *
+                            Matrix.CreateTranslation(Math.Round(paper.X + (lw - code.Height) / 2), Math.Round(paper.Y + 6 + code.Width))))
+                            Craft.Print(ctx, code, new Point(0, 0), 0.2);
+                        return;
+                    }
+                }
             }
             using (ctx.PushTransform(Matrix.CreateTranslation(-code.Width / 2, -code.Height / 2) * Matrix.CreateRotation(-Math.PI / 2 + s.Lean) *
                 Matrix.CreateTranslation(c.X, c.Y)))
@@ -340,6 +386,10 @@ public sealed partial class SystemSpine
         }
         var body = new Rect(label.X, tab.Bottom, label.Width, Math.Max(0, label.Bottom - tab.Bottom));
         if (shade > 0) ctx.FillRectangle(Craft.Dark(shade), body);
+        var box = SleeveMotifBox(body.Size, code.Width);
+        if (box.Width > 0)
+            using (ctx.PushClip(body))
+                MotifCatalog.DrawSilhouette(ctx, look, box.Translate(new Vector(body.X, body.Y)), 0.92, SleevePrintInk(look));
         using (ctx.PushClip(body))
         using (ctx.PushTransform(Matrix.CreateRotation(-Math.PI / 2) *
             Matrix.CreateTranslation(Math.Round(body.X + (body.Width - code.Height) / 2), Math.Round(body.Y + 6 + code.Width))))

@@ -328,8 +328,8 @@
           <StackPanel Name="ShelfSection" Spacing="0" Margin="0,24,0,0" IsVisible="{Binding HasNeighbours}">
             <c:ShelfLabel Text="{l:T detail.section.shelf}" />
             <Panel Name="NeighbourHost" Margin="0,16,0,0" ClipToBounds="False">
-              <StackPanel Name="NeighbourRow" Orientation="Horizontal" Spacing="24" Height="180" VerticalAlignment="Top" HorizontalAlignment="Left" />
-              <c:ShelfBoard Name="NeighbourBoard" IsEdge="True" Height="12" Margin="0,180,0,16" />
+              <StackPanel Name="NeighbourRow" Orientation="Horizontal" Spacing="24" Height="144" VerticalAlignment="Top" HorizontalAlignment="Left" />
+              <c:ShelfBoard Name="NeighbourBoard" IsEdge="True" Height="12" Margin="0,144,0,16" />
             </Panel>
           </StackPanel>
           </StackPanel>
