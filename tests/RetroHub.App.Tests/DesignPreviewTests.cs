@@ -1023,6 +1023,22 @@ public class DesignPreviewTests
         window.Execute(Input.NavAction.PageRight);
         window.Execute(Input.NavAction.Down);
         Save(window, prefix + "-7c-einstellungen-steuerung.png", 600);
+        // Firmware & Keys with every state: FAKE files (made-up bytes) in the scratch root – present, unknown, missing
+        if (vm.CurrentPage is SettingsViewModel settingsVm)
+        {
+            var bios = vm.Ctx.Services.Paths.Bios;
+            Directory.CreateDirectory(Path.Combine(bios, "switch"));
+            File.WriteAllText(Path.Combine(bios, "switch", "prod.keys"), "header_key = " + new string('0', 64) + "\nmaster_key_00 = " + new string('0', 32) + "\n");
+            File.WriteAllBytes(Path.Combine(bios, "scph5501.bin"), new byte[524288]);
+            File.WriteAllBytes(Path.Combine(bios, "firmware.bin"), new byte[262144]);
+            var refresh = settingsVm.RefreshFirmwareAsync();
+            TestSupport.Pump(() => refresh.IsCompleted, 4000);
+        }
+        for (var i = 0; i < 6 && (Focused() as Controls.ServiceRow)?.Setting?.Label != Localization.Loc.T("firmware.files"); i++)
+            window.Execute(Input.NavAction.PageRight);
+        Save(window, prefix + "-7f-einstellungen-firmware.png", 600);
+        for (var i = 0; i < 6; i++) window.Execute(Input.NavAction.Down);
+        Save(window, prefix + "-7g-einstellungen-firmware-konsolen.png", 600);
         for (var i = 0; i < 4; i++) window.Execute(Input.NavAction.PageRight);
         Save(window, prefix + "-7d-einstellungen-ordner.png", 600);
     }

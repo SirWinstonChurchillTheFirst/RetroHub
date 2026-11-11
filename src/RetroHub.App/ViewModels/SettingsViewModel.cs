@@ -64,6 +64,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     {
         Title = Loc.T("nav.settings");
         ReadSettings();
+        if (!_importing) _ = RefreshFirmwareAsync();
     }
 
     public override bool HandleAction(NavAction action)
@@ -146,6 +147,7 @@ public sealed partial class SettingsViewModel : PageViewModel
             new(Loc.T("settings.appearance"), [_accent, _motion, _osd, _hints, _fullscreen, _language]),
             new(Loc.T("settings.controls"), [_controller, _exitCombo], ControllerStatus),
             new(Loc.T("settings.library"), [_scan, _watch, _hashes, _online]),
+            BuildFirmwareSection(),
             new(Loc.T("settings.paths"), folders, Loc.T("settings.paths.hint")),
         ];
         // numbered like a TV's service menu, continuously across the sections

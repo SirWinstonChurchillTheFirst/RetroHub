@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using RetroHub.App.Controls;
 using RetroHub.App.Input;
@@ -33,6 +34,8 @@ public partial class SettingsPage : PageBase
             {
                 _vm.SectionRequested += OnSectionRequested;
                 _vm.Previewed += OnPreviewed;
+                _vm.PickFiles ??= PickFilesAsync;
+                _vm.PickFolder ??= PickFolderAsync;
             }
         };
     }
@@ -44,6 +47,34 @@ public partial class SettingsPage : PageBase
         else if (what == "motion") _card.Glide();
         // R2 animation: a new light colour or motion level is a channel change of the test card – a short burst of static
         if (what is "accent" or "motion") Tv.Static(TimeSpan.FromMilliseconds(60));
+    }
+
+    /// <summary>"Firmware &amp; Keys": the player's own files (several at once; keys, BIOS, .zip, .nca).</summary>
+    private async Task<IReadOnlyList<string>> PickFilesAsync(string title)
+    {
+        var storage = TopLevel.GetTopLevel(this)?.StorageProvider;
+        if (storage == null || !storage.CanOpen) return [];
+        var result = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = true,
+            FileTypeFilter =
+            [
+                new FilePickerFileType(Localization.Loc.T("firmware.pickFilter"))
+                {
+                    Patterns = ["*.keys", "*.txt", "*.key", "*.bin", "*.rom", "*.img", "*.pce", "*.zip", "*.nca", "*.BIN", "*"],
+                },
+            ],
+        });
+        return result.Select(f => f.TryGetLocalPath()).OfType<string>().ToList();
+    }
+
+    private async Task<string?> PickFolderAsync(string title)
+    {
+        var storage = TopLevel.GetTopLevel(this)?.StorageProvider;
+        if (storage == null || !storage.CanPickFolder) return null;
+        var result = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = title, AllowMultiple = false });
+        return result.Count > 0 ? result[0].TryGetLocalPath() : null;
     }
 
     /// <summary>The test card (previews, tests).</summary>

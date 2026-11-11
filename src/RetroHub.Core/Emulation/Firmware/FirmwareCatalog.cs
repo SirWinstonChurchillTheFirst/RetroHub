@@ -119,13 +119,13 @@ public static class FirmwareCatalog
         if (byId.TryGetValue("psp", out var psp))
             list.Add(new FirmwareConsole
             {
-                Id = "psp", SystemIds = ["psp"], Name = psp.Name, Emulators = "RetroArch (PPSSPP)", Kind = FirmwareConsoleKind.Assets,
+                Id = "psp", SystemIds = ["psp"], Name = psp.Name, Emulators = "RetroArch", Kind = FirmwareConsoleKind.Assets,
                 Need = FirmwareNeed.Required, AcceptsFolders = true, Assets = [PpssppAssets], SortOrder = psp.SortOrder,
             });
         if (byId.TryGetValue("msx", out var msx))
             list.Add(new FirmwareConsole
             {
-                Id = "msx", SystemIds = ["msx"], Name = msx.Name, Emulators = "RetroArch (blueMSX)", Kind = FirmwareConsoleKind.Assets,
+                Id = "msx", SystemIds = ["msx"], Name = msx.Name, Emulators = "RetroArch", Kind = FirmwareConsoleKind.Assets,
                 Need = FirmwareNeed.Required, AcceptsFolders = true, Assets = [MsxMachines, MsxDatabases], SortOrder = msx.SortOrder,
             });
 
@@ -150,14 +150,13 @@ public static class FirmwareCatalog
         _ => FirmwareNeed.Optional,
     };
 
-    /// <summary>"RetroArch (Beetle Saturn)" style names from the system's emulator list (first three).</summary>
+    /// <summary>"melonDS, DeSmuME, RetroArch": the stand-alone programs, every RetroArch core as one "RetroArch" (first three).</summary>
     private static string EmulatorNames(SystemDef s)
     {
         var names = new List<string>();
         foreach (var e in s.Emulators)
         {
-            var slash = e.IndexOf('/');
-            var name = slash < 0 ? Pretty(e) : $"RetroArch ({Pretty(e[(slash + 1)..])})";
+            var name = e.Contains('/') ? "RetroArch" : Pretty(e);
             if (!names.Contains(name)) names.Add(name);
             if (names.Count == 3) break;
         }
