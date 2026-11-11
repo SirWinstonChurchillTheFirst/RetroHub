@@ -269,7 +269,7 @@ public class DesignM3Tests
     });
 
     [Fact]
-    public Task Focused_list_row_prints_its_title_in_ink_on_a_paper_chip() => UiTest.Run(() =>
+    public Task Focused_list_row_keeps_its_title_light_on_the_row_surface() => UiTest.Run(() =>
     {
         var (window, _, library) = OpenLibrary();
         using var closer = new Closer(window);
@@ -280,8 +280,11 @@ public class DesignM3Tests
         TestSupport.Settle(150);
         var tile = (GameTile)rows.TileForIndex(2)!;
         var title = tile.GetVisualDescendants().OfType<TextBlock>().First(t => t.Name == "PART_Title");
-        // before the fix an app-level class style kept the title in paper: paper text on the paper chip
-        Assert.Equal(SystemPalette.Ink, ((ISolidColorBrush)title.Foreground!).Color);
+        // R3 QA 3 (one focus signal, DESIGN 8.2): no paper chip behind the title any more – the title stays Text 1 on the
+        // lit row, the chip stays clear
+        Assert.Equal(Color.Parse("#FFFFFF"), ((ISolidColorBrush)title.Foreground!).Color);
+        var chip = tile.GetVisualDescendants().OfType<Border>().First(b => b.Name == "PART_Chip");
+        Assert.True(chip.Background is not ISolidColorBrush { Color.A: > 0 }, "no paper chip");
         Assert.Equal(library.Items[2], library.PreviewItem); // the preview shows the focused game
         library.IsListView = false;
     });

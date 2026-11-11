@@ -366,8 +366,137 @@ public static class Rendered
         }
         foreach (var part in new[] { "tile", "left", "right" }) Lay(part, Load($"{name}-shadow-{part}@{scale}x.png"));
         foreach (var part in new[] { "tile", "left", "right" }) Lay(part, part == "tile" ? tile : part == "left" ? left : right);
-        _ = tints;
+        // R3 QA 3: a sliced part may carry a light map too (the Reiter's printed stripe): built the same way, then filled
+        foreach (var t in tints)
+        {
+            if (Load($"{name}-{t.Role}-tile@{scale}x.png") is not { } mt) continue;
+            var map = new byte[px.Length];
+            var keep = px;
+            px = map;
+            Lay("tile", mt);
+            Lay("left", Load($"{name}-{t.Role}-left@{scale}x.png"));
+            Lay("right", Load($"{name}-{t.Role}-right@{scale}x.png"));
+            px = keep;
+            Fill(px, map, t.Color);
+        }
         return ToBitmap(px, total, h);
+    }
+
+    private static readonly Dictionary<string, Bitmap?> Marks = new();
+
+    /// <summary>
+    /// R3 QA 3: a small overlay render (the rail's notch, <paramref name="file"/>@Nx.png, cut from the same render as the
+    /// part it sits on) centred at <paramref name="centerX"/> on a sliced part drawn into <paramref name="partFront"/>.
+    /// </summary>
+    public static void DrawMark(DrawingContext ctx, Visual visual, string file, Rect partFront, Meta partMeta, double centerX, double k)
+    {
+        var dev = DeviceScale(visual);
+        var scale = PickScale(k * dev);
+        Bitmap? bmp;
+        lock (Marks)
+        {
+            if (!Marks.TryGetValue(file + scale, out bmp))
+            {
+                bmp = null;
+                try { if (Load($"{file}@{scale}x.png") is { } l) bmp = ToBitmap(l.Pixels, l.Width, l.Height); }
+                catch { bmp = null; }
+                Marks[file + scale] = bmp;
+            }
+        }
+        if (bmp == null) return;
+        var w = bmp.PixelSize.Width / (double)scale * k;
+        var h = bmp.PixelSize.Height / (double)scale * k;
+        var dest = new Rect(Math.Round(centerX - w / 2), partFront.Y - partMeta.Front.Y * k, w, h);
+        Blit(ctx, bmp, dest, dev, Math.Abs(k - 1) < 0.001 && Math.Abs(dev - scale) < 0.001);
+    }
+
+    private static readonly Dictionary<(string, int, int, int), Bitmap?> Nines = new();
+
+    /// <summary>
+    /// R3 QA 3 (the TV cabinet): <paramref name="name"/> (object over its shadow) nine-sliced so that its front lands on
+    /// <paramref name="front"/>; <paramref name="border"/> are the borders in the render's 1x px (measured on its front),
+    /// <paramref name="target"/> the same borders on screen (DIP) – each side scales on its own, the middle stretches.
+    /// Cached per device size. False when not available.
+    /// </summary>
+    public static bool DrawNine(DrawingContext ctx, Visual visual, string name, Rect front, Thickness border, Thickness target)
+    {
+        if (!Available || MetaOf(name) is not { } m || front.Width <= 0 || front.Height <= 0) return false;
+        var dev = DeviceScale(visual);
+        var scale = PickScale(Math.Max(target.Left / Math.Max(1, border.Left), target.Top / Math.Max(1, border.Top)) * dev);
+        // the canvas pads (shadow) scale like the neighbouring border
+        var kl = target.Left / border.Left; var kt = target.Top / border.Top; var kr = target.Right / border.Right; var kb = target.Bottom / border.Bottom;
+        var padL = m.Front.X; var padT = m.Front.Y; var padR = m.Canvas.Width - m.Front.Right; var padB = m.Canvas.Height - m.Front.Bottom;
+        var outer = new Rect(front.X - padL * kl, front.Y - padT * kt, front.Width + padL * kl + padR * kr, front.Height + padT * kt + padB * kb);
+        var tw = (int)Math.Round(outer.Width * dev);
+        var th = (int)Math.Round(outer.Height * dev);
+        var key = (name, scale, tw, th);
+        Bitmap? bmp;
+        lock (Nines)
+        {
+            if (!Nines.TryGetValue(key, out bmp))
+            {
+                bmp = null;
+                try
+                {
+                    var px = new byte[tw * th * 4];
+                    var any = false;
+                    foreach (var layer in new[] { name + "-shadow", name })
+                    {
+                        if (Load($"{layer}@{scale}x.png") is not { } src) continue;
+                        // source borders in source px (pad + border), target borders in device px
+                        var sb = new Thickness((padL + border.Left) * scale, (padT + border.Top) * scale, (padR + border.Right) * scale, (padB + border.Bottom) * scale);
+                        var db = new Thickness((padL * kl + target.Left) * dev, (padT * kt + target.Top) * dev, (padR * kr + target.Right) * dev, (padB * kb + target.Bottom) * dev);
+                        Over(px, NineSlice2(src, sb, db, tw, th));
+                        any = true;
+                    }
+                    if (any) bmp = ToBitmap(px, tw, th);
+                }
+                catch { bmp = null; }
+                Nines[key] = bmp;
+                if (Nines.Count > 64) Nines.Clear();
+            }
+        }
+        if (bmp == null) return false;
+        var dest = new Rect(Math.Round(outer.X * dev) / dev, Math.Round(outer.Y * dev) / dev, tw / dev, th / dev);
+        ctx.DrawImage(bmp, new Rect(bmp.Size), dest);
+        return true;
+    }
+
+    /// <summary>Nine-slice with independent source and target borders per side (bilinear).</summary>
+    private static byte[] NineSlice2(Layer src, Thickness s, Thickness d, int tw, int th)
+    {
+        static double Axis(double t, int target, int size, double sa, double sb, double da, double db)
+        {
+            if (t < da) return t * sa / Math.Max(1e-3, da);
+            if (t >= target - db) return size - (target - t) * sb / Math.Max(1e-3, db);
+            var mid = Math.Max(1e-3, target - da - db);
+            return sa + (t - da) * (size - sa - sb) / mid;
+        }
+        var map = new double[tw];
+        var mapY = new double[th];
+        for (var x = 0; x < tw; x++) map[x] = Axis(x + 0.5, tw, src.Width, s.Left, s.Right, d.Left, d.Right) - 0.5;
+        for (var y = 0; y < th; y++) mapY[y] = Axis(y + 0.5, th, src.Height, s.Top, s.Bottom, d.Top, d.Bottom) - 0.5;
+        var dst = new byte[tw * th * 4];
+        var sp = src.Pixels;
+        for (var y = 0; y < th; y++)
+        {
+            var fy = Math.Clamp(mapY[y], 0, src.Height - 1);
+            var y0 = (int)fy; var y1 = Math.Min(src.Height - 1, y0 + 1); var wy = fy - y0;
+            for (var x = 0; x < tw; x++)
+            {
+                var fx = Math.Clamp(map[x], 0, src.Width - 1);
+                var x0 = (int)fx; var x1 = Math.Min(src.Width - 1, x0 + 1); var wx = fx - x0;
+                var i00 = (y0 * src.Width + x0) * 4; var i01 = (y0 * src.Width + x1) * 4;
+                var i10 = (y1 * src.Width + x0) * 4; var i11 = (y1 * src.Width + x1) * 4;
+                var o = (y * tw + x) * 4;
+                for (var c = 0; c < 4; c++)
+                {
+                    var v = (sp[i00 + c] * (1 - wx) + sp[i01 + c] * wx) * (1 - wy) + (sp[i10 + c] * (1 - wx) + sp[i11 + c] * wx) * wy;
+                    dst[o + c] = (byte)Math.Clamp((int)Math.Round(v), 0, 255);
+                }
+            }
+        }
+        return dst;
     }
 
     /// <summary>Blends <paramref name="src"/> (its first <paramref name="cols"/> columns) over the strip at column <paramref name="x0"/>.</summary>
@@ -562,7 +691,8 @@ public sealed class TagPlate : Avalonia.Controls.Decorator
     {
         var r = new Rect(Bounds.Size);
         if (r.Width <= 0 || r.Height <= 0) return;
-        if (!Rendered.DrawStrip(context, this, "tag-l", r))
+        // R3 QA 3: the position card in its clamp frame (rendered "sign"); the old riveted tag as the fallback
+        if (!Rendered.DrawStrip(context, this, "sign", r) && !Rendered.DrawStrip(context, this, "tag-l", r))
             context.FillRectangle(Craft.Solid(Color.Parse("#30333A")), r);
     }
 }

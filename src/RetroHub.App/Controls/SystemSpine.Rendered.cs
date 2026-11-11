@@ -74,9 +74,11 @@ public sealed partial class SystemSpine
         if (_system is not { } s) return;
         var size = SpineSprite switch { "l" => 28.0, "s" => 22.0, "m" => 18.0, _ => 16.0 };
         var ink = Craft.Solid(Craft.LabelInk);
+        // R3 QA 3: the binder label's code is ≤ 4 characters on every wall ("GC", never "GameCube" on one and "GC" on the next)
+        var codeText = SpineSprite is "l" or "s" ? SystemPalette.LabelCode(s.Id, s.ShortName) : s.ShortName;
         while (true)
         {
-            _labelCode = new FormattedText(s.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, size, ink);
+            _labelCode = new FormattedText(codeText, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, size, ink);
             if ((_labelCode.Width <= labelRoom && _labelCode.Height <= m.Rect("label").Width - 4) || size <= 13) break;
             size--;
         }
@@ -108,11 +110,18 @@ public sealed partial class SystemSpine
         {
             _labelNameKey = (s.PosterName, room);
             _labelName = null;
-            foreach (var text in new[] { s.PosterName, s.SubTitle })
+            // R3 QA 3: one rule for every binder – the short name ("Super Nintendo", "Game Boy Advance") stepped down to 11 px;
+            // maker and year only when the short name does not fit even then
+            var shortName = SystemPalette.ShortDisplayName(s.Id) ?? s.PosterName;
+            for (var px = faceSize; px >= 11 && _labelName == null; px--)
             {
-                if (string.IsNullOrWhiteSpace(text) || string.Equals(text, s.ShortName, StringComparison.OrdinalIgnoreCase)) continue;
-                var t = new FormattedText(text, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.ReadFace, faceSize, LabelInk2);
-                if (t.Width <= room) { _labelName = t; break; }
+                var t = new FormattedText(shortName, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.ReadFace, px, LabelInk2);
+                if (t.Width <= room) _labelName = t;
+            }
+            if (_labelName == null && !string.IsNullOrWhiteSpace(s.SubTitle))
+            {
+                var t = new FormattedText(s.SubTitle, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.ReadFace, 11, LabelInk2);
+                if (t.Width <= room) _labelName = t;
             }
         }
         if (_labelName is { } name)
@@ -188,6 +197,23 @@ public sealed partial class SystemSpine
         return (Math.Round((m.Rect("recess").Y - m.Front.Y) * k), Math.Round((m.Rect("innerBoard").Y - m.Front.Y) * k));
     }
 
+    /// <summary>
+    /// R3 QA 3: the left edge of the binder's cover in front coordinates (the turned spine strip lies left of it), or null
+    /// when the front is not the rendered binder.
+    /// </summary>
+    private double? FrontCoverLeft()
+    {
+        if (FrontSprite is not { } name || MetaOf(name) is not { } m || !m.Rects.ContainsKey("cover") || m.Front.Width <= 0) return null;
+        return (m.Rect("cover").X - m.Front.X) * FrontWidth / m.Front.Width;
+    }
+
+    /// <summary>The top of the binder's steel edge protector in front coordinates (null: not the rendered binder).</summary>
+    private double? FrontFoot(double height)
+    {
+        if (FrontSprite is not { } name || MetaOf(name) is not { } m || !m.Rects.ContainsKey("edge") || m.Front.Height <= 0) return null;
+        return Math.Round((m.Rect("edge").Y - m.Front.Y) * height / m.Front.Height);
+    }
+
     // ===================== the "Noch leer" sleeves from their renders =====================
 
     /// <summary>"l" (row ≥ 130 px) or "s" (≈1100) when the sleeves are drawn from the renders, else null.</summary>
@@ -206,13 +232,10 @@ public sealed partial class SystemSpine
         string name;
         var lean = 0.0;
         var flat = false;
-        if (count >= 6 && index == count - 1)
-        {
-            name = $"sleeve-{size}flat";
-            flat = true;
-        }
+        // R3 QA 3: no sleeve lies flat any more (the lying PC box read as a placeholder): every one stands, few lean
+        _ = count;
         // one rendered lean looks alike wherever it stands: at most one in eight, never two near each other (places 1, 5, 9 …)
-        else if (index % 4 == 1 && Craft.Rand(seed, 3) < 0.5)
+        if (index % 4 == 1 && Craft.Rand(seed, 3) < 0.5)
         {
             name = $"sleeve-{size}lean";
             lean = RenderedLean;

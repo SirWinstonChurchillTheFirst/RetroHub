@@ -335,7 +335,8 @@ public sealed class CoverArt : Control
     public bool KeepTitleClear { get => GetValue(KeepTitleClearProperty); set => SetValue(KeepTitleClearProperty, value); }
 
     /// <summary>Spine band width: 16 % of the box width.</summary>
-    private static double BandWidth(double w) => Math.Max(6, Math.Round(w * 0.16));
+    /// R3 QA 3: a narrow case keeps at least 22 px of spine (a code of 7 px was unreadable), never more than 30 % of the box.
+    private static double BandWidth(double w) => Math.Round(Math.Max(Math.Max(6, w * 0.16), Math.Min(22, w * 0.30)));
 
     /// <summary>The band of this placeholder: none when the spine is not printed on the front (<see cref="PrintedSpine"/>).</summary>
     private double Band(double w) => PrintedSpine ? BandWidth(w) : 0;
@@ -602,7 +603,8 @@ public sealed class CoverArt : Control
                 }
             }
         }
-        var codeSize = Math.Min(28, Math.Max(7, w * 0.09));
+        // R3 QA 3: the spine code never under 11 px where the band can carry it (narrow PSP/PS2/GC cases: 7 px)
+        var codeSize = Math.Min(28, Math.Max(Math.Min(11, band * 0.6), Math.Max(7, w * 0.09)));
         _codeText = string.IsNullOrEmpty(Badge) || band <= 0 ? null :
             new FormattedText(Badge, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, codeSize, look.TextOnColorBrush)
             {

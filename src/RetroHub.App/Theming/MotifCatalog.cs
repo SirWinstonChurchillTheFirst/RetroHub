@@ -155,11 +155,12 @@ public static class MotifCatalog
             new(Group(Dot(80, 77, 4.5), Dot(80, 93, 4.5)), Paint.Cut),
             new(Perforation(54, 104, 6, 1.7), Paint.Cut),
         ],
-        // the same upright handheld with its outline repeated 6 px behind it (a clear second shell)
+        // the same upright handheld in two tones (R3 QA 3: the outline repeated behind it read as a double, offset
+        // contour): the lower half of the shell in the body tone
         Motif.HandheldTallDouble =>
         [
-            new(P("M36,1 H96 L104,9 V116 H28 V9 Z"), Paint.Body, 2),
             C("M30,4 H90 L98,12 V120 H22 V12 Z"),
+            B("M22,70 H98 V120 H22 Z"),
             X("M34,16 H86 V62 H34 Z"),
             X(Cross(42, 86, 10, 6)),
             new(Group(Dot(80, 77, 4.5), Dot(80, 93, 4.5)), Paint.Cut),
@@ -217,21 +218,21 @@ public static class MotifCatalog
             X(Cross(17, 90, 6, 4)),
             new(Group(Dot(103, 84, 3.5), Dot(103, 97, 3.5)), Paint.Cut),
         ],
-        // clamshell: two equal halves, a hinge in the body tone, two equal screens cut out
+        // clamshell (R3 QA 3: one opened block, no hinge details): one upright block, two equal screens cut out
         Motif.Clamshell =>
         [
-            C("M18,10 H102 V56 H18 Z M18,64 H102 V120 H18 Z"),
-            B("M14,57 H106 V63 H14 Z"),
-            X("M36,16 H84 V50 H36 Z M36,72 H84 V106 H36 Z"),
+            C("M18,10 H102 V120 H18 Z"),
+            X("M34,18 H86 V56 H34 Z M34,72 H86 V110 H34 Z"),
         ],
         // clamshell with two halves of the SAME width; the upper screen shows depth as a stair of three offset frames
         // (M5 QA: a wider top over a narrower bottom with a circle pad was the product; this is "a clamshell with depth")
+        // R3 QA 3 (the stair of frames rendered as a tangle; the hinge was a product detail): one opened block, a wide
+        // upper screen with a smaller panel set into it (depth), a smaller lower screen
         Motif.ClamshellWide =>
         [
-            new(P("M12,8 H108 V56 H12 Z M12,64 H108 V120 H12 Z"), Paint.Lift), // red on anthracite was 2.8 : 1
-            B("M16,57 H104 V63 H16 Z"),
-            X("M22,14 H98 V50 H22 Z M36,72 H84 V110 H36 Z"),
-            new(P("M28,19 H72 V35 H28 Z M36,24 H80 V40 H36 Z M44,29 H88 V45 H44 Z"), Paint.Color, 2),
+            new(P("M12,8 H108 V120 H12 Z"), Paint.Lift), // red on anthracite was 2.8 : 1
+            X("M22,16 H98 V56 H22 Z M36,72 H84 V110 H36 Z"),
+            B("M40,26 H80 V46 H40 Z"),
         ],
 
         // ---- discs ----
@@ -275,36 +276,35 @@ public static class MotifCatalog
             new(P("M44,66 Q60,52 76,66"), Paint.Color, 3.5),
             new(P("M32,52 Q60,28 88,52"), Paint.Color, 3.5),
         ],
-        // a second screen: a tablet with keys standing in front of a large screen drawn as an outline (no monitor
-        // stand: on its own stand it read as a monitor)
+        // a second screen (R3 QA 3: the hairline frame and the slab with cross and keys were one product): a large
+        // screen panel in the body tone and a small screen slab standing in front of it – two screens, no keys
         Motif.Tablet =>
         [
-            new(P("M5,13 H115 V119 H5 Z"), Paint.Body, 2),
-            C("M20,62 H100 V120 H20 Z"),
-            X("M38,68 H82 V112 H38 Z"),
-            X(Cross(29, 84, 5, 3)),
-            new(Group(Dot(91, 80, 3), Dot(91, 92, 3)), Paint.Cut),
+            B("M8,14 H112 V70 H8 Z"),
+            X("M14,20 H106 V64 H14 Z"),
+            C("M30,78 H90 V120 H30 Z"),
+            X("M38,84 H82 V114 H38 Z"),
         ],
         // hybrid (R3 QA: a handheld on a coloured base was too close to one product): a blank screen in the light
         // colour between two separate side blocks with a gap on each side – a cross on the left, two keys on the right –
         // and no base, no colour pair
+        // R3 QA 3 (outsider test): reduced to a rectangle with two narrow plain side strips – square, no keys, no cross
         Motif.Dock =>
         [
-            B("M8,60 Q8,54 14,54 H24 V120 H14 Q8,120 8,114 Z"),
-            B("M96,54 H106 Q112,54 112,60 V114 Q112,120 106,120 H96 Z"),
-            B("M28,54 H92 V120 H28 Z"),
-            new(P("M34,60 H86 V114 H34 Z"), Paint.Lift),
-            X("M38,64 H82 V110 H38 Z"),
-            X(Cross(16, 74, 5, 3)),
-            new(Group(Dot(104, 70, 3), Dot(104, 82, 3)), Paint.Cut),
+            B("M12,56 H22 V120 H12 Z"),
+            B("M98,56 H108 V120 H98 Z"),
+            B("M26,56 H94 V120 H26 Z"),
+            new(P("M32,62 H88 V114 H32 Z"), Paint.Lift),
+            X("M36,66 H84 V110 H36 Z"),
         ],
 
         // ---- other devices ----
-        // stereo goggles: a visor with a nose notch, two lenses and strap stubs, drawn in light lines (no stand)
+        // stereo goggles (R3 QA 3: the only motif in outline): a filled visor with a nose notch and strap stubs, the two
+        // lenses cut out of it
         Motif.TwinLens =>
         [
-            new(P("M12,66 H108 V110 L100,118 H72 L64,104 H56 L48,118 H20 L12,110 Z M12,80 H3 M108,80 H117"), Paint.Light, 2),
-            new(Group(Dot(37, 88, 14), Dot(83, 88, 14)), Paint.Light, 2),
+            new(P("M12,66 H108 V110 L100,118 H72 L64,104 H56 L48,118 H20 L12,110 Z M3,76 H12 V84 H3 Z M108,76 H117 V84 H108 Z"), Paint.Lift),
+            new(Group(Dot(37, 88, 13), Dot(83, 88, 13)), Paint.Cut),
         ],
         Motif.ControlPanel =>
         [

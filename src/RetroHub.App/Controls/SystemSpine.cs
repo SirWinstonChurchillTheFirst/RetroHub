@@ -291,7 +291,7 @@ public sealed partial class SystemSpine : Button, Avalonia.Rendering.ICustomHitT
     /// </summary>
     private void LayoutFront(double height)
     {
-        var inset = FrontInset;
+        var inset = FrontLeft;
         var big = FrontWidth >= 480;
         var compartment = FrontCompartment(height);
         _boardY = compartment?.BoardY ?? Math.Round(height * 0.62);
@@ -303,7 +303,7 @@ public sealed partial class SystemSpine : Button, Avalonia.Rendering.ICustomHitT
         var places = big ? 3 : 2;
         var cap = count > 0 && count < places ? (big ? 196 : 140) : (big ? 150 : 110);
         var h = Math.Min(cap, _boardY - textBottom - 16);
-        var room = FrontWidth - 2 * inset;
+        var room = FrontWidth - inset - FrontInset;
         if (count > 0 && count * h / aspect + (count - 1) * 12 > room) h = (room - (count - 1) * 12) / count * aspect;
         h = Math.Max(0, Math.Floor(h));
         var w = Math.Floor(h / aspect);
@@ -312,10 +312,13 @@ public sealed partial class SystemSpine : Button, Avalonia.Rendering.ICustomHitT
         // the inner compartment is cut into the front from just under the maker line down to the inner board
         _recessTop = compartment?.RecessTop ?? Math.Round(Math.Max(textBottom + 6, _boardY - Math.Max(h, big ? 150 : 110) - 18));
         _bookend = count > 0 && count < places;
-        // the motif stands on the stage board, right, in the part under the inner board
-        var below = height - (_boardY + 10);
-        var size = Math.Round(Math.Min(below - (big ? 24 : 16), FrontWidth * 0.46));
-        _motifBox = new Rect(FrontWidth - Math.Round(FrontWidth * 0.06) - size, height - size, size, size);
+        // the motif stands right, in the part under the inner board; on the rendered binder (R3 QA 3) it keeps 16 px to
+        // the steel edge at the cover's foot – it never reaches over the front's bottom edge
+        var edge = FrontFoot(height);
+        var foot = edge is { } edgeTop ? edgeTop - 16 : height;
+        var below = foot - (_boardY + 10);
+        var size = Math.Round(Math.Min(below - (edge != null ? 14 : big ? 24 : 16), FrontWidth * (edge != null ? 0.40 : 0.46)));
+        _motifBox = new Rect(FrontWidth - (edge != null ? FrontInset : Math.Round(FrontWidth * 0.06)) - size, foot - size, size, size);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -478,19 +481,25 @@ public sealed partial class SystemSpine : Button, Avalonia.Rendering.ICustomHitT
         IBrush main = ink ? Craft.Solid(Craft.LabelInk) : Paper, second = ink ? Craft.Solid(Color.Parse("#30343A")) : Text2;
         _sub = LargeFront && !string.IsNullOrEmpty(s.SubTitle)
             ? Sentence.WithNumbers(new FormattedText(s.SubTitle, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.ReadFace, FrontWidth >= 480 ? 18 : 16, second)
-            { MaxTextWidth = FrontWidth - 2 * inset }, s.SubTitle)
+            { MaxTextWidth = FrontWidth - FrontLeft - inset }, s.SubTitle)
             : null;
         // the rendered compartment has a fixed opening: name and maker must end above it
         var frontHeight = Bounds.Height > 0 ? Bounds.Height : Height;
         var budget = !double.IsNaN(frontHeight) && FrontCompartment(frontHeight) is { } comp
             ? comp.RecessTop - 10 - (8 + Math.Round(inset * 0.8)) - (_sub != null ? _sub.Height + 8 : 0)
             : double.PositiveInfinity;
-        _name = FitName(s, FrontWidth - 2 * inset, budget, main);
+        _name = FitName(s, FrontWidth - FrontLeft - inset, budget, main);
         _frontCount = new FormattedText(s.CountText, Localization.Loc.Culture, FlowDirection.LeftToRight, FontRoles.NumberFace,
             LargeFront ? (FrontWidth >= 480 ? 40 : 32) : 15, main);
     }
 
     private double FrontInset => LargeFront ? (FrontWidth >= 480 ? 40 : 32) : Math.Round(FrontWidth * 0.08);
+
+    /// <summary>
+    /// The left inset of the front's print: on the rendered binder (R3 QA 3) the cover starts right of the turned spine
+    /// strip, so name, maker, boxes and count start 34 (≈1100: 26) px into the cover; else <see cref="FrontInset"/>.
+    /// </summary>
+    private double FrontLeft => FrontCoverLeft() is { } c ? Math.Round(c + (FrontWidth >= 480 ? 34 : 26)) : FrontInset;
 
     /// <summary>
     /// The system's name at the largest size (big fronts 44/36/30 or 36/30/26, small fronts 22/19/16 scaled with the
@@ -1275,14 +1284,19 @@ public sealed partial class SystemSpine : Button, Avalonia.Rendering.ICustomHitT
     private void DrawFrontText(DrawingContext ctx, Rect front)
     {
         var inset = FrontInset;
+        var left = FrontLeft;
         var y = 8 + Math.Round(LargeFront ? inset * 0.8 : inset * 0.9);
         if (_name is { } name)
         {
-            ctx.DrawText(name, new Point(inset, y));
+            ctx.DrawText(name, new Point(left, y));
             y += name.Height + 8;
         }
-        if (_sub is { } sub) ctx.DrawText(sub, new Point(inset, Math.Round(y)));
+        if (_sub is { } sub) ctx.DrawText(sub, new Point(left, Math.Round(y)));
         if (_frontCount is { } count)
-            ctx.DrawText(count, new Point(inset, Math.Round(front.Bottom - inset - count.Height + (LargeFront ? 6 : 0))));
+        {
+            // on the binder the count stands above the steel edge at the cover's foot
+            var bottom = FrontFoot(front.Height) is { } edgeTop ? edgeTop - 14 : front.Bottom - inset + (LargeFront ? 6 : 0);
+            ctx.DrawText(count, new Point(left, Math.Round(bottom - count.Height)));
+        }
     }
 }

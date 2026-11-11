@@ -74,6 +74,7 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
         if (change.Property == CurrentProperty)
         {
             _code = null;
+            _tabCode = null;
             PlaceNeedle(animate: true);
         }
         else if (change.Property == SystemsProperty)
@@ -172,10 +173,16 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
         if (systems == null || systems.Count == 0 || w <= 0) return;
         var n = systems.Count;
         var bottom = Math.Round(Bounds.Height - StripFromBottom);
+        // R3 QA 3: the rendered steel running rail (24 px, C-profile) with one notch per Fach and an index tab (Reiter) as
+        // the slider; the printed ticks, the needle and the paper flag are gone. Without the renders: the drawn dial.
+        if (Rendered.Available && Rendered.MetaOf("rail") is { } rm && Rendered.MetaOf("reiter") is not null)
+        {
+            RenderRail(ctx, systems, w, rm);
+            return;
+        }
         var strip = new Rect(0, bottom - StripHeight, w, StripHeight);
         var groove = Math.Round(strip.Y + StripHeight / 2 + 2);
-        // the rendered rail (R3, Blender: a brushed steel bar with a milled groove); else the drawn strip
-        var rendered = Rendered.DrawStrip(ctx, this, "rail", strip);
+        var rendered = false;
         if (!rendered)
         {
             var outline = Chamfer.Octagon(strip, 3);
@@ -245,6 +252,60 @@ public sealed class PositionRail : Control, Avalonia.Rendering.ICustomHitTest
         }
         else DrawKnob(ctx, c, nx, groove);
         DrawFlag(ctx, c, flag, fh, swing);
+    }
+
+    /// <summary>Height of the rendered running rail (1080: 24 px; the control's height decides, ≈1100: 20).</summary>
+    private double RailHeight => Bounds.Height >= 50 ? 24 : 20;
+
+    private FormattedText? _tabCode;
+
+    /// <summary>
+    /// R3 QA 3 (the rail read as a UI slider): the rendered running rail along the whole width, a notch cut into its top lip
+    /// for every Fach (the notch render set at each system's place), and the Reiter – a paper index tab in a steel clip
+    /// riding on the top lip – at the current system, its colour only a 4 px printed stripe, the code printed in ink.
+    /// </summary>
+    private void RenderRail(DrawingContext ctx, IReadOnlyList<SystemItemViewModel> systems, double w, Rendered.Meta rm)
+    {
+        var n = systems.Count;
+        var rh = RailHeight;
+        var rail = new Rect(0, Math.Round(Bounds.Height - StripFromBottom - rh), w, rh);
+        Rendered.DrawStrip(ctx, this, "rail", rail);
+        var k = rh / rm.Front.Height;
+        for (var i = 0; i < n; i++)
+            Rendered.DrawMark(ctx, this, "rail-notch-mark", rail, rm, TickX(i, n), k);
+        if (_hover >= 0 && _hover < n && !ReferenceEquals(systems[_hover], Current))
+        {
+            var h = systems[_hover];
+            _hoverCode ??= new FormattedText(h.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, 17, Text2);
+            var hx = TickX(_hover, n);
+            var tx0 = Math.Clamp(Math.Round(hx - _hoverCode.Width / 2), 0, Math.Max(0, w - _hoverCode.Width));
+            ctx.DrawText(_hoverCode, new Point(tx0, Math.Round(rail.Y - 12 - _hoverCode.Height)));
+        }
+        var current = -1;
+        for (var i = 0; i < n; i++) if (ReferenceEquals(systems[i], Current)) { current = i; break; }
+        if (current < 0 || double.IsNaN(Needle) || Rendered.MetaOf("reiter") is not { } tm) return;
+        var c = systems[current];
+        var nx = Math.Round(Needle);
+        var kt = rh / 24.0;
+        _tabCode ??= new FormattedText(c.ShortName, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, FontRoles.SpineFace, Math.Round(15 * kt),
+            Craft.Solid(Craft.LabelInk));
+        var th = Math.Round(tm.Front.Height * kt);
+        var tw = Math.Max(Math.Round(28 * kt), Math.Ceiling(_tabCode.Width) + Math.Round(16 * kt));
+        // the clip hugs the rail's top lip: its foot 9 px (×k) under the rail's top edge
+        var tab = new Rect(Math.Clamp(Math.Round(nx - tw / 2), 0, Math.Max(0, w - tw)), Math.Round(rail.Y + 9 * kt - th), tw, th);
+        var swing = Math.Abs(_swingAngle) > 0.01
+            ? Matrix.CreateTranslation(-nx, -rail.Y) * Matrix.CreateRotation(_swingAngle * Math.PI / 180) * Matrix.CreateTranslation(nx, rail.Y)
+            : Matrix.Identity;
+        using (ctx.PushTransform(swing))
+        using (ctx.PushOpacity(Math.Clamp(0.35 + 0.65 * _flagT, 0, 1)))
+        {
+            if (!Rendered.DrawStrip(ctx, this, "reiter", tab, new Rendered.Tint("band", c.Look.Color))) return;
+            var s = th / tm.Front.Height;
+            var paper = tm.Rect("paper");
+            var py = tab.Y + (paper.Y - tm.Front.Y) * s;
+            var ph = paper.Height * s;
+            Craft.Print(ctx, _tabCode, new Point(Math.Round(tab.X + (tw - _tabCode.Width) / 2), Math.Round(py + (ph - _tabCode.Height) / 2)), 0.15);
+        }
     }
 
     private void DrawKnob(DrawingContext ctx, SystemItemViewModel c, double nx, double groove)

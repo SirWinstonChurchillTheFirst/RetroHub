@@ -278,7 +278,7 @@ public partial class GameDetailPage : PageBase
         Dispatcher.UIThread.Post(FillNeighbours, DispatcherPriority.Loaded);
     }
 
-    /// <summary>Puts the sections into <paramref name="stack"/> in order: the first 16 px under the board's shadow, the others 48 apart.</summary>
+    /// <summary>Puts the sections into <paramref name="stack"/> in order: the first 8 px under the board's shadow, the others 24 apart (R3 QA 3).</summary>
     private static void Fill(StackPanel stack, IEnumerable<Control> sections)
     {
         var list = sections.ToList();
@@ -292,7 +292,9 @@ public partial class GameDetailPage : PageBase
         var first = true;
         foreach (var c in stack.Children)
         {
-            c.Margin = new Thickness(0, first ? 16 : 48, 0, 0);
+            // R3 QA 3: 8 under the board's shadow, 24 between sections (48 put the shelf captions and "Gespielt" into the
+            // footer's fold)
+            c.Margin = new Thickness(0, first ? 8 : 24, 0, 0);
             if (c.IsVisible) first = false;
         }
     }

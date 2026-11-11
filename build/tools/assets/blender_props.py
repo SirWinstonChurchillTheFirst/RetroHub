@@ -3,7 +3,7 @@
 Run (never without -b, always --factory-startup so the owner's Blender prefs stay untouched):
   blender.exe -b --factory-startup -P blender_props.py -- <assets-r3 dir> <job>[,<job>...] [--samples N]
 
-Jobs: spine-l spine-s front-l front-s sleeves-l sleeves-s board-stage board-edge bookend tag-l tag-s rail slider
+Jobs: spine-l spine-s front-l front-s sleeves-l sleeves-s board-stage board-edge bookend tag-l tag-s rail (+rail-notch) reiter sign tv
 (or "all"). Every object is lit identically (soft key sun from top-left-front, cool fill from the right, dim neutral
 world) and seen by one orthographic camera (pitch 1.6 deg down, yaw 2.4 deg: the top face and the right side face show
 a few px, like the app's SleeveTop/SleeveSide). Scale: 1 Blender unit = 100 px at 1x; renders are 2x (200 px/BU).
@@ -660,6 +660,94 @@ def front(size, variant):
         "innerBoard": rect_px(fr, ob, ins, rz0, W - ins, H - btop)}
 
 
+# R3 QA 3 ("the front is a flat UI plate next to rendered binders"): the big Konsolen front IS the pulled binder – the
+# same lever-arch binder as the spines, turned 25 deg toward the room, so its spine (band, label pocket, finger hole with
+# its steel ring) shows as a strip at the left and its cover faces the room. The cover keeps the system colour as an
+# 8 px printed edge band (the spine's band runs round onto it), a steel edge protector along its foot, and a window cut
+# deep into the binder where the app stands up to three boxes on an inner board (real AO from the cut).
+BINDER = {"l": dict(W=5.20, H=6.00, S=1.28, rec=(26, 168, 376, 10)), "s": dict(W=3.80, H=4.60, S=0.96, rec=(20, 128, 285, 8))}
+BINDER_TURN = 25.0
+
+
+def binder_front(size):
+    p = BINDER[size]
+    W, H, S = p["W"], p["H"], p["S"]
+    a = math.radians(BINDER_TURN)
+    C = (W - S * math.sin(a)) / math.cos(a)          # cover length so the whole projection is W wide
+    rnd = random.Random(3100 + (0 if size == "l" else 500))
+    band = (H - 0.16, H - 0.08)                       # an 8 px printed band round the binder, 8 px under its top edge
+    mat = mat_cardboard(f"binder-{size}", rnd, band=band, wear=0.85, rough=0.62)
+    ob = box("binder", 0, 0, 0, C, S, H, mat)
+    # the window into the binder (on the cover, x along the cover): inset from the cover's left/right, deep into it
+    ins, top, btop, bh = [v * PX for v in p["rec"]]
+    win_l, win_r = ins + 0.04, C - ins
+    rz1, rz0 = H - top, H - btop - bh
+    depth = S * 0.62
+    cut(ob, box("c_window", win_l, -0.1, rz0, win_r, depth, rz1))
+    # the spine face (x = 0): label pocket and finger hole like the closed spines (same proportions)
+    m = round(S * 0.25, 2)
+    lt = H - (0.32 if size == "l" else 0.28)
+    lb = lt - round(H * 0.42, 2)
+    cut(ob, box("c_label", -0.1, m, lb, 0.04, S - m, lt))
+    hz, hr = (1.16, 0.29) if size == "l" else (0.92, 0.22)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=hr, depth=0.9, location=(0.30, S / 2, hz), rotation=(0, math.pi / 2, 0))
+    hc = bpy.context.active_object
+    hc.name = "c_hole"
+    cut(ob, hc)
+    add_bevel(ob, 0.035 if size == "l" else 0.028, 4)
+    smooth(ob)
+    extra = []
+    steel = mat_brushed(f"grommet-b{size}", rnd, level=0.62, rough=0.32)
+    bpy.ops.mesh.primitive_torus_add(major_segments=96, minor_segments=16, major_radius=hr + 0.012,
+                                     minor_radius=0.034 if size == "l" else 0.027, location=(-0.004, S / 2, hz), rotation=(0, math.pi / 2, 0))
+    ring = bpy.context.active_object
+    ring.scale = (0.55, 1, 1)
+    ring.data.materials.append(steel)
+    smooth(ring)
+    extra.append(ring)
+    extra.append(box("hole_in", 0.25, S / 2 - hr - 0.1, hz - hr - 0.1, 0.30, S / 2 + hr + 0.1, hz + hr + 0.1,
+                     mat_flat("inside", (0.035, 0.037, 0.04))))
+    # the label in the pocket stands in the shade (no print: the app prints the code on the closed spines only)
+    extra.append(box("label", 0.03, m + 0.015, lb + 0.015, 0.05, S - m - 0.015, lt - 0.015, mat_paper(f"blabel-{size}", rnd, 0.46),
+                     bevel=0.004, segs=2))
+    # inside the window: a dark back (the binder's inner board) and the inner board the boxes stand on
+    extra.append(box("back", win_l - 0.02, depth - 0.02, rz0 - 0.02, win_r + 0.02, depth + 0.02, rz1 + 0.02,
+                     mat_powder("back", rnd, level=0.07, tex="cardboard-grey", scale=2.5, wear=0.0)))
+    ib = box("innerboard", win_l - 0.01, -0.005, rz0 - 0.01, win_r + 0.01, depth, rz0 + bh, mat_powder("inner", rnd, level=0.75),
+             bevel=0.008, segs=2)
+    smooth(ib)
+    extra.append(ib)
+    # the steel edge protector along the cover's foot (lever-arch binders stand on it)
+    eh = 0.09 if size == "l" else 0.07
+    kp = box("kante", 0.05, -0.016, -0.004, C - 0.02, 0.05, eh, mat_brushed(f"kante-{size}", rnd, level=0.58, rough=0.34), bevel=0.01, segs=3)
+    smooth(kp)
+    extra.append(kp)
+    for e in extra:
+        e.parent = ob
+    ob.rotation_euler = (0, 0, a)
+    bpy.context.view_layer.update()
+    for e in extra:
+        e.matrix_parent_inverse = Matrix.Identity(4)
+    bpy.context.view_layer.update()
+    cat = catchers(4.2, wall=False)
+    objs = [ob] + extra
+
+    def rects(fr):
+        pts = [ob.matrix_world @ Vector(v) for v in ((0, S, 0), (0, S, H), (C, 0, 0), (C, 0, H), (0, 0, 0), (0, 0, H))]
+        px = [to_px(fr, q) for q in pts]
+        xs, ys = [q[0] for q in px], [q[1] for q in px]
+        front = [round(min(xs), 1), round(min(ys), 1), round(max(xs) - min(xs), 1), round(max(ys) - min(ys), 1)]
+        return {
+            "front": front,
+            "cover": rect_px(fr, ob, 0, 0, C, H),
+            "band": rect_px(fr, ob, 0, band[0], C, band[1]),
+            "recess": rect_px(fr, ob, win_l, rz0, win_r, rz1),
+            "innerBoard": rect_px(fr, ob, win_l, rz0, win_r, rz0 + bh),
+            "edge": rect_px(fr, ob, 0.05, 0, C - 0.02, eh, y=-0.016),
+        }
+    return objs, cat, {"kind": "front", "size": size, "binder": True}, rects
+
+
 SLEEVES_L = [(0.44, 1.50), (0.50, 1.60), (0.58, 1.46), (0.64, 1.56)]
 SLEEVES_S = [(0.36, 1.04), (0.42, 1.12), (0.48, 1.00), (0.54, 1.10)]
 
@@ -737,19 +825,23 @@ def bookend():
     with a punched slot its face read as a door; now mostly its folded edge shows, the back corner cut on a slope)."""
     rnd = random.Random(7300)
     # R3 QA 2: black powder coat vanished on the black room (a dark bar) – brushed steel, so the fold and its turn read
-    mat = mat_brushed("bookend", rnd, level=0.50, rough=0.40)
-    t = 0.04
+    # R3 QA 3 (still a dark plate without a shape at x 1520): light steel (#8C939C-ish with a bright folded edge), an L
+    # whose foot points out of the row (40 px, its edge catches the light), turned only 12 deg so the L stays readable
+    mat = mat_brushed("bookend", rnd, level=0.78, rough=0.30)
+    t = 0.05
     up = box("upright", 0, 0, 0, t, 1.0, 1.30, mat)
     corner = box("c_corner", -0.1, 0.55, 0.95, 0.2, 1.4, 1.7)
     corner.rotation_euler = (math.radians(-40), 0, 0)
     cut(up, corner)
-    add_bevel(up, 0.008, 2)
-    foot = box("foot", -0.90, 0, 0, t, 1.0, 0.02, mat, bevel=0.006, segs=2)
+    add_bevel(up, 0.014, 3)
+    foot = box("foot", 0, 0, 0, 0.40 + t, 1.0, 0.05, mat, bevel=0.012, segs=3)
+    smooth(up)
+    smooth(foot)
     pivot = bpy.data.objects.new("pivot", None)
     link(pivot)
     up.parent = pivot
     foot.parent = pivot
-    pivot.rotation_euler = (0, 0, math.radians(-20))
+    pivot.rotation_euler = (0, 0, math.radians(-12))
     cat = catchers(1.6)
     return [up, foot], cat, {"kind": "bookend"}, lambda fr: {
         "foot": [round(v, 1) for v in to_px(fr, Vector((0, 0, 0)))]}
@@ -776,18 +868,129 @@ def tag(size):
     return objs, cat, {"kind": "tag", "size": size, "slice": round(edge * 100)}, lambda fr: {"front": rect_px(fr, pl, 0, 0, W, H)}
 
 
-def rail():
-    """The position rail as a physical part: a brushed steel bar with an engraved groove, screwed to the wall."""
+RAIL_L, RAIL_H, RAIL_D = 6.0, 0.24, 0.14
+
+
+def rail(notch=False):
+    """R3 QA 3: the position rail as a steel running rail (24 px): a C-profile of bent sheet steel – a scale lip on top,
+    the slot between the lips dark, a lower lip – with a screw at each end. notch=True cuts one 2 px notch into the top
+    lip at the middle (build_sprites turns the difference into the notch overlay the app sets once per Fach)."""
     rnd = random.Random(7500)
-    L, H, D = 6.0, 0.18, 0.12
-    bar = box("bar", 0, 0, 0, L, D, H, mat_brushed("rail", rnd, level=0.48, rough=0.40))   # R3 QA 2: lighter steel, it read as a line
-    g = box("c_groove", 0.10, -0.1, H / 2 - 0.022, L - 0.10, 0.03, H / 2 + 0.022)
-    cut(bar, g)
-    add_bevel(bar, 0.02, 3)
-    smooth(bar)
+    L, H, D = RAIL_L, RAIL_H, RAIL_D
+    steel = mat_brushed("rail", rnd, level=0.72, rough=0.34)
+    back = box("back", 0, D - 0.03, 0, L, D, H, steel, bevel=0.008, segs=2)
+    top = box("lip_t", 0, 0, H - 0.075, L, D - 0.03, H, steel)
+    low = box("lip_b", 0, 0, 0, L, D - 0.03, 0.06, steel, bevel=0.012, segs=3)
+    if notch:
+        cut(top, box("c_notch", L / 2 - 0.01, -0.1, H - 0.045, L / 2 + 0.01, D, H + 0.1))
+    add_bevel(top, 0.012, 3)
+    for o in (back, top, low):
+        smooth(o)
+    slot = box("slot", 0.02, D - 0.035, 0.06, L - 0.02, D - 0.03, H - 0.075, mat_flat("slot", (0.018, 0.019, 0.021)))
+    objs = [back, top, low, slot]
+    for x in (0.12, L - 0.12):
+        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.03, depth=0.02, location=(x, D - 0.04, (H - 0.075 + 0.06) / 2), rotation=(math.pi / 2, 0, 0))
+        sc = bpy.context.active_object
+        sc.data.materials.append(mat_brushed("screw", rnd, level=0.72, rough=0.28))
+        add_bevel(sc, 0.008, 2)
+        smooth(sc)
+        objs.append(sc)
     cat = catchers(D + 0.001, floor=False, wall=True, wall_from=-5, wall_to=5)
-    return [bar], cat, {"kind": "rail", "slice": 24}, lambda fr: {"front": rect_px(fr, bar, 0, 0, L, H),
-                                                                    "groove": rect_px(fr, bar, 0.1, H / 2 - 0.022, L - 0.1, H / 2 + 0.022, y=0.03)}
+    return objs, cat, {"kind": "rail", "slice": 24}, lambda fr: {"front": rect_px(fr, back, 0, 0, L, H, y=0),
+                                                                   "notch": [round(to_px(fr, Vector((L / 2, 0, H)))[0], 1), 0, 0, 0]}
+
+
+def reiter():
+    """R3 QA 3: the rail's slider is an index tab (Reiter) – a paper tab held in a steel clip that rides on the rail's
+    top lip. The system colour is only a 4 px printed stripe at the top of the paper (band tint). Sliced horizontally:
+    the app builds it to the width of the code it prints on it."""
+    rnd = random.Random(7600)
+    W = 0.80
+    paper = mat_paper("reiter", rnd, 0.70)
+    tab = box("tab", 0, 0.02, 0.07, W, 0.03, 0.36, paper, bevel=0.006, segs=2)
+    smooth(tab)
+    stripe_m = mat_cardboard("stripe", rnd, band=(-1, 9), tint_body=False, wear=0.0, tex_scale=2.0)
+    stripe = box("stripe", 0.006, 0.0185, 0.31, W - 0.006, 0.02, 0.35, stripe_m)
+    clip = box("clip", -0.01, -0.012, 0.0, W + 0.01, 0.05, 0.11, mat_brushed("clip", rnd, level=0.66, rough=0.30), bevel=0.012, segs=3)
+    smooth(clip)
+    cat = catchers(0.06, floor=False, wall=True, wall_from=-5, wall_to=5)
+    return [tab, stripe, clip], cat, {"kind": "reiter", "slice": 10}, lambda fr: {
+        "front": rect_px(fr, clip, -0.01, 0.0, W + 0.01, 0.36, y=-0.012),
+        "paper": rect_px(fr, tab, 0, 0.11, W, 0.31, y=0.02)}
+
+
+def sign():
+    """R3 QA 3: "Fach x von y" on a paper card in a steel clamp frame (Klemmrahmen) – the binders' label paper between two
+    folded steel lips, a screw head in each end cap. Sliced horizontally; the app prints the position in ink."""
+    rnd = random.Random(7650)
+    L, H = 2.4, 0.34
+    steel = mat_brushed("frame", rnd, level=0.52, rough=0.36)
+    back = box("back", 0, 0.04, 0, L, 0.06, H, steel, bevel=0.01, segs=2)
+    lt = box("lip_t", 0, 0, H - 0.05, L, 0.05, H, steel, bevel=0.012, segs=3)
+    lb = box("lip_b", 0, 0, 0, L, 0.05, 0.05, steel, bevel=0.012, segs=3)
+    cl = box("cap_l", 0, 0, 0, 0.12, 0.05, H, steel, bevel=0.012, segs=3)
+    cr = box("cap_r", L - 0.12, 0, 0, L, 0.05, H, steel, bevel=0.012, segs=3)
+    paper = box("paper", 0.12, 0.025, 0.04, L - 0.12, 0.04, H - 0.04, mat_paper("sign", rnd, 0.68))
+    objs = [back, lt, lb, cl, cr, paper]
+    for o in objs:
+        smooth(o)
+    for x in (0.06, L - 0.06):
+        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.026, depth=0.02, location=(x, -0.004, H / 2), rotation=(math.pi / 2, 0, 0))
+        sc = bpy.context.active_object
+        sc.data.materials.append(mat_brushed("screw", rnd, level=0.75, rough=0.28))
+        add_bevel(sc, 0.008, 2)
+        smooth(sc)
+        objs.append(sc)
+    cat = catchers(0.061, floor=False, wall=True, wall_from=-5, wall_to=5)
+    return objs, cat, {"kind": "sign", "slice": 14}, lambda fr: {"front": rect_px(fr, back, 0, 0, L, H, y=0),
+                                                                    "paper": rect_px(fr, paper, 0.12, 0.05, L - 0.12, H - 0.05, y=0.025)}
+
+
+def tv():
+    """R3 QA 3: the Start TV's cabinet, rendered (generic set, no brand, no product silhouette): graphite moulded plastic,
+    a stepped recess around the glass (the app draws the picture into it), a chin with a power LED lens and a speaker
+    grille of seven cut slots, two feet. Laid out like PixelScreen at 560 px (bezel 12 + 12, chin 40, feet 8); the app
+    nine-slices it to every set size (the feet and the chin's LED/grille sit in the corner columns)."""
+    rnd = random.Random(7800)
+    W, Dp = 5.60, 1.6
+    feet, chin, cab, rec = 0.08, 0.40, 0.12, 0.12
+    glass_w = W - 2 * (cab + rec)
+    glass_h = round(glass_w * 3 / 4, 2)
+    Hb = cab + rec + glass_h + rec + chin        # body height without feet
+    z0 = feet
+    body_m = mat_powder("cabinet", rnd, level=0.46, tex="plastic-scuffed", scale=1.8, wear=0.35)
+    body = box("body", 0, 0, z0, W, Dp, z0 + Hb, body_m)
+    rx0, rx1 = cab, W - cab
+    rz1 = z0 + Hb - cab
+    rz0 = rz1 - (rec + glass_h + rec)
+    cut(body, box("c_recess", rx0, -0.1, rz0, rx1, 0.10, rz1))
+    # chin: LED lens (round cut) left under the glass, seven grille slots right under the glass
+    cz = z0 + chin / 2
+    gx1 = W - cab - rec
+    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.035, depth=0.2, location=(cab + rec + 0.03, 0, cz), rotation=(math.pi / 2, 0, 0))
+    led = bpy.context.active_object
+    cut(body, led)
+    for i in range(7):
+        zz = cz + (i - 3) * 0.03
+        cut(body, box(f"c_slot{i}", gx1 - 1.20, -0.1, zz - 0.005, gx1, 0.025, zz + 0.005))
+    add_bevel(body, 0.03, 4)
+    smooth(body)
+    deep = mat_flat("deep", (0.012, 0.013, 0.015), rough=0.6)
+    floor_in = box("glassbed", rx0 + 0.01, 0.10, rz0 + 0.01, rx1 - 0.01, 0.12, rz1 - 0.01, deep)
+    lens = box("lens", cab + rec, 0.02, cz - 0.03, cab + rec + 0.06, 0.04, cz + 0.03, mat_flat("lens", (0.02, 0.021, 0.024), rough=0.25))
+    objs = [body, floor_in, lens]
+    fw = 0.64
+    for fx in (round(W * 0.12, 2), round(W * 0.88 - fw, 2)):
+        f = box(f"foot{fx}", fx, 0.2, 0, fx + fw, Dp - 0.2, z0 + 0.01, mat_powder("foot", rnd, level=0.3, tex="plastic-scuffed", scale=1.6, wear=0.1),
+                bevel=0.01, segs=2)
+        smooth(f)
+        objs.append(f)
+    cat = catchers(Dp + 0.3)
+    return objs, cat, {"kind": "tv"}, lambda fr: {
+        "front": rect_px(fr, body, 0, 0, W, z0 + Hb),
+        "body": rect_px(fr, body, 0, z0, W, z0 + Hb),
+        "glass": rect_px(fr, body, rx0 + rec, rz0 + rec, rx1 - rec, rz1 - rec),
+        "led": rect_px(fr, body, cab + rec, cz - 0.03, cab + rec + 0.06, cz + 0.03)}
 
 
 def slider():
@@ -910,7 +1113,7 @@ def main():
             for v in range(3):
                 jobs.append((f"spine-{size}{v}", (lambda s=size, v=v: spine(s, v)), 24, (0, 0, 0, 0)))
         if every or f"front-{size}" in want:
-            jobs.append((f"front-{size}", (lambda s=size: front(s, 0)), 24, (0, 0, 0, 0)))
+            jobs.append((f"front-{size}", (lambda s=size: binder_front(s)), 24, (0, 0, 0, 0)))
         if every or f"sleeves-{size}" in want:
             for i in range(4):
                 jobs.append((f"sleeve-{size}{i}", (lambda s=size, i=i: sleeve(s, i)), 16, (0, 0, 0, 0)))
@@ -925,8 +1128,13 @@ def main():
         jobs.append(("bookend", bookend, 16, (0, 0, 0, 0)))
     if every or "rail" in want:
         jobs.append(("rail", rail, 8, (0, 0, 0, 0)))
-    if every or "slider" in want:
-        jobs.append(("slider", slider, 8, (0, 0, 0, 0)))
+        jobs.append(("rail-notch", (lambda: rail(notch=True)), 8, (0, 0, 0, 0)))
+    if every or "reiter" in want:
+        jobs.append(("reiter", reiter, 8, (0, 0, 0, 0)))
+    if every or "sign" in want:
+        jobs.append(("sign", sign, 8, (0, 0, 0, 0)))
+    if every or "tv" in want:
+        jobs.append(("tv", tv, 16, (0, 0, 0, 0)))
     if every or "case" in want:
         jobs.append(("case", case, 12, (0, 0, 0, 0)))
     for name, b, pad, extra in jobs:

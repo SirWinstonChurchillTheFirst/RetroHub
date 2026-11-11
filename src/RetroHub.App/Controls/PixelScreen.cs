@@ -408,6 +408,7 @@ public sealed class PixelScreen : Panel
             var k = w / 560;
             var feet = FeetFor(w);
             var body = new Rect(0, 0, w, size.Height - feet);
+            if (DrawRendered(ctx, size)) return;
             // feet: two room-deep blocks under the cabinet; their bottom edge is the bottom of the control (= board top)
             var fw = Math.Round(64 * k);
             foreach (var fx in new[] { Math.Round(w * 0.12), Math.Round(w * 0.88 - fw) })
@@ -449,6 +450,33 @@ public sealed class PixelScreen : Panel
                 ctx.FillRectangle(Craft.Hi(0.07), new Rect(pic.Right - gw, gy + i * pitch + 1, gw, 1));
             }
             DrawCaption(ctx, pic.X + led + Math.Round(14 * k), chinTop, chin, pic.Right - gw - Math.Round(16 * k));
+        }
+
+        /// <summary>
+        /// R3 QA 3 ("the TV is a flat dark frame"): the rendered cabinet (Blender "tv": graphite moulded plastic, stepped
+        /// recess, chin with LED lens and a cut grille, two feet), nine-sliced to this set – its sides and top by the bezel,
+        /// its foot row by recess + chin + feet; the LED's light and the caption are the app's.
+        /// </summary>
+        private bool DrawRendered(DrawingContext ctx, Size size)
+        {
+            if (Rendered.MetaOf("tv") is not { } m || m.Front.Width <= 0) return false;
+            var w = size.Width;
+            var kx = w / m.Front.Width;
+            var bottom = RecessFor(w) + ChinFor(w) + FeetFor(w);
+            // render borders (1x px, measured on the 560 px render): left/right columns hold the feet, LED and grille
+            var border = new Thickness(135, 24, 150, 60);
+            var target = new Thickness(135 * kx, BezelFor(w), 150 * kx, bottom);
+            if (!Rendered.DrawNine(ctx, this, "tv", new Rect(size), border, target)) return false;
+            var chinTop = size.Height - bottom + RecessFor(w);
+            var chin = ChinFor(w);
+            var pic = PictureRect(size);
+            var led = Math.Max(4, Math.Round(5 * kx));
+            var look = string.IsNullOrEmpty(owner.SystemId) ? null : SystemPalette.Get(owner.SystemId, owner.Accent);
+            var ledBrush = owner.LedBrush ?? (owner.IsOff || look == null ? null : look.LightBrush);
+            var lc = new Point(Math.Round(BezelFor(w) + 3 * kx), Math.Round(chinTop + chin / 2));
+            if (ledBrush != null) ctx.FillRectangle(ledBrush, new Rect(lc.X - led / 2, lc.Y - led / 2, led, led), (float)(led / 2));
+            DrawCaption(ctx, pic.X + led + Math.Round(18 * kx), chinTop, chin, pic.Right - Math.Round(120 * kx) - Math.Round(16 * kx));
+            return true;
         }
 
         private FormattedText? _caption;
@@ -564,9 +592,14 @@ public sealed class PixelScreen : Panel
                     DrawImage(ctx, r, bmp, p.TvSystem);
                     break;
                 case PictureKind.NoSignal when p.Look is { } look:
-                    SystemWall.Draw(ctx, this, r, look, band: Math.Max(6, Math.Round(r.Height / 50)), motifShare: 0, motifInset: 0);
+                    // R3 QA 3 (a big flat vector motif with colour bars read as drawn): the tube shows snow – a still frame
+                    // of the grain, dimmed – and the system's rendered relief plaque at 40 % behind the OSD
+                    ctx.FillRectangle(DarkTube, r);
+                    using (ctx.PushOpacity(0.16))
+                        ctx.DrawImage(TubeLayer.NoiseFrame(1), new Rect(0, 0, 160, 90), r);
                     ctx.FillRectangle(GlassLift, r);
-                    MotifCatalog.Draw(ctx, look, MotifRect(r));
+                    using (ctx.PushOpacity(0.40))
+                        if (!SystemSpine.DrawMotifPlaque(ctx, this, look, MotifRect(r))) MotifCatalog.Draw(ctx, look, MotifRect(r));
                     DrawOsd(ctx, r, look, p.Code);
                     break;
                 default:

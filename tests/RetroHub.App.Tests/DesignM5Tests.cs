@@ -146,8 +146,9 @@ public class DesignM5Tests
         var first = Assert.IsType<SystemSpine>(Focused(window));
         TestSupport.Settle(100);
         Assert.True(first.IsOpen);
-        Assert.Equal(520, first.FrontWidth);
-        Assert.Equal(600, first.Bounds.Height, 0);
+        // the demo has no "Noch leer" row: the wall is the tall one (R3 QA 3, DESIGN 7.12) – binders 162 × 660, front 658 × 760
+        Assert.Equal(658, first.FrontWidth);
+        Assert.Equal(760, first.Bounds.Height, 0);
         Assert.Same(systems.Systems[0], systems.Current);
         Assert.True(systems.Systems[0].IsCurrent);
         // the page ground is the focused system's wall, in shadow
@@ -163,9 +164,9 @@ public class DesignM5Tests
         Assert.Equal(first.SpineWidth, first.Bounds.Width, 0);
         Assert.Equal("Fach 5 von 13", systems.PositionText);
         Assert.Equal(systems.Systems[4].Id, systems.Backdrop.SystemId);
-        // slot 3: two spines (128 + 8 each) before the open item, measured from the page margin
+        // slot 3: two spines (162 + 8 each on the tall wall) before the open item, measured from the page margin
         var wall = window.GetVisualDescendantsOf<Shelf>().First(s => s.Name == "Wall");
-        Assert.Equal(-(4 * 136 - 2 * 136), wall.Offset, 0);
+        Assert.Equal(-(4 * 170 - 2 * 170), wall.Offset, 0);
 
         // up leaves the wall for the header; confirm opens the system page
         window.Execute(NavAction.Accept);

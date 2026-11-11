@@ -212,6 +212,28 @@ public static class SystemPalette
         return best?.ToUpperInvariant();
     }
 
+    /// <summary>
+    /// R3 QA 3 (binder labels said "Super Nintendo" on one wall and "Nintendo, 1990" on the next): the short name printed
+    /// under the code on a binder label, ≤ 18 characters, one per catalog system; null = use the system's name.
+    /// </summary>
+    private static readonly Dictionary<string, string> ShortNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["nes"] = "Nintendo", ["snes"] = "Super Nintendo", ["n64"] = "Nintendo 64", ["gamecube"] = "GameCube", ["wii"] = "Wii",
+        ["wiiu"] = "Wii U", ["switch"] = "Switch", ["gb"] = "Game Boy", ["gbc"] = "Game Boy Color", ["gba"] = "Game Boy Advance",
+        ["nds"] = "Nintendo DS", ["3ds"] = "Nintendo 3DS", ["virtualboy"] = "Virtual Boy", ["ps1"] = "PlayStation",
+        ["ps2"] = "PlayStation 2", ["psp"] = "PSP", ["mastersystem"] = "Master System", ["megadrive"] = "Mega Drive",
+        ["segacd"] = "Mega-CD", ["sega32x"] = "32X", ["saturn"] = "Saturn", ["dreamcast"] = "Dreamcast", ["gamegear"] = "Game Gear",
+        ["pcengine"] = "PC Engine", ["ngp"] = "Neo Geo Pocket", ["wonderswan"] = "WonderSwan", ["lynx"] = "Lynx",
+        ["atari2600"] = "Atari 2600", ["atari7800"] = "Atari 7800", ["msx"] = "MSX", ["arcade"] = "Arcade", ["pc"] = "PC",
+    };
+
+    /// <summary>The binder label's short name of <paramref name="id"/> (≤ 18 characters), or null.</summary>
+    public static string? ShortDisplayName(string? id) => Normalize(id) is { } n && ShortNames.TryGetValue(n, out var s) ? s : null;
+
+    /// <summary>The code on a binder label: the system's code when it has ≤ 4 characters, else its compact code ("GameCube" → "GC").</summary>
+    public static string LabelCode(string? id, string shortName) =>
+        shortName.Length <= 4 ? shortName : CompactCode(id) ?? shortName;
+
     /// <summary>The catalog id for <paramref name="id"/> (aliases resolved); null stays null.</summary>
     public static string? Normalize(string? id) => id == null ? null : Aliases.TryGetValue(id, out var canonical) ? canonical : id;
 

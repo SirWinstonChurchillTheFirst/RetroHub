@@ -47,9 +47,9 @@ public class RenderedObjectsTests
     [
         "spine-l0", "spine-l1", "spine-l2", "spine-s0", "spine-s1", "spine-s2", "spine-m0", "spine-m1", "spine-m2",
         "spine-xs0", "spine-xs1", "spine-xs2", "front-l", "front-s", "front-m", "front-xs",
-        "sleeve-l0", "sleeve-l1", "sleeve-l2", "sleeve-l3", "sleeve-llean", "sleeve-lflat",
-        "sleeve-s0", "sleeve-s1", "sleeve-s2", "sleeve-s3", "sleeve-slean", "sleeve-sflat",
-        "bookend", "slider", "case",
+        "sleeve-l0", "sleeve-l1", "sleeve-l2", "sleeve-l3", "sleeve-llean",
+        "sleeve-s0", "sleeve-s1", "sleeve-s2", "sleeve-s3", "sleeve-slean",
+        "bookend", "case", "tv",
     ];
 
     [Fact]
@@ -63,7 +63,7 @@ public class RenderedObjectsTests
             if (Rendered.Composite(name, 1, true) == null) missing.Add(name + "@1x");
             if (Rendered.Composite(name, 2, true) == null) missing.Add(name + "@2x");
         }
-        foreach (var part in new[] { "rail", "tag-l", "tag-s" })
+        foreach (var part in new[] { "rail", "tag-l", "tag-s", "reiter", "sign" })
             if (Rendered.Strip(part, 300, 2).Bitmap == null) missing.Add(part + " strip");
         Assert.True(missing.Count == 0, string.Join(", ", missing));
     });
@@ -115,7 +115,7 @@ public class RenderedObjectsTests
             Close(window);
         }
 
-        // the "Noch leer" row: one of four upright cases, the leaning one or the flat one – never the drawn card
+        // the "Noch leer" row: one of four upright cases or the leaning one – never the drawn card, none lies flat (R3 QA 3)
         var (win, vm2) = Open(1920, 1080);
         vm2.Navigator.Navigate(PageKey.Systems);
         Assert.True(TestSupport.Pump(() => win.FocusManager?.GetFocusedElement() is SystemSpine, 4000));
@@ -132,7 +132,7 @@ public class RenderedObjectsTests
         TestSupport.Settle(150);
         var sleeves = shelf.Items().Cast<SystemSpine>().ToList();
         Assert.All(sleeves, s => Assert.StartsWith("sleeve-l", s.SleeveSpriteName));
-        Assert.Equal("sleeve-lflat", sleeves[^1].SleeveSpriteName);
+        Assert.All(sleeves, s => Assert.NotEqual("sleeve-lflat", s.SleeveSpriteName));
         // a rendered lean looks alike wherever it stands: never two near each other
         var leans = sleeves.Select((s, i) => (s, i)).Where(t => t.s.SleeveSpriteName == "sleeve-llean").Select(t => t.i).ToList();
         Assert.All(leans.Zip(leans.Skip(1)), p => Assert.True(p.Second - p.First >= 4, $"leans at {p.First} and {p.Second}"));

@@ -25,6 +25,14 @@
       <Setter Property="FrontWidth" Value="520" />
       <Setter Property="ShowMotif" Value="True" />
     </Style>
+    <!-- R3 QA 3 (a 160 px dead band of felt under the rail when there is no "Noch leer" row): without that row the
+         wall grows to fill the page – binders 162 × 660, front 658 × 760 (class "tall", 1080 only) -->
+    <Style Selector="Panel.tall c|SystemSpine.wall">
+      <Setter Property="Height" Value="760" />
+      <Setter Property="SpineHeight" Value="660" />
+      <Setter Property="SpineWidth" Value="162" />
+      <Setter Property="FrontWidth" Value="658" />
+    </Style>
     <Style Selector="Panel.compact c|SystemSpine.wall">
       <Setter Property="Height" Value="460" />
       <Setter Property="SpineHeight" Value="400" />
@@ -45,6 +53,10 @@
     <Style Selector="c|Shelf#Wall">
       <Setter Property="ItemHeight" Value="600" />
       <Setter Property="AnchorX" Value="272" />
+    </Style>
+    <Style Selector="Panel.tall c|Shelf#Wall">
+      <Setter Property="ItemHeight" Value="760" />
+      <Setter Property="AnchorX" Value="340" />
     </Style>
     <Style Selector="Panel.compact c|Shelf#Wall">
       <Setter Property="ItemHeight" Value="460" />
@@ -98,13 +110,15 @@
       <!-- the position rail: one tick per system on the wall (a click turns that front forward), the current one with its
            code; right the position in a fixed column, never touching the rail ("Noch leer · 3 von 20" on the low edge) -->
       <!-- R3 QA 2: the rail runs up to the position tag (16 px before it), no dead column between them -->
-      <Grid Name="TickerRow" ColumnDefinitions="*,Auto" Margin="{DynamicResource RhPageInsetX}" Height="44" IsVisible="{Binding HasSystems}">
+      <Grid Name="TickerRow" ColumnDefinitions="*,Auto" Margin="{DynamicResource RhPageInsetX}" Height="52" IsVisible="{Binding HasSystems}">
         <c:PositionRail Name="Rail" Systems="{Binding Systems}" Current="{Binding Current}" Margin="0,0,16,0" />
         <!-- the position in a small window set into the bench, like the dial's counter (M7 "gezeichnet") -->
         <!-- R3: the position on a riveted metal tag (rendered, like the count tags on the spines) -->
-        <c:TagPlate Name="PositionTag" Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,1" Height="28"
+        <!-- R3 QA 3: a paper card in a steel clamp frame (rendered "sign"), printed in ink in the binders' label face -->
+        <c:TagPlate Name="PositionTag" Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,-2" Height="34"
                     IsVisible="{Binding PositionText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-          <TextBlock Classes="ui" FontSize="16" Foreground="#ECEEF0" Margin="22,0,22,1" VerticalAlignment="Center" c:Sentence.Text="{Binding PositionText}" />
+          <TextBlock FontFamily="{DynamicResource RhFontSpine}" FontWeight="Bold" FontSize="17" Foreground="#0B0C0E" Margin="26,0,26,1"
+                     VerticalAlignment="Center" Text="{Binding PositionText}" />
         </c:TagPlate>
       </Grid>
 

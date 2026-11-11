@@ -104,6 +104,8 @@ public class Shelf : TemplatedControl
         _row = e.NameScope.Find<Panel>("PART_Row");
         if (_track == null) return;
         _track.RenderTransform = _offset;
+        // the paper label moves with the row (R3 QA 3: fixed at the board's start it labelled whichever box stood there)
+        if (e.NameScope.Find<Control>("PART_Header") is { } header) header.RenderTransform = _offset;
         FocusVisuals = new FocusLayer(_track, _track) { BoardFront = BoardHeight, ConeHeadroom = TopGap, ConeOutsideBounds = true };
         _track.Children.Insert(0, FocusVisuals.Back);
         // contact shadows of every box on the board (10 px #000 55 % → 0, on the box's covered width)

@@ -16,15 +16,18 @@ import sys
 import numpy as np
 from PIL import Image
 
-SLICED = ("board-stage", "board-edge", "rail", "tag-l", "tag-s")
+SLICED = ("board-stage", "board-edge", "rail", "tag-l", "tag-s", "reiter", "sign")
+DROP = ("rail-notch", "slider")   # rail-notch: only its overlay (rail-notch-mark) ships; the slider became the Reiter
 
 
 def keep(fn):
     if fn.startswith("_"):
         return False
     stem = fn.split("@")[0]
+    if stem.split(".")[0] in DROP or any(stem.startswith(d + "-") and not stem.startswith("rail-notch-mark") for d in DROP):
+        return False
     for s in SLICED:
-        if stem in (s, f"{s}-shadow"):          # the full render of a sliced part
+        if stem in (s, f"{s}-shadow", f"{s}-band"):          # the full render of a sliced part
             return False
     return fn.endswith(".png") or fn.endswith(".json")
 

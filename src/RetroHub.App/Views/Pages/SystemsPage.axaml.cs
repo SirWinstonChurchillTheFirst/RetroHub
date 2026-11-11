@@ -33,6 +33,7 @@ public partial class SystemsPage : PageBase
             if (_vm != null) _vm.PropertyChanged -= OnVmChanged;
             _vm = DataContext as SystemsViewModel;
             if (_vm != null) _vm.PropertyChanged += OnVmChanged;
+            ApplyTall();
         };
         Wall.ItemFocused += (_, item, _, _) => OnSpineFocused(item);
         Unused.ItemFocused += (_, item, _, _) => OnSpineFocused(item);
@@ -54,6 +55,19 @@ public partial class SystemsPage : PageBase
 
     private void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(SystemsViewModel.HasEmptySystems) or nameof(SystemsViewModel.HasSystems)) ApplyTall();
+    }
+
+    /// <summary>
+    /// R3 QA 3: without a "Noch leer" row (1080 values only) the wall takes the page – binders and front grow (class
+    /// "tall") so that no band of empty felt above or below the rail is wider than 64 px.
+    /// </summary>
+    private void ApplyTall()
+    {
+        var tall = _compact == false && _vm is { HasSystems: true, HasEmptySystems: false };
+        if (Root.Classes.Contains("tall") == tall) return;
+        Root.Classes.Set("tall", tall);
+        PlaceStack();
     }
 
     private void OnSpineFocused(Control item)
@@ -65,7 +79,7 @@ public partial class SystemsPage : PageBase
     private void ApplySize(Size size)
     {
         var compact = size.Height < CompactBelowHeight;
-        if (_compact == compact) return;
+        if (_compact == compact) { ApplyTall(); return; }
         _compact = compact;
         Root.Classes.Set("compact", compact);
         PlaceStack();
@@ -76,7 +90,8 @@ public partial class SystemsPage : PageBase
         Unused.ItemHeight = compact ? 116 : 168;
         // the rail and the "Noch leer" spines read as two bands, not one (M5 QA)
         UnusedShelf.Margin = new Thickness(0, compact ? 20 : 32, 0, 0);
-        TickerRow.Height = compact ? 40 : 44;
+        TickerRow.Height = compact ? 46 : 52;
+        ApplyTall();
     }
 
     /// <summary>Space the footer takes at the page's bottom (its bar; the fade above it may cover the label's last pixels).</summary>
@@ -91,6 +106,9 @@ public partial class SystemsPage : PageBase
         var free = Bounds.Height - FooterReserve - Stack.Bounds.Height;
         if (Bounds.Height <= 0 || Stack.Bounds.Height <= 0) return;
         var top = Math.Round(Math.Clamp(free / 2, _compact == true ? 24 : 40, 140));
+        // the tall wall: centred in the page (which ends at the footer's top edge), never under 24 – the felt above the
+        // wall and under the rail stay equal (≤ 64 px each)
+        if (Root.Classes.Contains("tall")) top = Math.Round(Math.Max(24, (Bounds.Height - Stack.Bounds.Height) / 2));
         if (Math.Abs(Stack.Margin.Top - top) > 0.5) Stack.Margin = new Thickness(0, top, 0, 0);
     }
 

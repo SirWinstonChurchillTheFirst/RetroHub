@@ -57,7 +57,7 @@ public class DesignR3Tests
     });
 
     [Fact]
-    public Task Noch_leer_sleeves_differ_lean_lie_flat_and_a_pulled_one_stays_on_the_board() => UiTest.Run(() =>
+    public Task Noch_leer_sleeves_differ_lean_stand_and_a_pulled_one_stays_on_the_board() => UiTest.Run(() =>
     {
         // the demo has no system without games: the low edge is built here with the demo's systems, as on the page
         var (window, vm) = Open(1920, 1080);
@@ -80,9 +80,8 @@ public class DesignR3Tests
         var widths = sleeves.Where(s => !s.SleeveFlat).Select(s => s.ClosedWidth).ToList();
         Assert.True(widths.Max() - widths.Min() >= 12, $"widths {widths.Min()}–{widths.Max()}");
         Assert.All(sleeves, s => Assert.Equal(s.ClosedWidth, s.Bounds.Width, 0));
-        // the last lies flat before the bookend, the others stand; some lean 4–7°
-        Assert.True(sleeves[^1].SleeveFlat);
-        Assert.All(sleeves.Take(sleeves.Count - 1), s => Assert.False(s.SleeveFlat));
+        // R3 QA 3: every sleeve stands (the lying box before the bookend read as a placeholder); some lean 4–7°
+        Assert.All(sleeves, s => Assert.False(s.SleeveFlat));
         Assert.All(sleeves.Where(s => s.SleeveLean != 0), s => Assert.InRange(-s.SleeveLean * 180 / Math.PI, 3.5, 7.5));
         Assert.False(sleeves[0].SleeveLean != 0, "the first sleeve has no neighbour to lean on");
 

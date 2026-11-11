@@ -97,9 +97,34 @@ def build(root, name, preview=True):
     m1["canvas"] = [meta["canvas"][0] // 2, meta["canvas"][1] // 2]
     m1["scale"] = 1
     json.dump(m1, open(os.path.join(dst, f"{name}.json"), "w"), indent=1)
-    if meta["kind"] in ("board", "rail", "tag"):
+    if meta["kind"] in ("board", "rail", "tag", "reiter", "sign"):
         slices(root, name, meta)
+    if name == "rail-notch":
+        notch_overlay(root, meta)
     return m1
+
+
+def notch_overlay(root, meta):
+    """R3 QA 3: one notch of the rail as an overlay (the notched render where it differs from the plain rail, feathered,
+    cropped 12 px wide around the notch); the app sets it once per Fach on the tiled rail."""
+    dst = os.path.join(root, "sprites")
+    for suffix, k in (("@2x", 2), ("@1x", 1)):
+        a = np.asarray(Image.open(os.path.join(dst, f"rail-notch{suffix}.png"))).astype(np.float32) / 255
+        b = np.asarray(Image.open(os.path.join(dst, f"rail{suffix}.png"))).astype(np.float32) / 255
+        h = min(a.shape[0], b.shape[0])
+        cx = int(round(meta["notch"][0] * k / 2))
+        hw = 6 * k
+        a, b = a[:h, cx - hw:cx + hw], b[:h, cx - hw:cx + hw]
+        d = np.abs(a[..., :3] - b[..., :3]).max(-1)
+        alpha = np.clip(d / 0.05, 0, 1)
+        g = alpha.copy()   # grown by one pixel so the notch's soft rim comes along
+        g[1:] = np.maximum(g[1:], alpha[:-1])
+        g[:-1] = np.maximum(g[:-1], alpha[1:])
+        g2 = g.copy()
+        g2[:, 1:] = np.maximum(g2[:, 1:], g[:, :-1])
+        g2[:, :-1] = np.maximum(g2[:, :-1], g[:, 1:])
+        out = np.dstack([a[..., :3], g2 * a[..., 3]])
+        Image.fromarray((out * 255 + 0.5).astype(np.uint8), "RGBA").save(os.path.join(dst, f"rail-notch-mark{suffix}.png"), optimize=True)
 
 
 def htile(a, width):
@@ -118,19 +143,21 @@ def slices(root, name, meta):
     dst = os.path.join(root, "sprites")
     kind = meta["kind"]
     for suffix, k in (("@2x", 2), ("@1x", 1)):
-        for layer in ("", "-shadow"):
+        for layer in ("", "-shadow", "-band"):
             f = os.path.join(dst, f"{name}{layer}{suffix}.png")
+            if not os.path.exists(f):
+                continue
             im = Image.open(f)
             a = np.asarray(im)
             fx, fy, fw, fh = [v * k / 2 for v in meta["front"]]
             if kind == "board":
                 Image.fromarray(htile(a, 256 * k), im.mode).save(os.path.join(dst, f"{name}{layer}-tile{suffix}.png"), optimize=True)
-            elif kind in ("rail", "tag"):
+            elif kind in ("rail", "tag", "reiter", "sign"):
                 cap = int(round(meta["slice"] * k)) + int(round(fx))
                 Image.fromarray(a[:, :cap], im.mode).save(os.path.join(dst, f"{name}{layer}-left{suffix}.png"), optimize=True)
                 r0 = int(round(fx + fw)) - int(round(meta["slice"] * k))
                 Image.fromarray(a[:, r0:], im.mode).save(os.path.join(dst, f"{name}{layer}-right{suffix}.png"), optimize=True)
-                tw = 128 if kind == "rail" else 32
+                tw = 128 if kind == "rail" else 16 if kind == "reiter" else 32
                 Image.fromarray(htile(a, tw * k), im.mode).save(os.path.join(dst, f"{name}{layer}-tile{suffix}.png"), optimize=True)
 
 
@@ -201,6 +228,14 @@ def build_motif(root, name, meta, preview):
             Image.fromarray((np.clip(c, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").save(os.path.join(dst, f"_{name}-preview@2x.png"))
     meta = dict(meta)
     meta["maps"] = [rn for k, rn in enumerate(roles) if np.clip(P2["role"][..., k], 0, 1).max() >= 0.05]
+    # R3 QA 3: a light map of an earlier render whose role the motif no longer has would still be tinted by the app
+    # (an old hinge / stair of frames over the new shape) – drop it
+    for rn in ("color", "body", "lift", "light"):
+        if rn not in meta["maps"]:
+            for suffix in ("@1x", "@2x"):
+                f = os.path.join(dst, f"{name}-{rn}{suffix}.png")
+                if os.path.exists(f):
+                    os.remove(f)
     return write_meta(dst, name, meta)
 
 

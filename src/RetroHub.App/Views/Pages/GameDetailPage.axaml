@@ -124,7 +124,7 @@
           <!-- two stacks; the sections move between them (code-behind, ApplyBackLayout) -->
           <StackPanel Name="LeftStack" Spacing="0">
           <!-- Über das Spiel: description (68 characters, 8 lines, then "Weiterlesen"), the two screens on a shelf edge -->
-          <StackPanel Name="AboutSection" Spacing="0" Margin="0,16,0,0" IsVisible="{Binding HasAbout}">
+          <StackPanel Name="AboutSection" Spacing="0" Margin="0,8,0,0" IsVisible="{Binding HasAbout}">
             <c:ShelfLabel Text="{l:T detail.section.about}" />
             <!-- "Weiterlesen" opens the text in place (QA 2, no sheet): up to 12 lines, longer text scrolls inside them with
                  a 12 px fade at the cut; the button only appears when the 8 lines clip the text -->
@@ -171,7 +171,7 @@
           </StackPanel>
 
           <!-- Start: choice rows, status line, file -->
-          <StackPanel Name="StartSection" Spacing="0" Margin="0,16,0,0">
+          <StackPanel Name="StartSection" Spacing="0" Margin="0,8,0,0">
             <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,10">
               <c:ShelfLabel Text="{l:T detail.section.start}" VerticalAlignment="Center" />
               <TextBlock c:Sentence.Text="{Binding PlanSummary}" Classes="read" VerticalAlignment="Center" TextTrimming="WordEllipsis" />
@@ -293,7 +293,7 @@
           </StackPanel>
 
           <!-- Ausleihkarte: the last sessions as stamps, the entry stamp, empty places waiting for the next -->
-          <StackPanel Name="CardSection" Spacing="0" Margin="0,48,0,0">
+          <StackPanel Name="CardSection" Spacing="0" Margin="0,24,0,0">
             <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,16">
               <c:ShelfLabel Text="{l:T detail.section.card}" VerticalAlignment="Center" />
               <TextBlock c:Sentence.Text="{Binding CardSentence}" Classes="read" VerticalAlignment="Center"
@@ -324,9 +324,10 @@
           </StackPanel>
 
           <!-- Daneben im Regal: the shelf the box came from – its neighbours and the gap it left (filled in code) -->
-          <StackPanel Name="ShelfSection" Spacing="0" Margin="0,48,0,0" IsVisible="{Binding HasNeighbours}">
+          <!-- R3 QA 3: sections 24 px apart (was 48): the shelf's captions and "Gespielt" end above the footer instead of in its fold -->
+          <StackPanel Name="ShelfSection" Spacing="0" Margin="0,24,0,0" IsVisible="{Binding HasNeighbours}">
             <c:ShelfLabel Text="{l:T detail.section.shelf}" />
-            <Panel Name="NeighbourHost" Margin="0,24,0,0" ClipToBounds="False">
+            <Panel Name="NeighbourHost" Margin="0,16,0,0" ClipToBounds="False">
               <StackPanel Name="NeighbourRow" Orientation="Horizontal" Spacing="24" Height="180" VerticalAlignment="Top" HorizontalAlignment="Left" />
               <c:ShelfBoard Name="NeighbourBoard" IsEdge="True" Height="12" Margin="0,180,0,16" />
             </Panel>

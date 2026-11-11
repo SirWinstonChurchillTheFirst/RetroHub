@@ -25,6 +25,12 @@
     </DataTemplate>
   </p:PageBase.Resources>
   <p:PageBase.Styles>
+    <Style Selector="Button.wall-tag:pointerover Border.chev">
+      <Setter Property="Background" Value="#2E3238" />
+    </Style>
+    <Style Selector="Button.wall-tag:pointerover Border.chev c|RhIcon">
+      <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
+    </Style>
     <!-- R3 QA: the neighbours are two paper tags taped to the upper wall (ink on paper, the shoulder glyph beside each);
          hover brightens the paper, focus is the chamfered ring around the tag -->
     <Style Selector="Button.wall-tag">
@@ -81,7 +87,12 @@
                         IsVisible="{Binding HasNeighbours}">
               <Button Name="PrevSystem" Classes="wall-tag" Command="{Binding PreviousSystemCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="10">
-                  <c:ButtonGlyph Action="PageLeft" Quiet="True" VerticalAlignment="Center" />
+                  <!-- R3 QA 3: the 32 × 32 chevron plates of the library instead of the shoulder wedges -->
+                  <Border Classes="chev" Width="32" Height="32" CornerRadius="2" Background="{DynamicResource RhSurfaceHiBrush}" BorderBrush="{DynamicResource RhLineBrush}"
+                          BorderThickness="1" VerticalAlignment="Center">
+                    <c:RhIcon Data="{StaticResource Icon.ChevronLeft}" Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center"
+                              Foreground="{DynamicResource RhText2Brush}" />
+                  </Border>
                   <c:PaperNote SeedText="nachbar-links" Padding="10,4,12,5" VerticalAlignment="Center" RenderTransformOrigin="50%,0%">
                     <c:PaperNote.RenderTransform>
                       <RotateTransform Angle="-1.4" />
@@ -98,7 +109,11 @@
                     </c:PaperNote.RenderTransform>
                     <TextBlock Classes="ui" FontSize="16" Foreground="#0B0C0E" Text="{Binding Next.Name, FallbackValue={x:Null}}" />
                   </c:PaperNote>
-                  <c:ButtonGlyph Action="PageRight" Quiet="True" VerticalAlignment="Center" />
+                  <Border Classes="chev" Width="32" Height="32" CornerRadius="2" Background="{DynamicResource RhSurfaceHiBrush}" BorderBrush="{DynamicResource RhLineBrush}"
+                          BorderThickness="1" VerticalAlignment="Center">
+                    <c:RhIcon Data="{StaticResource Icon.ChevronRight}" Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center"
+                              Foreground="{DynamicResource RhText2Brush}" />
+                  </Border>
                 </StackPanel>
               </Button>
             </StackPanel>

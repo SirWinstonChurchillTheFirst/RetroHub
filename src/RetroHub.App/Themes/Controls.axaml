@@ -145,9 +145,6 @@
     <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
     </Style>
-    <Style Selector="^:focus-visible">
-      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
-    </Style>
   </ControlTheme>
 
   <ControlTheme x:Key="RhIconButton" TargetType="Button" BasedOn="{StaticResource RhGhostButton}">
@@ -162,9 +159,6 @@
     <Setter Property="Foreground" Value="{DynamicResource RhDangerBrush}" />
     <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="#4A2A30" />
-    </Style>
-    <Style Selector="^:focus-visible">
-      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
     </Style>
   </ControlTheme>
 
@@ -218,14 +212,14 @@
     <Setter Property="Template">
       <ControlTemplate>
         <Panel Background="Transparent">
+          <!-- R3 QA 3 (a faint underline did not say "clickable"): hover lays a surface behind key and label -->
+          <Border Name="PART_HoverBg" Margin="0,4" CornerRadius="2" Background="#22252A" Opacity="0" IsHitTestVisible="False" />
           <ContentPresenter Name="PART_ContentPresenter" Background="Transparent" Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}"
                             ContentTemplate="{TemplateBinding ContentTemplate}" VerticalContentAlignment="Center" />
-          <Border Name="PART_Under" Height="1" VerticalAlignment="Bottom" Margin="6,0,6,6" Background="{DynamicResource RhText3Brush}"
-                  Opacity="0" IsHitTestVisible="False" />
         </Panel>
       </ControlTemplate>
     </Setter>
-    <Style Selector="^:pointerover /template/ Border#PART_Under">
+    <Style Selector="^:pointerover /template/ Border#PART_HoverBg">
       <Setter Property="Opacity" Value="1" />
     </Style>
     <Style Selector="^:pressed">
@@ -484,12 +478,6 @@
     <Style Selector="^:focus-visible /template/ Border#PART_Bar">
       <Setter Property="Width" Value="8" />
     </Style>
-    <Style Selector="^:focus-visible /template/ Border#PART_Chip">
-      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ TextBlock#PART_Title">
-      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
-    </Style>
   </ControlTheme>
 
 
@@ -560,7 +548,7 @@
           <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
           <c:Groove VerticalAlignment="Bottom" />
-          <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
+          <Border Name="PART_Bar" Width="4" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
           <Grid ColumnDefinitions="200,*,Auto" Margin="16,0,16,0">
             <Border Name="PART_Chip" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="8,4" CornerRadius="2" Margin="-8,0,0,0" Background="Transparent">
               <TextBlock Name="PART_Label" Text="{TemplateBinding Tag}" Foreground="{DynamicResource RhText3Brush}" />
@@ -586,12 +574,6 @@
     <Style Selector="^:focus-visible /template/ Border#PART_Bar">
       <Setter Property="Opacity" Value="1" />
     </Style>
-    <Style Selector="^:focus-visible /template/ Border#PART_Chip">
-      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ TextBlock#PART_Label">
-      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
-    </Style>
     <Style Selector="^:focus-visible /template/ c|RhIcon#PART_Arrow">
       <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
     </Style>
@@ -614,7 +596,7 @@
         <Panel>
           <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
-          <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
+          <Border Name="PART_Bar" Width="4" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
           <Border Name="PART_Chip" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="8,4" CornerRadius="2" Margin="20,0,0,0" Background="Transparent">
             <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
           </Border>
@@ -632,12 +614,6 @@
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Bar">
       <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ Border#PART_Chip">
-      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
-    </Style>
-    <Style Selector="^:focus-visible">
-      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
     </Style>
   </ControlTheme>
 
@@ -663,7 +639,7 @@
           <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
           <c:Groove VerticalAlignment="Bottom" />
-          <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
+          <Border Name="PART_Bar" Width="4" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
           <Grid Name="PART_Columns" ColumnDefinitions="Auto,*,392" Margin="24,0,8,0">
             <!-- the service-menu number "01" … (Rücken 17, Text 3); the label follows 48 px further on -->
             <TextBlock Name="PART_Number" Text="{Binding Number}" IsVisible="{Binding HasNumber}" Width="44" VerticalAlignment="Center"
@@ -786,12 +762,6 @@
     <Style Selector="^.open /template/ Border#PART_Edge, ^.open /template/ Border#PART_Bar">
       <Setter Property="Opacity" Value="1" />
     </Style>
-    <Style Selector="^.open /template/ Border#PART_Chip">
-      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
-    </Style>
-    <Style Selector="^.open /template/ TextBlock#PART_Label">
-      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
-    </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Bg">
       <Setter Property="Background" Value="{DynamicResource RhSurfaceHiBrush}" />
     </Style>
@@ -800,12 +770,6 @@
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Bar">
       <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ Border#PART_Chip">
-      <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
-    </Style>
-    <Style Selector="^:focus-visible /template/ TextBlock#PART_Label">
-      <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
     </Style>
     <Style Selector="^:focus-visible /template/ c|RhIcon">
       <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
@@ -833,7 +797,7 @@
         <Panel>
           <Border Name="PART_Bg" Background="{TemplateBinding Background}" />
           <Border Name="PART_Edge" Height="1" VerticalAlignment="Top" Background="{DynamicResource RhLightEdgeBrush}" Opacity="0" />
-          <Border Name="PART_Bar" Width="8" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
+          <Border Name="PART_Bar" Width="4" HorizontalAlignment="Left" Background="{DynamicResource RhAccentBrush}" Opacity="0" />
           <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Padding="0" />
         </Panel>
@@ -1018,7 +982,10 @@
             </StackPanel>
           </c:ShelfTrack>
           <Border Grid.Row="0" Height="{TemplateBinding ItemHeight}" IsHitTestVisible="False" />
-          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" Margin="{TemplateBinding LabelMargin}" IsHitTestVisible="False"
+          <!-- R3 QA 3: the label rides with the row (the track's offset): it names the row from its first box on and never
+               stands under a box further along when the row has moved -->
+          <StackPanel Name="PART_Header" Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" HorizontalAlignment="Left"
+                      Margin="{TemplateBinding LabelMargin}" IsHitTestVisible="False"
                       IsVisible="{TemplateBinding Header, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
             <c:ShelfLabel Text="{TemplateBinding Header}" Height="24" />
             <TextBlock Text="{TemplateBinding SubHeader}" Classes="meta" VerticalAlignment="Center" />

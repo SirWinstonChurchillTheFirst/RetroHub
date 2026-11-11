@@ -80,12 +80,7 @@
   <Style Selector="Border.row-chip > TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
   </Style>
-  <Style Selector="Button.fold-row:focus-visible Border.row-chip">
-    <Setter Property="Background" Value="{DynamicResource RhPaperBrush}" />
-  </Style>
-  <Style Selector="Button.fold-row:focus-visible Border.row-chip > TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource RhInkBrush}" />
-  </Style>
+  <!-- R3 QA 3: no paper chip behind the focused label (it read as selected text): one focus signal, bar + row surface -->
   <Style Selector="Button.fold-row:focus-visible c|RhIcon.row-chevron">
     <Setter Property="Foreground" Value="{DynamicResource RhText1Brush}" />
   </Style>
