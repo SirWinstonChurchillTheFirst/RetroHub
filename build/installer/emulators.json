@@ -1,0 +1,197 @@
+{
+  "_comment": [
+    "Emulators bundled with RetroHub-Setup.exe (read by build.ps1). Every file is downloaded from the project's official",
+    "source into <WorkDir>\\downloads\\<id>\\ and checked against its SHA-256 - a changed file on the server never ends up in",
+    "the installer. New version: change url/file/version, download, check the file, put its sum here.",
+    "target = folder below the RetroHub root; it is exactly emulators\\<catalog id> (Resources\\emulators\\*.json), so",
+    "EmulatorRegistry finds the exe in its own folder and the portable data (User\\, user\\, portable\\, config files)",
+    "stays at the same place across updates (no version in the folder name). build.ps1 writes version.txt (the",
+    "version below) into every emulator folder - RetroHub reads it for exes without a version resource.",
+    "NEVER add BIOS files, console keys, firmware or games here."
+  ],
+  "emulators": [
+    {
+      "id": "mgba",
+      "name": "mGBA",
+      "version": "0.10.5",
+      "license": "MPL-2.0",
+      "website": "https://mgba.io/",
+      "url": "https://github.com/mgba-emu/mgba/releases/download/0.10.5/mGBA-0.10.5-win64.7z",
+      "sha256": "B497A57C7D9093834DADC64F33A90F7C411439C21FDB8A0143255A45EA37563A",
+      "size": 14156919,
+      "archiveRoot": "mGBA-0.10.5-win64",
+      "target": "emulators\\mgba",
+      "exclude": ["mgba-sdl.exe"],
+      "markers": ["portable.ini"],
+      "exe": "mGBA.exe"
+    },
+    {
+      "id": "melonds",
+      "name": "melonDS",
+      "version": "1.1",
+      "license": "GPL-3.0",
+      "website": "https://melonds.kuribo64.net/",
+      "url": "https://github.com/melonDS-emu/melonDS/releases/download/1.1/melonDS-1.1-windows-x86_64.zip",
+      "sha256": "9F3F8A244103BE20B5B657AF5B0ED1B2A66BB20A7181476A6D294C9A53D4F8C8",
+      "size": 19484283,
+      "archiveRoot": "",
+      "target": "emulators\\melonds",
+      "exe": "melonDS.exe",
+      "licenseFiles": [
+        {
+          "url": "https://raw.githubusercontent.com/melonDS-emu/melonDS/1.1/LICENSE",
+          "sha256": "8CEB4B9EE5ADEDDE47B31E975C1D90C73AD27B6B165A1DCD80C7C545EB65B903",
+          "as": "LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "id": "desmume",
+      "name": "DeSmuME",
+      "version": "0.9.13",
+      "license": "GPL-2.0",
+      "website": "https://desmume.org/",
+      "url": "https://github.com/TASEmulators/desmume/releases/download/release_0_9_13/desmume-0.9.13-win64.zip",
+      "sha256": "CBF710B8E6B29F0904E289A9B9A895548A2D7C7AF5A3145C8279B97A69A09276",
+      "size": 6086795,
+      "archiveRoot": "",
+      "target": "emulators\\desmume",
+      "exe": "DeSmuME_0.9.13_x64.exe"
+    },
+    {
+      "id": "azahar",
+      "name": "Azahar",
+      "version": "2126.2",
+      "license": "GPL-2.0",
+      "website": "https://azahar-emu.org/",
+      "url": "https://github.com/azahar-emu/azahar/releases/download/2126.2/azahar-windows-msvc-2126.2.zip",
+      "sha256": "4412EAC8D13123C8840F11890FC26E5B0E4C76D16AA28A608941377B948A9DB0",
+      "size": 43941048,
+      "archiveRoot": "azahar-windows-msvc-2126.2",
+      "target": "emulators\\azahar",
+      "exe": "azahar.exe",
+      "licenseFiles": [
+        {
+          "url": "https://raw.githubusercontent.com/azahar-emu/azahar/2126.2/license.txt",
+          "sha256": "A77E81713DDFE05F9F7F3A3C46DE4147F82B5FE9D6E5E24AF96E36A6DE53F613",
+          "as": "LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "id": "dolphin",
+      "name": "Dolphin",
+      "version": "2609b",
+      "license": "GPL-2.0-or-later",
+      "website": "https://dolphin-emu.org/",
+      "url": "https://dl.dolphin-emu.org/releases/2609b/dolphin-2609b-x64.7z",
+      "sha256": "926EB7594D885B4FBA8FD9807058D90618EFAB4B3D75D1EF297022BA14925133",
+      "size": 20028240,
+      "archiveRoot": "Dolphin-x64",
+      "target": "emulators\\dolphin",
+      "exe": "Dolphin.exe",
+      "markers": ["portable.txt"]
+    },
+    {
+      "id": "cemu",
+      "name": "Cemu",
+      "version": "2.6",
+      "license": "MPL-2.0",
+      "website": "https://cemu.info/",
+      "url": "https://github.com/cemu-project/Cemu/releases/download/v2.6/cemu-2.6-windows-x64.zip",
+      "sha256": "A6BCC2BC42A362D10213819948F3152FAE7D47F70067F25939B51D3DDCFB0896",
+      "size": 26374093,
+      "archiveRoot": "Cemu_2.6",
+      "target": "emulators\\cemu",
+      "exe": "Cemu.exe",
+      "licenseFiles": [
+        {
+          "url": "https://raw.githubusercontent.com/cemu-project/Cemu/v2.6/LICENSE.txt",
+          "sha256": "1F256ECAD192880510E84AD60474EAB7589218784B9A50BC7CEEE34C2B91F1D5",
+          "as": "LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "id": "retroarch",
+      "name": "RetroArch",
+      "version": "1.22.2",
+      "license": "GPL-3.0",
+      "website": "https://www.retroarch.com/",
+      "url": "https://buildbot.libretro.com/stable/1.22.2/windows/x86_64/RetroArch.7z",
+      "sha256": "B2139B1D0F9D4526DC6B5CE23CBB3EFDC766096FA6F2C3DF016818B486AC6372",
+      "size": 202509078,
+      "archiveRoot": "RetroArch-Win64",
+      "target": "emulators\\retroarch",
+      "exe": "retroarch.exe",
+      "licenseFiles": [
+        {
+          "url": "https://raw.githubusercontent.com/libretro/RetroArch/v1.22.2/COPYING",
+          "sha256": "8CEB4B9EE5ADEDDE47B31E975C1D90C73AD27B6B165A1DCD80C7C545EB65B903",
+          "as": "COPYING.txt"
+        }
+      ]
+    }
+  ],
+  "downloadAtInstall": [
+    {
+      "_comment": [
+        "NOT inside RetroHub-Setup.exe (owner decision): Setup downloads it during the installation from Eden's own server",
+        "(optional task 'eden', checked by default), checks this SHA-256 and unpacks it flat into emulators\\eden",
+        "(RetroHub.iss, [Code] InstallEden). build.ps1 passes url/sha256/size to ISCC and checks that the pinned file",
+        "still matches (it is downloaded into <WorkDir>\\downloads\\eden\\ for that check, never staged).",
+        "uninstallFiles: what Setup removes on uninstall (the extracted files are not in Setup's uninstall log) –",
+        "keep it in sync with the archive's top level when the version changes. Eden's data folder user\\ stays."
+      ],
+      "id": "eden",
+      "name": "Eden",
+      "version": "0.2.1",
+      "license": "GPL-3.0-or-later",
+      "website": "https://eden-emu.dev/",
+      "source": "https://git.eden-emu.dev/eden-emu/eden",
+      "url": "https://stable.eden-emu.dev/v0.2.1/Eden-Windows-v0.2.1-amd64-msvc-standard.zip",
+      "sha256": "FF498E5DA9630216926AC3CBE9FB493B14930665C728A40A8F5B59507FDD7EBF",
+      "size": 31319001,
+      "target": "emulators\\eden",
+      "exe": "eden.exe",
+      "uninstallFiles": ["eden.exe", "eden-cli.exe", "LICENSE.txt", "README.md", "LICENSES\\", "version.txt"]
+    }
+  ],
+  "retroarchCores": {
+    "_comment": [
+      "The cores come from the stable core pack of the same RetroArch release (only the listed dlls are unpacked).",
+      "Chosen: for every system of the catalog (Resources\\systems\\*.json) whose first choice is not a bundled stand-alone",
+      "emulator, the first RetroArch core of its list (LaunchPlanner takes the first installed entry). Licence texts come",
+      "from the core's source repository, pinned to a commit."
+    ],
+    "id": "retroarch-cores",
+    "version": "1.22.2",
+    "url": "https://buildbot.libretro.com/stable/1.22.2/windows/x86_64/RetroArch_cores.7z",
+    "sha256": "86B871E11B9B4772AC644B40A38F2C8E9449DA1F355EAE7DA08AA061148547B0",
+    "size": 229761684,
+    "archiveDir": "RetroArch-Win64\\cores",
+    "target": "emulators\\retroarch\\cores",
+    "licenseTarget": "emulators\\retroarch\\licenses",
+    "cores": [
+      { "core": "fbneo",             "systems": "arcade",                                   "license": "FBNeo (nicht-kommerziell)", "source": "https://github.com/libretro/FBNeo",                    "licenseUrl": "https://raw.githubusercontent.com/libretro/FBNeo/a836e52198aa5ce1f54be7b050e44872a1223797/src/license.txt",                 "licenseSha256": "BB2369F1B75F42242968A78191B47EE90F85682224D3AD1EF63044E244B3E202" },
+      { "core": "fceumm",            "systems": "nes",                                      "license": "GPL-2.0",                   "source": "https://github.com/libretro/libretro-fceumm",            "licenseUrl": "https://raw.githubusercontent.com/libretro/libretro-fceumm/e0f3086a8104f8fbbe49a2615b10401504a9533f/Copying",               "licenseSha256": "A6996DCF0C334281F734560926E079B2DBBD5B78E81C0CA00A413EC01E1CD2FB" },
+      { "core": "snes9x",            "systems": "snes",                                     "license": "Snes9x (nicht-kommerziell)", "source": "https://github.com/libretro/snes9x",                   "licenseUrl": "https://raw.githubusercontent.com/libretro/snes9x/fae2fea08f74180759ef540ee94259213f503480/LICENSE",                        "licenseSha256": "70EFEEE282D82A6E9D26AEED5466D08C632369858371DC6A4644C8DCEDC2BE78" },
+      { "core": "mednafen_vb",       "systems": "virtualboy",                               "license": "GPL-2.0",                   "source": "https://github.com/libretro/beetle-vb-libretro",          "licenseUrl": "https://raw.githubusercontent.com/libretro/beetle-vb-libretro/d5ae54c8e23b573a3b34e888b2d48a588027e92c/COPYING",           "licenseSha256": "A6996DCF0C334281F734560926E079B2DBBD5B78E81C0CA00A413EC01E1CD2FB" },
+      { "core": "mupen64plus_next",  "systems": "n64",                                      "license": "GPL-2.0",                   "source": "https://github.com/libretro/mupen64plus-libretro-nx",     "licenseUrl": "https://raw.githubusercontent.com/libretro/mupen64plus-libretro-nx/15bada85906593376e8fd697f1b0b3af3a20f512/LICENSE",      "licenseSha256": "8177F97513213526DF2CF6184D8FF986C675AFB514D4E68A404010521B880643" },
+      { "core": "stella",            "systems": "atari2600",                                "license": "GPL-2.0",                   "source": "https://github.com/stella-emu/stella",                   "licenseUrl": "https://raw.githubusercontent.com/stella-emu/stella/da5a002c318843bea1d233932508b9439798de0d/License.txt",                 "licenseSha256": "58530D09B6FCB91AE27071BE0081AF90E6C2D7FDF991D34A29E234A2A5E75455" },
+      { "core": "prosystem",         "systems": "atari7800",                                "license": "GPL-2.0",                   "source": "https://github.com/libretro/prosystem-libretro",          "licenseUrl": "https://raw.githubusercontent.com/libretro/prosystem-libretro/8a88014287c7a01cd568067e5a557d0a2b2a051f/License.txt",       "licenseSha256": "9FAE8C2AE211EA4B3515621484BB0A558A0CA62D05C9534265C7E223BDF981B0" },
+      { "core": "handy",             "systems": "lynx",                                     "license": "Zlib",                      "source": "https://github.com/libretro/libretro-handy",             "licenseUrl": "https://raw.githubusercontent.com/libretro/libretro-handy/bc55d462f0b2d6b073ea93dc552ebd73cec60fd1/lynx/license.txt",      "licenseSha256": "C75A7FED8AFE9D6A5A70A48C0B52BF37207E8DEE49DFA664B0B73819248DB671" },
+      { "core": "mednafen_pce_fast", "systems": "pcengine",                                 "license": "GPL-2.0",                   "source": "https://github.com/libretro/beetle-pce-fast-libretro",    "licenseUrl": "https://raw.githubusercontent.com/libretro/beetle-pce-fast-libretro/2de1ce1c3f237b161c126c54ba407990bb86d1e9/COPYING",     "licenseSha256": "A6996DCF0C334281F734560926E079B2DBBD5B78E81C0CA00A413EC01E1CD2FB" },
+      { "core": "mednafen_ngp",      "systems": "ngp",                                      "license": "GPL-2.0",                   "source": "https://github.com/libretro/beetle-ngp-libretro",         "licenseUrl": "https://raw.githubusercontent.com/libretro/beetle-ngp-libretro/a50d5ac288a81f2104ddf43195a4efdd15c72227/COPYING",          "licenseSha256": "A6996DCF0C334281F734560926E079B2DBBD5B78E81C0CA00A413EC01E1CD2FB" },
+      { "core": "mednafen_wswan",    "systems": "wonderswan",                               "license": "GPL-2.0",                   "source": "https://github.com/libretro/beetle-wswan-libretro",       "licenseUrl": "https://raw.githubusercontent.com/libretro/beetle-wswan-libretro/4b01295838ea89e3f1355bbe4cb5cf98aa6108cd/COPYING",        "licenseSha256": "A6996DCF0C334281F734560926E079B2DBBD5B78E81C0CA00A413EC01E1CD2FB" },
+      { "core": "bluemsx",           "systems": "msx",                                      "license": "GPL-2.0",                   "source": "https://github.com/libretro/blueMSX-libretro",           "licenseUrl": "https://raw.githubusercontent.com/libretro/blueMSX-libretro/e3086eb5d36d77fa11704cf53dc176686e70127d/license.txt",         "licenseSha256": "FD648253EBEB0D84E64106376F2AA8F2A5C52031DD8F4E6E3CA7BD082E7992DB" },
+      { "core": "genesis_plus_gx",   "systems": "mastersystem, megadrive, gamegear, segacd", "license": "Genesis Plus GX (nicht-kommerziell)", "source": "https://github.com/libretro/Genesis-Plus-GX", "licenseUrl": "https://raw.githubusercontent.com/libretro/Genesis-Plus-GX/b9c2316441978d4015ba30e9a95d9b0e6f8ee981/LICENSE.txt",      "licenseSha256": "642C163624269243D1F6B29D759D4E3A2D161BDC272C90D82ECBEEC82AE26755" },
+      { "core": "picodrive",         "systems": "sega32x",                                  "license": "PicoDrive (nicht-kommerziell)", "source": "https://github.com/libretro/picodrive",               "licenseUrl": "https://raw.githubusercontent.com/libretro/picodrive/1890c2932234c9d30f4cd3851d02228baae8f09e/COPYING",                    "licenseSha256": "A36C54A119673C1B40233F55FF23C39042F35C3E798CE78AAFBA5D6BD9C19DE4" },
+      { "core": "mednafen_saturn",   "systems": "saturn",                                   "license": "GPL-2.0",                   "source": "https://github.com/libretro/beetle-saturn-libretro",      "licenseUrl": "https://raw.githubusercontent.com/libretro/beetle-saturn-libretro/30f4c12072d265c9e553dcb29386059114945dea/COPYING",       "licenseSha256": "A6996DCF0C334281F734560926E079B2DBBD5B78E81C0CA00A413EC01E1CD2FB" },
+      { "core": "flycast",           "systems": "dreamcast",                                "license": "GPL-2.0",                   "source": "https://github.com/flyinghead/flycast",                  "licenseUrl": "https://raw.githubusercontent.com/flyinghead/flycast/72b8e67141d85ca5c9259f04563b49f7f92f928b/LICENSE",                    "licenseSha256": "8177F97513213526DF2CF6184D8FF986C675AFB514D4E68A404010521B880643" },
+      { "core": "pcsx_rearmed",      "systems": "ps1",                                      "license": "GPL-2.0",                   "source": "https://github.com/libretro/pcsx_rearmed",               "licenseUrl": "https://raw.githubusercontent.com/libretro/pcsx_rearmed/7b0e8f8fadfbce3d170d195b9d9eecaabfa08c8e/COPYING",                 "licenseSha256": "0EFB4DB8000C609BD2F06E61FCBC59AF05519D122F5B3597B7C493224946C61D" },
+      { "core": "pcsx2",             "systems": "ps2",                                      "license": "GPL-3.0",                   "source": "https://github.com/libretro/ps2",                        "licenseUrl": "https://raw.githubusercontent.com/libretro/ps2/b917e003fbb129bd4fc0718860898fe12d593662/COPYING.GPLv3",                     "licenseSha256": "8CEB4B9EE5ADEDDE47B31E975C1D90C73AD27B6B165A1DCD80C7C545EB65B903" },
+      { "core": "ppsspp",            "systems": "psp",                                      "license": "GPL-2.0",                   "source": "https://github.com/hrydgard/ppsspp",                     "licenseUrl": "https://raw.githubusercontent.com/hrydgard/ppsspp/87d7e00285e8ed98d163e8a2cbbbaac18a92cec8/LICENSE.TXT",                    "licenseSha256": "FF265754CBB2E0D3B674F90A79EF5BBAA1F7F1075AEC9F5E241524520E5049FA" }
+    ]
+  }
+}

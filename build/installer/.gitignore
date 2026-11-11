@@ -1,0 +1,7 @@
+# build.ps1 work folders (default WorkDir is artifacts\installer, already ignored) – never commit downloads or builds
+downloads/
+extract/
+stage/
+out/
+*.part
+__pycache__/
